@@ -1,0 +1,660 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SeatSight Tickets</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Big concerts in Jakarta, sold on tiket.com. Buy through SeatSight and see the stage from your seat in 3D before the night.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,500..900&family=Inter+Tight:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap">
+<link rel="stylesheet" href="css/styles.css">
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body data-view="home">
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-tix" viewBox="0 0 24 16"><path d="M0 0h24v5a3 3 0 0 0 0 6v5H0v-5a3 3 0 0 0 0-6V0Z" fill="currentColor"/></symbol>
+  <symbol id="i-seat" viewBox="0 0 24 24"><path d="M6 11V6a3 3 0 0 1 3-3h6a3 3 0 0 1 3 3v5M4 11h16v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-4ZM7 17v4M17 17v4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-people" viewBox="0 0 24 24"><path d="M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM3 20a6 6 0 0 1 12 0M16 4.5a3 3 0 0 1 0 6M18 14.5a5 5 0 0 1 3 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+  <symbol id="i-tag" viewBox="0 0 24 24"><path d="M3 12V4h8l10 10-8 8L3 12Z M7.5 8.5h.01" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/></symbol>
+  <symbol id="i-reset" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4h4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square"/></symbol>
+  <symbol id="i-out" viewBox="0 0 24 24"><path d="M7 17 17 7M9 7h8v8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M20 12H5M11 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="square"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="m7 10 5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21Zm0-9a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm0-13v4.5l3 2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><path d="M6 11h12v9H6zM8.5 11V8a3.5 3.5 0 0 1 7 0v3" fill="none" stroke="currentColor" stroke-width="1.6"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Zm9.5 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 4.5 6v5.5c0 4.6 3.2 8.3 7.5 9.5 4.3-1.2 7.5-4.9 7.5-9.5V6L12 3Zm-3.5 9 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24"><path d="M12 15V3M7.5 7.5 12 3l4.5 4.5M5 12v8h14v-8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><path d="M4 6h16v14H4zM4 10h16M8 3v5M16 3v5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><path d="M10.5 18a7.5 7.5 0 1 0 0-15 7.5 7.5 0 0 0 0 15ZM16 16l5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4l2-2ZM10 21h4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3.1-3.1a4 4 0 0 0-5.7-5.7L11.6 6.7M14 10a4 4 0 0 0-5.7 0l-3.1 3.1a4 4 0 0 0 5.7 5.7l1.5-1.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path d="m8 8-4 4 4 4M16 8l4 4-4 4M13.5 5l-3 14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-card" viewBox="0 0 24 24"><path d="M3 6h18v12H3zM3 10h18M7 15h4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24"><path d="M3 6h18v12H3zM3.5 7l8.5 6 8.5-6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><path d="M8 8h12v12H8zM16 8V4H4v12h4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8.5 5.5v13M15.5 5.5v13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5L8 5.5Z" fill="currentColor" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></symbol>
+  <symbol id="i-mark" viewBox="0 0 40 40"><path d="M20 7 34 32H6L20 7Zm0 9.5L13.2 28.6h13.6L20 16.5Z" fill="currentColor" fill-rule="evenodd"/></symbol>
+</svg>
+
+<div class="frame" id="frame">
+<!-- ======================================================= GLOBAL NAV -->
+<header class="nav" id="nav">
+  <a class="logo" id="logo" href="#home" aria-label="Home"><svg class="logo-mark"><use href="#i-mark"/></svg><span class="logo-word" data-brand>SeatSight</span></a>
+  <div class="nav-cta">
+    <nav class="mode mode-nav" aria-label="Choose your side">
+      <a href="#home" data-mode="fans">For fans</a>
+      <a href="#partners" data-mode="partners">For partners</a>
+    </nav>
+    <a class="btn btn-coral btn-sm nav-btn" href="#unlock" data-for="fans">Unlock 3D</a>
+    <a class="btn btn-coral btn-sm nav-btn" href="#partner-contact" data-for="partners">Book a demo</a>
+    <button class="burger" id="burger" aria-label="Menu" aria-expanded="false" aria-controls="menu"><span class="burger-lines" aria-hidden="true"><i></i><i></i><i></i></span><span class="badge burger-badge" data-count="passes" hidden></span></button>
+  </div>
+</header>
+
+<div class="menu" id="menu" hidden>
+  <div class="menu-in">
+    <nav class="mode mode-lg" aria-label="Choose your side">
+      <a href="#home" data-mode="fans">For fans</a>
+      <a href="#partners" data-mode="partners">For partners</a>
+    </nav>
+    <nav class="menu-links" aria-label="Main" data-for="fans">
+      <a href="#concerts" data-nav="concerts">Concerts</a><a href="#how" data-nav="how">How it works</a><a href="#passes" data-nav="passes">My 3D passes<span class="badge" data-count="passes" hidden></span></a><a href="#unlock" data-nav="unlock">Unlock a 3D view</a>
+    </nav>
+    <nav class="menu-sub" aria-label="Help" data-for="fans">
+      <a class="pill" href="#faq">Questions</a><a class="pill" href="#about">About us</a><a class="pill" href="#contact">Contact</a>
+    </nav>
+    <nav class="menu-links" aria-label="Main" data-for="partners">
+      <a href="#partners" data-nav="partners">Overview</a><a href="#partner-uses" data-nav="partner-uses">Who it’s for</a><a href="#partner-demo" data-nav="partner-demo">Try a venue</a><a href="#partner-pricing" data-nav="partner-pricing">Pricing</a>
+    </nav>
+    <div class="menu-sub" data-for="partners"><a class="btn btn-coral" href="#partner-contact">Book a demo <svg><use href="#i-arrow"/></svg></a></div>
+  </div>
+</div>
+
+<!-- ======================================================= HOME -->
+<main id="view-home" class="view" data-view-id="home">
+  <section class="hero-show is-auto" id="home-hero" aria-roledescription="carousel" aria-label="Concerts on sale">
+    <h1 class="sr-only">Big concerts on tiket.com, with the view from your seat in 3D</h1>
+    <div class="hs-stage">
+      <div id="hs-backs" aria-hidden="true"></div>
+      <div id="hero-canvas" class="hero-canvas" role="img" aria-label="3D view of the concert venue"></div>
+      <i class="hs-shade" aria-hidden="true"></i>
+    </div>
+    <div class="hs-in">
+      <div class="hs-stack" id="hs-stack" aria-live="off"></div>
+      <div class="hs-nav">
+        <button class="hs-arrow" type="button" data-hs-step="-1" aria-label="Previous concert"><svg><use href="#i-back"/></svg></button>
+        <ol class="hs-tabs" id="hs-tabs" aria-label="Concerts"></ol>
+        <button class="hs-arrow" type="button" data-hs-step="1" aria-label="Next concert"><svg><use href="#i-arrow"/></svg></button>
+        <button class="hs-play" type="button" id="hs-play" aria-label="Pause the slideshow"><svg><use href="#i-pause"/></svg></button>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <header class="sec-head">
+      <h2 class="big"><span class="fade">On sale</span> <span class="ol">now</span></h2>
+      <div class="sec-side"><p>Big concerts in Jakarta, sold on tiket.com. Buy through us and the 3D view of your seat comes with it.</p><a class="pill-link" href="#concerts">All concerts <svg><use href="#i-arrow"/></svg></a></div>
+    </header>
+    <div class="ev-grid" id="home-events"></div>
+  </section>
+
+  <section class="sec" id="how">
+    <header class="sec-head">
+      <h2 class="big"><span class="fade">Three steps</span> <span class="ol">to your seat</span></h2>
+      <div class="sec-side"><p>tiket.com sells the ticket and takes the payment. We show you where you’ll be.</p></div>
+    </header>
+    <ol class="steps steps-3">
+      <li><b>01</b><h3>Pick a concert</h3><p>Categories and prices on one page. Look round the venue in 3D from above to see where each category sits.</p></li>
+      <li><b>02</b><h3>Buy on tiket.com</h3><p>Our button opens the concert on tiket.com. Same price, the same official e-ticket, paid there the way you always pay.</p></li>
+      <li><b>03</b><h3>Unlock your seat view</h3><p>Come back and enter your tiket.com order ID. The camera walks to your seat, turns round and shows you the stage.</p></li>
+    </ol>
+  </section>
+
+  <section class="sec">
+    <header class="sec-head">
+      <h2 class="big"><span class="fade">Why buy</span> <span class="ol">through us</span></h2>
+      <div class="sec-side"><p>Nothing changes about your ticket. You just get to see it first.</p></div>
+    </header>
+    <ul class="feat-grid">
+      <li><span class="feat-ic"><svg><use href="#i-tag"/></svg></span><h3>The same price</h3><p>You pay tiket.com’s price. If we earn a commission, tiket.com pays it, not you.</p></li>
+      <li><span class="feat-ic"><svg><use href="#i-shield"/></svg></span><h3>The official ticket</h3><p>Your e-ticket comes from tiket.com, exactly as if you had gone there yourself. We never see your payment.</p></li>
+      <li><span class="feat-ic"><svg><use href="#i-eye"/></svg></span><h3>Your view, before the night</h3><p>How far the stage is, how big the screens look, which way you face. From your seat, in 3D.</p></li>
+      <li><span class="feat-ic"><svg><use href="#i-seat"/></svg></span><h3>Any seat, not one photo</h3><p>Sit anywhere in the venue and compare. Find the seat on your e-ticket and keep it as yours.</p></li>
+      <li><span class="feat-ic"><svg><use href="#i-share"/></svg></span><h3>Show your friends</h3><p>Send the people you’re going with a link, so they know where you’ll be.</p></li>
+      <li><span class="feat-ic"><svg><use href="#i-check"/></svg></span><h3>Free, no app</h3><p>Opens in the browser on your phone or laptop. Nothing to install, nothing to pay.</p></li>
+    </ul>
+  </section>
+
+  <section class="sec" id="venues">
+    <header class="sec-head">
+      <h2 class="big"><span class="fade">Venues</span> <span class="ol">in 3D</span></h2>
+      <div class="sec-side"><p>Each venue is modelled seat by seat for the show that plays there, stage and screens included.</p></div>
+    </header>
+    <div class="venues venues-3" id="home-venues"></div>
+  </section>
+
+  <section class="sec">
+    <header class="sec-head">
+      <h2 class="big"><span class="fade">Good</span> <span class="ol">questions</span></h2>
+      <div class="sec-side"><a class="pill-link" href="#faq">All questions <svg><use href="#i-arrow"/></svg></a></div>
+    </header>
+    <div class="faq" id="home-faq"></div>
+  </section>
+
+  <section class="sec">
+    <form class="news" id="news-form" novalidate>
+      <div>
+        <p class="eyebrow">Concert alerts</p>
+        <h2 class="big big-sm"><span class="fade">New shows</span> <span class="ol">first</span></h2>
+        <p class="news-note">When a big concert goes on sale on tiket.com, you get the date, the prices and the 3D venue. A few emails a month, leave any time.</p>
+      </div>
+      <div class="news-field">
+        <input name="email" type="email" required autocomplete="email" placeholder="you@example.com" aria-label="Email">
+        <button class="btn btn-coral" type="submit">Get alerts</button>
+        <p class="form-msg" id="news-msg" role="status" hidden></p>
+      </div>
+    </form>
+  </section>
+
+  <section class="sec">
+    <a class="band" href="#partners">
+      <span class="eyebrow">For partners</span>
+      <b>Run a ticketing app, a venue or a promoter?</b>
+      <span>Put the 3D seat view in your own checkout and e-tickets.</span>
+      <span class="go"><svg><use href="#i-arrow"/></svg></span>
+    </a>
+  </section>
+</main>
+
+<!-- ======================================================= CONCERTS -->
+<main id="view-concerts" class="view" data-view-id="concerts" hidden>
+  <section class="sec page-top">
+    <header class="sec-head">
+      <h1 class="big big-xl"><span class="fade">Concerts</span> <span class="ol">on sale</span></h1>
+      <div class="sec-side"><p id="concerts-count"></p></div>
+    </header>
+    <div class="ev-tools">
+      <label class="search"><svg><use href="#i-search"/></svg><input id="concerts-q" type="search" placeholder="Artist or venue" aria-label="Search concerts"></label>
+      <div class="dd-bar" id="concerts-sort"></div>
+    </div>
+    <div class="ev-grid" id="concerts-grid"></div>
+  </section>
+</main>
+
+<!-- ======================================================= CONCERT PAGE -->
+<main id="view-event" class="view" data-view-id="event" hidden>
+  <section class="hero ev-hero" id="ev-hero"></section>
+  <div class="ev-bar" id="ev-bar"></div>
+
+  <section class="sec" id="ev-3d"></section>
+
+  <section class="sec" id="ev-tickets">
+    <header class="sec-head">
+      <h2 class="big"><span class="fade">Categories</span> <span class="ol">and prices</span></h2>
+      <div class="sec-side"><p id="ev-tickets-note"></p></div>
+    </header>
+    <div class="tk-grid" id="ev-cats"></div>
+  </section>
+
+  <section class="sec" id="ev-runs-sec" hidden>
+    <header class="sec-head">
+      <h2 class="big big-sm"><span class="fade">On the</span> <span class="ol">night</span></h2>
+      <div class="sec-side"><p id="ev-run-note"></p></div>
+    </header>
+    <ol class="runs" id="ev-runs"></ol>
+  </section>
+
+  <section class="sec" id="ev-about"></section>
+
+  <section class="sec">
+    <header class="sec-head sec-head-sm"><h2 class="big big-sm"><span class="fade">Before</span> <span class="ol">you buy</span></h2></header>
+    <div class="faq" id="ev-faq"></div>
+  </section>
+
+  <section class="sec" id="ev-more-sec">
+    <header class="sec-head sec-head-sm"><h2 class="big big-sm"><span class="fade">More</span> <span class="ol">concerts</span></h2></header>
+    <div class="ev-grid" id="ev-more"></div>
+  </section>
+</main>
+
+<!-- ======================================================= UNLOCK A 3D PASS -->
+<main id="view-unlock" class="view" data-view-id="unlock" hidden>
+  <section class="sec page-top">
+    <header class="sec-head">
+      <h1 class="big big-xl"><span class="fade">Unlock</span> <span class="ol">your view</span></h1>
+      <div class="sec-side"><p>Bought on tiket.com through our link? Your 3D seat view opens as soon as you send this.</p></div>
+    </header>
+    <div class="host" id="unlock-body">
+      <form class="form panel-box" id="unlock-form" novalidate>
+        <fieldset>
+          <legend>01 Your concert</legend>
+          <div class="f-row">
+            <label>Concert<select name="eventId" required></select></label>
+            <label>Category on your ticket<select name="cat" required></select></label>
+          </div>
+          <label class="f-short">Tickets in the order<input name="qty" type="number" min="1" max="8" step="1" value="1" inputmode="numeric" required></label>
+        </fieldset>
+        <fieldset>
+          <legend>02 Your tiket.com booking</legend>
+          <div class="f-row">
+            <label>tiket.com order ID<input name="orderRef" required autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="30" placeholder="As on your booking"><small>In tiket.com’s confirmation email, and with your orders in the tiket.com app.</small></label>
+            <label>Email you used on tiket.com<input name="email" type="email" required autocomplete="email" maxlength="160"><small>We only write to you about this 3D pass.</small></label>
+          </div>
+        </fieldset>
+        <label class="check"><input type="checkbox" name="consent" required><span>I bought these tickets on tiket.com through a <span data-brand>SeatSight</span> link, and I agree to the <a class="u" href="#terms">terms</a> and the <a class="u" href="#privacy">privacy policy</a>.</span></label>
+        <p class="form-error" id="unlock-error" role="alert" hidden></p>
+        <button class="btn btn-coral btn-block" type="submit">Unlock my 3D view <svg><use href="#i-arrow"/></svg></button>
+        <p class="fine">Not bought yet? <a class="u" href="#concerts">Find your concert</a> and use its Buy on tiket.com button, so we can match your booking.</p>
+      </form>
+      <aside class="host-side">
+        <p class="eyebrow">How the check works</p>
+        <ol class="timeline">
+          <li><b>Now</b><span>Your 3D view opens straight away, on this device.</span></li>
+          <li><b>In a few days</b><span>tiket.com reports the sales made through our links, each with our click code. Never your payment or ticket details.</span></li>
+          <li><b>Matched</b><span>Your pass is confirmed and stays open until after the show.</span></li>
+          <li><b>Not found</b><span>If no sale through our links matches, we write to you before the pass closes.</span></li>
+        </ol>
+        <div class="host-plan">
+          <span class="eyebrow eyebrow-ink">Clicked on your phone, here on a laptop?</span>
+          <b>That’s fine</b>
+          <p>Unlock with the same order ID and email. If we can’t match it automatically, we’ll ask for tiket.com’s confirmation email.</p>
+        </div>
+      </aside>
+    </div>
+  </section>
+</main>
+
+<!-- ======================================================= MY 3D PASSES -->
+<main id="view-passes" class="view" data-view-id="passes" hidden>
+  <section class="sec page-top">
+    <header class="sec-head">
+      <h1 class="big big-xl"><span class="fade">My 3D</span> <span class="ol">passes</span></h1>
+      <div class="sec-side"><p id="passes-note"></p></div>
+    </header>
+    <div id="passes-body"></div>
+  </section>
+</main>
+
+<!-- ======================================================= PARTNERS -->
+<main id="view-partners" class="view" data-view-id="partners" hidden>
+  <section class="hero org-hero">
+    <div class="hero-glow" aria-hidden="true"></div>
+    <div class="org-hero-in">
+      <p class="kicker"><b>For partners</b> <span>ticketing · venues · promoters · travel</span></p>
+      <h1 class="giant giant-org">Seat view</h1>
+      <p class="org-sub"><span class="w-fill">for every</span> <span class="w-ol">ticket you sell.</span></p>
+      <div class="org-row">
+        <p class="lede">Give your buyers the view from their seat, before they pay and on their e-ticket. We model the venue from your seating plan; you put it in your checkout, site or app, under your own brand.</p>
+        <div class="row-btns">
+          <a class="btn btn-coral" href="#partner-contact">Book a demo <svg><use href="#i-arrow"/></svg></a>
+          <a class="btn btn-line" href="#partner-demo">Try a venue</a>
+        </div>
+      </div>
+      <dl class="stats" id="partner-stats"></dl>
+    </div>
+  </section>
+
+  <section class="sec" id="partner-why">
+    <header class="sec-head">
+      <h2 class="big"><span class="fade">What it does</span> <span class="ol">for you</span></h2>
+      <div class="sec-side"><p>The same view we give fans who buy concert tickets through us, in your own sales flow.</p></div>
+    </header>
+    <ul class="feat-grid feat-grid-2">
+      <li><span class="feat-ic"><svg><use href="#i-chart"/></svg></span><h3>Sell the better categories</h3><p>Buyers see the difference between the back of CAT 3 and the front of CAT 1, and choose with confidence instead of guessing.</p></li>
+      <li><span class="feat-ic"><svg><use href="#i-people"/></svg></span><h3>Fewer “where is my seat” questions</h3><p>A view on the e-ticket answers what your support team hears most in the week before a show.</p></li>
+      <li><span class="feat-ic"><svg><use href="#i-tix"/></svg></span><h3>A reason to buy from you</h3><p>When the same ticket is on sale in several places, the one with the seat view is the one fans remember.</p></li>
+      <li><span class="feat-ic"><svg><use href="#i-eye"/></svg></span><h3>Your show on the screens</h3><p>The stage, the LED walls and the ribbons carry the show’s artwork or your sponsors, in every view.</p></li>
+    </ul>
+  </section>
+
+  <section class="sec" id="partner-uses">
+    <header class="sec-head">
+      <h2 class="big"><span class="fade">Who it’s</span> <span class="ol">for</span></h2>
+      <div class="sec-side"><p>Anyone who sells, packages or hosts seats for a live event.</p></div>
+    </header>
+    <ul class="feat-grid" id="partner-use-list"></ul>
+  </section>
+
+  <section class="sec" id="partner-how">
+    <header class="sec-head">
+      <h2 class="big"><span class="fade">Seating plan</span> <span class="ol">to live</span></h2>
+      <div class="sec-side"><p>Five steps, and only the first two take work on your side.</p></div>
+    </header>
+    <ol class="steps">
+      <li><b>01</b><h3>Send the plan</h3><p>The seating plan, the stage layout and a few photos from the stands. We reply in one working day.</p></li>
+      <li><b>02</b><h3>We build it</h3><p>Blocks, rows, seat numbers and rake follow your plan. Screens carry your artwork.</p></li>
+      <li><b>03</b><h3>Check it</h3><p>A private demo link for your team and the promoter. We adjust until the views are right.</p></li>
+      <li><b>04</b><h3>Go live</h3><p>Embed it in checkout and the e-ticket, or link to it from your app. Your colours, your categories.</p></li>
+      <li><b>05</b><h3>See what they look at</h3><p>Anonymous counts of the sections buyers open and how many go on to buy.</p></li>
+    </ol>
+  </section>
+
+  <section class="sec" id="partner-demo">
+    <header class="sec-head">
+      <h2 class="big"><span class="fade">Try</span> <span class="ol">a venue</span></h2>
+      <div class="sec-side"><p>Live demos of the layouts we build from. Open one, click any seat and sit down.</p></div>
+    </header>
+    <div class="venues" id="partner-demos"></div>
+  </section>
+
+  <section class="sec" id="partner-pricing">
+    <header class="sec-head">
+      <h2 class="big"><span class="fade">Three ways</span> <span class="ol">to work together</span></h2>
+      <div class="sec-side"><p>Start small on one show, or license the venue for every event. Prices exclude VAT.</p></div>
+    </header>
+    <div class="plans plans-3" id="partner-plans"></div>
+  </section>
+
+  <section class="sec" id="partner-faq-sec">
+    <header class="sec-head sec-head-sm"><h2 class="big big-sm"><span class="fade">Partner</span> <span class="ol">questions</span></h2></header>
+    <div class="faq" id="partner-faq"></div>
+  </section>
+
+  <section class="sec" id="partner-contact">
+    <header class="sec-head">
+      <h2 class="big"><span class="fade">Book</span> <span class="ol">a demo</span></h2>
+      <div class="sec-side"><p>Tell us about your platform or venue. We reply within one working day with a demo built for you.</p></div>
+    </header>
+    <div class="host" id="partner-body">
+      <form class="form panel-box" id="partner-form" novalidate>
+        <fieldset>
+          <legend>01 About you</legend>
+          <div class="f-row">
+            <label>Your name<input name="name" required autocomplete="name" maxlength="80"></label>
+            <label>Company<input name="company" required autocomplete="organization" maxlength="120"></label>
+          </div>
+          <div class="f-row">
+            <label>Work email<input name="email" type="email" required autocomplete="email" maxlength="160"></label>
+            <label>WhatsApp<input name="phone" type="tel" autocomplete="tel" placeholder="+62" maxlength="24"></label>
+          </div>
+          <label>Website or app<input name="website" type="url" inputmode="url" placeholder="https://" maxlength="200"></label>
+        </fieldset>
+        <fieldset>
+          <legend>02 What you do</legend>
+          <div class="f-label" id="partner-kind-label">Your business</div>
+          <div class="choice" role="radiogroup" aria-labelledby="partner-kind-label">
+            <label><input type="radio" name="kind" value="ticketing" required><span>Ticketing platform</span></label>
+            <label><input type="radio" name="kind" value="promoter"><span>Promoter or EO</span></label>
+            <label><input type="radio" name="kind" value="venue"><span>Venue or stadium</span></label>
+            <label><input type="radio" name="kind" value="travel"><span>Travel or packages</span></label>
+            <label><input type="radio" name="kind" value="brand"><span>Bank, brand or loyalty</span></label>
+            <label><input type="radio" name="kind" value="media"><span>Media or community</span></label>
+            <label><input type="radio" name="kind" value="other"><span>Something else</span></label>
+          </div>
+          <label>Tickets a year, roughly<select name="volume">
+            <option value="">Choose</option>
+            <option value="under-10k">Under 10,000</option>
+            <option value="10k-100k">10,000 to 100,000</option>
+            <option value="100k-1m">100,000 to 1 million</option>
+            <option value="over-1m">Over 1 million</option>
+          </select></label>
+          <label>What should the demo show?<textarea name="message" rows="4" maxlength="2000" placeholder="Venues or shows you have in mind, where buyers would see it, dates"></textarea></label>
+        </fieldset>
+        <label class="check"><input type="checkbox" name="consent" required><span>You may contact me about this request. See the <a class="u" href="#privacy">privacy policy</a>.</span></label>
+        <p class="form-error" id="partner-error" role="alert" hidden></p>
+        <button class="btn btn-coral btn-block" type="submit">Send request <svg><use href="#i-arrow"/></svg></button>
+      </form>
+      <aside class="host-side" id="partner-contact-side"></aside>
+    </div>
+  </section>
+</main>
+
+<!-- ======================================================= QUESTIONS -->
+<main id="view-faq" class="view" data-view-id="faq" hidden>
+  <section class="sec page-top">
+    <header class="sec-head">
+      <h1 class="big big-xl"><span class="fade">Good</span> <span class="ol">questions</span></h1>
+      <div class="sec-side"><p>Buying, unlocking and what the 3D view can and cannot tell you. Something missing? <a class="u" href="#contact">Ask us</a>.</p></div>
+    </header>
+    <div class="faq" id="faq-list"></div>
+  </section>
+</main>
+
+<!-- ======================================================= ABOUT -->
+<main id="view-about" class="view" data-view-id="about" hidden>
+  <section class="sec page-top">
+    <header class="sec-head">
+      <h1 class="big big-xl"><span class="fade">About</span> <span class="ol">us</span></h1>
+      <div class="sec-side"><p>Who we are, what we do and how we are paid.</p></div>
+    </header>
+    <div class="prose panel-box">
+      <h2>See the seat before the night</h2>
+      <p><span data-brand>SeatSight</span> lists the big concerts in Jakarta and builds a 3D model of each venue, seat by seat, with the stage and the screens of the show that plays there. Anyone can look round the venue from above. Fans who buy their tickets on tiket.com through our links can sit in any seat and see the stage from there.</p>
+      <h2>What we are not</h2>
+      <p>We do not sell tickets and we do not take payments. tiket.com sells the tickets, takes the payment and sends the e-ticket, as if you had gone there yourself. We are not tiket.com, and we are not the promoters or the artists. Their names and posters are used to show which concert a page is about.</p>
+      <h2>How we are paid</h2>
+      <p>When you buy on tiket.com through one of our links, tiket.com may pay us a commission through its affiliate program. You pay the same price either way. We also license the 3D seat view to ticketing platforms, venues and promoters; see <a class="u" href="#partners">for partners</a>.</p>
+      <h2>Talk to us</h2>
+      <p>Questions about your 3D pass, the site or working together: <a class="u" href="#contact">contact</a>. Questions about a ticket you bought go to tiket.com.</p>
+    </div>
+  </section>
+</main>
+
+<!-- ======================================================= CONTACT -->
+<main id="view-contact" class="view" data-view-id="contact" hidden>
+  <section class="sec page-top">
+    <header class="sec-head">
+      <h1 class="big big-xl"><span class="fade">Contact</span> <span class="ol">us</span></h1>
+      <div class="sec-side"><p>We answer within one working day.</p></div>
+    </header>
+    <div class="contact-grid">
+      <article class="panel-box contact-card">
+        <span class="feat-ic"><svg><use href="#i-tix"/></svg></span>
+        <h2>A ticket you bought</h2>
+        <p>Payment, e-tickets, name changes, refunds and cancellations are handled by tiket.com and the promoter. Use the help section in the tiket.com app or site, with your order ID.</p>
+      </article>
+      <article class="panel-box contact-card">
+        <span class="feat-ic"><svg><use href="#i-eye"/></svg></span>
+        <h2>Your 3D pass</h2>
+        <p>A pass that will not open, a booking we could not match, or a seat that looks wrong. Email us with the pass number from <a class="u" href="#passes">My 3D passes</a>.</p>
+        <p class="contact-line"><svg><use href="#i-mail"/></svg><span data-contact="email"></span></p>
+      </article>
+      <article class="panel-box contact-card">
+        <span class="feat-ic"><svg><use href="#i-code"/></svg></span>
+        <h2>Working together</h2>
+        <p>Ticketing platforms, promoters, venues and travel companies: tell us what you sell and we send a demo.</p>
+        <a class="btn btn-coral btn-sm" href="#partner-contact">Book a demo <svg><use href="#i-arrow"/></svg></a>
+      </article>
+      <article class="panel-box contact-card">
+        <span class="feat-ic"><svg><use href="#i-mail"/></svg></span>
+        <h2>Everything else</h2>
+        <p class="contact-line"><svg><use href="#i-mail"/></svg><span data-contact="email"></span></p>
+        <p class="contact-line"><svg><use href="#i-people"/></svg><span>WhatsApp <span data-contact="whatsapp"></span></span></p>
+      </article>
+    </div>
+  </section>
+</main>
+
+<!-- ======================================================= PRIVACY -->
+<main id="view-privacy" class="view" data-view-id="privacy" hidden>
+  <section class="sec page-top">
+    <header class="sec-head">
+      <h1 class="big big-xl"><span class="fade">Privacy</span> <span class="ol">policy</span></h1>
+      <div class="sec-side"><p>Last updated 30 October 2026.</p></div>
+    </header>
+    <div class="prose panel-box">
+      <p>This policy explains what <span data-brand>SeatSight</span> (“we”) collects when you use this site, why, and what you can ask us to do with it. We follow Indonesia’s Personal Data Protection Law (Law No. 27 of 2022). Write to us at <span data-contact="email"></span> with any question.</p>
+      <h2>What we collect, and why</h2>
+      <h3>When you click Buy on tiket.com</h3>
+      <p>A random click code, the concert, the time, and the campaign that brought you here if the link had one. No name and no email. The click code travels to tiket.com in the link, and comes back to us in the affiliate report when a sale is made, so we know which sales came from our links.</p>
+      <h3>When you unlock a 3D view</h3>
+      <p>Your tiket.com order ID, the email you used there, the category and the number of tickets, and the click codes saved on your device for that concert. We use them to open your pass, to match it with the affiliate report, and to write to you about the pass. We never ask for your payment details or your e-ticket.</p>
+      <h3>When you ask about working with us</h3>
+      <p>Your name, company, email, phone number, website and message, to answer you.</p>
+      <h3>When you sign up for alerts</h3>
+      <p>Your email, to send concert alerts. Every email has a way to leave the list.</p>
+      <h3>On your device</h3>
+      <p>Your 3D passes, your click codes and the campaign you came from are kept in your browser’s storage, so the site remembers them. You can clear them in your browser at any time. We use no advertising cookies and no third-party trackers.</p>
+      <h2>Who else sees it</h2>
+      <p>tiket.com and its affiliate network see the click code in the link you follow, along with what they collect under their own privacy policies when you buy. They do not get your email or order ID from us. The company that hosts our server stores our data for us. The site’s fonts load from Google Fonts and the 3D viewer from jsDelivr, so those services see your IP address. We do not sell personal data.</p>
+      <h2>How long we keep it</h2>
+      <p>Click records and 3D pass details: until twelve months after the concert. Partner requests: two years after our last contact. Alerts: until you leave the list.</p>
+      <h2>Your rights</h2>
+      <p>You can ask to see the data we hold about you, to correct it, to delete it, to withdraw your consent, or to object to how we use it. Email us from the address you used and we answer within 3 × 24 hours of a complete request, as the law sets out.</p>
+      <h2>Security</h2>
+      <p>The site runs over HTTPS. Only our administrators can read pass and partner data, behind a secret key that never appears in the site’s code.</p>
+      <h2>Changes</h2>
+      <p>When this policy changes, the date at the top changes too. Big changes are announced on the home page.</p>
+    </div>
+  </section>
+</main>
+
+<!-- ======================================================= TERMS -->
+<main id="view-terms" class="view" data-view-id="terms" hidden>
+  <section class="sec page-top">
+    <header class="sec-head">
+      <h1 class="big big-xl"><span class="fade">Terms</span> <span class="ol">of use</span></h1>
+      <div class="sec-side"><p>Last updated 30 October 2026.</p></div>
+    </header>
+    <div class="prose panel-box">
+      <h2>1. What we do</h2>
+      <p><span data-brand>SeatSight</span> lists concerts, links to tiket.com where the tickets are sold, and gives a 3D view of the venue. We are not the seller, the promoter or tiket.com.</p>
+      <h2>2. Your ticket</h2>
+      <p>When you buy, your contract is with tiket.com and the promoter, on their terms. They set prices and availability and handle payment, e-tickets, changes, refunds and cancellations. Prices on our pages are as announced and can be out of date; the price on tiket.com is the one that counts.</p>
+      <h2>3. The 3D view</h2>
+      <p>The 3D venue is our illustration, built from the venue and the category layout of the show. Distances, angles and sight lines are close, not exact, and the stage, screens and crowd on the night will differ. The view does not promise you a particular seat or view: your ticket decides your seat.</p>
+      <h2>4. 3D passes</h2>
+      <p>Seat views are for people who bought tickets on tiket.com through our links. One booking opens one pass. A pass opens straight away and is checked against tiket.com’s affiliate report; we may close a pass we cannot match, or one that is shared or misused. Passes are free, so there is nothing to refund.</p>
+      <h2>5. Fair use</h2>
+      <p>Do not copy, scrape or extract the 3D models, claim passes for bookings that are not yours, send automated requests, or try to get round the checks.</p>
+      <h2>6. Ownership</h2>
+      <p>The site and its 3D models belong to us. Artists’ names, posters and logos belong to their owners and are shown only to identify the concerts.</p>
+      <h2>7. Liability</h2>
+      <p>The site is provided as it is. As far as the law allows, we are not responsible for purchases made on tiket.com, for changes to a show, or for decisions made on the basis of the 3D view.</p>
+      <h2>8. Law</h2>
+      <p>These terms are governed by the laws of the Republic of Indonesia.</p>
+      <h2>9. Contact</h2>
+      <p><span data-contact="email"></span></p>
+    </div>
+  </section>
+</main>
+
+<!-- ======================================================= AFFILIATE DISCLOSURE -->
+<main id="view-disclosure" class="view" data-view-id="disclosure" hidden>
+  <section class="sec page-top">
+    <header class="sec-head">
+      <h1 class="big big-xl"><span class="fade">Affiliate</span> <span class="ol">disclosure</span></h1>
+      <div class="sec-side"><p>How the Buy on tiket.com links work.</p></div>
+    </header>
+    <div class="prose panel-box">
+      <p><span data-brand>SeatSight</span> takes part in affiliate programs, including tiket.com’s, run through an affiliate network. When you follow one of our Buy on tiket.com links and buy, tiket.com may pay us a commission.</p>
+      <ul>
+        <li>You pay the same price as you would going to tiket.com directly.</li>
+        <li>The commission does not decide which concerts we list or what we write about them.</li>
+        <li>Links to tiket.com are marked as sponsored links for search engines.</li>
+        <li>Each link carries a random click code, so a sale can be matched to our link. It does not identify you.</li>
+      </ul>
+      <p>We are independent. tiket.com, the promoters and the artists do not endorse this site.</p>
+    </div>
+  </section>
+</main>
+
+<!-- ======================================================= ADMIN -->
+<main id="view-admin" class="view" data-view-id="admin" hidden>
+  <section class="sec page-top dash">
+    <header class="sec-head">
+      <h1 class="big big-xl"><span class="fade">Admin</span></h1>
+      <div class="sec-side"><p id="admin-mode"></p></div>
+    </header>
+    <div id="admin-body"></div>
+  </section>
+</main>
+
+<!-- ======================================================= FOOTER -->
+<footer class="footer" id="footer">
+  <div class="footer-grid">
+    <div class="footer-brand"><a class="logo" href="#home"><svg class="logo-mark"><use href="#i-mark"/></svg><span class="logo-word" data-brand>SeatSight</span></a><p data-for="fans">Big concerts on tiket.com, with a 3D view from your seat for everyone who buys through us.</p><p data-for="partners">The 3D seat view for ticketing platforms, promoters, venues and travel companies.</p></div>
+    <div><h4>Concerts</h4><a href="#concerts">All concerts</a><a href="#unlock">Unlock a 3D view</a><a href="#passes">My 3D passes</a><a href="#faq">Questions</a></div>
+    <div><h4>Company</h4><a href="#about">About us</a><a href="#partners">For partners</a><a href="#contact">Contact</a><span data-contact="email"></span></div>
+    <div><h4>Legal</h4><a href="#terms">Terms of use</a><a href="#privacy">Privacy policy</a><a href="#disclosure">Affiliate disclosure</a></div>
+  </div>
+  <p class="disclose"><span data-brand>SeatSight</span> is independent: we are not tiket.com, the promoters or the artists. Tickets are sold, paid for and delivered by tiket.com. We may earn a commission when you buy through our links, at no extra cost to you.</p>
+  <p class="switch" data-for="fans">Run a ticketing app, a venue or a promoter? <a href="#partners"><span data-brand>SeatSight</span> for partners <svg><use href="#i-arrow"/></svg></a></p>
+  <p class="switch" data-for="partners">Going to a concert? <a href="#home">Go to the fan site <svg><use href="#i-arrow"/></svg></a></p>
+  <p class="wordmark" aria-hidden="true" data-brand>SeatSight</p>
+</footer>
+</div>
+
+<!-- ======================================================= 3D SEAT VIEW -->
+<div id="view-seats" class="view app" data-view-id="seats" hidden>
+  <div class="stage" id="stage">
+    <div id="app-canvas" class="app-canvas"></div>
+
+    <header class="app-top">
+      <a class="sq" id="seats-back" href="#concerts" aria-label="Back"><svg><use href="#i-back"/></svg></a>
+      <span class="app-chip" id="app-chip"></span>
+    </header>
+
+    <section class="event-card panel" id="event-card">
+      <p class="label"><svg class="tix"><use href="#i-tix"/></svg><span id="ev-label">3D venue</span></p>
+      <h1 id="ev-title">…</h1>
+      <dl class="ev-stats">
+        <div><dt>When</dt><dd id="ev-when"></dd></div>
+        <div><dt>Where</dt><dd id="ev-venue"></dd></div>
+      </dl>
+    </section>
+
+    <div class="tools" id="tools">
+      <button class="sq" id="t-reset" aria-label="Reset view" title="Reset view"><svg><use href="#i-reset"/></svg></button>
+      <button class="sq is-on" id="t-crowd" aria-label="Show crowd" aria-pressed="true" title="Show crowd"><svg><use href="#i-people"/></svg></button>
+      <button class="sq is-on" id="t-labels" aria-label="Show section labels" aria-pressed="true" title="Section labels"><svg><use href="#i-tag"/></svg></button>
+    </div>
+
+    <section class="sections panel" id="sections">
+      <span class="label label-dim sb-label">Categories</span>
+      <div class="cat-pills" id="cats"></div>
+    </section>
+
+    <aside class="app-side panel" id="app-side" aria-live="polite"></aside>
+
+    <section class="seatcard" id="seatcard" hidden>
+      <div class="sc-top">
+        <div>
+          <p class="label label-dim" id="sc-cat"></p>
+          <p class="sc-eyebrow" id="sc-section">Section</p>
+        </div>
+        <span class="sc-status" id="sc-status"></span>
+        <button class="sq sq-sm" id="sc-close" type="button" aria-label="Close" hidden><svg><use href="#i-x"/></svg></button>
+      </div>
+      <dl class="sc-stats">
+        <div><dt>Section</dt><dd id="sc-sec"></dd></div>
+        <div><dt>Row</dt><dd id="sc-row"></dd></div>
+        <div><dt>Seat</dt><dd id="sc-num"></dd></div>
+        <div class="sc-price"><dt>Price</dt><dd id="sc-price"></dd></div>
+      </dl>
+      <p class="sc-dist mono" id="sc-dist"></p>
+      <div class="sc-actions" id="sc-actions"></div>
+    </section>
+
+    <div class="pov-hint mono" id="pov-hint" hidden>DRAG TO LOOK · SCROLL TO ZOOM · CLICK ANOTHER SEAT TO MOVE</div>
+    <div class="zoom" id="zoom" hidden>
+      <button class="sq" data-zoom="-8" aria-label="Zoom in"><svg><use href="#i-plus"/></svg></button>
+      <button class="sq" data-zoom="8" aria-label="Zoom out"><svg><use href="#i-minus"/></svg></button>
+    </div>
+    <div class="tooltip" id="tooltip" hidden></div>
+    <div class="loading" id="loading"><span class="spinner"></span><span class="mono" id="loading-text">Preparing venue</span></div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

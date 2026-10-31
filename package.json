@@ -1,0 +1,19 @@
+{
+  "name": "seatsight",
+  "version": "0.2.0",
+  "private": true,
+  "description": "SeatSight: big concerts sold on tiket.com through an affiliate link, a 3D view from the seat for fans who buy through the site, and the same seat view offered to ticketing apps, promoters and venues.",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server/server.mjs",
+    "test": "node --test --test-concurrency=1 test/*.test.mjs",
+    "build:preview": "node scripts/build-preview.mjs",
+    "build:site": "node scripts/build-site.mjs"
+  },
+  "dependencies": {
+    "pg": "8.13.1"
+  }
+}
