@@ -1,0 +1,9 @@
+// Cloudflare Workers deploy (`npx wrangler deploy`): builds site/ with scripts/build-site.mjs
+// and serves it as static assets, with the security headers from site/_headers. Only the
+// front end goes live; the Node server in server/ is not part of it.
+{
+  "name": "website",
+  "compatibility_date": "2026-10-01",
+  "build": { "command": "node scripts/build-site.mjs" },
+  "assets": { "directory": "./site" }
+}
