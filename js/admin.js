@@ -56,8 +56,38 @@ function tokenForm(msg = '') {
   });
 }
 
+// The seat a claim names, as the e-ticket would print it.
+function seatName(c) {
+  if (!c.seat) return '';
+  const v = getEvent(c.eventId), i = v?.seatById.get(c.seat);
+  if (i === undefined) return c.seat;
+  const s = v.seats[i];
+  return s.standing ? `${s.secName}, standing` : `${s.secName} · Row ${s.row} · Seat ${s.num}`;
+}
+
+// A claim waiting for a person: what the fan entered next to the e-ticket they sent.
+function reviewCard(c) {
+  const p = c.proof, img = p?.data && p.type.startsWith('image/');
+  return `<article class="review panel-box">
+    <a class="review-proof" ${p?.data ? `href="${p.data}" target="_blank" rel="noopener" download="${esc(p.name || 'e-ticket')}"` : ''}>${img ? `<img src="${p.data}" alt="E-ticket sent with ${esc(c.id)}">` : `<span>${p ? `${esc(p.name)}<small>${p.type === 'application/pdf' ? 'PDF' : ''}${p.data ? ' · open' : ' · kept on the server'}</small>` : 'No e-ticket sent'}</span>`}</a>
+    <div class="review-body">
+      <div class="review-top"><span class="mono">${esc(c.id)}</span><span class="muted">${day(c.createdAt)}</span></div>
+      <h3>${esc(titleOf(c.eventId))}</h3>
+      <dl class="review-facts">
+        <div><dt>Category</dt><dd>${esc(catName(c.eventId, c.cat))}</dd></div>
+        <div><dt>Seat</dt><dd>${esc(seatName(c)) || 'Not given'}</dd></div>
+        <div><dt>Order ID</dt><dd class="mono">${esc(c.orderRef)}</dd></div>
+        <div><dt>Email</dt><dd>${esc(c.email)}</dd></div>
+        <div><dt>Access</dt><dd>${c.route === 'outside' ? `Paid Rp25.000 <span class="mono">${esc(c.payment || '')}</span>` : `Our link · ${n(c.clicks?.length)} click${c.clicks?.length === 1 ? '' : 's'}`}</dd></div>
+      </dl>
+      <div class="row-btns"><button class="btn btn-coral btn-sm" type="button" data-claim="${esc(c.id)}" data-status="confirmed">${icon('i-check')}Approve</button><button class="btn btn-line btn-sm" type="button" data-claim="${esc(c.id)}" data-status="rejected">${icon('i-x')}Reject</button></div>
+    </div>
+  </article>`;
+}
+
 function draw({ summary, claims, leads, subscribers }) {
   const count = s => claims.filter(c => c.status === s).length;
+  const queue = claims.filter(c => c.status === 'checking');
   const clicks30 = summary.events.reduce((a, e) => a + e.clicks30, 0);
   const kpi = (label, value, note = '', coral = false) => `<div class="kpi${coral ? ' kpi-coral' : ''}"><span>${label}</span><b>${n(value)}</b>${note ? `<small>${note}</small>` : ''}</div>`;
   const events = summary.events.slice().sort((a, b) => b.clicks - a.clicks);
@@ -65,9 +95,9 @@ function draw({ summary, claims, leads, subscribers }) {
     <div class="kpis">
       ${kpi('Clicks to tiket.com', clicks30, 'Last 30 days', true)}
       ${kpi('3D passes claimed', claims.length, 'All time')}
-      ${kpi('Confirmed', count('confirmed'), 'Matched in the report')}
-      ${kpi('Waiting', count('checking'), 'Not in a report yet')}
-      ${kpi('Closed', count('rejected'), 'Refused or closed')}
+      ${kpi('Approved', count('confirmed'), 'Seat tour open')}
+      ${kpi('To review', count('checking'), 'E-ticket not checked yet')}
+      ${kpi('Rejected', count('rejected'), 'Did not match')}
       ${kpi('Partner requests', summary.leads, 'From the partner page')}
       ${kpi('Alert sign-ups', summary.subscribers, 'Home page and shows')}
     </div>
@@ -105,15 +135,21 @@ function draw({ summary, claims, leads, subscribers }) {
     </div>
 
     <section class="dash-block">
-      <header class="dash-head"><h2>3D passes</h2><p>Each claim with the booking the fan entered. Confirm or close one by hand when the report cannot settle it, for instance a sale on another device.</p></header>
+      <header class="dash-head"><h2>To review</h2><p>Check that each e-ticket shows this concert, this category and this seat, under this order ID. Approve opens the fan's seat tour; reject keeps it closed and asks them to send it again.</p></header>
+      ${queue.length ? `<div class="review-grid">${queue.map(reviewCard).join('')}</div>` : '<div class="empty-state panel-box"><h3>Nothing to review.</h3><p>New claims appear here with their e-ticket.</p></div>'}
+    </section>
+
+    <section class="dash-block">
+      <header class="dash-head"><h2>3D passes</h2><p>Every claim, with the seat and the booking the fan entered. A sale in the affiliate report also approves a claim.</p></header>
       <div class="table-wrap panel-box"><table class="table">
-        <thead><tr><th>Claimed</th><th>Pass</th><th>Concert</th><th>Category</th><th class="r">Tickets</th><th>Order ID</th><th>Email</th><th class="r">Clicks</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th>Claimed</th><th>Pass</th><th>Concert</th><th>Category</th><th>Seat</th><th>Access</th><th>Order ID</th><th>Email</th><th class="r">Clicks</th><th>Status</th><th></th></tr></thead>
         <tbody>${claims.length ? claims.map(c => `<tr>
-          <td class="muted">${day(c.createdAt)}</td><td class="mono">${esc(c.id)}</td><td>${esc(titleOf(c.eventId))}</td><td>${esc(catName(c.eventId, c.cat))}</td><td class="r mono">${n(c.qty)}</td>
+          <td class="muted">${day(c.createdAt)}</td><td class="mono">${esc(c.id)}</td><td>${esc(titleOf(c.eventId))}</td><td>${esc(catName(c.eventId, c.cat))}</td><td>${esc(seatName(c))}</td>
+          <td>${c.route === 'outside' ? `Paid Rp25.000<small class="cell-sub mono">${esc(c.payment || '')}</small>` : 'Our link'}</td>
           <td class="mono">${esc(c.orderRef)}</td><td>${esc(c.email)}</td><td class="r mono">${n(c.clicks?.length)}</td>
           <td><span class="pass-pill is-${esc(c.status)}">${esc(STATUS[c.status]?.label || c.status)}</span></td>
-          <td class="r">${c.status !== 'confirmed' ? `<button class="link" type="button" data-claim="${esc(c.id)}" data-status="confirmed">Confirm</button>` : ''} ${c.status !== 'rejected' ? `<button class="link" type="button" data-claim="${esc(c.id)}" data-status="rejected">Close</button>` : ''}</td>
-        </tr>`).join('') : emptyRow(10, 'No passes claimed yet.')}</tbody>
+          <td class="r">${c.status !== 'confirmed' ? `<button class="link" type="button" data-claim="${esc(c.id)}" data-status="confirmed">Approve</button>` : ''} ${c.status !== 'rejected' ? `<button class="link" type="button" data-claim="${esc(c.id)}" data-status="rejected">Reject</button>` : ''}</td>
+        </tr>`).join('') : emptyRow(11, 'No passes claimed yet.')}</tbody>
       </table></div>
     </section>
 
@@ -147,7 +183,7 @@ function bindDraw(data) {
     const b = ev.target.closest('[data-claim]');
     if (b) {
       b.disabled = true;
-      try { await state.store.setClaim(b.dataset.claim, b.dataset.status); toast(b.dataset.status === 'confirmed' ? 'Pass confirmed.' : 'Pass closed.'); renderAdmin(); } catch (e) { toast(e.message || 'Could not change the pass.'); b.disabled = false; }
+      try { await state.store.setClaim(b.dataset.claim, b.dataset.status); toast(b.dataset.status === 'confirmed' ? 'Approved: the seat tour is open.' : 'Rejected.'); renderAdmin(); } catch (e) { toast(e.message || 'Could not change the pass.'); b.disabled = false; }
       return;
     }
     const csv = ev.target.closest('[data-csv]')?.dataset.csv;

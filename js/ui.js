@@ -110,7 +110,7 @@ export function bindSubscribe(form, sub, msgEl) {
 
 // Campaign links: ?src=instagram before the hash (or after it, inside a preview that cannot
 // carry a query string). Kept for the visit and passed to tiket.com with each click.
-const CAMPAIGN = 'seatsight:campaign';
+const CAMPAIGN = 'atvents:campaign';
 export function captureCampaign() {
   const q = new URLSearchParams(location.search);
   new URLSearchParams(location.hash.split('?')[1] || '').forEach((v, k) => q.set(k, v));
@@ -124,4 +124,28 @@ export function campaign() {
     try { state.campaign = JSON.parse(sessionStorage.getItem(CAMPAIGN)) || {}; } catch { state.campaign = {}; }
   }
   return state.campaign;
+}
+
+// Giant one-line titles (concert names, the partner headline) are sized by the viewport, so a
+// long name can run past the edge. fitGiants() shrinks each .giant until it fits its box, and
+// runs again whenever the box changes width. On phones the CSS lets titles wrap instead.
+const fitObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(entries => entries.forEach(e => fitGiant(e.target.querySelector(':scope > .giant')))) : null;
+function fitGiant(el) {
+  if (!el || !el.isConnected) return;
+  el.style.removeProperty('font-size');
+  if (getComputedStyle(el).whiteSpace !== 'nowrap') return;
+  const box = el.parentElement.clientWidth;
+  if (!box) return;
+  const need = el.scrollWidth;
+  if (need > box) {
+    const size = parseFloat(getComputedStyle(el).fontSize);
+    el.style.fontSize = `${Math.floor(size * (box / need) * 0.98)}px`;
+  }
+}
+export function fitGiants(root = document) {
+  root.querySelectorAll('.giant').forEach(el => {
+    fitGiant(el);
+    if (fitObserver && !el.parentElement.dataset.fit) { el.parentElement.dataset.fit = '1'; fitObserver.observe(el.parentElement); }
+  });
+  if (document.fonts?.status !== 'loaded') document.fonts?.ready.then(() => root.querySelectorAll('.giant').forEach(fitGiant));
 }

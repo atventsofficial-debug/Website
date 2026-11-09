@@ -2,15 +2,16 @@
 //
 // Every "Buy on tiket.com" link carries a click id of ours (the affiliate link's sub id).
 // The click is recorded here and on the server. After buying, the fan claims a 3D pass
-// with the tiket.com order ID; the pass opens at once and is confirmed when the network's
-// report shows a sale on one of this device's clicks. tiket.com does not tell us who bought,
-// so this is the only link between a sale and a fan.
+// with the tiket.com order ID, the seat on the e-ticket and the e-ticket itself. A person
+// checks the e-ticket against the seat before the pass opens; a sale in the network's report
+// on one of this device's clicks confirms it too. Fans who bought elsewhere pay the Rp25.000
+// access fee first, then claim the same way.
 import { eventMeta, isConcert } from './events.js';
 import { CLICK_ID, maskRef, validAffiliate } from './rules.js';
 import { state, emit, esc, campaign } from './ui.js';
 
-const WALLET = 'seatsight:passes';
-const CLICKS = 'seatsight:clicks';
+const WALLET = 'atvents:passes';
+const CLICKS = 'atvents:clicks';
 const CLICK_DAYS = 60;
 const read = (key, mem) => { try { return JSON.parse(localStorage.getItem(key)) || []; } catch { return mem || []; } };
 const write = (key, list) => { try { localStorage.setItem(key, JSON.stringify(list)); } catch { /* memory only */ } };
@@ -88,7 +89,9 @@ export const passes = {
 
 // The pass that opens a concert's seat views on this device: the newest one not closed.
 export const activePass = eventId => passes.all().filter(p => p.eventId === eventId && p.status !== 'rejected').at(-1) || null;
-export const canView = venue => !!venue.meta.demo || !!activePass(venue.eventId);
+// Only a checked pass opens the venue from the seat, and only its own seat (see tour.js).
+export const openPass = eventId => passes.all().filter(p => p.eventId === eventId && p.status === 'confirmed').at(-1) || null;
+export const canView = venue => !!venue.meta.demo;
 
 // The seats on the fan's e-tickets, marked in the 3D view: as many as the booking has.
 // Marking one more than that lets go of the first one marked.
@@ -101,9 +104,9 @@ export function toggleSeat(p, seatId) {
 
 // Claim a pass with the tiket.com booking. The server keeps the email and order ID; this
 // device keeps the pass, the token that opens it elsewhere and the last digits of the order.
-export async function claim({ eventId, orderRef, email, cat, qty }) {
-  const r = await state.store.claim({ eventId, orderRef, email, cat, qty, consent: true, clicks: clicksFor(eventId) });
-  const pass = { id: r.id, token: r.token || '', eventId, cat: r.cat, qty: r.qty, status: r.status, ref: maskRef(orderRef), createdAt: r.createdAt, seats: passes.get(r.id)?.seats || [] };
+export async function claim({ eventId, orderRef, email, cat, qty, seat, route, payment, proof }) {
+  const r = await state.store.claim({ eventId, orderRef, email, cat, qty, seat, route, payment, proof, consent: true, clicks: clicksFor(eventId) });
+  const pass = { id: r.id, token: r.token || '', eventId, cat: r.cat, qty: r.qty, seat: r.seat || seat || '', route: r.route || route, status: r.status, ref: maskRef(orderRef), createdAt: r.createdAt, seats: r.seat || seat ? [r.seat || seat] : passes.get(r.id)?.seats || [] };
   passes.save(pass);
   return pass;
 }
@@ -112,13 +115,13 @@ export async function claim({ eventId, orderRef, email, cat, qty }) {
 export async function refresh(p) {
   if (state.store.mode === 'server' && !p.token) return;
   const r = await state.store.claimStatus(p.id, p.token).catch(() => null);
-  if (r && r.status !== p.status) passes.save({ ...p, status: r.status });
+  if (r && (r.status !== p.status || (r.seat && r.seat !== p.seat))) passes.save({ ...p, status: r.status, seat: r.seat || p.seat, seats: r.seat ? [r.seat] : p.seats });
 }
 
 // A pass link from another device: #pass-<id>-<token>.
 export async function importPass(id, token) {
   const r = await state.store.claimStatus(id, token);
-  const p = { id: r.id, token, eventId: r.eventId, cat: r.cat, qty: r.qty, status: r.status, ref: passes.get(r.id)?.ref || '', createdAt: r.createdAt, seats: passes.get(r.id)?.seats || [] };
+  const p = { id: r.id, token, eventId: r.eventId, cat: r.cat, qty: r.qty, seat: r.seat || '', route: r.route || 'affiliate', status: r.status, ref: passes.get(r.id)?.ref || '', createdAt: r.createdAt, seats: r.seat ? [r.seat] : passes.get(r.id)?.seats || [] };
   passes.save(p);
   return p;
 }
@@ -126,7 +129,7 @@ export async function importPass(id, token) {
 export const passLink = p => (p.token ? `${location.origin}${location.pathname}#pass-${p.id}-${p.token}` : '');
 
 export const STATUS = {
-  checking: { label: 'Checking', note: 'Open now. We are matching it with tiket.com’s report, usually within a few days.' },
-  confirmed: { label: 'Confirmed', note: 'Matched with your purchase. Open until after the show.' },
-  rejected: { label: 'Closed', note: 'We could not find this booking in tiket.com’s report for our links. Write to us if you bought through us.' },
+  checking: { label: 'In review', note: 'We are checking your e-ticket against your seat, usually within a few hours. We email you when your 3D view opens.' },
+  confirmed: { label: 'Approved', note: 'Your e-ticket matches. Your seat view is open until after the show.' },
+  rejected: { label: 'Not approved', note: 'Your e-ticket did not match the seat you entered, or we could not read it. Send it again or write to us.' },
 };

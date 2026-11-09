@@ -57,9 +57,9 @@ function card(e, n) {
   const gone = dates.every(allSoldOut);
   const art = IMAGES[e.image];
   return `<article class="hs-card" role="group" aria-roledescription="slide" aria-label="${n + 1} of ${hero.list.length}: ${esc(e.title)}">
+    <h2 class="hs-title${e.title.length > 14 ? ' is-long' : e.title.length > 8 ? ' is-mid' : ''}">${esc(e.title)}</h2>
     <div class="hs-info">
       <p class="eyebrow">${!live ? 'Taken place' : gone ? 'Sold out on tiket.com' : 'On sale on tiket.com'} · ${esc(v.city)}</p>
-      <h2 class="hs-title">${esc(e.title)}</h2>
       <p class="hs-sub">${esc(e.subtitle.replace(/ · Day \d+$/, ''))}</p>
       <ul class="hs-facts">
         <li>${icon('i-cal')}<span>${esc(datesLine(dates))}</span></li>
@@ -74,7 +74,7 @@ function card(e, n) {
         ${live ? buyLink(e, `${gone ? 'Check tiket.com' : 'Buy on tiket.com'} ${icon('i-out')}`) : ''}
         <a class="btn btn-line" href="#event-${esc(e.id)}"><span class="hs-wide">Concert details</span><span class="hs-narrow">Details</span></a>
       </div>
-      ${live && !gone ? '<p class="hs-perk">Same price as on tiket.com, plus your own seat in 3D.</p>' : ''}
+      ${live && !gone ? '<p class="hs-perk">Same price as on tiket.com, plus a 3D tour to your own seat.</p>' : ''}
     </div>
   </article>`;
 }
@@ -230,7 +230,7 @@ function aim() {
 
 // The arena every slide is seen in: the concert demo, its boards showing the site's name.
 let arena = null;
-const stageVenue = () => arena ||= { ...getEvent('demo-concert'), branding: { wall: 'SEATSIGHT', sub: 'LIVE IN 3D', band: ['SEATSIGHT', 'SEE YOUR SEAT IN 3D', 'BIG CONCERTS ON TIKET.COM', 'LIVE IN 3D'] } };
+const stageVenue = () => arena ||= { ...getEvent('demo-concert'), branding: { wall: 'ATVENTS', sub: 'LIVE IN 3D', band: ['ATVENTS', 'SEE YOUR SEAT IN 3D', 'BIG CONCERTS ON TIKET.COM', 'LIVE IN 3D'] } };
 
 // The arena, built once with the current show's poster on its screens; after that a new
 // slide only changes the poster. Drawn cheaply (medium quality at most, 30 fps), and not at

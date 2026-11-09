@@ -1,4 +1,4 @@
--- SeatSight schema. Safe to run on every start: everything is IF NOT EXISTS.
+-- Atvents schema. Safe to run on every start: everything is IF NOT EXISTS.
 -- Tickets are bought on tiket.com, so nothing here holds a payment or a seat. Tables from
 -- the earlier version, which sold tickets itself, are left alone on databases that have them.
 

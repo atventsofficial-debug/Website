@@ -1,8 +1,8 @@
-# SeatSight
+# Atvents
 
 Big concerts in Jakarta, bought on tiket.com, with a 3D view from your seat for everyone who buys through the site.
 
-SeatSight does not sell tickets or take payments. Every **Buy on tiket.com** button is an affiliate link, and tiket.com pays a commission on the sales that come through it. Fans who bought that way unlock the view from their seat; everyone else can look round the venue from above. The second side of the site, **For partners**, offers the same seat view to ticketing apps, promoters, venues, travel companies and brands.
+Atvents does not sell tickets or take payments. Every **Buy on tiket.com** button is an affiliate link, and tiket.com pays a commission on the sales that come through it. Fans who bought that way unlock the view from their seat; everyone else can look round the venue from above. The second side of the site, **For partners**, offers the same seat view to ticketing apps, promoters, venues, travel companies and brands.
 
 ## How the site earns
 

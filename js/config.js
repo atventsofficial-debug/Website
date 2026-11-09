@@ -1,10 +1,10 @@
 // Front-end settings. When the page is served by server/server.mjs, values from
 // GET /api/config override these.
 export const CONFIG = {
-  brand: 'SeatSight',
+  brand: 'Atvents',
   contact: {
-    whatsapp: '+62 812-0000-0000',
-    email: 'halo@seatsight.id',
+    whatsapp: '',   // the real number, like '+62 812-3456-7890'. Empty hides the WhatsApp line
+    email: 'halo@atvents.com',
   },
   // The affiliate deeplink for tiket.com, from the network's link builder once the program
   // approves the site. {url} is the concert's tiket.com page, {sub} the click id we match

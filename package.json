@@ -1,8 +1,8 @@
 {
-  "name": "seatsight",
+  "name": "atvents",
   "version": "0.2.0",
   "private": true,
-  "description": "SeatSight: big concerts sold on tiket.com through an affiliate link, a 3D view from the seat for fans who buy through the site, and the same seat view offered to ticketing apps, promoters and venues.",
+  "description": "Atvents: big concerts sold on tiket.com through an affiliate link, a 3D view from the seat for fans who buy through the site, and the same seat view offered to ticketing apps, promoters and venues.",
   "type": "module",
   "engines": {
     "node": ">=18"

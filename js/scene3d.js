@@ -19,13 +19,14 @@ const MAP_FOV = 42;
 // Seat-map palette: neutral seats, one accent for the visitor's own seat.
 const MAP = {
   free: new THREE.Color('#f2f1ed'),
-  dim: new THREE.Color('#a8a7a2'),
-  mine: new THREE.Color('#ec5446'),
+  dim: new THREE.Color('#5b5a56'),
+  mine: new THREE.Color('#ff5a1f'),
   hover: new THREE.Color('#121214'),
 };
 
 // Treads under zone-coloured seats: concrete in the seat view, faded when filtered out.
-const STEP = { concrete: new THREE.Color('#9a9994'), dim: new THREE.Color('#c4c3be') };
+// Without zone colours the treads keep their concrete material: white leaves it as it is, `shade` darkens it.
+const STEP = { concrete: new THREE.Color('#9a9994'), dim: new THREE.Color('#6a6965'), plain: new THREE.Color('#ffffff'), shade: new THREE.Color('#3d3c39') };
 
 const TAG_POS = new THREE.Vector3();
 
@@ -396,7 +397,7 @@ export class SeatScene {
         : mats.concrete();
       if (this.zones) stepMat.color.set('#ffffff');
       const steps = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), stepMat, raised.length);
-      if (this.zones) { this.steps = steps; this.stepSeat = raised; }
+      if (venue.kind !== 'cinema') { this.steps = steps; this.stepSeat = raised; }
       raised.forEach((i, k) => {
         const s = seats[i];
         q.setFromAxisAngle(up, s.yaw);
@@ -526,7 +527,8 @@ export class SeatScene {
       const seats = this.venue.seats;
       this.stepSeat.forEach((i, k) => {
         const cat = seats[i].cat;
-        this.steps.setColorAt(k, this.realColors ? STEP.concrete : this.filterCat && this.filterCat !== cat ? STEP.dim : this.zones[cat]);
+        const out = this.filterCat && this.filterCat !== cat && !this.realColors;
+        this.steps.setColorAt(k, this.zones ? (this.realColors ? STEP.concrete : out ? STEP.dim : this.zones[cat]) : out ? STEP.shade : STEP.plain);
       });
       this.steps.instanceColor.needsUpdate = true;
     }
@@ -830,6 +832,72 @@ export class SeatScene {
     };
   }
 
+  // The middle step of a fan's seat tour: the camera moves from the overview to look down on
+  // one category, from the side of the venue the category is on, close enough to tell its
+  // rows apart. `seat`, when given, keeps that seat in the middle of the picture.
+  frameCategory(cat, { seat = null, dur = 1.8 } = {}) {
+    if (!this.scene) return;
+    const list = this.venue.seats.filter(s => s.cat === cat);
+    if (!list.length) return;
+    if (this.mode !== 'overview') return;
+    const c = new THREE.Vector3();
+    for (const s of list) c.add(new THREE.Vector3(s.x, s.y, s.z));
+    c.divideScalar(list.length);
+    let spread = 0;
+    for (const s of list) spread = Math.max(spread, Math.hypot(s.x - c.x, s.z - c.z));
+    const target = (seat ? new THREE.Vector3(seat.x, seat.y, seat.z).lerp(c, 0.35) : c.clone()).lerp(new THREE.Vector3(this.focus.x, c.y, this.focus.z), 0.12);
+    // From the stage's side of the category, outward and up, so the camera looks across it
+    // towards the stage the way its seats face.
+    const out = new THREE.Vector3(c.x - this.focus.x, 0, c.z - this.focus.z);
+    if (out.lengthSq() < 1) out.set(0, 0, 1);
+    out.normalize();
+    const aspect = this.camera.aspect || 1;
+    const dist = THREE.MathUtils.clamp(spread * (aspect < 1 ? 2.3 : 1.6) + 18, 26, 150);
+    const end = target.clone().addScaledVector(out, dist * 0.7).add(new THREE.Vector3(0, dist * 0.62, 0));
+    const start = this.camera.position.clone(), t0 = this.controls.target.clone(), fov0 = this.camera.fov;
+    this.controls.enabled = false;
+    this.anim = {
+      t: 0, dur,
+      step: t => {
+        const k = ease(t / dur);
+        this.camera.position.lerpVectors(start, end, k);
+        this.controls.target.lerpVectors(t0, target, k);
+        this.camera.fov = fov0 + (MAP_FOV - fov0) * k;
+        this.camera.lookAt(this.controls.target);
+        this.camera.updateProjectionMatrix();
+      },
+      done: () => { this.controls.enabled = this.interactive; this.controls.update(); },
+    };
+  }
+
+  // A slow turn round the overview's target, `deg` degrees in `dur` seconds: the opening
+  // shot of a story video.
+  orbit(deg = 30, dur = 3) {
+    if (!this.scene || this.mode !== 'overview') return;
+    const target = this.controls.target.clone();
+    const off = this.camera.position.clone().sub(target);
+    const a0 = Math.atan2(off.x, off.z), r = Math.hypot(off.x, off.z), y = off.y;
+    const turn = THREE.MathUtils.degToRad(deg);
+    this.controls.enabled = false;
+    this.anim = {
+      t: 0, dur,
+      step: t => {
+        const a = a0 + turn * (t / dur);
+        this.camera.position.set(target.x + Math.sin(a) * r, target.y + y, target.z + Math.cos(a) * r);
+        this.camera.lookAt(target);
+      },
+      done: () => { this.controls.enabled = this.interactive; this.controls.update(); },
+    };
+  }
+
+  // Resolves when the camera move under way ends.
+  settled() {
+    return new Promise(resolve => {
+      const check = () => (this.anim || this.disposed ? setTimeout(check, 50) : resolve());
+      check();
+    });
+  }
+
   // The home page hero's shot: the camera comes down into a seat from above and a little
   // behind it while the house lights go down, then stays there looking at `look` (the
   // stage). `lift` raises it over the seat's eye height, as a phone held up to film; `fit`
@@ -957,6 +1025,7 @@ export class SeatScene {
     } else {
       this.renderer.render(this.scene, this.camera);
     }
+    this.afterRender?.(this.renderer.domElement);
     if (this.labels?.length && this.labelsShown) {
       this.labelRenderer.render(this.scene, this.camera);
       if (this.mode === 'overview') this._declutter();

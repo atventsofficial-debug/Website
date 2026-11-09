@@ -3,12 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>SeatSight Tickets</title>
+<title>Atvents Tickets</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<meta name="description" content="Big concerts in Jakarta, sold on tiket.com. Buy through SeatSight and see the stage from your seat in 3D before the night.">
+<meta name="description" content="Big concerts in Jakarta, sold on tiket.com. Buy through Atvents and see the stage from your seat in 3D before the night.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,500..900&family=Inter+Tight:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap">
+<link rel="icon" href="assets/brand/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="css/styles.css">
 <script type="importmap">
 { "imports": {
@@ -50,13 +51,13 @@
   <symbol id="i-copy" viewBox="0 0 24 24"><path d="M8 8h12v12H8zM16 8V4H4v12h4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
   <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8.5 5.5v13M15.5 5.5v13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
   <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5L8 5.5Z" fill="currentColor" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></symbol>
-  <symbol id="i-mark" viewBox="0 0 40 40"><path d="M20 7 34 32H6L20 7Zm0 9.5L13.2 28.6h13.6L20 16.5Z" fill="currentColor" fill-rule="evenodd"/></symbol>
+  <symbol id="i-mark" viewBox="0 0 40 40"><path d="M20 5 35.5 34h-7.8L20 19.2 12.3 34H4.5L20 5Z" fill="currentColor"/><circle cx="20" cy="29.5" r="3.6" fill="#ec5446"/></symbol>
 </svg>
 
 <div class="frame" id="frame">
 <!-- ======================================================= GLOBAL NAV -->
 <header class="nav" id="nav">
-  <a class="logo" id="logo" href="#home" aria-label="Home"><svg class="logo-mark"><use href="#i-mark"/></svg><span class="logo-word" data-brand>SeatSight</span></a>
+  <a class="logo" id="logo" href="#home" aria-label="Home"><svg class="logo-mark"><use href="#i-mark"/></svg><span class="logo-word" data-brand>Atvents</span></a>
   <div class="nav-cta">
     <nav class="mode mode-nav" aria-label="Choose your side">
       <a href="#home" data-mode="fans">For fans</a>
@@ -75,7 +76,7 @@
       <a href="#partners" data-mode="partners">For partners</a>
     </nav>
     <nav class="menu-links" aria-label="Main" data-for="fans">
-      <a href="#concerts" data-nav="concerts">Concerts</a><a href="#how" data-nav="how">How it works</a><a href="#passes" data-nav="passes">My 3D passes<span class="badge" data-count="passes" hidden></span></a><a href="#unlock" data-nav="unlock">Unlock a 3D view</a>
+      <a href="#concerts" data-nav="concerts">Concerts</a><a href="#how" data-nav="how">How it works</a><a href="#unlock" data-nav="unlock">Unlock a 3D view</a><a href="#passes" data-nav="passes">My 3D passes<span class="badge" data-count="passes" hidden></span></a>
     </nav>
     <nav class="menu-sub" aria-label="Help" data-for="fans">
       <a class="pill" href="#faq">Questions</a><a class="pill" href="#about">About us</a><a class="pill" href="#contact">Contact</a>
@@ -117,35 +118,63 @@
 
   <section class="sec" id="how">
     <header class="sec-head">
-      <h2 class="big"><span class="fade">Three steps</span> <span class="ol">to your seat</span></h2>
-      <div class="sec-side"><p>tiket.com sells the ticket and takes the payment. We show you where you’ll be.</p></div>
+      <h2 class="big"><span class="fade">How it</span> <span class="ol">works</span></h2>
+      <div class="sec-side"><p>tiket.com sells the ticket and takes the payment. We check your e-ticket, then show you the night from your seat.</p></div>
     </header>
-    <ol class="steps steps-3">
-      <li><b>01</b><h3>Pick a concert</h3><p>Categories and prices on one page. Look round the venue in 3D from above to see where each category sits.</p></li>
-      <li><b>02</b><h3>Buy on tiket.com</h3><p>Our button opens the concert on tiket.com. Same price, the same official e-ticket, paid there the way you always pay.</p></li>
-      <li><b>03</b><h3>Unlock your seat view</h3><p>Come back and enter your tiket.com order ID. The camera walks to your seat, turns round and shows you the stage.</p></li>
+    <ol class="steps steps-4">
+      <li><b data-n="01"></b><h3>Buy on tiket.com</h3><p>With the Buy button on our concert pages. Same price, the same official e-ticket, paid on tiket.com.</p></li>
+      <li><b data-n="02"></b><h3>Send your seat</h3><p>Back here, choose your category, section, row and seat, add the order ID and a screenshot of the e-ticket.</p></li>
+      <li><b data-n="03"></b><h3>We check it</h3><p>A person compares the e-ticket with the seat you entered, usually within a few hours. No ticket, no seat view.</p></li>
+      <li><b data-n="04"></b><h3>Take your seat tour</h3><p>The whole venue, then your category, then the view from your seat. Save it as a video for your story.</p></li>
+    </ol>
+    <div class="routes">
+      <a class="route route-main" href="#concerts">
+        <span class="route-tag">Free</span>
+        <b>Buying now?</b>
+        <span>Buy through one of our concert pages and the seat tour comes with your ticket.</span>
+        <span class="go"><svg><use href="#i-arrow"/></svg></span>
+      </a>
+      <a class="route" href="#unlock">
+        <span class="route-tag">Rp25.000</span>
+        <b>Already have a ticket?</b>
+        <span>Bought on tiket.com directly or from another seller? Unlock the same tour for one concert.</span>
+        <span class="go"><svg><use href="#i-arrow"/></svg></span>
+      </a>
+    </div>
+  </section>
+
+  <section class="sec" id="tour">
+    <header class="sec-head">
+      <h2 class="big"><span class="fade">Your tour,</span> <span class="ol">in three views</span></h2>
+      <div class="sec-side"><p>Every pass opens the same guided tour, set to the seat on your e-ticket.</p></div>
+    </header>
+    <ol class="tour-cards">
+      <li><figure><img src="assets/tour/venue.jpg" alt="The whole stadium in 3D from above" loading="lazy" width="1200" height="900"></figure><div><b>1</b><h3>The venue</h3><p>The whole stadium from above, with the stage and screens of your show.</p></div></li>
+      <li><figure><img src="assets/tour/category.jpg" alt="One category lit up, the fan’s seat marked" loading="lazy" width="1200" height="900"></figure><div><b>2</b><h3>Your category</h3><p>Only your category opens. Your seat is marked in coral.</p></div></li>
+      <li><figure><img src="assets/tour/seat.jpg" alt="The stage seen from a seat" loading="lazy" width="1200" height="900"></figure><div><b>3</b><h3>Your seat</h3><p>Sit down and look round: the stage, the screens, the crowd, from where you will be.</p></div></li>
+      <li class="tour-story"><div class="story-mock" aria-hidden="true"><span>ATVENTS</span><i></i><b>MY SEAT</b><small>Center 1 · Row C · Seat 5</small></div><div><b>+</b><h3>Your story</h3><p>One tap makes a 9:16 video from the venue to your seat, ready for Instagram or TikTok.</p></div></li>
     </ol>
   </section>
 
   <section class="sec">
     <header class="sec-head">
       <h2 class="big"><span class="fade">Why buy</span> <span class="ol">through us</span></h2>
-      <div class="sec-side"><p>Nothing changes about your ticket. You just get to see it first.</p></div>
+      <div class="sec-side"><p>Nothing changes about your ticket. You just get to see the night first.</p></div>
     </header>
     <ul class="feat-grid">
       <li><span class="feat-ic"><svg><use href="#i-tag"/></svg></span><h3>The same price</h3><p>You pay tiket.com’s price. If we earn a commission, tiket.com pays it, not you.</p></li>
       <li><span class="feat-ic"><svg><use href="#i-shield"/></svg></span><h3>The official ticket</h3><p>Your e-ticket comes from tiket.com, exactly as if you had gone there yourself. We never see your payment.</p></li>
-      <li><span class="feat-ic"><svg><use href="#i-eye"/></svg></span><h3>Your view, before the night</h3><p>How far the stage is, how big the screens look, which way you face. From your seat, in 3D.</p></li>
-      <li><span class="feat-ic"><svg><use href="#i-seat"/></svg></span><h3>Any seat, not one photo</h3><p>Sit anywhere in the venue and compare. Find the seat on your e-ticket and keep it as yours.</p></li>
-      <li><span class="feat-ic"><svg><use href="#i-share"/></svg></span><h3>Show your friends</h3><p>Send the people you’re going with a link, so they know where you’ll be.</p></li>
-      <li><span class="feat-ic"><svg><use href="#i-check"/></svg></span><h3>Free, no app</h3><p>Opens in the browser on your phone or laptop. Nothing to install, nothing to pay.</p></li>
+      <li><span class="feat-ic"><svg><use href="#i-eye"/></svg></span><h3>Your view, before the night</h3><p>How far the stage is, how big the screens look, which way you face. From your own seat, in 3D.</p></li>
+      <li><span class="feat-ic"><svg><use href="#i-seat"/></svg></span><h3>Checked, seat by seat</h3><p>Seat views open only for a real e-ticket, so a view someone shares is from a seat they really have.</p></li>
+      <li><span class="feat-ic"><svg><use href="#i-share"/></svg></span><h3>A story to post</h3><p>Your tour as a vertical video, with the concert and your seat on it. Show your friends where you will be.</p></li>
+      <li><span class="feat-ic"><svg><use href="#i-check"/></svg></span><h3>No app</h3><p>Opens in the browser on your phone or laptop. Nothing to install, free with a ticket bought through us.</p></li>
     </ul>
   </section>
 
   <section class="sec" id="venues">
     <header class="sec-head">
       <h2 class="big"><span class="fade">Venues</span> <span class="ol">in 3D</span></h2>
-      <div class="sec-side"><p>Each venue is modelled seat by seat for the show that plays there, stage and screens included.</p></div>
+      <div class="sec-side"><p>Each venue is modelled seat by seat for the show that plays there. Look round any of them from above, free, before you buy.</p></div>
     </header>
     <div class="venues venues-3" id="home-venues"></div>
   </section>
@@ -238,43 +267,77 @@
 <main id="view-unlock" class="view" data-view-id="unlock" hidden>
   <section class="sec page-top">
     <header class="sec-head">
-      <h1 class="big big-xl"><span class="fade">Unlock</span> <span class="ol">your view</span></h1>
-      <div class="sec-side"><p>Bought on tiket.com through our link? Your 3D seat view opens as soon as you send this.</p></div>
+      <h1 class="big big-xl"><span class="fade">Unlock</span> <span class="ol">your seat view</span></h1>
+      <div class="sec-side"><p>Tell us the seat on your e-ticket and send the e-ticket. Once we have checked it, the 3D tour takes you from the whole venue to your category, then to your seat.</p></div>
     </header>
+    <div class="route-switch" role="tablist" aria-label="Where you bought">
+      <button type="button" role="tab" data-route="affiliate" aria-selected="true"><b>I bought through Atvents</b><span>With a Buy on tiket.com button on this site. Free.</span></button>
+      <button type="button" role="tab" data-route="outside" aria-selected="false"><b>I bought somewhere else</b><span>On tiket.com directly, or another seller. Rp25.000 for the seat view.</span></button>
+    </div>
     <div class="host" id="unlock-body">
-      <form class="form panel-box" id="unlock-form" novalidate>
-        <fieldset>
-          <legend>01 Your concert</legend>
-          <div class="f-row">
-            <label>Concert<select name="eventId" required></select></label>
-            <label>Category on your ticket<select name="cat" required></select></label>
+      <div class="unlock-main">
+        <section class="pay-box panel-box" id="pay-box" hidden>
+          <p class="eyebrow">Step 1 · Seat view access</p>
+          <div class="pay-row">
+            <div>
+              <h2>Rp25.000</h2>
+              <p>One payment for one concert. After paying you fill in your seat and send your e-ticket, the same as fans who bought through us.</p>
+            </div>
+            <button class="btn btn-coral" type="button" id="pay-start">Pay Rp25.000 <svg><use href="#i-arrow"/></svg></button>
           </div>
-          <label class="f-short">Tickets in the order<input name="qty" type="number" min="1" max="8" step="1" value="1" inputmode="numeric" required></label>
-        </fieldset>
-        <fieldset>
-          <legend>02 Your tiket.com booking</legend>
-          <div class="f-row">
-            <label>tiket.com order ID<input name="orderRef" required autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="30" placeholder="As on your booking"><small>In tiket.com’s confirmation email, and with your orders in the tiket.com app.</small></label>
-            <label>Email you used on tiket.com<input name="email" type="email" required autocomplete="email" maxlength="160"><small>We only write to you about this 3D pass.</small></label>
-          </div>
-        </fieldset>
-        <label class="check"><input type="checkbox" name="consent" required><span>I bought these tickets on tiket.com through a <span data-brand>SeatSight</span> link, and I agree to the <a class="u" href="#terms">terms</a> and the <a class="u" href="#privacy">privacy policy</a>.</span></label>
-        <p class="form-error" id="unlock-error" role="alert" hidden></p>
-        <button class="btn btn-coral btn-block" type="submit">Unlock my 3D view <svg><use href="#i-arrow"/></svg></button>
-        <p class="fine">Not bought yet? <a class="u" href="#concerts">Find your concert</a> and use its Buy on tiket.com button, so we can match your booking.</p>
-      </form>
+          <div class="pay-sheet" id="pay-sheet" hidden></div>
+          <p class="pay-done" id="pay-done" hidden></p>
+        </section>
+        <form class="form panel-box" id="unlock-form" novalidate>
+          <fieldset>
+            <legend>01 Your concert</legend>
+            <div class="f-row">
+              <label>Concert<select name="eventId" required></select></label>
+              <label>Category on your e-ticket<select name="cat" required></select></label>
+            </div>
+          </fieldset>
+          <fieldset id="seat-set">
+            <legend>02 Your seat</legend>
+            <div class="f-row f-row-3">
+              <label>Section<select name="sec" required></select></label>
+              <label id="row-field">Row<select name="row" required></select></label>
+              <label id="num-field">Seat<select name="num" required></select></label>
+            </div>
+            <p class="fine" id="seat-note">As printed on your e-ticket. Only seats that exist in this venue are listed.</p>
+          </fieldset>
+          <fieldset>
+            <legend>03 Your tiket.com booking</legend>
+            <div class="f-row">
+              <label>Order ID<input name="orderRef" required autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="30" placeholder="As on your booking"><small>In the confirmation email, and with your orders in the tiket.com app.</small></label>
+              <label>Email<input name="email" type="email" required autocomplete="email" maxlength="160"><small>We write to you when your seat view opens.</small></label>
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend>04 Your e-ticket</legend>
+            <label class="drop" id="proof-drop">
+              <input name="proof" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" required>
+              <span class="drop-empty"><svg><use href="#i-tix"/></svg><b>Add your e-ticket</b><small>A screenshot, a photo or the PDF from tiket.com, up to 4 MB. We check that it shows the concert, the category and the seat you entered.</small></span>
+              <span class="drop-file" hidden></span>
+            </label>
+          </fieldset>
+          <label class="check"><input type="checkbox" name="consent" required><span id="consent-text">I bought these tickets on tiket.com through an <span data-brand>Atvents</span> link, and I agree to the <a class="u" href="#terms">terms</a> and the <a class="u" href="#privacy">privacy policy</a>.</span></label>
+          <p class="form-error" id="unlock-error" role="alert" hidden></p>
+          <button class="btn btn-coral btn-block" type="submit">Send for review <svg><use href="#i-arrow"/></svg></button>
+          <p class="fine" id="unlock-foot">Not bought yet? <a class="u" href="#concerts">Find your concert</a> and use its Buy on tiket.com button: the seat view is then free.</p>
+        </form>
+      </div>
       <aside class="host-side">
-        <p class="eyebrow">How the check works</p>
+        <p class="eyebrow">How it works</p>
         <ol class="timeline">
-          <li><b>Now</b><span>Your 3D view opens straight away, on this device.</span></li>
-          <li><b>In a few days</b><span>tiket.com reports the sales made through our links, each with our click code. Never your payment or ticket details.</span></li>
-          <li><b>Matched</b><span>Your pass is confirmed and stays open until after the show.</span></li>
-          <li><b>Not found</b><span>If no sale through our links matches, we write to you before the pass closes.</span></li>
+          <li><b>Send</b><span>Your seat and your e-ticket, in two minutes.</span></li>
+          <li><b>We check</b><span>A person compares the e-ticket with the seat you entered, usually within a few hours.</span></li>
+          <li><b>Approved</b><span>We email you, and your pass opens the seat tour on this device.</span></li>
+          <li><b>Your tour</b><span>The whole venue, then your category, then the view from your seat. Save it as a video for your story.</span></li>
         </ol>
         <div class="host-plan">
-          <span class="eyebrow eyebrow-ink">Clicked on your phone, here on a laptop?</span>
-          <b>That’s fine</b>
-          <p>Unlock with the same order ID and email. If we can’t match it automatically, we’ll ask for tiket.com’s confirmation email.</p>
+          <span class="eyebrow eyebrow-ink">Why we check</span>
+          <b>Your seat, nobody else’s</b>
+          <p>Only fans with a real ticket get the view from the seat on it, so a seat shared online is always the real one.</p>
         </div>
       </aside>
     </div>
@@ -299,7 +362,7 @@
     <div class="org-hero-in">
       <p class="kicker"><b>For partners</b> <span>ticketing · venues · promoters · travel</span></p>
       <h1 class="giant giant-org">Seat view</h1>
-      <p class="org-sub"><span class="w-fill">for every</span> <span class="w-ol">ticket you sell.</span></p>
+      <p class="org-sub"><span class="w-fill">for every</span> <span class="w-ol">ticket you sell</span></p>
       <div class="org-row">
         <p class="lede">Give your buyers the view from their seat, before they pay and on their e-ticket. We model the venue from your seating plan; you put it in your checkout, site or app, under your own brand.</p>
         <div class="row-btns">
@@ -338,11 +401,11 @@
       <div class="sec-side"><p>Five steps, and only the first two take work on your side.</p></div>
     </header>
     <ol class="steps">
-      <li><b>01</b><h3>Send the plan</h3><p>The seating plan, the stage layout and a few photos from the stands. We reply in one working day.</p></li>
-      <li><b>02</b><h3>We build it</h3><p>Blocks, rows, seat numbers and rake follow your plan. Screens carry your artwork.</p></li>
-      <li><b>03</b><h3>Check it</h3><p>A private demo link for your team and the promoter. We adjust until the views are right.</p></li>
-      <li><b>04</b><h3>Go live</h3><p>Embed it in checkout and the e-ticket, or link to it from your app. Your colours, your categories.</p></li>
-      <li><b>05</b><h3>See what they look at</h3><p>Anonymous counts of the sections buyers open and how many go on to buy.</p></li>
+      <li><b data-n="01"></b><h3>Send the plan</h3><p>The seating plan, the stage layout and a few photos from the stands. We reply in one working day.</p></li>
+      <li><b data-n="02"></b><h3>We build it</h3><p>Blocks, rows, seat numbers and rake follow your plan. Screens carry your artwork.</p></li>
+      <li><b data-n="03"></b><h3>Check it</h3><p>A private demo link for your team and the promoter. We adjust until the views are right.</p></li>
+      <li><b data-n="04"></b><h3>Go live</h3><p>Embed it in checkout and the e-ticket, or link to it from your app. Your colours, your categories.</p></li>
+      <li><b data-n="05"></b><h3>See what they look at</h3><p>Anonymous counts of the sections buyers open and how many go on to buy.</p></li>
     </ol>
   </section>
 
@@ -436,11 +499,11 @@
     </header>
     <div class="prose panel-box">
       <h2>See the seat before the night</h2>
-      <p><span data-brand>SeatSight</span> lists the big concerts in Jakarta and builds a 3D model of each venue, seat by seat, with the stage and the screens of the show that plays there. Anyone can look round the venue from above. Fans who buy their tickets on tiket.com through our links can sit in any seat and see the stage from there.</p>
+      <p><span data-brand>Atvents</span> lists the big concerts in Jakarta and builds a 3D model of each venue, seat by seat, with the stage and the screens of the show that plays there. Anyone can look round the venue from above. Fans who buy their tickets on tiket.com through our links send us their seat and e-ticket; once we have checked it, a guided tour takes them from the whole venue to their category, then to the view from their own seat, and makes a story video of it. A ticket bought elsewhere can join for Rp25.000.</p>
       <h2>What we are not</h2>
-      <p>We do not sell tickets and we do not take payments. tiket.com sells the tickets, takes the payment and sends the e-ticket, as if you had gone there yourself. We are not tiket.com, and we are not the promoters or the artists. Their names and posters are used to show which concert a page is about.</p>
+      <p>We do not sell tickets. tiket.com sells the tickets, takes the payment and sends the e-ticket, as if you had gone there yourself. We are not tiket.com, and we are not the promoters or the artists. Their names and posters are used to show which concert a page is about.</p>
       <h2>How we are paid</h2>
-      <p>When you buy on tiket.com through one of our links, tiket.com may pay us a commission through its affiliate program. You pay the same price either way. We also license the 3D seat view to ticketing platforms, venues and promoters; see <a class="u" href="#partners">for partners</a>.</p>
+      <p>When you buy on tiket.com through one of our links, tiket.com may pay us a commission through its affiliate program. You pay the same price either way. Fans who bought elsewhere pay us Rp25.000 for a seat view. We also license the 3D seat view to ticketing platforms, venues and promoters; see <a class="u" href="#partners">for partners</a>.</p>
       <h2>Talk to us</h2>
       <p>Questions about your 3D pass, the site or working together: <a class="u" href="#contact">contact</a>. Questions about a ticket you bought go to tiket.com.</p>
     </div>
@@ -490,12 +553,14 @@
       <div class="sec-side"><p>Last updated 30 October 2026.</p></div>
     </header>
     <div class="prose panel-box">
-      <p>This policy explains what <span data-brand>SeatSight</span> (“we”) collects when you use this site, why, and what you can ask us to do with it. We follow Indonesia’s Personal Data Protection Law (Law No. 27 of 2022). Write to us at <span data-contact="email"></span> with any question.</p>
+      <p>This policy explains what <span data-brand>Atvents</span> (“we”) collects when you use this site, why, and what you can ask us to do with it. We follow Indonesia’s Personal Data Protection Law (Law No. 27 of 2022). Write to us at <span data-contact="email"></span> with any question.</p>
       <h2>What we collect, and why</h2>
       <h3>When you click Buy on tiket.com</h3>
       <p>A random click code, the concert, the time, and the campaign that brought you here if the link had one. No name and no email. The click code travels to tiket.com in the link, and comes back to us in the affiliate report when a sale is made, so we know which sales came from our links.</p>
       <h3>When you unlock a 3D view</h3>
-      <p>Your tiket.com order ID, the email you used there, the category and the number of tickets, and the click codes saved on your device for that concert. We use them to open your pass, to match it with the affiliate report, and to write to you about the pass. We never ask for your payment details or your e-ticket.</p>
+      <p>Your tiket.com order ID, the email you used there, the category and seat you choose, the e-ticket you send, and the click codes saved on your device for that concert. We use them to check that the e-ticket matches the seat, to match the sale with the affiliate report, and to write to you about the pass. A person on our team looks at the e-ticket only to check it. We never ask for your payment details.</p>
+      <h3>When you pay for a seat view</h3>
+      <p>If you bought your ticket elsewhere and pay Rp25.000 for the seat view, the payment provider handles the payment and tells us only that it was paid, with its reference. We never see your card, wallet or bank details.</p>
       <h3>When you ask about working with us</h3>
       <p>Your name, company, email, phone number, website and message, to answer you.</p>
       <h3>When you sign up for alerts</h3>
@@ -505,7 +570,7 @@
       <h2>Who else sees it</h2>
       <p>tiket.com and its affiliate network see the click code in the link you follow, along with what they collect under their own privacy policies when you buy. They do not get your email or order ID from us. The company that hosts our server stores our data for us. The site’s fonts load from Google Fonts and the 3D viewer from jsDelivr, so those services see your IP address. We do not sell personal data.</p>
       <h2>How long we keep it</h2>
-      <p>Click records and 3D pass details: until twelve months after the concert. Partner requests: two years after our last contact. Alerts: until you leave the list.</p>
+      <p>E-tickets you send: until the concert has taken place. Click records and 3D pass details: until twelve months after the concert. Partner requests: two years after our last contact. Alerts: until you leave the list.</p>
       <h2>Your rights</h2>
       <p>You can ask to see the data we hold about you, to correct it, to delete it, to withdraw your consent, or to object to how we use it. Email us from the address you used and we answer within 3 × 24 hours of a complete request, as the law sets out.</p>
       <h2>Security</h2>
@@ -525,13 +590,13 @@
     </header>
     <div class="prose panel-box">
       <h2>1. What we do</h2>
-      <p><span data-brand>SeatSight</span> lists concerts, links to tiket.com where the tickets are sold, and gives a 3D view of the venue. We are not the seller, the promoter or tiket.com.</p>
+      <p><span data-brand>Atvents</span> lists concerts, links to tiket.com where the tickets are sold, and gives a 3D view of the venue. We are not the seller, the promoter or tiket.com.</p>
       <h2>2. Your ticket</h2>
       <p>When you buy, your contract is with tiket.com and the promoter, on their terms. They set prices and availability and handle payment, e-tickets, changes, refunds and cancellations. Prices on our pages are as announced and can be out of date; the price on tiket.com is the one that counts.</p>
       <h2>3. The 3D view</h2>
       <p>The 3D venue is our illustration, built from the venue and the category layout of the show. Distances, angles and sight lines are close, not exact, and the stage, screens and crowd on the night will differ. The view does not promise you a particular seat or view: your ticket decides your seat.</p>
       <h2>4. 3D passes</h2>
-      <p>Seat views are for people who bought tickets on tiket.com through our links. One booking opens one pass. A pass opens straight away and is checked against tiket.com’s affiliate report; we may close a pass we cannot match, or one that is shared or misused. Passes are free, so there is nothing to refund.</p>
+      <p>The view from a seat is for the person who holds the ticket for it. One e-ticket opens one pass, for the seat printed on it. We check every pass by hand against the e-ticket before the seat tour opens, and we may close a pass that does not match, or one that is shared or misused. A pass is free with a ticket bought through our links. For a ticket bought elsewhere, the seat view costs Rp25.000 for one concert; we refund it if the show is cancelled, or if we cannot approve a genuine ticket.</p>
       <h2>5. Fair use</h2>
       <p>Do not copy, scrape or extract the 3D models, claim passes for bookings that are not yours, send automated requests, or try to get round the checks.</p>
       <h2>6. Ownership</h2>
@@ -554,7 +619,7 @@
       <div class="sec-side"><p>How the Buy on tiket.com links work.</p></div>
     </header>
     <div class="prose panel-box">
-      <p><span data-brand>SeatSight</span> takes part in affiliate programs, including tiket.com’s, run through an affiliate network. When you follow one of our Buy on tiket.com links and buy, tiket.com may pay us a commission.</p>
+      <p><span data-brand>Atvents</span> takes part in affiliate programs, including tiket.com’s, run through an affiliate network. When you follow one of our Buy on tiket.com links and buy, tiket.com may pay us a commission.</p>
       <ul>
         <li>You pay the same price as you would going to tiket.com directly.</li>
         <li>The commission does not decide which concerts we list or what we write about them.</li>
@@ -579,16 +644,32 @@
 
 <!-- ======================================================= FOOTER -->
 <footer class="footer" id="footer">
+  <div class="footer-cta" data-for="fans">
+    <p class="fc-ask">Ready to see<br>the night first?</p>
+    <div class="fc-main">
+      <a class="fc-big" href="#concerts"><span>Find your</span><span>seat</span></a>
+      <a class="fc-link" href="#unlock">Already have a ticket? Unlock it <i class="fc-dot"><svg><use href="#i-arrow"/></svg></i></a>
+    </div>
+    <svg class="fc-badge" viewBox="0 0 120 120" aria-hidden="true"><defs><path id="fc-ring" d="M60,60 m-44,0 a44,44 0 1,1 88,0 a44,44 0 1,1 -88,0"/></defs><text><textPath href="#fc-ring">ATVENTS · 3D SEAT VIEW · JAKARTA · 2026 ·</textPath></text><use href="#i-mark" x="44" y="44" width="32" height="32"/></svg>
+  </div>
+  <div class="footer-cta" data-for="partners">
+    <p class="fc-ask">Ready to show<br>buyers their seat?</p>
+    <div class="fc-main">
+      <a class="fc-big" href="#partner-contact"><span>Let’s build</span><span>your venue</span></a>
+      <a class="fc-link" href="#partner-demo">Try a venue first <i class="fc-dot"><svg><use href="#i-arrow"/></svg></i></a>
+    </div>
+    <svg class="fc-badge" viewBox="0 0 120 120" aria-hidden="true"><text><textPath href="#fc-ring">ATVENTS · FOR PARTNERS · SEAT BY SEAT ·</textPath></text><use href="#i-mark" x="44" y="44" width="32" height="32"/></svg>
+  </div>
   <div class="footer-grid">
-    <div class="footer-brand"><a class="logo" href="#home"><svg class="logo-mark"><use href="#i-mark"/></svg><span class="logo-word" data-brand>SeatSight</span></a><p data-for="fans">Big concerts on tiket.com, with a 3D view from your seat for everyone who buys through us.</p><p data-for="partners">The 3D seat view for ticketing platforms, promoters, venues and travel companies.</p></div>
-    <div><h4>Concerts</h4><a href="#concerts">All concerts</a><a href="#unlock">Unlock a 3D view</a><a href="#passes">My 3D passes</a><a href="#faq">Questions</a></div>
+    <div class="footer-brand"><a class="logo" href="#home"><svg class="logo-mark"><use href="#i-mark"/></svg><span class="logo-word" data-brand>Atvents</span></a><p data-for="fans">Big concerts on tiket.com, and a 3D tour to your own seat once we have checked your e-ticket.</p><p data-for="partners">The 3D seat view for ticketing platforms, promoters, venues and travel companies.</p></div>
+    <div><h4>Concerts</h4><a href="#concerts">All concerts</a><a href="#how">How it works</a><a href="#unlock">Unlock a 3D view</a><a href="#passes">My 3D passes</a><a href="#faq">Questions</a></div>
     <div><h4>Company</h4><a href="#about">About us</a><a href="#partners">For partners</a><a href="#contact">Contact</a><span data-contact="email"></span></div>
     <div><h4>Legal</h4><a href="#terms">Terms of use</a><a href="#privacy">Privacy policy</a><a href="#disclosure">Affiliate disclosure</a></div>
   </div>
-  <p class="disclose"><span data-brand>SeatSight</span> is independent: we are not tiket.com, the promoters or the artists. Tickets are sold, paid for and delivered by tiket.com. We may earn a commission when you buy through our links, at no extra cost to you.</p>
-  <p class="switch" data-for="fans">Run a ticketing app, a venue or a promoter? <a href="#partners"><span data-brand>SeatSight</span> for partners <svg><use href="#i-arrow"/></svg></a></p>
+  <p class="disclose"><span data-brand>Atvents</span> is independent: we are not tiket.com, the promoters or the artists. Tickets are sold, paid for and delivered by tiket.com. We may earn a commission when you buy through our links, at no extra cost to you.</p>
+  <p class="switch" data-for="fans">Run a ticketing app, a venue or a promoter? <a href="#partners"><span data-brand>Atvents</span> for partners <svg><use href="#i-arrow"/></svg></a></p>
   <p class="switch" data-for="partners">Going to a concert? <a href="#home">Go to the fan site <svg><use href="#i-arrow"/></svg></a></p>
-  <p class="wordmark" aria-hidden="true" data-brand>SeatSight</p>
+  <p class="wordmark" aria-hidden="true" data-brand>Atvents</p>
 </footer>
 </div>
 

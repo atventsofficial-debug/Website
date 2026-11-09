@@ -7,9 +7,9 @@ import { coverImg, eventImg, posterFig } from './media.js';
 import { picker } from './picker.js';
 import { whenOf, startOf, venueClock, gapText } from './when.js';
 import { buyUrl, buyAttrs, buyLink, passes, activePass, claim, refresh, passLink, clicksFor, STATUS } from './passes.js';
-import { checkClaim } from './rules.js';
+import { checkClaim, PROOF_TYPES, MAX_PROOF } from './rules.js';
 import { FAQ_FANS, faqHtml } from './content.js';
-import { $, $$, esc, icon, entranceTicket, share, copyText, bindSubscribe, toast } from './ui.js';
+import { $, $$, esc, icon, state, entranceTicket, share, copyText, bindSubscribe, toast } from './ui.js';
 
 const DAY = 864e5;
 const cityCode = e => CITY[placeOf(e).city]?.code || '';
@@ -160,11 +160,11 @@ export function renderHome() {
         <span class="venue-n">0${i + 1} · ${esc(p.city)}</span>
         <h3>${esc(p.name)}</h3>
         <p>${esc(demoFor(first.venue)?.title || 'Venue')} · ${plural(getEvent(first.id).seats.length, 'seat')} modelled</p>
-        <div class="venue-foot"><span>${plural(shows.length, 'concert')}${from < Infinity ? ` · from <b>${formatRpShort(from)}</b>` : ''}</span><span class="go">${icon('i-arrow')}</span></div>
+        <div class="venue-foot"><span>${shows.length ? plural(shows.length, 'concert') : 'No concerts on sale yet'}${from < Infinity ? ` · from <b>${formatRpShort(from)}</b>` : ''}</span><span class="go">${icon('i-arrow')}</span></div>
       </div></a>`;
   }).join('');
 
-  $('#home-faq').innerHTML = faqHtml(FAQ_FANS, ['price', 'seller', 'unlock', 'locked', 'official']);
+  $('#home-faq').innerHTML = faqHtml(FAQ_FANS, ['price', 'unlock', 'check', 'no-link', 'story']);
 }
 
 // ---------------------------------------------------------------- concert list
@@ -214,9 +214,9 @@ export function renderEvent(id) {
           <div class="tags"><span class="tag tag-coral">Concert</span><span class="tag tag-white">${dm.dow} ${dm.day} ${dm.mon}</span>${allSoldOut(e) ? '<span class="tag tag-dark">Sold out</span>' : ''}${pass ? `<span class="tag tag-line">${icon('i-eye')}3D pass on this device</span>` : ''}</div>
           <p class="ev-blurb">${esc(e.blurb)}</p>
           ${others.length ? `<p class="ev-dates">Also on ${others.map(x => `<a class="pill" href="#event-${x.id}">${esc(whenOf(x).block.dow)} ${whenOf(x).block.day} ${whenOf(x).block.mon}${allSoldOut(x) ? ' <span>sold out</span>' : ''}</a>`).join('')}</p>` : ''}
-          ${live ? `<p class="ev-official">${icon('i-link')}<span>Sold on tiket.com. Buy with our button and the view from your seat in 3D comes free. It is an <a href="#disclosure">affiliate link</a>: the price is the same.</span></p>`
+          ${live ? `<p class="ev-official">${icon('i-link')}<span>Sold on tiket.com. Buy with our button and the 3D tour to your seat comes free once we have checked your e-ticket. It is an <a href="#disclosure">affiliate link</a>: the price is the same.</span></p>`
             : '<p class="ev-official">This concert has taken place. Its 3D venue stays open to look round.</p>'}
-          <div class="row-btns">${live ? buyLink(e, `Buy on tiket.com ${out}`) : ''}<a class="btn btn-line" href="#seats-${id}">${pass ? 'Sit in your seat' : 'Look round in 3D'}</a></div>
+          <div class="row-btns">${live ? buyLink(e, `Buy on tiket.com ${out}`) : ''}${pass?.status === 'confirmed' ? `<a class="btn btn-line" href="#tour-${esc(pass.id)}">Start my seat tour</a>` : `<a class="btn btn-line" href="#seats-${id}">Look round in 3D</a>`}</div>
         </div>
         <div class="ev-actions">
           <div class="row-btns">
@@ -277,7 +277,7 @@ export function renderEvent(id) {
       </div>
     </div>`;
 
-  $('#ev-faq').innerHTML = faqHtml(FAQ_FANS, ['price', 'unlock', 'no-link', 'official']);
+  $('#ev-faq').innerHTML = faqHtml(FAQ_FANS, ['price', 'unlock', 'no-link', 'tour', 'official']);
 
   const more = [...others, ...oncePerShow(onSale().filter(x => x.title !== e.title))].slice(0, 4);
   $('#ev-more-sec').hidden = !more.length;
@@ -289,12 +289,12 @@ function render3dPanel(e, venue) {
   const id = e.id, pass = activePass(id);
   const mine = pass ? venue.catById[pass.cat] : null;
   const action = pass
-    ? `<p class="ev3d-pass"><span class="pass-pill is-${pass.status}">${STATUS[pass.status].label}</span><span>Your 3D pass for ${esc(mine?.name || 'this concert')}, ${plural(pass.qty, 'ticket')}, is open on this device.</span></p>
-       <div class="row-btns"><a class="btn btn-coral" href="#seats-${id}">Sit in your seat ${icon('i-arrow')}</a><a class="btn btn-line" href="#passes">My 3D passes</a></div>`
+    ? `<p class="ev3d-pass"><span class="pass-pill is-${pass.status}">${STATUS[pass.status].label}</span><span>Your 3D pass for ${esc(mine?.name || 'this concert')}. ${esc(STATUS[pass.status].note)}</span></p>
+       <div class="row-btns">${pass.status === 'confirmed' ? `<a class="btn btn-coral" href="#tour-${esc(pass.id)}">Start my seat tour ${icon('i-arrow')}</a>` : `<a class="btn btn-coral" href="#seats-${id}">Look round in 3D ${icon('i-arrow')}</a>`}<a class="btn btn-line" href="#passes">My 3D passes</a></div>`
     : `<ol class="mini-steps">
         <li><b>1</b><span>Look round the venue from above. Free, for everyone.</span></li>
-        <li><b>2</b><span>Buy on tiket.com with our button.</span></li>
-        <li><b>3</b><span>Unlock with your order ID, then sit in any seat and look at the stage.</span></li>
+        <li><b>2</b><span>Buy on tiket.com with our button, or unlock a ticket bought elsewhere for Rp25.000.</span></li>
+        <li><b>3</b><span>Send your seat and e-ticket. Once checked, the tour takes you to the view from your seat.</span></li>
       </ol>
       <div class="row-btns"><a class="btn btn-coral" href="#seats-${id}">Look round in 3D ${icon('i-arrow')}</a><a class="btn btn-line" href="#unlock-${id}">${icon('i-lock')}Unlock my view</a></div>`;
   $('#ev-3d').innerHTML = `
@@ -313,13 +313,19 @@ function render3dPanel(e, venue) {
 
 let unlockBound = false;
 
-// The form to claim a pass with a tiket.com booking. `eventId` comes from #unlock-<id>;
-// without it, the concert last clicked through to tiket.com, then the featured one.
+// The form to claim a pass: the concert, the seat on the e-ticket (picked from the venue's own
+// seat list, so a seat that does not exist cannot be sent), the tiket.com booking and the
+// e-ticket itself. `eventId` comes from #unlock-<id>; without it, the concert last clicked
+// through to tiket.com, then the featured one. Fans who bought somewhere else pay the
+// Rp25.000 access fee first; the form opens once it is paid.
+const unlock = { route: 'affiliate', payment: null, proof: null };
+
 export function renderUnlock(eventId) {
   const form = $('#unlock-form');
   if (!unlockBound) { unlockBound = true; bindUnlock(form); }
   $('#unlock-done')?.remove();
   $('#unlock-body').hidden = false;
+  $('.route-switch').hidden = false;
   $('#unlock-error').hidden = true;
   const list = onSale();
   if (isConcert(eventId) && !list.some(e => e.id === eventId)) list.unshift(eventMeta(eventId));
@@ -327,39 +333,184 @@ export function renderUnlock(eventId) {
   const pick = isConcert(eventId) ? eventId : (clicked || featured()).id;
   form.eventId.innerHTML = list.map(e => `<option value="${e.id}">${esc(e.title)} · ${esc(whenOf(e).date)}</option>`).join('');
   form.eventId.value = pick;
+  // Someone who never clicked through to tiket.com on this device most likely bought elsewhere.
+  setRoute(form, unlock.payment ? 'outside' : unlock.route);
   fillCats(form);
 }
+
+function setRoute(form, route) {
+  unlock.route = route;
+  $$('.route-switch [data-route]').forEach(b => b.setAttribute('aria-selected', b.dataset.route === route));
+  const outside = route === 'outside', paid = unlock.payment?.status === 'paid';
+  $('#pay-box').hidden = !outside;
+  form.hidden = outside && !paid;
+  $('#consent-text').innerHTML = outside
+    ? `These are my tickets for this concert, and I agree to the <a class="u" href="#terms">terms</a> and the <a class="u" href="#privacy">privacy policy</a>.`
+    : `I bought these tickets on tiket.com through an <span data-brand>${esc(state.cfg.brand)}</span> link, and I agree to the <a class="u" href="#terms">terms</a> and the <a class="u" href="#privacy">privacy policy</a>.`;
+  $('#unlock-foot').hidden = outside;
+  [...form.querySelectorAll('legend')].forEach((l, i) => { l.textContent = l.textContent.replace(/^\d+/, String(i + (outside ? 2 : 1)).padStart(2, '0')); });
+}
+
+// The seat pickers, from the venue's seats: section, then row, then seat number. A standing
+// area has no rows or numbers on the ticket: the section is enough, and the tour stands the
+// fan in the middle of it.
+const seatsIn = (venue, cat) => venue.seats.filter(s => s.cat === cat);
+const opts = (list, label) => `<option value="">${label}</option>${list.map(([v, t]) => `<option value="${esc(v)}">${esc(t)}</option>`).join('')}`;
+const byNatural = (a, b) => String(a).localeCompare(String(b), undefined, { numeric: true });
 
 function fillCats(form) {
   const venue = getEvent(form.eventId.value), prev = form.cat.value;
   form.cat.innerHTML = `<option value="">Choose</option>${venue.categories.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}`;
   if (venue.catById[prev]) form.cat.value = prev;
-  // Without a click on this device, the match rests on the order ID alone: say so.
-  const none = !clicksFor(venue.eventId).length;
-  $('#unlock-clicks').hidden = !none;
+  fillSecs(form);
+}
+
+function fillSecs(form) {
+  const venue = getEvent(form.eventId.value), cat = form.cat.value, prev = form.sec.value;
+  const list = cat ? seatsIn(venue, cat) : [];
+  const secs = [...new Map(list.map(s => [s.sec, s.secName])).entries()].sort((a, b) => byNatural(a[1], b[1]));
+  const standing = list.length > 0 && list.every(s => s.standing);
+  form.sec.innerHTML = opts(secs, cat ? 'Choose' : 'Category first');
+  form.sec.disabled = !cat;
+  if (secs.some(([v]) => v === prev)) form.sec.value = prev;
+  else if (secs.length === 1) form.sec.value = secs[0][0];
+  $('#row-field').hidden = standing;
+  $('#num-field').hidden = standing;
+  form.row.required = form.num.required = !standing;
+  $('#seat-note').textContent = standing ? 'A standing area: no row or seat number. Choose the area on your e-ticket; your tour stands you in the middle of it.' : 'As printed on your e-ticket. Only seats that exist in this venue are listed.';
+  fillRows(form);
+}
+
+function fillRows(form) {
+  const venue = getEvent(form.eventId.value), sec = form.sec.value, prev = form.row.value;
+  const list = sec ? seatsIn(venue, form.cat.value).filter(s => s.sec === sec) : [];
+  const rows = [...new Set(list.map(s => s.row))].sort(byNatural).map(r => [r, r]);
+  form.row.innerHTML = opts(rows, sec ? 'Choose' : 'Section first');
+  form.row.disabled = !sec;
+  if (rows.some(([v]) => v === prev)) form.row.value = prev;
+  fillNums(form);
+}
+
+function fillNums(form) {
+  const venue = getEvent(form.eventId.value), sec = form.sec.value, row = form.row.value, prev = form.num.value;
+  const list = row ? seatsIn(venue, form.cat.value).filter(s => s.sec === sec && s.row === row) : [];
+  const nums = list.map(s => [s.id, String(s.num)]).sort((a, b) => byNatural(a[1], b[1]));
+  form.num.innerHTML = opts(nums, row ? 'Choose' : 'Row first');
+  form.num.disabled = !row;
+  if (nums.some(([v]) => v === prev)) form.num.value = prev;
+}
+
+// The seat id the form points at: the seat chosen, or the middle of a standing area.
+function chosenSeat(form) {
+  const venue = getEvent(form.eventId.value), list = seatsIn(venue, form.cat.value).filter(s => s.sec === form.sec.value);
+  if (!list.length) return '';
+  if (list.every(s => s.standing)) {
+    const cx = list.reduce((a, s) => a + s.x, 0) / list.length, cz = list.reduce((a, s) => a + s.z, 0) / list.length;
+    return list.reduce((best, s) => (Math.hypot(s.x - cx, s.z - cz) < Math.hypot(best.x - cx, best.z - cz) ? s : best)).id;
+  }
+  return form.num.value;
+}
+
+// The e-ticket, read in the browser. A photo is scaled down to 1400 px on its long side, as
+// JPEG, which keeps the text on the ticket readable at a fraction of the size.
+async function readProof(file) {
+  if (!file) return null;
+  if (!PROOF_TYPES.includes(file.type)) throw new Error('Use a JPG, PNG or WebP image, or a PDF.');
+  if (file.size > MAX_PROOF) throw new Error('That file is over 4 MB. Send a screenshot instead.');
+  const asUrl = blob => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(blob); });
+  if (file.type === 'application/pdf') {
+    // The demo keeps files in this browser's storage, which holds a few MB at most.
+    const data = state.store.mode === 'demo' && file.size > 900 * 1024 ? '' : await asUrl(file);
+    return { name: file.name, type: file.type, size: file.size, data };
+  }
+  const img = await createImageBitmap(file);
+  const k = Math.min(1, 1400 / Math.max(img.width, img.height));
+  const c = Object.assign(document.createElement('canvas'), { width: Math.round(img.width * k), height: Math.round(img.height * k) });
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+  const blob = await new Promise(res => c.toBlob(res, 'image/jpeg', 0.82));
+  return { name: file.name, type: 'image/jpeg', size: blob.size, data: await asUrl(blob) };
+}
+
+function showProof(p) {
+  const empty = $('#proof-drop .drop-empty'), shown = $('#proof-drop .drop-file');
+  empty.hidden = !!p;
+  shown.hidden = !p;
+  shown.innerHTML = p ? `${p.type.startsWith('image/') && p.data ? `<img src="${p.data}" alt="">` : icon('i-tix')}<span><b>${esc(p.name)}</b><small>${Math.max(1, Math.round(p.size / 1024))} KB · tap to change</small></span>` : '';
+}
+
+// The access fee. The live site sends the fan to the payment provider's own page; the demo
+// shows a stand-in that charges nothing.
+async function startPayment(form) {
+  const btn = $('#pay-start');
+  btn.disabled = true;
+  try {
+    const p = await state.store.pay({ eventId: form.eventId.value });
+    unlock.payment = p;
+    if (p.url) { location.href = p.url; return; }
+    $('#pay-sheet').hidden = false;
+    $('#pay-sheet').innerHTML = `
+      <p class="eyebrow">${icon('i-card')}Demo payment</p>
+      <p>This preview charges nothing. On the live site this step opens the payment provider (QRIS, e-wallets, bank transfer), and the form opens by itself once Rp25.000 is paid.</p>
+      <div class="row-btns"><button class="btn btn-coral btn-sm" type="button" id="pay-demo">Mark as paid (demo)</button><button class="btn btn-line btn-sm" type="button" id="pay-cancel">Cancel</button></div>`;
+  } catch (e) { toast(e.message || 'The payment could not start. Please try again.'); } finally { btn.disabled = false; }
+}
+
+function paid(form) {
+  $('#pay-sheet').hidden = true;
+  $('#pay-start').hidden = true;
+  $('#pay-done').hidden = false;
+  $('#pay-done').innerHTML = `${icon('i-check')}<span>Paid · <span class="mono">${esc(unlock.payment.id)}</span>. Now tell us your seat.</span>`;
+  setRoute(form, 'outside');
+  form.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function bindUnlock(form) {
-  form.querySelector('button[type="submit"]').insertAdjacentHTML('beforebegin',
-    `<p class="fine unlock-clicks" id="unlock-clicks" hidden>${icon('i-clock')}<span>This device has not opened this concert on tiket.com through us. That’s fine if you bought on another device: we match your booking by its order ID.</span></p>`);
   form.eventId.addEventListener('change', () => fillCats(form));
+  form.cat.addEventListener('change', () => fillSecs(form));
+  form.sec.addEventListener('change', () => fillRows(form));
+  form.row.addEventListener('change', () => fillNums(form));
+  $('.route-switch').addEventListener('click', ev => {
+    const b = ev.target.closest('[data-route]');
+    if (b) setRoute(form, b.dataset.route);
+  });
+  $('#pay-start').addEventListener('click', () => startPayment(form));
+  $('#pay-box').addEventListener('click', async ev => {
+    if (ev.target.closest('#pay-cancel')) { $('#pay-sheet').hidden = true; unlock.payment = null; }
+    if (ev.target.closest('#pay-demo')) {
+      try { unlock.payment = { ...unlock.payment, ...(await state.store.payDemo(unlock.payment.id)) }; paid(form); } catch (e) { toast(e.message || 'Could not mark it paid.'); }
+    }
+  });
+  form.proof.addEventListener('change', async () => {
+    const err = $('#unlock-error');
+    try { unlock.proof = await readProof(form.proof.files[0]); err.hidden = true; } catch (e) { unlock.proof = null; form.proof.value = ''; err.textContent = e.message; err.hidden = false; }
+    showProof(unlock.proof);
+  });
   form.addEventListener('submit', async ev => {
     ev.preventDefault();
     const err = $('#unlock-error');
-    const say = (msg, field) => { err.textContent = msg; err.hidden = false; if (field) form[field].focus(); };
+    const say = (msg, field) => { err.textContent = msg; err.hidden = false; if (field && form[field]) form[field].focus(); };
+    if (!form.cat.value) return say('Choose the category on your e-ticket.', 'cat');
+    if (!form.sec.value) return say('Choose the section on your e-ticket.', 'sec');
+    const seat = chosenSeat(form);
+    if (!seat) return say(form.row.value ? 'Choose the seat number on your e-ticket.' : 'Choose the row on your e-ticket.', form.row.value ? 'num' : 'row');
     const { claim: data, field, error } = checkClaim({
-      eventId: form.eventId.value, cat: form.cat.value, qty: +form.qty.value, orderRef: form.orderRef.value, email: form.email.value, consent: form.consent.checked,
+      eventId: form.eventId.value, cat: form.cat.value, qty: 1, seat, orderRef: form.orderRef.value, email: form.email.value, consent: form.consent.checked,
+      route: unlock.route, payment: unlock.payment?.id, proof: unlock.proof, requireProof: true,
     });
-    if (error) return say(error, field);
+    if (error) return say(error, field === 'proof' ? null : field);
     err.hidden = true;
     const btn = form.querySelector('button[type="submit"]');
     btn.disabled = true;
     try {
       const p = await claim(data);
       form.orderRef.value = '';
+      form.proof.value = '';
+      unlock.proof = null;
+      if (unlock.route === 'outside') { unlock.payment = null; $('#pay-start').hidden = false; $('#pay-done').hidden = true; }
+      showProof(null);
       showUnlocked(p);
     } catch (e) {
-      say(e.status === 429 ? 'Too many tries. Please wait a few minutes.' : e.message || 'Could not unlock. Please try again.');
+      say(e.status === 429 ? 'Too many tries. Please wait a few minutes.' : e.message || 'Could not send it. Please try again.');
     } finally { btn.disabled = false; }
   });
 }
@@ -367,13 +518,17 @@ function bindUnlock(form) {
 function showUnlocked(p) {
   const e = eventMeta(p.eventId);
   $('#unlock-body').hidden = true;
+  $('.route-switch').hidden = true;
+  const open = p.status === 'confirmed';
   $('#unlock-body').insertAdjacentHTML('beforebegin', `
     <div class="unlock-done" id="unlock-done">
       <div class="unlock-next">
         <p class="eyebrow">Pass ${esc(p.id)}</p>
-        <h2 class="big"><span class="fade">You’re</span> <span class="ol">in.</span></h2>
-        <p class="lede">Your 3D view for ${esc(e.title)} is open on this device. In the next few days we check the booking against tiket.com’s report; there is nothing else for you to do.</p>
-        <div class="row-btns"><a class="btn btn-coral" href="#seats-${p.eventId}">Sit in your seat ${icon('i-arrow')}</a><a class="btn btn-line" href="#passes">My 3D passes</a></div>
+        <h2 class="big"><span class="fade">${open ? 'You’re' : 'Sent for'}</span> <span class="ol">${open ? 'in' : 'review'}</span></h2>
+        <p class="lede">${open ? `Your seat view for ${esc(e.title)} is open. Take the tour to your seat.`
+          : `We check your e-ticket against the seat you entered, usually within a few hours, and email you when your seat view for ${esc(e.title)} opens. Nothing else to do until then.`}</p>
+        <div class="row-btns">${open ? `<a class="btn btn-coral" href="#tour-${esc(p.id)}">Start my seat tour ${icon('i-arrow')}</a>` : `<a class="btn btn-coral" href="#seats-${p.eventId}">Look round the venue ${icon('i-arrow')}</a>`}<a class="btn btn-line" href="#passes">My 3D passes</a></div>
+        ${state.store.mode === 'demo' && !open ? `<p class="fine">Preview: approve it yourself on the <a class="u" href="#admin">admin page</a>, then open it from My 3D passes.</p>` : ''}
         ${p.token ? `<p class="fine">On another phone or laptop? <button class="link" type="button" data-copy-pass="${esc(p.id)}">Copy the pass link</button> and open it there. Keep it to yourself: the link opens your pass.</p>` : ''}
       </div>
       ${passCard(p, { actions: false })}
@@ -404,10 +559,13 @@ function passCard(p, { actions = true } = {}) {
       <dl class="pass-facts">
         <div><dt>Category</dt><dd>${esc(c?.name || p.cat)}</dd></div>
         ${p.ref ? `<div><dt>Order</dt><dd class="mono">${esc(p.ref)}</dd></div>` : ''}
-        <div><dt>${seats.length > 1 ? 'Seats' : 'Seat'}</dt><dd>${seats.length ? seats.map(s => esc(`${s.sec} ${s.row}${s.num}`)).join(', ') : 'Not marked yet'}</dd></div>
+        <div><dt>${seats.length > 1 ? 'Seats' : 'Seat'}</dt><dd>${seats.length ? seats.map(s => esc(s.standing ? `${s.secName}, standing` : `${s.secName} · Row ${s.row} · Seat ${s.num}`)).join(', ') : 'Not given'}</dd></div>
+        ${p.route === 'outside' ? '<div><dt>Access</dt><dd>Rp25.000, paid</dd></div>' : ''}
       </dl>
       ${actions ? `<div class="row-btns">
-        ${p.status === 'rejected' ? `<a class="btn btn-line btn-sm" href="#contact">Write to us</a>` : `<a class="btn btn-coral btn-sm" href="#seats-${p.eventId}">Sit in your seat ${icon('i-arrow')}</a>`}
+        ${p.status === 'rejected' ? `<a class="btn btn-coral btn-sm" href="#unlock-${p.eventId}">Send it again</a><a class="btn btn-line btn-sm" href="#contact">Write to us</a>`
+          : p.status === 'confirmed' ? `<a class="btn btn-coral btn-sm" href="#tour-${esc(p.id)}">Start my seat tour ${icon('i-arrow')}</a>`
+            : `<a class="btn btn-line btn-sm" href="#seats-${p.eventId}">Look round the venue ${icon('i-arrow')}</a>`}
         ${p.token ? `<button class="btn btn-line btn-sm" type="button" data-copy-pass="${esc(p.id)}">${icon('i-link')}Copy pass link</button>` : ''}
         <button class="link" type="button" data-remove-pass="${esc(p.id)}">Remove from this device</button>
       </div>` : ''}
@@ -424,7 +582,7 @@ export function renderPasses({ check = false } = {}) {
     : 'Passes you unlock appear here, on the device you unlocked them on.';
   $('#passes-body').innerHTML = list.length
     ? `<div class="pass-grid">${list.map(p => passCard(p)).join('')}</div>`
-    : `<div class="empty-state"><h3>No 3D passes yet.</h3><p>Buy a concert ticket on tiket.com with one of our buttons, then unlock the view from your seat with the order ID.</p><div class="row-btns"><a class="btn btn-coral" href="#concerts">Find a concert ${icon('i-arrow')}</a><a class="btn btn-line" href="#unlock">Unlock with my booking</a></div></div>`;
+    : `<div class="empty-state"><h3>No 3D passes yet.</h3><p>Buy a concert ticket on tiket.com with one of our buttons, then send your seat and e-ticket. Bought elsewhere? Unlock it for Rp25.000.</p><div class="row-btns"><a class="btn btn-coral" href="#concerts">Find a concert ${icon('i-arrow')}</a><a class="btn btn-line" href="#unlock">Send my seat</a></div></div>`;
   // Ask the server how each check is going, once per visit to the page.
   if (check) list.forEach(p => refresh(p));
 }
@@ -451,7 +609,7 @@ export function bindPassButtons() {
     }
     armed = null;
     passes.remove(rm.dataset.removePass);
-    toast('Removed from this device. Unlock again with the same order ID and email to bring it back.');
+    toast('Removed from this device. Open its pass link, or send your seat again, to bring it back.');
   });
 }
 

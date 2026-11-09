@@ -2,18 +2,18 @@
 // partner page by partners.js, the admin by admin.js and the 3D seat view by viewer.js.
 import { getEvent, isConcert, demoFor } from './events.js';
 import { LocalStore, ApiStore } from './store.js';
-import { bindBuyLinks, importPass } from './passes.js';
+import { bindBuyLinks, importPass, passes } from './passes.js';
 import { validAffiliate } from './rules.js';
 import { renderHome, renderConcerts, renderEvent, renderUnlock, renderPasses, renderFaq, bindPassButtons, navCount } from './pages.js';
 import { startHero, stopHero } from './hero.js';
 import { renderPartners } from './partners.js';
 import { renderAdmin } from './admin.js';
 import { openViewer, closeViewer, bindViewer, paintViewer, loadScene3d } from './viewer.js';
-import { $, $$, state, on, toast, tickCountdowns, captureCampaign } from './ui.js';
+import { $, $$, state, on, toast, tickCountdowns, captureCampaign, fitGiants } from './ui.js';
 
 // Two sides of the site. The route decides which one shows; the toggle in the nav switches.
-const SIDE = 'seatsight:side';
-const HOME_ANCHORS = new Set(['how', 'venues', 'news-form']);
+const SIDE = 'atvents:side';
+const HOME_ANCHORS = new Set(['how', 'tour', 'venues', 'news-form']);
 const PARTNER_ANCHORS = new Set(['partner-why', 'partner-uses', 'partner-how', 'partner-demo', 'partner-pricing', 'partner-faq-sec', 'partner-contact']);
 const PAGES = new Set(['concerts', 'unlock', 'passes', 'partners', 'faq', 'about', 'contact', 'privacy', 'terms', 'disclosure', 'admin']);
 // Links from the earlier site, which sold the tickets itself, land on their nearest page.
@@ -35,7 +35,7 @@ async function boot() {
   } catch { /* static hosting: demo mode, everything stays in this browser */ }
   state.store ||= new LocalStore();
   $$('[data-brand]').forEach(el => { el.textContent = state.cfg.brand; });
-  $$('[data-contact]').forEach(el => { el.textContent = state.cfg.contact[el.dataset.contact]; });
+  $$('[data-contact]').forEach(el => { const v = state.cfg.contact[el.dataset.contact]; el.textContent = v || ''; const line = el.closest('.contact-line'); if (line) line.hidden = !v; });
   captureCampaign();
   // A returning partner who opens the bare address lands on their own side.
   try { if (!location.hash && localStorage.getItem(SIDE) === 'partners') history.replaceState(null, '', `${location.pathname}${location.search}#partners`); } catch { /* ignore */ }
@@ -73,6 +73,11 @@ function parse(hash) {
   if (PAGES.has(h)) return { view: h };
   if (h.startsWith('unlock-') && isConcert(h.slice(7))) return { view: 'unlock', id: h.slice(7) };
   if (h.startsWith('event-') && isConcert(h.slice(6))) return { view: 'event', id: h.slice(6) };
+  if (h.startsWith('tour-')) {
+    const p = passes.get(h.slice(5));
+    if (p && getEvent(p.eventId)) return { view: 'seats', id: p.eventId, tour: p.id };
+    return { view: 'passes' };
+  }
   const [path, seat] = h.split('@');
   if (path.startsWith('demo-') && demoFor(path.slice(5))) return { view: 'seats', id: demoFor(path.slice(5)).id, seat };
   if (path.startsWith('seats-')) {
@@ -114,7 +119,7 @@ async function route() {
   const link = location.hash.match(/^#pass-(P-[A-Z0-9]{4,20})-([A-Za-z0-9_-]{16,64})$/);
   if (link) {
     history.replaceState(null, '', `${location.pathname}${location.search}#passes`);
-    try { await importPass(link[1], link[2]); toast('Pass added to this device.'); } catch { toast('That pass link did not work. Unlock again with your order ID and email.'); }
+    try { await importPass(link[1], link[2]); toast('Pass added to this device.'); } catch { toast('That pass link did not work. Send your seat again on Unlock 3D.'); }
   }
   const r = parse(location.hash.slice(1));
   const prev = state.view;
@@ -137,7 +142,7 @@ async function route() {
     case 'home': renderHome(); startHero(); break;
     case 'concerts': renderConcerts(); break;
     case 'event': renderEvent(r.id); loadScene3d().catch(() => {}); break;   // likely next: the 3D venue
-    case 'seats': openViewer(r.id, { cat: r.cat, seat: r.seat, back: state.page }); break;
+    case 'seats': openViewer(r.id, { cat: r.cat, seat: r.seat, back: state.page, tour: r.tour }); break;
     case 'unlock': renderUnlock(r.id); break;
     case 'passes': renderPasses({ check: true }); break;
     case 'partners': renderPartners(); break;
@@ -145,6 +150,7 @@ async function route() {
     case 'admin': renderAdmin(); break;
     default: break;
   }
+  fitGiants($(`[data-view-id="${r.view}"]`) || document);
   if (inApp) return;
   // The viewer's back button returns to the page it was opened from.
   state.page = location.hash || '#home';
@@ -153,5 +159,5 @@ async function route() {
   else if (prev !== r.view || r.view !== 'concerts') window.scrollTo(0, 0);
 }
 
-window.seatsight = state;   // for the browser console
+window.atvents = state;   // for the browser console
 boot();

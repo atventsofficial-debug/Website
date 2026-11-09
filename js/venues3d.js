@@ -824,7 +824,7 @@ export function buildCombat(ctx, venue) {
   const band = compact ? { r: 20.4, y0: 4.2, y1: 5.0 } : { r: 29.35, y0: 9.1, y1: 9.9 };
   if (compact) scene.add(new THREE.Mesh(ribbon({ rx: 20.45, rz: 20.45, p: 0.55, y0: 0, y1: 7 }), wallMat));
   else scene.add(new THREE.Mesh(ribbon({ rx: 29.4, rz: 29.4, p: 0.55, y0: 7, y1: 10.2 }), wallMat));
-  const bandTex = bandTexture([brand.title, brand.hall, 'LIVE ON SEATSIGHT', 'MAIN CARD'], { fg: '#f4f1ea', accent: '#e23a3a' });
+  const bandTex = bandTexture([brand.title, brand.hall, 'LIVE ON ATVENTS', 'MAIN CARD'], { fg: '#f4f1ea', accent: '#e23a3a' });
   bandTex.repeat.set(compact ? 3 : 5, 1);
   scene.add(new THREE.Mesh(ribbon({ rx: band.r, rz: band.r, p: 0.55, y0: band.y0, y1: band.y1, uRepeat: 1 }), new THREE.MeshBasicMaterial({ map: bandTex, toneMapped: false, side: THREE.DoubleSide })));
   if (!compact) scene.add(new THREE.Mesh(ribbon({ rx: 29.4, rz: 29.4, p: 0.55, y0: 10.2, y1: 11.1 }), mats.glass()));

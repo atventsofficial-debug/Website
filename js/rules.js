@@ -119,10 +119,40 @@ export function checkClaim(d = {}) {
   if (!Number.isInteger(d.qty) || d.qty < 1 || d.qty > MAX_QTY) return no('qty', `Tickets in the order: 1 to ${MAX_QTY}.`);
   if (!isOrderRef(orderRef)) return no('orderRef', 'Check the order ID: the letters and numbers from your tiket.com booking, 6 to 24 of them.');
   if (!isEmail(mail)) return no('email', 'Please enter the email you used on tiket.com.');
-  if (d.consent !== true) return no('consent', 'Please confirm you bought through our link and accept the terms.');
+  const route = d.route === 'outside' ? 'outside' : 'affiliate';
+  // The seat on the e-ticket, from the venue's own seat list: it has to exist, and sit in the
+  // category the fan chose. Older clients send none.
+  let seat = '';
+  if (d.seat != null && d.seat !== '') {
+    seat = line(d.seat);
+    const i = v.seatById.get(seat);
+    if (i === undefined) return no('seat', 'Choose the seat on your e-ticket.');
+    if (v.seats[i].cat !== cat) return no('seat', 'That seat is not in the category you chose. Check your e-ticket.');
+  }
+  // Bought elsewhere: the Rp25.000 access fee comes first, so a claim carries its payment.
+  const payment = route === 'outside' ? line(d.payment) : '';
+  if (route === 'outside' && !PAYMENT_ID.test(payment)) return no('payment', 'Pay the Rp25.000 access fee first.');
+  if (d.consent !== true) return no('consent', route === 'outside' ? 'Please confirm these are your tickets and accept the terms.' : 'Please confirm you bought through our link and accept the terms.');
+  const proof = d.proof && typeof d.proof === 'object' ? checkProof(d.proof) : null;
+  if (d.requireProof && !proof) return no('proof', 'Add your e-ticket: a photo, a screenshot or the PDF from tiket.com.');
   const clicks = Array.isArray(d.clicks) ? [...new Set(d.clicks.filter(x => typeof x === 'string' && CLICK_ID.test(x)))].slice(0, 20) : [];
-  return { claim: { eventId, cat, qty: d.qty, orderRef, email: mail, clicks } };
+  return { claim: { eventId, cat, qty: d.qty, orderRef, email: mail, clicks, route, seat, payment, proof } };
 }
+
+// The e-ticket a fan sends with a claim, checked by a person before the 3D view opens.
+// The page sends its name, type and size, with the file itself as a data URL in the demo.
+export const PROOF_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+export const MAX_PROOF = 4 * 1024 * 1024;
+export function checkProof(f) {
+  const type = line(f.type), size = Number(f.size), name = line(f.name).slice(0, 120);
+  if (!PROOF_TYPES.includes(type) || !Number.isFinite(size) || size <= 0 || size > MAX_PROOF) return null;
+  const data = typeof f.data === 'string' && f.data.startsWith(`data:${type};base64,`) ? f.data : '';
+  return { name, type, size, data };
+}
+
+// The access fee for tickets bought outside our links, and the id of a paid order.
+export const ACCESS_FEE = 25000;
+export const PAYMENT_ID = /^PAY-[A-Z0-9]{6,24}$/;
 
 // The news list, or alerts for one concert.
 export function checkSubscription(d = {}) {

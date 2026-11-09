@@ -62,7 +62,7 @@ export function renderPartners() {
       <h2>Talk to us</h2>
       <p>We reply within one working day, in Indonesian or English.</p>
       <a class="contact-line" href="mailto:${esc(c.email)}">${icon('i-mail')}<span>${esc(c.email)}</span></a>
-      <p class="contact-line">${icon('i-people')}<span>WhatsApp ${esc(c.whatsapp)}</span></p>
+      ${c.whatsapp ? `<p class="contact-line">${icon('i-people')}<span>WhatsApp ${esc(c.whatsapp)}</span></p>` : ''}
     </article>
     <ol class="timeline">
       <li><b>Day 1</b><span>We reply and set up a 20-minute call.</span></li>

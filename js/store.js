@@ -1,9 +1,9 @@
 // What visitors send us: clicks to tiket.com, 3D pass claims, partner requests and sign-ups,
 // and the admin's view of them. LocalStore keeps it all in this browser (demo, static
 // hosting), with the same rules as the server. ApiStore talks to server/server.mjs.
-import { checkClick, checkClaim, checkSubscription, checkLead, checkConversions, passStatus, PASS_STATUSES, MAX_CLICKS, TAKEN } from './rules.js';
+import { checkClick, checkClaim, checkSubscription, checkLead, checkConversions, passStatus, PASS_STATUSES, MAX_CLICKS, TAKEN, ACCESS_FEE, PAYMENT_ID } from './rules.js';
 
-const DB = 'seatsight:demo-db';
+const DB = 'atvents:demo-db';
 const fail = (status, message) => Object.assign(new Error(message), { status });
 const newId = prefix => `${prefix}-${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
 
@@ -11,7 +11,7 @@ export class LocalStore {
   constructor() {
     let saved = {};
     try { saved = JSON.parse(localStorage.getItem(DB)) || {}; } catch { /* private mode: memory only */ }
-    this.db = { clicks: [], claims: [], conversions: {}, leads: [], subscribers: [], ...saved };
+    this.db = { clicks: [], claims: [], conversions: {}, leads: [], subscribers: [], payments: [], ...saved };
   }
   get mode() { return 'demo'; }
   save() { try { localStorage.setItem(DB, JSON.stringify(this.db)); } catch { /* memory only */ } }
@@ -38,17 +38,45 @@ export class LocalStore {
       this.db.claims = this.db.claims.filter(x => x !== p);
       p = null;
     }
-    if (p) p.clicks = [...new Set([...p.clicks, ...clicks])].slice(-MAX_CLICKS);
-    else this.db.claims.push(p = { id: newId('P'), ...c, clicks, status: 'checking', createdAt: new Date().toISOString() });
+    if (c.route === 'outside' && !this.db.payments.some(x => x.id === c.payment && x.status === 'paid')) throw fail(402, 'The Rp25.000 access fee has not been paid yet.');
+    if (p) {
+      p.clicks = [...new Set([...p.clicks, ...clicks])].slice(-MAX_CLICKS);
+      // A new e-ticket or seat goes back to the review queue.
+      if (c.seat) p.seat = c.seat;
+      if (c.proof) { p.proof = c.proof; if (p.status === 'checking') p.reviewed = false; }
+    } else this.db.claims.push(p = { id: newId('P'), ...c, clicks, status: 'checking', createdAt: new Date().toISOString() });
     if (p.status === 'checking') p.status = passStatus(p.clicks.map(s => this.db.conversions[s]));
     this.save();
-    return { id: p.id, token: '', status: p.status, eventId: p.eventId, cat: p.cat, qty: p.qty, createdAt: p.createdAt };
+    return { id: p.id, token: '', status: p.status, eventId: p.eventId, cat: p.cat, qty: p.qty, seat: p.seat || '', route: p.route || 'affiliate', createdAt: p.createdAt };
+  }
+
+  // The Rp25.000 access fee for tickets bought elsewhere. In the demo nothing is charged: the
+  // payment page is a stand-in for the payment provider's own (Midtrans, Xendit), and
+  // payDemo marks the order paid the way the provider's webhook would.
+  async pay({ eventId, email }) {
+    const id = `PAY-${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+    this.db.payments.push({ id, eventId, email, amount: ACCESS_FEE, status: 'pending', createdAt: new Date().toISOString() });
+    this.save();
+    return { id, amount: ACCESS_FEE, status: 'pending', demo: true };
+  }
+  async payDemo(id) {
+    const p = this.db.payments.find(x => x.id === id);
+    if (!p || !PAYMENT_ID.test(id)) throw fail(404, 'Payment not found');
+    p.status = 'paid';
+    p.paidAt = new Date().toISOString();
+    this.save();
+    return { id, status: 'paid' };
+  }
+  async paymentStatus(id) {
+    const p = this.db.payments.find(x => x.id === id);
+    if (!p) throw fail(404, 'Payment not found');
+    return { id, status: p.status, amount: p.amount };
   }
 
   async claimStatus(id) {
     const c = this.db.claims.find(x => x.id === id);
     if (!c) throw fail(404, 'Pass not found');
-    return { id: c.id, eventId: c.eventId, cat: c.cat, qty: c.qty, status: c.status, createdAt: c.createdAt };
+    return { id: c.id, eventId: c.eventId, cat: c.cat, qty: c.qty, seat: c.seat || '', route: c.route || 'affiliate', status: c.status, createdAt: c.createdAt };
   }
 
   async subscribe(d) {
@@ -118,7 +146,7 @@ export class LocalStore {
   async leads() { return this.db.leads.slice().reverse(); }
   async subscribers() { return this.db.subscribers.slice().reverse(); }
   async reset() {
-    this.db = { clicks: [], claims: [], conversions: {}, leads: [], subscribers: [] };
+    this.db = { clicks: [], claims: [], conversions: {}, leads: [], subscribers: [], payments: [] };
     try { localStorage.removeItem(DB); } catch { /* ignore */ }
   }
 }
@@ -126,13 +154,13 @@ export class LocalStore {
 export class ApiStore {
   constructor(base = '') {
     this.base = base;
-    try { this.adminToken = sessionStorage.getItem('seatsight:admin') || ''; } catch { this.adminToken = ''; }
+    try { this.adminToken = sessionStorage.getItem('atvents:admin') || ''; } catch { this.adminToken = ''; }
   }
   get mode() { return 'server'; }
 
   setAdminToken(t) {
     this.adminToken = t;
-    try { sessionStorage.setItem('seatsight:admin', t); } catch { /* memory only */ }
+    try { sessionStorage.setItem('atvents:admin', t); } catch { /* memory only */ }
   }
 
   async req(path, { method = 'GET', body, headers = {}, keepalive = false } = {}) {
@@ -154,6 +182,9 @@ export class ApiStore {
   click(c) { return this.req('api/clicks', { method: 'POST', body: c, keepalive: true }); }
   claim(c) { return this.req('api/claims', { method: 'POST', body: c }); }
   claimStatus(id, token) { return this.req(`api/claims/${encodeURIComponent(id)}`, { headers: { 'x-pass-token': token } }); }
+  // The server creates the order with the payment provider and returns its payment page.
+  pay(d) { return this.req('api/payments', { method: 'POST', body: d }); }
+  paymentStatus(id) { return this.req(`api/payments/${encodeURIComponent(id)}`); }
   subscribe(s) { return this.req('api/subscribe', { method: 'POST', body: s }); }
   partnerLead(l) { return this.req('api/partners', { method: 'POST', body: l }); }
 
