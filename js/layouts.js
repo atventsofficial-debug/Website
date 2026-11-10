@@ -528,6 +528,7 @@ function stadiumGbk() {
     // `eye` and `look` are where the picture was taken from and towards, `fov` its height in degrees.
     photos: [
       { id: 'upper-west', src: 'assets/views/gbk-upper-west.jpg', tier: 2, eye: [0, 21, 101], look: [0, 4, -10], fov: 72, reach: 48 },
+      { id: 'upper-north', src: 'assets/views/gbk-upper-north.jpg', tier: 2, eye: [132.68, 19.32, 3], look: [0, 6, 0], fov: 72, reach: 48 },
     ],
     seatTint,
     label: 'Gelora Bung Karno Main Stadium',
