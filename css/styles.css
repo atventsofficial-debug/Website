@@ -1680,9 +1680,3 @@ body { counter-reset: sec; }
   .footer { padding-top: var(--s6); }
   .footer-grid { padding-top: var(--s6); }
 }
-
-/* ===== Logo: Orbit 360 wordmark (Nov 2026) ===== */
-.logo-img { display: block; height: 30px; width: auto; }
-.footer-brand .logo-img { height: 34px; }
-@media (max-width: 960px) { .logo-img { height: 26px; } }
-.tkt-brand svg { width: 30px; height: 30px; }
