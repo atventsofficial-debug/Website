@@ -717,9 +717,15 @@ export class SeatScene {
 
   // ---------- photo views ----------
 
-  // The photo view that covers a seat, if its venue has one near enough on the same tier.
+  // The photo view that covers a seat: the nearest one taken on the same tier, if it is
+  // within its `reach` (metres along the ground).
   _photoFor(seat) {
-    return this.venue.photos?.find(p => p.tier === seat.tier && Math.hypot(seat.x - p.eye[0], seat.z - p.eye[2]) < p.reach) || null;
+    let best = null, at = Infinity;
+    for (const p of this.venue.photos || []) {
+      const d = Math.hypot(seat.x - p.eye[0], seat.z - p.eye[2]);
+      if (p.tier === seat.tier && d < p.reach && d < at) { best = p; at = d; }
+    }
+    return best;
   }
 
   // Hangs the picture in front of the seated camera, facing it, and fades it in over the
