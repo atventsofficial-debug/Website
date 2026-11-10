@@ -1665,3 +1665,18 @@ body { counter-reset: sec; }
 .hs-card .hs-price.hs-sale b { font-size: 18px; }
 .ev-sale { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 14px; color: rgba(244, 240, 238, 0.86); }
 .ev-sale svg { width: 16px; height: 16px; color: var(--coral-2); }
+
+/* ---------------------------------------------------------------- footer, tidied
+   The CTA band that gave the footer its top spacing is gone, so the footer sets its own:
+   a rule, room above the columns, and the wordmark whole at the bottom instead of cut off. */
+.footer { margin-top: var(--s8); padding: var(--s7) var(--gut) var(--s6); }
+.footer-grid { padding-top: var(--s7); border-top: 1px solid rgba(255, 255, 255, 0.1); }
+.footer .disclose { margin-top: var(--s7); max-width: var(--max); }
+.footer .switch { gap: 8px 14px; }
+.footer .switch a { gap: 0; }
+.footer .switch a svg { margin-left: 8px; }
+.footer .wordmark { margin: var(--s7) auto 0; max-width: var(--max); transform: none; line-height: 0.8; color: rgba(255, 255, 255, 0.06); }
+@media (max-width: 640px) {
+  .footer { padding-top: var(--s6); }
+  .footer-grid { padding-top: var(--s6); }
+}
