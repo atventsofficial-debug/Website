@@ -523,6 +523,12 @@ function stadiumGbk() {
     gbk: GBK_BOWL,
     mouths,
     ownTiers: true,
+    // Photo views: a photographic picture of the stadium from one point in the stands, shown
+    // in place of the 3D model from every seat of the same tier within `reach` metres of it.
+    // `eye` and `look` are where the picture was taken from and towards, `fov` its height in degrees.
+    photos: [
+      { id: 'upper-west', src: 'assets/views/gbk-upper-west.jpg', tier: 2, eye: [0, 21, 101], look: [0, 4, -10], fov: 72, reach: 48 },
+    ],
     seatTint,
     label: 'Gelora Bung Karno Main Stadium',
     event: { title: 'Football', venue: 'Gelora Bung Karno Main Stadium' },

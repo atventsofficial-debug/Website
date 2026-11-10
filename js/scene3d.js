@@ -245,6 +245,7 @@ export class SeatScene {
   }
 
   disposeScene() {
+    this.photoToken = null;
     if (!this.scene) return;
     this.scene.traverse(o => {
       if (o.isCSS2DObject) o.element.remove();
@@ -432,6 +433,7 @@ export class SeatScene {
     // The crowd, on the occupied seats.
     this.lite = n > 40000;
     this.near = null;
+    this.photo = this.photoToken = null;
     const g = crowdGeometries(this.lite);
     const takenIdx = [];
     for (let i = 0; i < n; i++) if (this.occupied.has(seats[i].id)) takenIdx.push(i);
@@ -713,6 +715,44 @@ export class SeatScene {
     n.meshes.forEach(x => { this.scene.remove(x); x.material.dispose(); });
   }
 
+  // ---------- photo views ----------
+
+  // The photo view that covers a seat, if its venue has one near enough on the same tier.
+  _photoFor(seat) {
+    return this.venue.photos?.find(p => p.tier === seat.tier && Math.hypot(seat.x - p.eye[0], seat.z - p.eye[2]) < p.reach) || null;
+  }
+
+  // Hangs the picture in front of the seated camera, facing it, and fades it in over the
+  // model. Looking round and zooming stay inside the picture (see frame()).
+  _showPhoto(view, eye, ang) {
+    this._hidePhoto();
+    if (!view) return;
+    const token = this.photoToken = {};
+    new THREE.TextureLoader().load(view.src, tex => {
+      if (this.photoToken !== token || !this.scene || this.mode !== 'seat') { tex.dispose(); return; }
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = 8;
+      const aspect = tex.image.width / tex.image.height, d = 40, h = 2 * d * Math.tan(THREE.MathUtils.degToRad(view.fov / 2));
+      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(h * aspect, h),
+        new THREE.MeshBasicMaterial({ map: tex, toneMapped: false, fog: false, depthTest: false, depthWrite: false, transparent: true, opacity: 0 }));
+      mesh.rotation.set(ang.pitch, ang.yaw, 0, 'YXZ');
+      mesh.position.copy(eye).add(new THREE.Vector3(0, 0, -d).applyEuler(mesh.rotation));
+      mesh.renderOrder = 999;
+      mesh.userData.noShadow = true;
+      this.scene.add(mesh);
+      this.photo = { mesh, halfV: THREE.MathUtils.degToRad(view.fov / 2), halfH: Math.atan(Math.tan(THREE.MathUtils.degToRad(view.fov / 2)) * aspect) };
+    });
+  }
+
+  _hidePhoto() {
+    this.photoToken = null;
+    const p = this.photo;
+    if (!p) return;
+    this.photo = null;
+    this.scene?.remove(p.mesh);
+    p.mesh.material.map.dispose(); p.mesh.material.dispose(); p.mesh.geometry.dispose();
+  }
+
   // ---------- picking ----------
 
   _bindPointer() {
@@ -816,6 +856,8 @@ export class SeatScene {
   flyToSeat(seat, { quick = false } = {}) {
     const i = this.venue.seatById.get(seat.id);
     if (i === undefined || !this.scene) return;
+    this._hidePhoto();
+    const view = this._photoFor(seat);
     this._clearNear();
     if (this.current >= 0) this._occupy(this.current, false);
     this.current = i;
@@ -841,7 +883,7 @@ export class SeatScene {
     const ctrl = start.clone().lerp(stand, 0.6).add(new THREE.Vector3(0, lift, 0));
     const startLook = start.clone().add(this.camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(Math.max(8, dist * 0.5)));
     const standAng = this._lookAngles(stand, chest);
-    const seatedAng = this._lookAngles(eye, this.focus);
+    const seatedAng = view ? this._lookAngles(new THREE.Vector3(...view.eye), new THREE.Vector3(...view.look)) : this._lookAngles(eye, this.focus);
     const fovStart = this.camera.fov;
 
     const flyDur = quick ? 1.0 : THREE.MathUtils.clamp(1.4 + dist / 50, 1.6, 3.0);
@@ -887,13 +929,15 @@ export class SeatScene {
         this.moodTarget = 1;
         this.refreshColors();
         this.cb.onMode?.('seat', seat);
-        this.cb.onArrive?.(seat, eye.distanceTo(this.focus));
+        this.cb.onArrive?.(seat, eye.distanceTo(this.focus), !!view);
+        this._showPhoto(view, eye, seatedAng);
       },
     };
   }
 
   backToOverview() {
     if (this.mode === 'overview' || !this.scene) return;
+    this._hidePhoto();
     const o = this.savedOverview || { pos: new THREE.Vector3(...this.venue.overview.pos), target: new THREE.Vector3(...this.venue.overview.target) };
     const start = this.camera.position.clone();
     const startAng = this._currentAngles();
@@ -1009,6 +1053,7 @@ export class SeatScene {
     const haze = new Set();
     this.scene.traverse(o => { if (o.material?.userData?.beam) haze.add(o.material.uniforms.uOpacity); });
     for (const r of this.rig) if (haze.has(r.target)) r.live = (r.full ??= r.live) * beams;
+    this._hidePhoto();
     this._clearNear();
     if (this.current >= 0) this._occupy(this.current, false);
     this.current = i;
@@ -1105,6 +1150,16 @@ export class SeatScene {
       if (this.anim.t >= this.anim.dur) { const a = this.anim; this.anim = null; a.done(); }
     } else if (this.mode === 'seat') {
       const L = this.look;
+      if (this.photo) {
+        // Stay inside the picture: no wider than it, and no further round than its edges.
+        const P = this.photo, asp = this.camera.aspect || 1, rad = THREE.MathUtils.degToRad;
+        P.mesh.material.opacity = Math.min(1, P.mesh.material.opacity + dt * 1.6);
+        L.fov = Math.min(L.fov, THREE.MathUtils.radToDeg(2 * Math.min(P.halfV, Math.atan(Math.tan(P.halfH) / asp))) * 0.98);
+        const cv = rad(L.fov / 2), ch = Math.atan(Math.tan(cv) * asp);
+        const yawMax = Math.max(0, P.halfH - ch) * 0.9, pitchMax = Math.max(0, P.halfV - cv) * 0.9;
+        L.yaw = THREE.MathUtils.clamp(L.yaw, -yawMax, yawMax);
+        L.pitch = THREE.MathUtils.clamp(L.pitch, -pitchMax, pitchMax);
+      }
       L.cy += (L.yaw - L.cy) * Math.min(1, dt * 10);
       L.cp += (L.pitch - L.cp) * Math.min(1, dt * 10);
       // Breathing: a few millimetres of drift so the view feels like a person sitting. With
@@ -1120,7 +1175,7 @@ export class SeatScene {
     } else if (this.mode === 'overview') {
       this.controls.update();
     }
-    if (this.composer && this.level >= 1) {
+    if (this.composer && this.level >= 1 && !this.photo) {
       this.renderPass.scene = this.scene;
       this.renderPass.camera = this.camera;
       if (this.lensPass) this.lensPass.uniforms.uTime.value = time % 10;
