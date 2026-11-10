@@ -7,8 +7,9 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
-import { buildConcert, buildCinema, buildCombat, buildStadium, prepareVenue, preparePoster, posterArt, seatGeometry, crowdGeometries, mats } from './venues3d.js';
+import { buildConcert, buildCinema, buildCombat, buildStadium, prepareVenue, preparePoster, posterArt, seatGeometry, crowdGeometries, nearGeometries, mats } from './venues3d.js';
 
 const SEATED_EYE = 1.2;
 const STANDING_EYE = 1.72;
@@ -29,6 +30,22 @@ const MAP = {
 const STEP = { concrete: new THREE.Color('#9a9994'), dim: new THREE.Color('#6a6965'), plain: new THREE.Color('#ffffff'), shade: new THREE.Color('#3d3c39') };
 
 const TAG_POS = new THREE.Vector3();
+
+// The last touch of a camera: corners a little darker and a trace of grain. `uAmount` is 0
+// for venues that do not ask for it.
+const LensShader = {
+  uniforms: { tDiffuse: { value: null }, uAmount: { value: 0 }, uTime: { value: 0 } },
+  vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+  fragmentShader: `uniform sampler2D tDiffuse; uniform float uAmount, uTime; varying vec2 vUv;
+    float h(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233)) + uTime) * 43758.5453); }
+    void main(){
+      vec4 c = texture2D(tDiffuse, vUv);
+      vec2 d = vUv - 0.5;
+      c.rgb *= 1.0 - uAmount * 0.3 * smoothstep(0.3, 1.0, dot(d, d) * 2.0);
+      c.rgb += (h(gl_FragCoord.xy) - 0.5) * 0.035 * uAmount;
+      gl_FragColor = c;
+    }`,
+};
 
 const ease = t => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
 const easeOut = t => 1 - (1 - t) ** 3;
@@ -123,8 +140,8 @@ export class SeatScene {
 
   cutaway(obj) { this.cutaways.push(obj); obj.visible = this.moodValue > 0.5; }
 
-  setAtmosphere({ house, live, fogNear, fogFar, exposure = [1, 1], sky = false }) {
-    this.atmo = { house: new THREE.Color(house), live: new THREE.Color(live), fogNear, fogFar, exposure, sky };
+  setAtmosphere({ house, live, fogNear, fogFar, exposure = [1, 1], sky = false, bloom = 0.5, lens = 0 }) {
+    this.atmo = { house: new THREE.Color(house), live: new THREE.Color(live), fogNear, fogFar, exposure, sky, bloom, lens };
     if (!sky) this.scene.background = new THREE.Color(house);
     if (fogNear) this.scene.fog = new THREE.Fog(house, fogNear[0], fogFar[0]);
   }
@@ -332,7 +349,7 @@ export class SeatScene {
         this.scene.traverse(o => { if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => { m.needsUpdate = true; }); });
       }
     }
-    const heavyCast = lv === 2;
+    const heavyCast = lv === 2 && (this.venue?.seats.length || 0) < 40000;
     [this.seatMesh, this.bodyMesh, this.standMesh, this.headMesh, this.hairMesh].forEach(m => { if (m) m.castShadow = heavyCast; });
     if (lv >= 1 && !this.composer) {
       this.composer = new EffectComposer(this.renderer);
@@ -341,6 +358,8 @@ export class SeatScene {
       this.composer.addPass(this.renderPass);
       this.composer.addPass(this.bloom);
       this.composer.addPass(new OutputPass());
+      this.lensPass = new ShaderPass(LensShader);
+      this.composer.addPass(this.lensPass);
     }
     if (defer) { this.pendingRatio = ratio; return; }
     this.renderer.setPixelRatio(ratio);
@@ -391,7 +410,7 @@ export class SeatScene {
     // Stepped tiers under raked rows. With zone colours the treads take them too (white
     // material, tinted per instance), so blocks read as on the seller's plan.
     this.steps = null;
-    if (raised.length) {
+    if (raised.length && !venue.ownTiers) {
       const stepMat = venue.kind === 'cinema'
         ? new THREE.MeshStandardMaterial({ color: '#3a171d', roughness: 1 })
         : mats.concrete();
@@ -411,7 +430,9 @@ export class SeatScene {
     }
 
     // The crowd, on the occupied seats.
-    const g = crowdGeometries();
+    this.lite = n > 40000;
+    this.near = null;
+    const g = crowdGeometries(this.lite);
     const takenIdx = [];
     for (let i = 0; i < n; i++) if (this.occupied.has(seats[i].id)) takenIdx.push(i);
     const cnt = takenIdx.length;
@@ -477,7 +498,7 @@ export class SeatScene {
     this.realBase = new Float32Array(n * 3);
     const base = new THREE.Color(venue.seatColor);
     for (let i = 0; i < n; i++) {
-      c.copy(base).offsetHSL(0, 0, (rnd() - 0.5) * 0.03);
+      c.copy(venue.seatTint ? base.set(venue.seatTint(seats[i])) : base).offsetHSL(0, 0, (rnd() - 0.5) * 0.03);
       this.realBase.set([c.r, c.g, c.b], i * 3);
     }
     this.refreshColors();
@@ -523,6 +544,8 @@ export class SeatScene {
     const c = new THREE.Color();
     for (let i = 0; i < this.venue.seats.length; i++) this.seatMesh.setColorAt(i, this.seatColor(i, c));
     this.seatMesh.instanceColor.needsUpdate = true;
+    this.near?.seatAt.forEach((k, i) => this.near.seat.setColorAt(k, this.seatColor(i, c)));
+    if (this.near?.seat.instanceColor) this.near.seat.instanceColor.needsUpdate = true;
     if (this.steps) {
       const seats = this.venue.seats;
       this.stepSeat.forEach((i, k) => {
@@ -538,6 +561,8 @@ export class SeatScene {
     if (i < 0 || !this.seatMesh) return;
     this.seatMesh.setColorAt(i, this.seatColor(i, new THREE.Color()));
     this.seatMesh.instanceColor.needsUpdate = true;
+    const k = this.near?.seatAt.get(i);
+    if (k !== undefined) { this.near.seat.setColorAt(k, this.seatColor(i, new THREE.Color())); this.near.seat.instanceColor.needsUpdate = true; }
   }
 
   setMine(ids) { this.mine = new Set(ids); this.refreshColors(); }
@@ -546,6 +571,7 @@ export class SeatScene {
   setCrowd(on) {
     this.showCrowd = on;
     this.crowd?.forEach(m => { m.visible = on && (!m.userData.liveOnly || this.moodValue > 0.5); });
+    this.near?.meshes.forEach(m => { if (m.userData.person) m.visible = on; });
   }
 
   setLabels(on) {
@@ -615,6 +641,76 @@ export class SeatScene {
       meshes.forEach((mesh, j) => mesh.setMatrixAt(k, this._savedCrowd.m[j]));
     } else return;
     meshes.forEach(mesh => { mesh.instanceMatrix.needsUpdate = true; });
+  }
+
+  // ---------- near detail ----------
+
+  // In a bowl too big to draw every person and seat in full, the ones within a few rows of
+  // seat `i` are: their plain stand-ins are hidden and detailed ones put in their place.
+  _buildNear(i) {
+    this._clearNear();
+    if (!this.lite || i < 0) return;
+    const seats = this.venue.seats, me = seats[i], R = 11, zero = new THREE.Matrix4().makeScale(0, 0, 0);
+    const idx = [];
+    for (let j = 0; j < seats.length; j++) {
+      const s = seats[j], dy = s.y - me.y;
+      if (Math.abs(dy) < 7 && (s.x - me.x) ** 2 + (s.z - me.z) ** 2 + dy * dy < R * R) idx.push(j);
+    }
+    const g = this.nearGeo ||= nearGeometries();
+    const mesh = (geo, mat, n) => { const m = new THREE.InstancedMesh(geo, mat, n); m.castShadow = m.receiveShadow = true; this.scene.add(m); return m; };
+    const env = this.seatMesh.material.envMapIntensity;
+    const seat = mesh(g.seat, new THREE.MeshStandardMaterial({ roughness: 0.42, envMapIntensity: env }), idx.length);
+    const frame = mesh(g.frame, new THREE.MeshStandardMaterial({ color: '#4b4f55', metalness: 0.6, roughness: 0.45, envMapIntensity: env }), idx.length);
+    const seatAt = new Map(), saved = [], m = new THREE.Matrix4(), c = new THREE.Color();
+    idx.forEach((j, k) => {
+      this.seatMesh.getMatrixAt(j, m);
+      seat.setMatrixAt(k, m); frame.setMatrixAt(k, m);
+      seat.setColorAt(k, this.seatColor(j, c));
+      saved.push([j, m.clone()]);
+      this.seatMesh.setMatrixAt(j, zero);
+      seatAt.set(j, k);
+    });
+    this.seatMesh.instanceMatrix.needsUpdate = true;
+    const people = idx.filter(j => j !== i && this.crowdSlot.has(j));
+    const cloth = () => new THREE.MeshStandardMaterial({ roughness: 0.9, envMapIntensity: env });
+    const parts = {
+      shirt: mesh(g.shirt, cloth(), people.length), skin: mesh(g.skin, new THREE.MeshStandardMaterial({ roughness: 0.62, envMapIntensity: env }), people.length),
+      legs: mesh(g.legs, cloth(), people.length), hair: mesh(g.hair, new THREE.MeshStandardMaterial({ roughness: 0.85, envMapIntensity: env }), people.length),
+      hijab: mesh(g.hijab, cloth(), people.length),
+    };
+    const trousers = ['#1d2433', '#22252b', '#2f3b55', '#3a3632', '#15161a', '#4a4f5a'], scarves = ['#f1efe9', '#1b1c20', '#c8102e', '#d8c7b0', '#f1efe9', '#7a1f2b', '#3d4a5c'];
+    const crowdSaved = [];
+    people.forEach((j, k) => {
+      const slot = this.crowdSlot.get(j), covered = (slot * 2654435761 >>> 0) % 100 < 22;
+      this.bodyMesh.getMatrixAt(slot, m);
+      crowdSaved.push([slot, m.clone()]);
+      for (const p of Object.values(parts)) p.setMatrixAt(k, m);
+      parts[covered ? 'hair' : 'hijab'].setMatrixAt(k, zero);
+      this.bodyMesh.getColorAt(slot, c); parts.shirt.setColorAt(k, c);
+      this.headMesh.getColorAt(slot, c); parts.skin.setColorAt(k, c);
+      this.hairMesh.getColorAt(slot, c); parts.hair.setColorAt(k, c);
+      parts.legs.setColorAt(k, c.set(trousers[slot % trousers.length]));
+      parts.hijab.setColorAt(k, c.set(scarves[slot % scarves.length]));
+      for (const far of [this.bodyMesh, this.headMesh, this.hairMesh]) far.setMatrixAt(slot, zero);
+    });
+    for (const far of [this.bodyMesh, this.headMesh, this.hairMesh]) far.instanceMatrix.needsUpdate = true;
+    const meshes = [seat, frame, ...Object.values(parts)];
+    meshes.forEach(x => { x.visible = x === seat || x === frame || this.showCrowd; x.userData.person = x !== seat && x !== frame; });
+    this.near = { seat, seatAt, saved, crowdSaved, meshes };
+  }
+
+  _clearNear() {
+    const n = this.near;
+    if (!n) return;
+    this.near = null;
+    if (!this.scene) return;
+    n.saved.forEach(([j, m]) => this.seatMesh.setMatrixAt(j, m));
+    this.seatMesh.instanceMatrix.needsUpdate = true;
+    for (const far of [this.bodyMesh, this.headMesh, this.hairMesh]) {
+      n.crowdSaved.forEach(([slot, m]) => far.setMatrixAt(slot, m));
+      far.instanceMatrix.needsUpdate = true;
+    }
+    n.meshes.forEach(x => { this.scene.remove(x); x.material.dispose(); });
   }
 
   // ---------- picking ----------
@@ -720,9 +816,11 @@ export class SeatScene {
   flyToSeat(seat, { quick = false } = {}) {
     const i = this.venue.seatById.get(seat.id);
     if (i === undefined || !this.scene) return;
+    this._clearNear();
     if (this.current >= 0) this._occupy(this.current, false);
     this.current = i;
     this._occupy(i, true);
+    this._buildNear(i);
     this.setHover(-1);
     if (this.mode === 'overview') this.savedOverview = { pos: this.camera.position.clone(), target: this.controls.target.clone() };
     this.controls.enabled = false;
@@ -820,6 +918,7 @@ export class SeatScene {
         this.camera.updateProjectionMatrix();
       },
       done: () => {
+        this._clearNear();
         if (this.current >= 0) this._occupy(this.current, false);
         this.current = -1;
         this.controls.target.copy(o.target);
@@ -910,9 +1009,11 @@ export class SeatScene {
     const haze = new Set();
     this.scene.traverse(o => { if (o.material?.userData?.beam) haze.add(o.material.uniforms.uOpacity); });
     for (const r of this.rig) if (haze.has(r.target)) r.live = (r.full ??= r.live) * beams;
+    this._clearNear();
     if (this.current >= 0) this._occupy(this.current, false);
     this.current = i;
     this._occupy(i, true);
+    this._buildNear(i);
     const target = new THREE.Vector3(...look);
     const eye = new THREE.Vector3(seat.x, seat.y + (seat.standing ? SEATED_EYE + STAND_LIFT : SEATED_EYE) + lift, seat.z);
     const rise = eye.clone().sub(target).setY(0).normalize().multiplyScalar(0.3).setY(1).normalize();
@@ -977,7 +1078,8 @@ export class SeatScene {
       this.renderer.toneMappingExposure = a.exposure[0] + (a.exposure[1] - a.exposure[0]) * m;
     }
     for (const c of this.cutaways) c.visible = m > 0.35;
-    if (this.bloom) this.bloom.strength = 0.25 + 0.5 * m;
+    if (this.bloom) this.bloom.strength = 0.25 + (a?.bloom ?? 0.5) * m;
+    if (this.lensPass) this.lensPass.uniforms.uAmount.value = (a?.lens || 0) * m;
   }
 
   frame(now) {
@@ -1021,6 +1123,7 @@ export class SeatScene {
     if (this.composer && this.level >= 1) {
       this.renderPass.scene = this.scene;
       this.renderPass.camera = this.camera;
+      if (this.lensPass) this.lensPass.uniforms.uTime.value = time % 10;
       this.composer.render(dt);
     } else {
       this.renderer.render(this.scene, this.camera);

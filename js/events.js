@@ -193,6 +193,7 @@ const DEMO_PLACE = {
   stadium: { name: 'Gelora Samudra Stadium', city: 'Jakarta', address: 'Demo venue', capacity: '' },
   hall: { name: 'Satria Hall', city: 'Surabaya', address: 'Demo venue', capacity: '7,632 seats' },
   cinema: { name: 'Cakrawala Cinema', city: 'Bandung', address: 'Demo venue', capacity: '270 seats per studio' },
+  gbk: { name: 'Gelora Bung Karno Main Stadium', city: 'Jakarta', address: 'Jl. Pintu Satu Senayan, Jakarta Pusat. Modelled from photos of the stadium', capacity: '' },
   spurs: { name: 'Tottenham Hotspur Stadium', city: 'London', address: 'Modelled from a seating plan of the ground', capacity: '62,850 seats' },
 };
 const DEMO = (venue, name, blurb, place, branding = {}) => ({
@@ -209,6 +210,8 @@ export const DEMOS = [
     { home: 'HOME FC', away: 'AWAY FC' }),
   DEMO('stadium-tottenham', 'Real venue: Tottenham', 'Built from Tottenham Hotspur Stadium’s seating plan: numbered blocks, three tiers and the single-tier South Stand.', DEMO_PLACE.spurs,
     { home: 'HOME', away: 'AWAY' }),
+  DEMO('stadium-gbk', 'Real venue: Gelora Bung Karno', 'The main stadium at Senayan on a match day: both tiers, the running track and the ring roof.', DEMO_PLACE.gbk,
+    { home: 'INDONESIA', away: 'AWAY' }),
   DEMO('combat', 'Arena, centre stage', 'An octagon or ring in the middle, ringside rows on four sides and a scoreboard above.', DEMO_PLACE.hall,
     { mark: 'FIGHT NIGHT', sub: 'LIVE IN 3D', hall: 'SATRIA HALL', title: 'FIGHT NIGHT · SURABAYA' }),
   DEMO('combat-studio', 'Studio hall', 'About 1,000 seats: cageside rows and one riser all round, under a low roof.', { ...DEMO_PLACE.hall, name: 'Satria Hall Studio', capacity: 'About 1,000 seats' },
