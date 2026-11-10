@@ -1,15 +1,16 @@
 // Fan pages: home, the concert list, a concert, unlocking a 3D pass, My 3D passes and the
 // questions. The partner page lives in partners.js, the admin in admin.js and the 3D
 // viewer in viewer.js.
-import { formatRpShort } from './layouts.js';
-import { EVENTS, PLACES, CITY, LISTED, getEvent, eventMeta, placeOf, timeKnown, minPrice, soldOut, allSoldOut, isConcert, demoFor } from './events.js';
+import { formatRpShort, crowdSeats } from './layouts.js';
+import { loadScene3d } from './viewer.js';
+import { EVENTS, PLACES, CITY, LISTED, getEvent, eventMeta, placeOf, timeKnown, minPrice, soldOut, allSoldOut, isConcert, demoFor, onTiket, sellerOf, saleInfo } from './events.js';
 import { coverImg, eventImg, posterFig } from './media.js';
 import { picker } from './picker.js';
 import { whenOf, startOf, venueClock, gapText } from './when.js';
-import { buyUrl, buyAttrs, buyLink, passes, activePass, claim, refresh, passLink, clicksFor, STATUS } from './passes.js';
+import { justBought, buyUrl, buyAttrs, buyLink, passes, activePass, claim, refresh, passLink, clicksFor, STATUS } from './passes.js';
 import { checkClaim, PROOF_TYPES, MAX_PROOF } from './rules.js';
 import { FAQ_FANS, faqHtml } from './content.js';
-import { $, $$, esc, icon, state, entranceTicket, share, copyText, bindSubscribe, toast } from './ui.js';
+import { $, $$, esc, icon, state, QUALITY, entranceTicket, share, copyText, bindSubscribe, toast } from './ui.js';
 
 const DAY = 864e5;
 const cityCode = e => CITY[placeOf(e).city]?.code || '';
@@ -83,11 +84,14 @@ function eventTags(e, { run = false } = {}) {
   return tags.join('');
 }
 
+// Where the price is printed: the seller's name with it.
+const priceTag = (e, from) => (from == null ? `<small>Tickets on</small><b>${esc(sellerOf(e))}</b>` : `<small>From, on ${esc(sellerOf(e))}</small><b>${formatRpShort(from)}</b>`);
+
 // The whole card opens the concert page (a stretched link). `run` folds the other dates of
 // the same show into a tag, for lists that show each show once.
 function eventCard(e, opts = {}) {
   const v = placeOf(e), dm = whenOf(e).block, from = minPrice(e.id);
-  const price = from == null ? '<small>Tickets on</small><b>tiket.com</b>' : `<small>From, on tiket.com</small><b>${formatRpShort(from)}</b>`;
+  const price = priceTag(e, from);
   return `<article class="ev">
     <div class="ev-cover">
       <div class="ev-pic">${eventImg(e, `${v.name}, ${v.city}`)}</div>
@@ -99,6 +103,25 @@ function eventCard(e, opts = {}) {
       <h3><a class="ev-link" href="#event-${e.id}">${esc(e.title)}</a></h3>
       <p class="ev-sub">${esc(e.subtitle)} · ${esc(v.name)}</p>
       <div class="ev-foot"><div class="mini-tk"><span>${price}</span><em>${allSoldOut(e) ? 'Sold out' : 'Tickets'}</em></div></div>
+    </div></article>`;
+}
+
+// The home page's cards are concert passes: the poster behind, the name in tall caps, a
+// perforation, and the price where a ticket prints it. The whole pass opens the concert page.
+function ticketCard(e, opts = {}) {
+  const v = placeOf(e), dm = whenOf(e).block, from = minPrice(e.id);
+  return `<article class="ev tkt">
+    <div class="tkt-bg">${eventImg(e, `${v.name}, ${v.city}`)}</div>
+    <div class="tkt-in">
+      <div class="tkt-top"><span class="tkt-brand">${icon('i-mark')}<span>ATVENTS<small>3D SEAT VIEW</small></span></span><span class="ev-tags">${eventTags(e, opts)}</span></div>
+      <h3 class="tkt-title"><a class="ev-link" href="#event-${e.id}">${esc(e.title)}</a></h3>
+      <p class="tkt-sub">${esc(e.subtitle)}</p>
+      <p class="tkt-line"><span>${dm.day} ${dm.mon}</span><i>|</i><span>${keep(esc(v.city))}</span><i>|</i><span>Your seat in 3D</span></p>
+      <div class="tkt-cut" aria-hidden="true"></div>
+      <div class="tkt-foot">
+        <div class="tkt-code"><small>${allSoldOut(e) ? 'Sold out' : 'Concert pass'}</small><i class="barcode"></i></div>
+        <p class="tkt-price">${priceTag(e, from)}</p>
+      </div>
     </div></article>`;
 }
 
@@ -129,7 +152,7 @@ function catTicket(e, c, { dark = false, meta } = {}) {
   return entranceTicket({
     ev: e.title, sub: c.name, code: code(c), price: c.price, href: esc(buyUrl(e)), attrs: buyAttrs(e),
     buy: gone ? 'Sold out' : 'Buy', dark, out: gone, date: whenOf(e).pill, city: cityCode(e), na: c.note,
-    meta: meta ?? (gone ? '<span class="tk-hot">Sold out, as listed. tiket.com may release more.</span>' : '<span>Opens tiket.com · 3D seat view included</span>'),
+    meta: meta ?? (gone ? `<span class="tk-hot">Sold out, as listed. ${esc(sellerOf(e))} may release more.</span>` : onTiket(e) ? '<span>Opens tiket.com · 3D seat view included</span>' : `<span>Opens ${esc(sellerOf(e))} · not sold on tiket.com</span>`),
   });
 }
 
@@ -143,8 +166,8 @@ export function renderHome() {
     bindSubscribe($('#news-form'), { kind: 'newsletter', done: 'You’re on the list. The next big concert lands in your inbox.' }, $('#news-msg'));
   }
   const list = oncePerShow(onSale());
-  $('#home-events').innerHTML = list.map(e => eventCard(e, { run: true })).join('') + `
-    <a class="ev ev-alerts" href="#news-form">
+  $('#home-events').innerHTML = list.map(e => ticketCard(e, { run: true })).join('') + `
+    <a class="ev ev-alerts tkt-alerts" href="#news-form">
       <span class="feat-ic">${icon('i-bell')}</span>
       <h3>More concerts coming</h3>
       <p>Get the date, the prices and the 3D venue the day a big show goes on sale.</p>
@@ -183,13 +206,43 @@ export function renderConcerts() {
   const match = e => !q || [e.title, e.subtitle, e.host, placeOf(e).name, placeOf(e).city].join(' ').toLowerCase().includes(q);
   const all = onSale();
   const list = all.filter(match).sort(listQuery.sort === 'price' ? (a, b) => (minPrice(a.id) ?? Infinity) - (minPrice(b.id) ?? Infinity) || byDate(a, b) : byDate);
-  $('#concerts-count').textContent = `${plural(all.length, 'concert')} on sale on tiket.com, as listed in ${LISTED}. Prices as announced; tiket.com has the live price.`;
-  $('#concerts-grid').innerHTML = list.length ? list.map(e => eventCard(e)).join('')
+  $('#concerts-count').textContent = `${plural(all.length, 'concert')} on sale, as listed in ${LISTED}. Prices as announced; tiket.com has the live price.`;
+  $('#concerts-grid').innerHTML = list.length ? list.map(e => ticketCard(e)).join('')
     : `<div class="empty-state"><h3>Nothing matches.</h3><p>${q ? `No concert matches “${esc(listQuery.q.trim())}”.` : 'No concerts on sale right now.'} New shows are added as they go on sale: get the concert alerts on the home page to hear first.</p>${q ? '<button class="btn btn-line" type="button" id="concerts-clear">Clear the search</button>' : ''}</div>`;
   $('#concerts-clear')?.addEventListener('click', () => { listQuery.q = ''; $('#concerts-q').value = ''; renderConcerts(); });
 }
 
 // ---------------------------------------------------------------- concert page
+
+// The concert page hero: the whole venue in 3D from above, the show's poster on the stage
+// screens, turning slowly. The cover image stays behind it until the venue is built, and for
+// visitors saving data. One scene at a time; leaving the page or opening another drops it.
+const evHero = { scene: null, id: '' };
+export function stopEventHero() {
+  evHero.scene?.dispose();
+  evHero.scene = null;
+  evHero.id = '';
+}
+async function startEventHero(id) {
+  stopEventHero();
+  if (navigator.connection?.saveData) return;
+  evHero.id = id;
+  let SeatScene;
+  try { ({ SeatScene } = await loadScene3d()); } catch { return; }
+  const box = $('#ev-hero-3d');
+  if (evHero.id !== id || !box) return;
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const scene = evHero.scene = new SeatScene(box, { interactive: false, labels: false, quality: QUALITY, maxLevel: 1, fps: 30, drift: still ? 0 : 0.04 });
+  const venue = getEvent(id);
+  const ok = await scene.load(venue, crowdSeats(venue));
+  if (!ok || evHero.scene !== scene) return;
+  box.classList.add('is-on');
+  $('#ev-hero')?.classList.add('has-3d');
+  if (!still) {
+    const turn = () => { if (evHero.scene === scene) { scene.orbit(24, 14); setTimeout(turn, 14500); } };
+    setTimeout(turn, 400);
+  }
+}
 
 export function renderEvent(id) {
   const e = eventMeta(id), venue = getEvent(id), v = placeOf(e), w = whenOf(e), dm = w.block;
@@ -201,6 +254,7 @@ export function renderEvent(id) {
   $('#ev-hero').innerHTML = `
     <div class="hero-bg">
       ${eventImg(e, `${v.name}, ${v.city}`, { eager: true })}
+      <div class="hero-canvas ev-hero-3d" id="ev-hero-3d" role="img" aria-label="3D view of ${esc(v.name)} from above, with the stage for ${esc(e.title)}"></div>
       <i class="hero-shade" aria-hidden="true"></i>
     </div>
     <div class="hero-in">
@@ -213,8 +267,10 @@ export function renderEvent(id) {
           <a class="back-link" href="#concerts">${icon('i-back')}All concerts</a>
           <div class="tags"><span class="tag tag-coral">Concert</span><span class="tag tag-white">${dm.dow} ${dm.day} ${dm.mon}</span>${allSoldOut(e) ? '<span class="tag tag-dark">Sold out</span>' : ''}${pass ? `<span class="tag tag-line">${icon('i-eye')}3D pass on this device</span>` : ''}</div>
           <p class="ev-blurb">${esc(e.blurb)}</p>
+          ${live && saleInfo(e) ? `<p class="ev-sale">${icon('i-cal')}<span>${esc(saleInfo(e).line)}</span></p>` : ''}
           ${others.length ? `<p class="ev-dates">Also on ${others.map(x => `<a class="pill" href="#event-${x.id}">${esc(whenOf(x).block.dow)} ${whenOf(x).block.day} ${whenOf(x).block.mon}${allSoldOut(x) ? ' <span>sold out</span>' : ''}</a>`).join('')}</p>` : ''}
-          ${live ? `<p class="ev-official">${icon('i-link')}<span>Sold on tiket.com. Buy with our button and the 3D tour to your seat comes free once we have checked your e-ticket. It is an <a href="#disclosure">affiliate link</a>: the price is the same.</span></p>`
+          ${live && !onTiket(e) ? `<p class="ev-official">${icon('i-link')}<span>Sold on ${esc(sellerOf(e))}, not on tiket.com. The button opens ${esc(sellerOf(e))} directly; it is not an affiliate link. Bought a ticket there? Unlock the 3D view of your seat for Rp25.000.</span></p>`
+            : live ? `<p class="ev-official">${icon('i-link')}<span>Sold on tiket.com. Buy with our button and the 3D tour to your seat comes free once we have checked your e-ticket. It is an <a href="#disclosure">affiliate link</a>: the price is the same.</span></p>`
             : '<p class="ev-official">This concert has taken place. Its 3D venue stays open to look round.</p>'}
           <div class="row-btns">${live ? buyLink(e, `Buy on tiket.com ${out}`) : ''}${pass?.status === 'confirmed' ? `<a class="btn btn-line" href="#tour-${esc(pass.id)}">Start my seat tour</a>` : `<a class="btn btn-line" href="#seats-${id}">Look round in 3D</a>`}</div>
         </div>
@@ -248,13 +304,13 @@ export function renderEvent(id) {
   $('#ev-bar').innerHTML = `<div class="ev-bar-in">
       <span class="ev-date"><b>${dm.day}</b><small>${dm.mon}</small></span>
       <div class="ev-bar-t"><b>${esc(e.title)}</b><span>${esc(e.subtitle)} · ${esc(v.name)}${timeKnown(e) ? ` · ${esc(w.time)}` : ''}</span></div>
-      <span class="ev-from">${from == null ? '<small>Tickets on</small><b>tiket.com</b>' : `<small>From</small><b>${formatRpShort(from)}</b>`}</span>
+      <span class="ev-from">${from == null ? `<small>Tickets on</small><b>${esc(sellerOf(e))}</b>` : `<small>From</small><b>${formatRpShort(from)}</b>`}</span>
       ${live ? buyLink(e, `Buy on tiket.com ${out}`) : `<a class="btn btn-line" href="#seats-${id}">Look round in 3D</a>`}
     </div>`;
 
   render3dPanel(e, venue);
 
-  $('#ev-tickets-note').textContent = `${e.about.find(p => p.startsWith('Prices as announced')) || 'Prices as announced by the promoter.'} Each ticket opens the concert on tiket.com.`;
+  $('#ev-tickets-note').textContent = `${e.about.find(p => p.startsWith('Prices as announced')) || 'Prices as announced by the promoter.'} Each ticket opens the concert on ${sellerOf(e)}.`;
   $('#ev-cats').innerHTML = venue.categories.map((c, i) => catTicket(e, c, { dark: i === 0, meta: live ? undefined : '<span>This concert has taken place.</span>' })).join('');
 
   const gap = gapText(e);
@@ -281,7 +337,7 @@ export function renderEvent(id) {
 
   const more = [...others, ...oncePerShow(onSale().filter(x => x.title !== e.title))].slice(0, 4);
   $('#ev-more-sec').hidden = !more.length;
-  $('#ev-more').innerHTML = more.map(x => eventCard(x, { run: x.title !== e.title })).join('');
+  $('#ev-more').innerHTML = more.map(x => ticketCard(x, { run: x.title !== e.title })).join('');
 }
 
 // "Your seat, in 3D": the plan in category colours, and what this device can do with it.
@@ -297,6 +353,7 @@ function render3dPanel(e, venue) {
         <li><b>3</b><span>Send your seat and e-ticket. Once checked, the tour takes you to the view from your seat.</span></li>
       </ol>
       <div class="row-btns"><a class="btn btn-coral" href="#seats-${id}">Look round in 3D ${icon('i-arrow')}</a><a class="btn btn-line" href="#unlock-${id}">${icon('i-lock')}Unlock my view</a></div>`;
+  startEventHero(id);
   $('#ev-3d').innerHTML = `
     <div class="ev3d">
       <a class="ev3d-map" href="#seats-${id}" aria-label="Open the 3D venue">${dotMap(venue, { byCat: true })}<span class="ev3d-go">Open in 3D ${icon('i-arrow')}</span></a>
@@ -327,15 +384,50 @@ export function renderUnlock(eventId) {
   $('#unlock-body').hidden = false;
   $('.route-switch').hidden = false;
   $('#unlock-error').hidden = true;
-  const list = onSale();
-  if (isConcert(eventId) && !list.some(e => e.id === eventId)) list.unshift(eventMeta(eventId));
-  const clicked = list.find(e => clicksFor(e.id).length);
-  const pick = isConcert(eventId) ? eventId : (clicked || featured()).id;
-  form.eventId.innerHTML = list.map(e => `<option value="${e.id}">${esc(e.title)} · ${esc(whenOf(e).date)}</option>`).join('');
-  form.eventId.value = pick;
+  const all = onSale();
+  if (isConcert(eventId) && !all.some(e => e.id === eventId)) all.unshift(eventMeta(eventId));
+  unlock.all = all;
+  unlock.want = isConcert(eventId) ? eventId : '';
+  unlock.open = justBought.id && justBought.id === unlock.want ? unlock.want : (unlock.open && unlock.open === unlock.want ? unlock.open : '');
   // Someone who never clicked through to tiket.com on this device most likely bought elsewhere.
   setRoute(form, unlock.payment ? 'outside' : unlock.route);
+  const note = $('#unlock-note');
+  if (justBought.id && justBought.id === unlock.want) {
+    note.innerHTML = `${icon('i-out')}<span>tiket.com is open in a new tab. Once you have paid there and have your e-ticket, come back to this tab and fill in your seat.</span>`;
+    note.hidden = false;
+    justBought.id = '';
+  } else note.hidden = true;
+}
+
+// The concerts the form offers. Through our link: only concerts this device clicked through
+// to tiket.com. Bought elsewhere: every concert on sale.
+function fillEvents(form) {
+  const outside = unlock.route === 'outside';
+  const list = outside ? unlock.all : unlock.all.filter(e => clicksFor(e.id).length);
+  const gate = !outside && !(unlock.open && list.some(e => e.id === unlock.open));
+  $('#buy-gate').hidden = !gate;
+  if (gate) {
+    // Only concerts tiket.com sells: the free unlock is for tickets bought through our link.
+    const sold = unlock.all.filter(onTiket);
+    const want = unlock.want ? sold.find(e => e.id === unlock.want) : null;
+    const rows = want ? [want, ...sold.filter(e => e !== want)] : sold;
+    const other = unlock.all.find(e => e.id === unlock.want && !onTiket(e));
+    $('#buy-gate .gate-lede').innerHTML = other
+      ? `${esc(other.title)} is sold on ${esc(sellerOf(other))}, not on tiket.com. Bought there? Choose <b>I bought somewhere else</b> above to unlock your seat for Rp25.000. The concerts below are on tiket.com, where our button unlocks the 3D view free.`
+      : 'The form opens once you have bought through one of our <b>Buy on tiket.com</b> buttons. Pick your concert: tiket.com opens in a new tab, and this page moves straight to your seat form.';
+    $('#gate-list').innerHTML = rows.map(e => `<li>
+        <span class="gate-when"><b>${esc(whenOf(e).date)}</b><small>${esc(placeOf(e).name)}</small></span>
+        <span class="gate-ev"><b>${esc(e.title)}</b><small>${esc(e.subtitle || '')}</small></span>
+        <span class="gate-act">${upcoming(e) ? buyLink(e, `Buy on tiket.com ${icon('i-out')}`) : '<span class="tag">Sold out</span>'}</span>
+      </li>`).join('');
+    return false;
+  }
+  const prev = form.eventId.value;
+  const pick = unlock.open;
+  form.eventId.innerHTML = list.filter(e => e.id === unlock.open).map(e => `<option value="${e.id}">${esc(e.title)} · ${esc(whenOf(e).date)}</option>`).join('');
+  form.eventId.value = pick;
   fillCats(form);
+  return true;
 }
 
 function setRoute(form, route) {
@@ -343,12 +435,13 @@ function setRoute(form, route) {
   $$('.route-switch [data-route]').forEach(b => b.setAttribute('aria-selected', b.dataset.route === route));
   const outside = route === 'outside', paid = unlock.payment?.status === 'paid';
   $('#pay-box').hidden = !outside;
-  form.hidden = outside && !paid;
+  const open = unlock.all ? fillEvents(form) : true;
+  form.hidden = (outside && !paid) || !open;
   $('#consent-text').innerHTML = outside
     ? `These are my tickets for this concert, and I agree to the <a class="u" href="#terms">terms</a> and the <a class="u" href="#privacy">privacy policy</a>.`
     : `I bought these tickets on tiket.com through an <span data-brand>${esc(state.cfg.brand)}</span> link, and I agree to the <a class="u" href="#terms">terms</a> and the <a class="u" href="#privacy">privacy policy</a>.`;
   $('#unlock-foot').hidden = outside;
-  [...form.querySelectorAll('legend')].forEach((l, i) => { l.textContent = l.textContent.replace(/^\d+/, String(i + (outside ? 2 : 1)).padStart(2, '0')); });
+  [...form.querySelectorAll('legend')].forEach((l, i) => { const n = l.querySelector('i') || l; n.textContent = n.textContent.replace(/^\d+/, String(i + (outside ? 2 : 1)).padStart(2, '0')); });
 }
 
 // The seat pickers, from the venue's seats: section, then row, then seat number. A standing

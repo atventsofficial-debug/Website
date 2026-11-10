@@ -8,7 +8,7 @@
 <meta name="description" content="Big concerts in Jakarta, sold on tiket.com. Buy through Atvents and see the stage from your seat in 3D before the night.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,500..900&family=Inter+Tight:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,500..900&family=Inter+Tight:wght@400;500;600;700;800&family=Oswald:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
 <link rel="icon" href="assets/brand/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="css/styles.css">
 <script type="importmap">
@@ -103,7 +103,6 @@
         <button class="hs-arrow" type="button" data-hs-step="-1" aria-label="Previous concert"><svg><use href="#i-back"/></svg></button>
         <ol class="hs-tabs" id="hs-tabs" aria-label="Concerts"></ol>
         <button class="hs-arrow" type="button" data-hs-step="1" aria-label="Next concert"><svg><use href="#i-arrow"/></svg></button>
-        <button class="hs-play" type="button" id="hs-play" aria-label="Pause the slideshow"><svg><use href="#i-pause"/></svg></button>
       </div>
     </div>
   </section>
@@ -113,7 +112,7 @@
       <h2 class="big"><span class="fade">On sale</span> <span class="ol">now</span></h2>
       <div class="sec-side"><p>Big concerts in Jakarta, sold on tiket.com. Buy through us and the 3D view of your seat comes with it.</p><a class="pill-link" href="#concerts">All concerts <svg><use href="#i-arrow"/></svg></a></div>
     </header>
-    <div class="ev-grid" id="home-events"></div>
+    <div class="ev-grid tkt-grid" id="home-events"></div>
   </section>
 
   <section class="sec" id="how">
@@ -223,7 +222,7 @@
       <label class="search"><svg><use href="#i-search"/></svg><input id="concerts-q" type="search" placeholder="Artist or venue" aria-label="Search concerts"></label>
       <div class="dd-bar" id="concerts-sort"></div>
     </div>
-    <div class="ev-grid" id="concerts-grid"></div>
+    <div class="ev-grid tkt-grid" id="concerts-grid"></div>
   </section>
 </main>
 
@@ -259,7 +258,7 @@
 
   <section class="sec" id="ev-more-sec">
     <header class="sec-head sec-head-sm"><h2 class="big big-sm"><span class="fade">More</span> <span class="ol">concerts</span></h2></header>
-    <div class="ev-grid" id="ev-more"></div>
+    <div class="ev-grid tkt-grid" id="ev-more"></div>
   </section>
 </main>
 
@@ -288,16 +287,21 @@
           <div class="pay-sheet" id="pay-sheet" hidden></div>
           <p class="pay-done" id="pay-done" hidden></p>
         </section>
+        <section class="buy-gate" id="buy-gate" hidden>
+          <p class="gate-lede">The form opens once you have bought through one of our <b>Buy on tiket.com</b> buttons. Pick your concert: tiket.com opens in a new tab, and this page moves straight to your seat form.</p>
+          <ul class="gate-list" id="gate-list"></ul>
+        </section>
+        <p class="unlock-note" id="unlock-note" hidden></p>
         <form class="form panel-box" id="unlock-form" novalidate>
           <fieldset>
-            <legend>01 Your concert</legend>
+            <legend><i>01 /</i> Your concert</legend>
             <div class="f-row">
               <label>Concert<select name="eventId" required></select></label>
               <label>Category on your e-ticket<select name="cat" required></select></label>
             </div>
           </fieldset>
           <fieldset id="seat-set">
-            <legend>02 Your seat</legend>
+            <legend><i>02 /</i> Your seat</legend>
             <div class="f-row f-row-3">
               <label>Section<select name="sec" required></select></label>
               <label id="row-field">Row<select name="row" required></select></label>
@@ -306,14 +310,14 @@
             <p class="fine" id="seat-note">As printed on your e-ticket. Only seats that exist in this venue are listed.</p>
           </fieldset>
           <fieldset>
-            <legend>03 Your tiket.com booking</legend>
+            <legend><i>03 /</i> Your tiket.com booking</legend>
             <div class="f-row">
               <label>Order ID<input name="orderRef" required autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="30" placeholder="As on your booking"><small>In the confirmation email, and with your orders in the tiket.com app.</small></label>
               <label>Email<input name="email" type="email" required autocomplete="email" maxlength="160"><small>We write to you when your seat view opens.</small></label>
             </div>
           </fieldset>
           <fieldset>
-            <legend>04 Your e-ticket</legend>
+            <legend><i>04 /</i> Your e-ticket</legend>
             <label class="drop" id="proof-drop">
               <input name="proof" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" required>
               <span class="drop-empty"><svg><use href="#i-tix"/></svg><b>Add your e-ticket</b><small>A screenshot, a photo or the PDF from tiket.com, up to 4 MB. We check that it shows the concert, the category and the seat you entered.</small></span>
@@ -438,7 +442,7 @@
     <div class="host" id="partner-body">
       <form class="form panel-box" id="partner-form" novalidate>
         <fieldset>
-          <legend>01 About you</legend>
+          <legend><i>01 /</i> About you</legend>
           <div class="f-row">
             <label>Your name<input name="name" required autocomplete="name" maxlength="80"></label>
             <label>Company<input name="company" required autocomplete="organization" maxlength="120"></label>
@@ -450,7 +454,7 @@
           <label>Website or app<input name="website" type="url" inputmode="url" placeholder="https://" maxlength="200"></label>
         </fieldset>
         <fieldset>
-          <legend>02 What you do</legend>
+          <legend><i>02 /</i> What you do</legend>
           <div class="f-label" id="partner-kind-label">Your business</div>
           <div class="choice" role="radiogroup" aria-labelledby="partner-kind-label">
             <label><input type="radio" name="kind" value="ticketing" required><span>Ticketing platform</span></label>
@@ -644,22 +648,6 @@
 
 <!-- ======================================================= FOOTER -->
 <footer class="footer" id="footer">
-  <div class="footer-cta" data-for="fans">
-    <p class="fc-ask">Ready to see<br>the night first?</p>
-    <div class="fc-main">
-      <a class="fc-big" href="#concerts"><span>Find your</span><span>seat</span></a>
-      <a class="fc-link" href="#unlock">Already have a ticket? Unlock it <i class="fc-dot"><svg><use href="#i-arrow"/></svg></i></a>
-    </div>
-    <svg class="fc-badge" viewBox="0 0 120 120" aria-hidden="true"><defs><path id="fc-ring" d="M60,60 m-44,0 a44,44 0 1,1 88,0 a44,44 0 1,1 -88,0"/></defs><text><textPath href="#fc-ring">ATVENTS · 3D SEAT VIEW · JAKARTA · 2026 ·</textPath></text><use href="#i-mark" x="44" y="44" width="32" height="32"/></svg>
-  </div>
-  <div class="footer-cta" data-for="partners">
-    <p class="fc-ask">Ready to show<br>buyers their seat?</p>
-    <div class="fc-main">
-      <a class="fc-big" href="#partner-contact"><span>Let’s build</span><span>your venue</span></a>
-      <a class="fc-link" href="#partner-demo">Try a venue first <i class="fc-dot"><svg><use href="#i-arrow"/></svg></i></a>
-    </div>
-    <svg class="fc-badge" viewBox="0 0 120 120" aria-hidden="true"><text><textPath href="#fc-ring">ATVENTS · FOR PARTNERS · SEAT BY SEAT ·</textPath></text><use href="#i-mark" x="44" y="44" width="32" height="32"/></svg>
-  </div>
   <div class="footer-grid">
     <div class="footer-brand"><a class="logo" href="#home"><svg class="logo-mark"><use href="#i-mark"/></svg><span class="logo-word" data-brand>Atvents</span></a><p data-for="fans">Big concerts on tiket.com, and a 3D tour to your own seat once we have checked your e-ticket.</p><p data-for="partners">The 3D seat view for ticketing platforms, promoters, venues and travel companies.</p></div>
     <div><h4>Concerts</h4><a href="#concerts">All concerts</a><a href="#how">How it works</a><a href="#unlock">Unlock a 3D view</a><a href="#passes">My 3D passes</a><a href="#faq">Questions</a></div>

@@ -2,7 +2,7 @@
 // from the seat in the middle of the audience; each slide puts its show's poster on the stage
 // screens, and a card at the bottom gives the facts and the way to buy. Slides move on by themselves
 // (with a pause button), or with the arrows, the tabs, a swipe or the arrow keys.
-import { getEvent, placeOf, minPrice, allSoldOut } from './events.js';
+import { getEvent, placeOf, minPrice, allSoldOut, sellerOf, onTiket, saleInfo } from './events.js';
 import { crowdSeats, heroSeat, formatRpShort } from './layouts.js';
 import { IMAGES, cover } from './media.js';
 import { whenOf } from './when.js';
@@ -30,7 +30,7 @@ const hero = { list: [], key: '', i: 0, run: null, bound: false, held: new Set()
 function shows() {
   const first = featured();
   const rest = onSale().filter((e, i, all) => e.title !== first.title && all.findIndex(x => x.title === e.title) === i);
-  return [first, ...rest];
+  return [first, ...rest].slice(0, 6);
 }
 
 // ---------------------------------------------------------------- the card
@@ -56,10 +56,15 @@ function card(e, n) {
   const from = Math.min(...dates.map(x => minPrice(x.id) ?? Infinity));
   const gone = dates.every(allSoldOut);
   const art = IMAGES[e.image];
+  const seller = sellerOf(e), sale = saleInfo(e);
+  // The countdown runs to the opening of the ticket sale; once open, the card says since when.
+  const saleBox = !live ? ''
+    : sale?.soon ? `<div class="hs-sale"><small>Ticket sale opens in</small>${countdownHtml(new Date(sale.ms).toISOString(), 'Time to the ticket sale')}</div>`
+      : `<p class="hs-price hs-sale"><small>Ticket sale</small><b>${sale ? `Open since ${esc(sale.date)}` : 'Open now'}</b></p>`;
   return `<article class="hs-card" role="group" aria-roledescription="slide" aria-label="${n + 1} of ${hero.list.length}: ${esc(e.title)}">
-    <h2 class="hs-title${e.title.length > 14 ? ' is-long' : e.title.length > 8 ? ' is-mid' : ''}">${esc(e.title)}</h2>
     <div class="hs-info">
-      <p class="eyebrow">${!live ? 'Taken place' : gone ? 'Sold out on tiket.com' : 'On sale on tiket.com'} · ${esc(v.city)}</p>
+      <p class="eyebrow">${!live ? 'Taken place' : gone ? `Sold out on ${esc(seller)}` : `On sale on ${esc(seller)}`} · ${esc(v.city)}</p>
+      <h2 class="hs-title">${esc(e.title)}</h2>
       <p class="hs-sub">${esc(e.subtitle.replace(/ · Day \d+$/, ''))}</p>
       <ul class="hs-facts">
         <li>${icon('i-cal')}<span>${esc(datesLine(dates))}</span></li>
@@ -68,13 +73,13 @@ function card(e, n) {
       ${art ? `<p class="hs-credit">On the screens: ${esc(art.credit)}</p>` : ''}
     </div>
     <div class="hs-buy">
-      ${live ? countdownHtml(new Date(whenOf(dates[0]).ms).toISOString()) : ''}
-      <p class="hs-price"><small>${gone ? 'Sold out, as listed' : from < Infinity ? 'From, on tiket.com' : 'Tickets on'}</small><b>${from < Infinity ? formatRpShort(from) : 'tiket.com'}</b></p>
+      ${saleBox}
+      <p class="hs-price"><small>${gone ? 'Sold out, as listed' : from < Infinity ? `From, on ${esc(seller)}` : 'Tickets on'}</small><b>${from < Infinity ? formatRpShort(from) : esc(seller)}</b></p>
       <div class="row-btns">
         ${live ? buyLink(e, `${gone ? 'Check tiket.com' : 'Buy on tiket.com'} ${icon('i-out')}`) : ''}
         <a class="btn btn-line" href="#event-${esc(e.id)}"><span class="hs-wide">Concert details</span><span class="hs-narrow">Details</span></a>
       </div>
-      ${live && !gone ? '<p class="hs-perk">Same price as on tiket.com, plus a 3D tour to your own seat.</p>' : ''}
+      ${live && !gone ? (onTiket(e) ? '<p class="hs-perk">Same price as on tiket.com, plus a 3D tour to your own seat.</p>' : `<p class="hs-perk">Sold on ${esc(seller)}, not on tiket.com. The 3D seat view is Rp25.000.</p>`) : ''}
     </div>
   </article>`;
 }
@@ -146,8 +151,10 @@ function hold(reason, on) {
   const paused = hero.held.has('pause');
   el.classList.toggle('is-auto', !paused);
   const btn = $('#hs-play');
-  btn.setAttribute('aria-label', paused ? 'Play the slideshow' : 'Pause the slideshow');
-  btn.innerHTML = icon(paused ? 'i-play' : 'i-pause');
+  if (btn) {
+    btn.setAttribute('aria-label', paused ? 'Play the slideshow' : 'Pause the slideshow');
+    btn.innerHTML = icon(paused ? 'i-play' : 'i-pause');
+  }
   // Announce slide changes only while they are not moving by themselves.
   $('#hs-stack').setAttribute('aria-live', paused ? 'polite' : 'off');
 }
@@ -176,7 +183,7 @@ function bind() {
     if (b?.dataset.hsGo) go(+b.dataset.hsGo, Math.sign(+b.dataset.hsGo - hero.i));
     else if (b) step(+b.dataset.hsStep);
   });
-  $('#hs-play').addEventListener('click', () => hold('pause', !hero.held.has('pause')));
+  $('#hs-play')?.addEventListener('click', () => hold('pause', !hero.held.has('pause')));
   $('#hs-tabs').addEventListener('animationend', ev => { if (ev.animationName === 'hs-fill') step(1); });
   el.addEventListener('keydown', ev => {
     if (!ev.target.closest('.hs-nav') || (ev.key !== 'ArrowLeft' && ev.key !== 'ArrowRight')) return;

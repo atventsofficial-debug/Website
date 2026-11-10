@@ -4,7 +4,7 @@ import { getEvent, isConcert, demoFor } from './events.js';
 import { LocalStore, ApiStore } from './store.js';
 import { bindBuyLinks, importPass, passes } from './passes.js';
 import { validAffiliate } from './rules.js';
-import { renderHome, renderConcerts, renderEvent, renderUnlock, renderPasses, renderFaq, bindPassButtons, navCount } from './pages.js';
+import { stopEventHero, renderHome, renderConcerts, renderEvent, renderUnlock, renderPasses, renderFaq, bindPassButtons, navCount } from './pages.js';
 import { startHero, stopHero } from './hero.js';
 import { renderPartners } from './partners.js';
 import { renderAdmin } from './admin.js';
@@ -136,6 +136,7 @@ async function route() {
   $$('[data-nav]').forEach(a => { if (a.dataset.nav === key) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
 
   if (r.view !== 'home') stopHero();
+  if (r.view !== 'event') stopEventHero();
   if (!inApp) closeViewer();
 
   switch (r.view) {

@@ -6,7 +6,7 @@
 // checks the e-ticket against the seat before the pass opens; a sale in the network's report
 // on one of this device's clicks confirms it too. Fans who bought elsewhere pay the Rp25.000
 // access fee first, then claim the same way.
-import { eventMeta, isConcert } from './events.js';
+import { eventMeta, isConcert, onTiket, sellerOf } from './events.js';
 import { CLICK_ID, maskRef, validAffiliate } from './rules.js';
 import { state, emit, esc, campaign } from './ui.js';
 
@@ -30,14 +30,16 @@ const subFor = id => { if (!subs.has(id)) subs.set(id, newClickId()); return sub
 
 export function buyUrl(e, sub = subFor(e.id)) {
   const tpl = state.cfg.affiliateLink;
-  if (!validAffiliate(tpl)) return e.official.url;
+  // Shows tiket.com does not sell link straight to their own seller, with no affiliate link.
+  if (!onTiket(e) || !validAffiliate(tpl)) return e.official.url;
   return tpl.replace('{url}', encodeURIComponent(e.official.url)).replace('{sub}', sub)
     .replace('{src}', encodeURIComponent(campaign().src || 'site')).replace('{event}', encodeURIComponent(e.id));
 }
 
 // Attributes for a link out to tiket.com. `sponsored` tells search engines it is an affiliate link.
-export const buyAttrs = e => ` target="_blank" rel="noopener sponsored" data-buy="${esc(e.id)}" data-sub="${subFor(e.id)}"`;
-export const buyLink = (e, label, cls = 'btn btn-coral') => `<a class="${cls}" href="${esc(buyUrl(e))}"${buyAttrs(e)}>${label}</a>`;
+// A link to another seller carries no click id: no click, no claim form after it.
+export const buyAttrs = e => !onTiket(e) ? ' target="_blank" rel="noopener"' : ` target="_blank" rel="noopener sponsored" data-buy="${esc(e.id)}" data-sub="${subFor(e.id)}"`;
+export const buyLink = (e, label, cls = 'btn btn-coral') => `<a class="${cls}" href="${esc(buyUrl(e))}"${buyAttrs(e)}>${onTiket(e) ? label : label.replace(/tiket\.com/g, esc(sellerOf(e)))}</a>`;
 
 const localClicks = () => read(CLICKS, localClicks.mem);
 function recordClick(eventId, sub) {
@@ -55,11 +57,26 @@ function recordClick(eventId, sub) {
   }), 0);
 }
 
+// The concert whose Buy button was just clicked in this tab, for the note on the form.
+export const justBought = { id: '' };
+
 // One listener for every buy link on every page. Middle clicks open a tab too.
 export function bindBuyLinks() {
   const onClick = ev => {
     const a = ev.target.closest('a[data-buy]');
-    if (a && (ev.type === 'click' || ev.button === 1)) recordClick(a.dataset.buy, a.dataset.sub);
+    if (!a || !(ev.type === 'click' || ev.button === 1)) return;
+    recordClick(a.dataset.buy, a.dataset.sub);
+    // A plain click opens tiket.com in a new tab (target=_blank); this tab goes to the seat
+    // form for that concert, ready for when the fan comes back with the e-ticket.
+    const plain = ev.type === 'click' && ev.button === 0 && !ev.metaKey && !ev.ctrlKey && !ev.shiftKey && !ev.altKey;
+    if (plain && isConcert(a.dataset.buy)) {
+      justBought.id = a.dataset.buy;
+      setTimeout(() => {
+        const to = `#unlock-${a.dataset.buy}`;
+        if (location.hash === to) window.dispatchEvent(new HashChangeEvent('hashchange'));
+        else location.hash = to;
+      }, 60);
+    }
   };
   document.addEventListener('click', onClick);
   document.addEventListener('auxclick', onClick);

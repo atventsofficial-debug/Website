@@ -51,12 +51,17 @@ test('Tottenham Hotspur Stadium has the plan’s blocks, tiers and colours', () 
   assert.ok(v.seats.length > 20000 && v.seats.length < 26000, `${v.seats.length} seats`);
 });
 
-test('concerts link to tiket.com and price every category; demos cover every layout', () => {
+test('concerts link to their seller and price every category; demos cover every layout', () => {
   for (const e of EVENTS) {
     assert.ok(isConcert(e.id), e.id);
-    assert.match(e.official.url, /^https:\/\/www\.tiket\.com\//, e.id);
+    // tiket.com, or for a show tiket.com does not sell, the seller that does.
+    if (e.official.name === 'tiket.com') assert.match(e.official.url, /^https:\/\/www\.tiket\.com\//, e.id);
+    else assert.match(e.official.url, /^https:\/\/(www\.loket\.com|tiptip\.id|www\.traveloka\.com)\//, e.id);
+    if (e.sale?.opens) assert.ok(!Number.isNaN(Date.parse(e.sale.opens.length === 7 ? `${e.sale.opens}-01` : e.sale.opens)), `${e.id}: sale date`);
     const v = getEvent(e.id);
-    assert.ok(v.categories.every(c => c.price > 0), `${e.id}: every category has its announced price`);
+    // Shows on a stand-in layout have no per-category prices yet; the rest price every category.
+    if (e.standIn) assert.ok(v.categories.every(c => c.price == null) && (e.from == null || e.from > 0), `${e.id}: stand-in prices`);
+    else assert.ok(v.categories.every(c => c.price > 0), `${e.id}: every category has its announced price`);
     for (const c of e.soldOut || []) assert.ok(v.catById[c], `${e.id}: sold-out category ${c} exists`);
   }
   assert.deepEqual(DEMOS.map(d => d.venue).sort(), [...VENUE_KEYS].sort());

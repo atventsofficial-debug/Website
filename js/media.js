@@ -10,6 +10,20 @@ export const IMAGES = {
   'bts-arirang': { src: 'assets/events/bts-arirang.jpg', alt: 'BTS World Tour ARIRANG poster', credit: 'Poster · BIGHIT MUSIC, via tiket.com', pos: '42% 40%' },
   'bocelli-romanza': { src: 'assets/events/bocelli-romanza.jpg', alt: 'Andrea Bocelli Romanza 30th anniversary poster', credit: 'Poster · Shoemaker Live, via tiket.com', pos: '30% 50%' },
   'mcr-jakarta': { src: 'assets/events/mcr-jakarta.jpg', alt: 'My Chemical Romance Live in Jakarta poster', credit: 'Poster · Ravel Entertainment, via tiket.com', pos: '50% 30%' },
+
+  // Stand-in artwork made by Atvents until the promoter's poster is out. Swap in the official
+  // file with the same name and change the credit.
+  'gnr-jakarta': { src: 'assets/events/gnr-jakarta.jpg', alt: "Guns N' Roses World Tour 2026" + ' artwork', credit: 'Artwork · Atvents, until the official poster', pos: '50% 50%' },
+  '5sos-jakarta': { src: 'assets/events/5sos-jakarta.jpg', alt: '5 Seconds of Summer Live in Jakarta' + ' artwork', credit: 'Artwork · Atvents, until the official poster', pos: '50% 50%' },
+  'boyz2men-dewa19': { src: 'assets/events/boyz2men-dewa19.jpg', alt: 'Boyz II Men with Dewa 19' + ' artwork', credit: 'Artwork · Atvents, until the official poster', pos: '50% 50%' },
+  'nflying-jakarta': { src: 'assets/events/nflying-jakarta.jpg', alt: "N.Flying LIVE '&CON5: into REM'" + ' artwork', credit: 'Artwork · Atvents, until the official poster', pos: '50% 50%' },
+  'bigbang-cosmos': { src: 'assets/events/bigbang-cosmos.jpg', alt: 'BIGBANG World Tour XX: COSMOS' + ' artwork', credit: 'Artwork · Atvents, until the official poster', pos: '50% 50%' },
+  'enhypen-bloodsaga': { src: 'assets/events/enhypen-bloodsaga.jpg', alt: "ENHYPEN World Tour 'Blood Saga'" + ' artwork', credit: 'Artwork · Atvents, until the official poster', pos: '50% 50%' },
+  'westlife-25': { src: 'assets/events/westlife-25.jpg', alt: 'Westlife 25: The Anniversary World Tour' + ' artwork', credit: 'Artwork · Atvents, until the official poster', pos: '50% 50%' },
+  'nancy-ajram': { src: 'assets/events/nancy-ajram.jpg', alt: 'Nancy Ajram Live in Jakarta' + ' artwork', credit: 'Artwork · Atvents, until the official poster', pos: '50% 50%' },
+  'maroon5-asia': { src: 'assets/events/maroon5-asia.jpg', alt: 'Maroon 5 Asia 2027' + ' artwork', credit: 'Artwork · Atvents, until the official poster', pos: '50% 50%' },
+  'thescript-arena': { src: 'assets/events/thescript-arena.jpg', alt: 'The Script Man in the Arena Tour' + ' artwork', credit: 'Artwork · Atvents, until the official poster', pos: '50% 50%' },
+  'm2m-two': { src: 'assets/events/m2m-two.jpg', alt: 'M2M Two Tour' + ' artwork', credit: 'Artwork · Atvents, until the official poster', pos: '50% 50%' },
 };
 
 const RENDERS = {

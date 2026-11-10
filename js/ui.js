@@ -66,8 +66,8 @@ export function entranceTicket({ ev, sub = '', code, price, href, attrs = '', bu
 }
 
 // Live countdowns: any element with data-until (ISO) shows days, hours, minutes, seconds.
-export function countdownHtml(until) {
-  return `<div class="countdown" data-until="${esc(until)}" role="timer" aria-label="Time to the show">${['Days', 'Hrs', 'Min', 'Sec'].map(l => `<span><b>00</b><small>${l}</small></span>`).join('')}</div>`;
+export function countdownHtml(until, label = 'Time to the show') {
+  return `<div class="countdown" data-until="${esc(until)}" role="timer" aria-label="${esc(label)}">${['Days', 'Hrs', 'Min', 'Sec'].map(l => `<span><b>00</b><small>${l}</small></span>`).join('')}</div>`;
 }
 export function tickCountdowns() {
   document.querySelectorAll('[data-until]').forEach(el => {

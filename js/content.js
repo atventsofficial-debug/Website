@@ -11,7 +11,7 @@ export const FAQ_FANS = [
   { id: 'seller', q: 'Who sells the ticket?',
     a: 'tiket.com. Our Buy on tiket.com buttons open the concert on tiket.com, where you choose the category, pay and get the official e-ticket. We never see your payment details.' },
   { id: 'unlock', q: 'How do I get the view from my seat?',
-    a: 'Buy with one of our Buy on tiket.com buttons. Then go to <a class="u" href="#unlock">Unlock 3D</a>, choose your category, section, row and seat, add the tiket.com order ID and a screenshot or PDF of the e-ticket. Once we have checked it, your seat tour opens.' },
+    a: 'Click one of our Buy on tiket.com buttons. tiket.com opens in a new tab, and this tab moves to your seat form. Once you have your e-ticket, choose your category, section, row and seat, add the tiket.com order ID and a screenshot or PDF of the e-ticket. Once we have checked it, your seat tour opens.' },
   { id: 'check', q: 'Why do you check my e-ticket?',
     a: 'So that the view from a seat goes only to the person who holds it. A person compares your e-ticket with the concert, category and seat you entered, usually within a few hours. If they match, the pass is approved and we email you.' },
   { id: 'no-link', q: 'I bought somewhere else. Can I still get the tour?',
