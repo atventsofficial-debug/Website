@@ -533,6 +533,7 @@ function stadiumGbk() {
       { id: 'upper-north', src: 'assets/views/gbk-upper-north.jpg', tier: 2, eye: [143.1, 30.52, 2.46], look: [0, 6, 0], fov: 72, reach: 70 },
       { id: 'upper-east', src: 'assets/views/gbk-upper-east.jpg', tier: 2, eye: [2.32, 30.52, -105.13], look: [0, 6, 0], fov: 72, reach: 70 },
       { id: 'upper-south', src: 'assets/views/gbk-upper-south.jpg', tier: 2, eye: [-143.1, 30.52, -2.46], look: [0, 6, 0], fov: 72, reach: 70 },
+      { id: 'upper-nw', src: 'assets/views/gbk-upper-nw.jpg', tier: 2, eye: [99.09, 30.52, 75.88], look: [0, 6, 0], fov: 72, reach: 70 },
     ],
     seatTint,
     label: 'Gelora Bung Karno Main Stadium',
