@@ -124,6 +124,7 @@ function go(i, dir) {
   const next = ((i % n) + n) % n;
   if (next === hero.i || !n) return;
   hero.i = next;
+  fillBacks($$('#hs-backs .hs-back')[next]);
   paint(dir);
   // Drawing the poster for the screens holds the page for a moment. It waits until the card
   // has started to move, which the browser then finishes on its own.
@@ -162,11 +163,16 @@ function hold(reason, on) {
 // The backdrops and the tabs, one a show; drawn again only when the shows on sale change.
 // A backdrop is the poster, sharp where the stage will be, over a blurred copy of itself:
 // it shows until the 3D is ready, while it changes venue, and instead of it for data savers.
+const fillBacks = (root = $('#hs-backs')) => { for (const img of root?.querySelectorAll('img[data-src]') || []) { img.src = img.dataset.src; img.removeAttribute('data-src'); } };
 function build() {
-  $('#hs-backs').innerHTML = hero.list.map(e => {
-    const src = esc(cover(e.image || e.photo, e.venue).src);
-    return `<div class="hs-back"><img class="hs-blur" src="${src}" alt="" decoding="async"><img class="hs-poster" src="${src}" alt="" decoding="async"></div>`;
+  // Only the slide on show fetches its poster with the page; the others follow once the page
+  // has loaded, or the moment a visitor turns to them.
+  $('#hs-backs').innerHTML = hero.list.map((e, k) => {
+    const src = esc(cover(e.image || e.photo, e.venue).src), at = k === hero.i ? 'src' : 'data-src';
+    return `<div class="hs-back"><img class="hs-blur" ${at}="${src}" alt="" decoding="async"><img class="hs-poster" ${at}="${src}" alt="" decoding="async"${k === hero.i ? ' fetchpriority="high"' : ''}></div>`;
   }).join('');
+  const rest = () => (window.requestIdleCallback || setTimeout)(() => fillBacks());
+  if (document.readyState === 'complete') rest(); else addEventListener('load', rest, { once: true });
   $('#hs-tabs').innerHTML = hero.list.map((e, k) => `<li><button class="hs-tab" type="button" data-hs-go="${k}" aria-label="${esc(e.title)}">
       <span class="hs-tab-t"><b>${String(k + 1).padStart(2, '0')}</b>${esc(e.title)}</span><span class="hs-bar"><i></i></span></button></li>`).join('');
   $('#home-hero .hs-nav').hidden = hero.list.length < 2;
@@ -279,7 +285,10 @@ export function startHero() {
   paint();
   if (!hero.run) {
     hero.run = {};
-    showVenue();
+    // The 3D arena waits until the page itself has loaded and the browser is idle, so the
+    // text and the poster are never held up by it.
+    const start = () => (window.requestIdleCallback || setTimeout)(showVenue, { timeout: 1500 });
+    if (document.readyState === 'complete') start(); else addEventListener('load', start, { once: true });
   }
 }
 

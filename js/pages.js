@@ -227,6 +227,10 @@ async function startEventHero(id) {
   stopEventHero();
   if (navigator.connection?.saveData) return;
   evHero.id = id;
+  // After the page has loaded and the browser is idle: the 3D never holds up the page.
+  if (document.readyState !== 'complete') await new Promise(r => addEventListener('load', r, { once: true }));
+  await new Promise(r => (window.requestIdleCallback || setTimeout)(r, { timeout: 1500 }));
+  if (evHero.id !== id) return;
   let SeatScene;
   try { ({ SeatScene } = await loadScene3d()); } catch { return; }
   const box = $('#ev-hero-3d');

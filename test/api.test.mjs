@@ -366,7 +366,7 @@ test('security headers and the static file allow-list', async () => {
   assert.ok(!/midtrans/i.test(csp));
   assert.match(r.headers.get('permissions-policy'), /payment=\(\)/);
   assert.equal((await fetch(base + '/', { method: 'HEAD' })).status, 200);
-  for (const p of ['/js/app.js', '/css/styles.css', '/assets/events/bocelli-romanza.jpg']) assert.equal((await fetch(base + p)).status, 200, p);
+  for (const p of ['/js/app.js', '/css/styles.css', '/assets/events/bocelli-romanza.webp']) assert.equal((await fetch(base + p)).status, 200, p);
   for (const p of ['/server/config.mjs', '/server/schema.sql', '/.env', '/.env.example', '/package.json', '/README.md', '/node_modules/pg/package.json',
     '/test/api.test.mjs', '/%2e%2e/etc/passwd', '/js/../server/app.mjs', '/js/%2e%2e/server/app.mjs', '/dist/preview.html', '/scripts/build-preview.mjs']) {
     assert.equal((await fetch(base + p)).status, 404, p);
