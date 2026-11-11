@@ -2,14 +2,15 @@
 // oval bowl in two tiers, the running track round the pitch, the ring roof on its columns
 // with the steel trusses showing underneath, the lamps along the roof's inner edge, the
 // stair mouths in the upper tier and Jakarta's towers beyond the open gap under the roof.
-// Radii and heights come from the layout (`venue.gbk`); every ring keeps rx - rz = 34.
+// Radii and heights come from the layout (`venue.gbk`); every ring keeps the same rx - rz.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { superPoint } from './layouts.js';
 import { ribbon, loft, box, canvasTex, grime, merge, bandTexture, screenMaterial, scoreTexture, groundName } from './venues3d.js';
 
-const D = 34, SEGS = 288, TAU = Math.PI * 2;
-const ROOF = { inner: 113, outer: 178, yInner: 46, yOuter: 40.5, column: 158, depth: 3 };
+const SEGS = 288, TAU = Math.PI * 2;
+let D = 38; // rx - rz of every ring, taken from the layout when the bowl is built
+const ROOF = { inner: 107, outer: 172, yInner: 46, yOuter: 40.5, column: 152, depth: 3 };
 const roofY = r => ROOF.yOuter + (ROOF.outer - r) / (ROOF.outer - ROOF.inner) * (ROOF.yInner - ROOF.yOuter);
 const ell = (t, r) => superPoint(t, r, r - D, 1);
 
@@ -142,6 +143,7 @@ function fasciaTexture() {
 
 export function gbkBowl(ctx, venue, brand) {
   const { scene } = ctx, { lower, upper } = venue.gbk;
+  D = lower.rx0 - lower.rz0;
   const add = (geo, mat, cast = false) => { const m = new THREE.Mesh(geo, mat); m.castShadow = cast; scene.add(m); return m; };
   const band = (r, y0, y1, mat, uRepeat) => add(ribbon({ rx: r, rz: r - D, p: 1, y0, y1, segs: SEGS, ...(uRepeat ? { uRepeat } : {}) }), mat);
   const slab = (r0, y0, r1, y1, mat) => add(loft({ rx: r0, rz: r0 - D, p: 1, y: y0 }, { rx: r1, rz: r1 - D, p: 1, y: y1 }, SEGS), mat);
@@ -166,6 +168,21 @@ export function gbkBowl(ctx, venue, brand) {
   const boards = ribbon({ rx: 57.2, rz: 35.9, p: 0.2, y0: -0.07, y1: 0.95, uRepeat: 1, segs: SEGS });
   add(boards, new THREE.MeshBasicMaterial({ map: adTex, toneMapped: false, side: THREE.FrontSide }));
   add(boards, new THREE.MeshStandardMaterial({ color: '#26282c', roughness: 0.7, side: THREE.BackSide }));
+
+  // ---- beside the pitch: the two team benches under their clear roofs on the west side,
+  // and the grey equipment boxes lined up at the foot of both long stands
+  const benchZ = 49.2, kit = [];
+  for (const x of [-16, 16]) {
+    kit.push(box(11, 0.5, 1.1, x, 0.25, benchZ + 0.5), box(11, 0.08, 2.4, x, 2.25, benchZ + 0.2), box(11, 2.2, 0.08, x, 1.1, benchZ + 1.4));
+    for (const dx of [-5.5, 5.5]) kit.push(box(0.08, 2.2, 2.4, x + dx, 1.1, benchZ + 0.2));
+  }
+  add(merge(kit), new THREE.MeshStandardMaterial({ color: '#dfe3e6', roughness: 0.35, metalness: 0.2 }), true);
+  const crates = [], rc = rng(11), wz = wall - D - 2.2;
+  for (const sz of [-1, 1]) for (let x = -44; x <= 44; x += 2.9) {
+    if (Math.abs(x) < 5 || rc() < 0.12) continue;
+    crates.push(box(2.5, 1.15 + rc() * 0.2, 1.3, x, 0.6, sz * (wz - (rc() < 0.3 ? 1.5 : 0))));
+  }
+  add(merge(crates), new THREE.MeshStandardMaterial({ color: '#8d949b', roughness: 0.8 }), true);
 
   // ---- lower tier, the walkway behind it, the shaded concourse under the upper tier
   band(wall, 0, lower.baseY + 0.55, paleConcrete);

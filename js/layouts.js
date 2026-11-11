@@ -464,10 +464,12 @@ function stadiumTottenham() {
 // Gelora Bung Karno Main Stadium, Jakarta: an oval bowl round a football pitch and an
 // eight-lane running track, a lower and an upper tier all the way round under the ring roof.
 // Sizes are estimated from photos and the stadium's published capacity, not from drawings.
-// `tiers` gives the 3D builder the radii and heights; every ring keeps rx - rz = 34.
+// `tiers` gives the 3D builder the radii and heights; every ring keeps the same rx - rz.
+// The track is a standard 400 m oval (177 m by 93 m over the outer lane); the front wall stands
+// about 11 m beyond it at the ends and 15 m at the sides.
 const GBK_BOWL = {
-  lower: { rx0: 106, rz0: 72, rows: 20, gap: 0.82, rise: 0.4, baseY: 3.2 },
-  upper: { rx0: 127, rz0: 93, rows: 34, gap: 0.82, rise: 0.56, baseY: 14.2 },
+  lower: { rx0: 100, rz0: 62, rows: 22, gap: 0.82, rise: 0.4, baseY: 3.2 },
+  upper: { rx0: 121, rz0: 83, rows: 36, gap: 0.82, rise: 0.56, baseY: 14.2 },
 };
 
 function stadiumGbk() {
@@ -527,8 +529,8 @@ function stadiumGbk() {
     // in place of the 3D model from every seat of the same tier within `reach` metres of it.
     // `eye` and `look` are where the picture was taken from and towards, `fov` its height in degrees.
     photos: [
-      { id: 'upper-west', src: 'assets/views/gbk-upper-west.jpg', tier: 2, eye: [0, 21, 101], look: [0, 4, -10], fov: 72, reach: 48 },
-      { id: 'upper-north', src: 'assets/views/gbk-upper-north.jpg', tier: 2, eye: [132.68, 19.32, 3], look: [0, 6, 0], fov: 72, reach: 48 },
+      { id: 'upper-west', src: 'assets/views/gbk-upper-west.jpg', tier: 2, eye: [0, 21, 91], look: [0, 4, -10], fov: 72, reach: 48 },
+      { id: 'upper-north', src: 'assets/views/gbk-upper-north.jpg', tier: 2, eye: [126.68, 19.32, 3], look: [0, 6, 0], fov: 72, reach: 48 },
     ],
     seatTint,
     label: 'Gelora Bung Karno Main Stadium',
