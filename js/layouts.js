@@ -529,8 +529,7 @@ function stadiumGbk() {
     // in place of the 3D model from every seat of the same tier within `reach` metres of it.
     // `eye` and `look` are where the picture was taken from and towards, `fov` its height in degrees.
     photos: [
-      { id: 'upper-west', src: 'assets/views/gbk-upper-west.jpg', tier: 2, eye: [0, 21, 91], look: [0, 4, -10], fov: 72, reach: 48 },
-      { id: 'upper-north', src: 'assets/views/gbk-upper-north.jpg', tier: 2, eye: [126.68, 19.32, 3], look: [0, 6, 0], fov: 72, reach: 48 },
+      { id: 'upper-west', src: 'assets/views/gbk-upper-west.jpg', tier: 2, eye: [-2.32, 30.52, 105.13], look: [0, 6, 0], fov: 72, reach: 60 },
     ],
     seatTint,
     label: 'Gelora Bung Karno Main Stadium',
