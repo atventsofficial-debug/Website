@@ -71,8 +71,8 @@ export async function openViewer(id, { cat, seat, back, tour } = {}) {
       onHover: showTooltip,
       onSelect: pickSeat,
       onMode: setMode,
-      onArrive: (s, dist, photo) => {
-        $('#sc-dist').textContent = `${Math.round(dist)} m to the ${FOCUS_NAME[state.venue.show ? 'concert' : state.venue.kind]} · eye height ${(s.y + (s.standing ? 1.62 : 1.2)).toFixed(1)} m${s.standing ? ' · free standing: stand anywhere on the floor' : ''}${photo ? ' · photo-style picture of the view from this block' : ''}`;
+      onArrive: (s, dist) => {
+        $('#sc-dist').textContent = `${Math.round(dist)} m to the ${FOCUS_NAME[state.venue.show ? 'concert' : state.venue.kind]} · eye height ${(s.y + (s.standing ? 1.62 : 1.2)).toFixed(1)} m${s.standing ? ' · free standing: stand anywhere on the floor' : ''}`;
       },
     });
   }

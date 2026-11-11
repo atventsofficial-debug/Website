@@ -10,7 +10,6 @@ import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometr
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { superPoint } from './layouts.js';
 import { IMAGES } from './media.js';
-import { gbkBowl } from './venue-gbk.js';
 
 // ------------------------------------------------------------------ helpers
 
@@ -31,7 +30,7 @@ function clean(g) {
   return n;
 }
 
-export function merge(list) {
+function merge(list) {
   // Re-index after merging: instanced seats and crowd are vertex-bound on weak GPUs.
   return mergeVertices(mergeGeometries(list.map(clean)));
 }
@@ -49,7 +48,7 @@ function rbox(w, h, d, r, seg, x = 0, y = 0, z = 0, rx = 0) {
   return g;
 }
 
-export function canvasTex(w, h, draw, { repeat, srgb = true } = {}) {
+function canvasTex(w, h, draw, { repeat, srgb = true } = {}) {
   const c = document.createElement('canvas');
   c.width = w; c.height = h;
   draw(c.getContext('2d'), w, h);
@@ -62,7 +61,7 @@ export function canvasTex(w, h, draw, { repeat, srgb = true } = {}) {
 
 // Speckled grime for concrete and floors, so large surfaces don't read as flat CG.
 let grimeTex;
-export function grime() {
+function grime() {
   if (grimeTex) return grimeTex;
   grimeTex = canvasTex(256, 256, (g, w, h) => {
     g.fillStyle = '#d8d8d6'; g.fillRect(0, 0, w, h);
@@ -194,7 +193,7 @@ function beam(color, length, radius) {
 }
 
 // LED screen: content shader with an optional texture (logo, scoreboard) composited on top.
-export function screenMaterial({ a = '#1b1f2e', b = '#c9a27a', c = '#f2efe9', tex = null, pixel = 140 } = {}) {
+function screenMaterial({ a = '#1b1f2e', b = '#c9a27a', c = '#f2efe9', tex = null, pixel = 140 } = {}) {
   return new THREE.ShaderMaterial({
     uniforms: {
       uTime: { value: 0 }, uLevel: { value: 1 },
@@ -323,7 +322,7 @@ export function posterArt(meta, aspect) {
 }
 
 // Scrolling LED band (ad boards, ribbon boards).
-export function bandTexture(words, { bg = '#0b0b0d', fg = '#ffffff', accent = '#d21f2f' } = {}) {
+function bandTexture(words, { bg = '#0b0b0d', fg = '#ffffff', accent = '#d21f2f' } = {}) {
   const t = canvasTex(2048, 64, (g, w, h) => {
     g.fillStyle = bg; g.fillRect(0, 0, w, h);
     g.font = '600 38px "Urbanist", "Helvetica Neue", Arial, sans-serif';
@@ -847,18 +846,14 @@ export function buildStadium(ctx, venue) {
     ? { wall: 'LIVE', sub: 'STADIUM SHOW', band: ['LIVE'], ...venue.branding }
     : { home: 'ELANG FC', away: 'BANTENG UTD', ...venue.branding };
   const { scene } = ctx;
-  const gbk = !!venue.gbk;
   if (show) ctx.setAtmosphere({ house: '#2a2c33', live: '#040506', fogNear: [260, 220], fogFar: [900, 700], exposure: [1.0, 1.05] });
-  else if (gbk) ctx.setAtmosphere({ house: '#c9cdd3', live: '#b4bcc8', fogNear: [420, 260], fogFar: [2400, 1700], exposure: [1.0, 1.0], sky: true, bloom: -0.13, lens: 1 });
   else ctx.setAtmosphere({ house: '#c9cdd3', live: '#9aa3b4', fogNear: [220, 200], fogFar: [700, 600], exposure: [1.0, 0.95], sky: true });
 
   if (!show) scene.add(daySky());
   const hemi = new THREE.HemisphereLight('#dfe8ff', '#5b5a4c', 1);
   ctx.mood(hemi, 'intensity', show ? 1.15 : 1.25, show ? 0.05 : 1.0);
   scene.add(hemi);
-  const sun = ctx.addKeyLight(gbk
-    ? { pos: [-150, 210, -170], target: [0, 0, 0], half: 200, house: 2.6, live: 2.3, size: 4096 }
-    : { pos: [-90, 70, -120], target: [0, 0, 0], half: 110, house: show ? 2.2 : 2.6, live: show ? 0.03 : 2.4, size: 4096 });
+  const sun = ctx.addKeyLight({ pos: [-90, 70, -120], target: [0, 0, 0], half: 110, house: show ? 2.2 : 2.6, live: show ? 0.03 : 2.4, size: 4096 });
   sun.color.set(show ? '#f1f3ff' : '#ffe8cc');
   if (show) {
     const fill = new THREE.HemisphereLight('#3a3f5c', '#000000', 1);
@@ -866,21 +861,19 @@ export function buildStadium(ctx, venue) {
     scene.add(fill);
   }
 
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(gbk ? 2400 : 1400, gbk ? 2400 : 1400), new THREE.MeshStandardMaterial({ color: show ? '#3a3a3c' : '#6c6b66', map: grime(), roughness: 1 }));
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(1400, 1400), new THREE.MeshStandardMaterial({ color: show ? '#3a3a3c' : '#6c6b66', map: grime(), roughness: 1 }));
   ground.material.map = grime().clone(); ground.material.map.repeat.set(80, 80); ground.material.map.needsUpdate = true;
   ground.rotation.x = -Math.PI / 2;
-  ground.position.y = gbk ? -0.9 : -0.03;
+  ground.position.y = -0.03;
   ground.receiveShadow = true;
   scene.add(ground);
-  if (!gbk) {
-    const apron = new THREE.Mesh(new THREE.PlaneGeometry(122, 86), new THREE.MeshStandardMaterial({ color: show ? '#2c2d30' : '#3f7a3e', roughness: 1 }));
-    apron.rotation.x = -Math.PI / 2;
-    apron.receiveShadow = true;
-    scene.add(apron);
-  }
+  const apron = new THREE.Mesh(new THREE.PlaneGeometry(122, 86), new THREE.MeshStandardMaterial({ color: show ? '#2c2d30' : '#3f7a3e', roughness: 1 }));
+  apron.rotation.x = -Math.PI / 2;
+  apron.receiveShadow = true;
+  scene.add(apron);
 
   const tick = show ? stadiumShow(ctx, venue, brand) : football(ctx, brand);
-  (gbk ? gbkBowl : venue.tiers ? threeTierBowl : standsAndRoof)(ctx, venue, brand, show);
+  (venue.tiers ? threeTierBowl : standsAndRoof)(ctx, venue, brand, show);
   ctx.onTick(tick);
 }
 
@@ -1002,7 +995,7 @@ function football(ctx, brand) {
 }
 
 // The stadium's name for its LED boards: the real venue's, or the demo ground's.
-export const groundName = venue => (venue.place?.name || 'Gelora Samudra').toUpperCase();
+const groundName = venue => (venue.place?.name || 'Gelora Samudra').toUpperCase();
 
 // LED boards round the pitch. Returns their texture, which the caller scrolls.
 function pitchBoards(scene, words, accent) {
@@ -1024,7 +1017,7 @@ function lampGridTexture() {
 }
 
 // Scoreboard artwork for the big screens.
-export function scoreTexture(brand) {
+function scoreTexture(brand) {
   return textTexture(1024, 400, (g, w, h) => {
     g.fillStyle = 'rgba(255,255,255,0.95)'; g.textAlign = 'center';
     g.font = '500 70px "Urbanist", Arial, sans-serif'; g.fillText(`${brand.home}   1 – 0   ${brand.away}`, w / 2, 180);
@@ -1407,14 +1400,6 @@ export function seatGeometry(style) {
       box(0.05, 0.62, 0.44, 0.27, 0.31, 0.02),
     ]);
   }
-  // Tip-up seat with a backrest, kept to three boxes: a bowl of 60,000 draws that many.
-  if (style === 'flip') {
-    return merge([
-      box(0.45, 0.05, 0.4, 0, 0.43, -0.03),
-      box(0.45, 0.36, 0.05, 0, 0.66, 0.2, -0.14),
-      box(0.05, 0.42, 0.05, 0, 0.21, 0.14),
-    ]);
-  }
   // Moulded plastic stadium shell: an L-shaped profile extruded across the seat width.
   const pts = [[-0.21, 0.4], [-0.1, 0.425], [0.08, 0.43], [0.15, 0.46], [0.19, 0.55], [0.22, 0.7], [0.235, 0.8]];
   const th = 0.028;
@@ -1437,54 +1422,7 @@ export function seatGeometry(style) {
   return merge([shell, box(0.06, 0.4, 0.06, 0, 0.2, 0.1)]);
 }
 
-// The people and seats within a few rows of the camera in a big bowl, drawn in full: smooth
-// heads with ears, shoulders, arms resting on the knees, hair or a hijab, trousers and shoes.
-// Everyone further off keeps the `lite` shapes. Positions match crowdGeometries().
-export function nearGeometries() {
-  const S = (r, w, h, x, y, z) => new THREE.SphereGeometry(r, w, h).translate(x, y, z);
-  // Torso turned on a lathe: waist, chest, sloping shoulders, collar.
-  const profile = [[0.0, 0.46], [0.14, 0.47], [0.165, 0.6], [0.17, 0.8], [0.185, 0.96], [0.17, 1.04], [0.11, 1.085], [0.062, 1.11], [0.056, 1.125]];
-  const torso = new THREE.LatheGeometry(profile.map(([r, y]) => new THREE.Vector2(r, y)), 20).scale(1.22, 1, 0.74).translate(0, 0, 0.07);
-  const shirt = [torso];
-  const skin = [
-    new THREE.SphereGeometry(0.1, 18, 14).scale(0.88, 1.12, 1).translate(0, 1.26, 0.03),
-    new THREE.CylinderGeometry(0.048, 0.055, 0.12, 12).translate(0, 1.14, 0.05),
-  ];
-  const legs = [];
-  for (const sx of [-1, 1]) {
-    // Upper arm from inside the shoulder down to the elbow, sleeve to mid-forearm.
-    shirt.push(new THREE.CapsuleGeometry(0.054, 0.26, 4, 10).rotateX(-0.42).rotateZ(sx * 0.12).translate(sx * 0.215, 0.87, 0.03));
-    skin.push(new THREE.CapsuleGeometry(0.04, 0.24, 3, 8).rotateX(-1.2).rotateY(sx * 0.2).translate(sx * 0.2, 0.7, -0.16));
-    skin.push(S(0.044, 8, 6, sx * 0.165, 0.63, -0.31));
-    skin.push(S(0.026, 6, 5, sx * 0.089, 1.25, 0.04));
-    legs.push(new THREE.CapsuleGeometry(0.078, 0.3, 3, 10).rotateX(Math.PI / 2).translate(sx * 0.095, 0.53, -0.2));
-    legs.push(new THREE.CapsuleGeometry(0.06, 0.32, 3, 8).translate(sx * 0.095, 0.27, -0.4));
-    legs.push(rbox(0.1, 0.07, 0.24, 0.03, 2, sx * 0.095, 0.04, -0.46));
-  }
-  const hair = new THREE.SphereGeometry(0.106, 18, 10, 0, Math.PI * 2, 0, Math.PI * 0.62).scale(0.92, 1.1, 1.05).rotateX(0.5).translate(0, 1.268, 0.042);
-  // Hijab: a close hood open at the face, falling to the collar.
-  const hood = new THREE.SphereGeometry(0.111, 20, 14, Math.PI * 1.5 + 0.6, Math.PI * 2 - 1.2).scale(0.95, 1.13, 1.04).translate(0, 1.258, 0.04);
-  const drape = new THREE.CylinderGeometry(0.092, 0.17, 0.2, 18, 2, true).scale(1.1, 1, 0.8).translate(0, 1.09, 0.065);
-  // The seat: rounded back and pan on a steel bracket.
-  const seat = merge([
-    rbox(0.45, 0.05, 0.4, 0.02, 2, 0, 0.43, -0.03),
-    rbox(0.45, 0.38, 0.05, 0.022, 2, 0, 0.66, 0.2, -0.14),
-  ]);
-  const frame = merge([box(0.03, 0.3, 0.3, -0.235, 0.44, 0.06), box(0.03, 0.3, 0.3, 0.235, 0.44, 0.06), box(0.5, 0.05, 0.05, 0, 0.3, 0.16), box(0.06, 0.3, 0.06, 0, 0.15, 0.16)]);
-  return { shirt: merge(shirt), skin: merge(skin), legs: merge(legs), hair: merge([hair]), hijab: merge([hood, drape]), seat, frame };
-}
-
-// `lite`: far fewer triangles a person, for a bowl with tens of thousands of them.
-export function crowdGeometries(lite = false) {
-  if (lite) {
-    const torso = new THREE.CapsuleGeometry(0.17, 0.36, 1, 5);
-    torso.scale(1.18, 1, 0.72);
-    torso.translate(0, 0.86, 0.06);
-    const body = merge([torso, box(0.1, 0.42, 0.1, -0.25, 0.74, -0.04, -0.5), box(0.1, 0.42, 0.1, 0.25, 0.74, -0.04, -0.5), box(0.36, 0.15, 0.44, 0, 0.53, -0.18)]);
-    const head = new THREE.SphereGeometry(0.105, 5, 3).scale(0.9, 1.1, 1).translate(0, 1.26, 0.02);
-    const hair = new THREE.SphereGeometry(0.114, 5, 2, 0, Math.PI * 2, 0, Math.PI * 0.55).scale(0.92, 1.1, 1.05).rotateX(0.5).translate(0, 1.27, 0.03);
-    return { body, stand: body, head, hair, raised: body };
-  }
+export function crowdGeometries() {
   const torso = new THREE.CapsuleGeometry(0.17, 0.36, 2, 7);
   torso.scale(1.18, 1, 0.72);
   torso.translate(0, 0.86, 0.06);
