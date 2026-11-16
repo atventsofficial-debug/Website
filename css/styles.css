@@ -1790,3 +1790,45 @@ body { font-family: var(--font); font-feature-settings: "cv11", "ss01"; }
 .footage-form { margin-top: 8px; }
 .footage-points { margin: var(--s3) 0 0; padding-left: 18px; color: var(--muted); font-size: 14px; line-height: 1.7; }
 @media (max-width: 960px) { .footage { grid-template-columns: 1fr; } .footage-side { position: static; } }
+
+/* =====================================================================
+   Neutral 2026: charcoal and warm grey carry the page; orange is only an
+   accent (arrow dots, tags, small highlights, focus).
+   ===================================================================== */
+:root {
+  --warm: linear-gradient(160deg, #1d1a19 0%, #161413 100%);
+  --glow: transparent;
+}
+/* Big surfaces that were orange become quiet panels with a hairline. */
+#how, .hs-card, .band, .plan.plan-coral, .host-plan, .route-switch button[aria-selected="true"] {
+  background: var(--warm); border: 1px solid rgba(245, 242, 238, 0.09);
+}
+.hs-card { box-shadow: 0 30px 80px -30px rgba(0, 0, 0, 0.7); }
+#how::before { color: rgba(245, 242, 238, 0.04); }
+#how .sec-head { border-top-color: rgba(245, 242, 238, 0.14); }
+#how .sec-head::before, #how .sec-head::after, #how .big .ol { color: var(--muted); }
+#how .sec-side p, .hs-sub, .hs-facts { color: #cfc8c2; }
+#how .steps li { background: var(--panel-2); color: var(--text); backdrop-filter: none; }
+#how .steps li * { color: inherit; }
+#how .route { background: var(--panel-2); border-color: rgba(245, 242, 238, 0.1); }
+#how .route-main { background: #0b0a0a; border-color: rgba(245, 242, 238, 0.14); }
+#how .route .route-tag { background: rgba(245, 242, 238, 0.08); color: var(--text); }
+.hs-card .eyebrow { color: var(--muted); }
+.hs-card .eyebrow::before { background: var(--coral); }
+.hs-title { background: none; color: var(--text); }
+.hs-facts svg { color: var(--coral-2); }
+.hs-credit, .hs-perk, .hs-price small, .hs-card .countdown small { color: var(--muted); }
+.hs-buy { border-left-color: rgba(245, 242, 238, 0.1); }
+.hs-card .countdown span { background: rgba(245, 242, 238, 0.05); border-color: rgba(245, 242, 238, 0.1); }
+.band { color: var(--text); }
+.band::before { background: var(--panel-2); }
+.band .eyebrow::before { background: var(--coral) !important; }
+.unlock-note { background: var(--panel); border: 1px solid rgba(245, 242, 238, 0.09); border-left: 3px solid var(--coral); color: var(--text); }
+.fc-big span:last-child { background: none; color: var(--muted); }
+
+/* Primary buttons: light on dark, with the orange only in the arrow dot. */
+.btn-coral, .hs-card .btn-coral, .plan.plan-coral .btn { background: var(--paper); color: var(--ink); border-color: var(--paper); box-shadow: none; }
+.btn-coral:hover, .hs-card .btn-coral:hover { background: #fff; }
+.btn-coral svg, .hs-card .btn-coral svg { background: var(--coral); color: #fff; }
+.plan.plan-coral, .plan.plan-coral * { color: var(--text); }
+.plan-coral li svg { color: var(--coral-2); }
