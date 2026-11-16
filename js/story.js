@@ -103,12 +103,12 @@ function paint(ctx, gl, cap, { e, seat, cat }) {
   g.addColorStop(0, 'rgba(17,17,17,0)'); g.addColorStop(1, 'rgba(17,17,17,0.92)');
   ctx.fillStyle = g; ctx.fillRect(0, H - 460, W, 460);
 
-  const coral = '#f04a2c', font = '"Inter Tight", "Helvetica Neue", Arial, sans-serif';
+  const coral = '#e8480f', font = '"Inter", "Helvetica Neue", Arial, sans-serif';
   ctx.textBaseline = 'alphabetic';
   // Top: the brand and the show.
   ctx.fillStyle = '#fff';
   ctx.font = `600 30px ${font}`;
-  ctx.fillText('ATVENTS', 56, 92);
+  ctx.fillText('atvents', 56, 92);
   ctx.fillStyle = 'rgba(255,255,255,0.75)';
   ctx.font = `500 24px ${font}`;
   ctx.textAlign = 'right';

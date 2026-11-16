@@ -8,6 +8,7 @@
 // The tour: (1) the whole venue, where only the fan's own category can be picked; (2) that
 // category up close, where only the seat on their e-ticket can be picked; (3) the view from
 // that seat. Then back to the home page, or a story video of the same three steps.
+import { formatFee } from './rules.js';
 import { getEvent } from './events.js';
 import { crowdSeats, formatRpShort } from './layouts.js';
 import { whenOf } from './when.js';
@@ -140,18 +141,18 @@ export function paintViewer() {
     : p?.status === 'confirmed' ? `
       <p class="eyebrow">Your 3D pass</p>
       <h2>Your seat is ready</h2>
-      <p>Your e-ticket was approved. Take the tour from the whole venue to your category, then to the view from your seat.</p>
+      <p>Your pass is paid and open. Take the tour from the whole venue to your category, then to the view from your seat.</p>
       <div class="row-btns"><a class="btn btn-coral btn-sm" href="#tour-${esc(p.id)}">Start my seat tour ${icon('i-arrow')}</a></div>`
       : p?.status === 'checking' ? `
-      <p class="eyebrow">${icon('i-clock')}Your 3D pass is in review</p>
+      <p class="eyebrow">${icon('i-clock')}Waiting for payment</p>
       <h2>Almost there</h2>
-      <p>We are checking your e-ticket against your seat, usually within a few hours. Look round from above until then; your seat view opens once it is approved.</p>
+      <p>Your seat view opens as soon as the payment goes through. Look round from above until then.</p>
       <div class="row-btns"><a class="btn btn-line btn-sm" href="#passes">My 3D passes</a></div>`
       : `
       <p class="eyebrow">${icon('i-lock')}Seat views locked</p>
       <h2>Look round, then sit down</h2>
-      <p>Anyone can look round from above. The view from your seat opens once we have checked your e-ticket: buy on tiket.com through us, or unlock a ticket bought elsewhere for Rp25.000.</p>
-      <div class="row-btns">${buyLink(e, `Buy on tiket.com ${out}`, 'btn btn-coral btn-sm')}<a class="btn btn-line btn-sm" href="#unlock-${e.id}">Unlock</a></div>`;
+      <p>Anyone can look round from above. The view from your own seat opens with a 3D pass: fill in your seat, your name and your email, and pay ${formatFee()}.</p>
+      <div class="row-btns"><a class="btn btn-coral btn-sm" href="#unlock-${e.id}">Unlock · ${formatFee()} ${icon('i-arrow')}</a>${buyLink(e, `Tickets ${out}`, 'btn btn-line btn-sm')}</div>`;
   renderCats();
   state.scene?.setMine(markedIds());
   if (state.viewing) fillSeatCard(state.viewing);
@@ -224,13 +225,13 @@ function fillSeatCard(seat) {
   $('#sc-close').hidden = !locked;
   if (locked) {
     const gone = e.soldOut?.includes(seat.cat);
-    $('#sc-dist').textContent = friend ? `Your friend sits here. ${gone ? `${cat.name} is sold out, as listed.` : `Buy ${cat.name} on tiket.com through us and see their view.`}`
-      : gone ? `${cat.name} is sold out, as listed. Unlock with your booking if you have one.` : `Buy ${cat.name} on tiket.com through us to sit here and see the stage.`;
+    $('#sc-dist').textContent = friend ? `Your friend sits here. Unlock a seat near them for ${formatFee()} to see their view.`
+      : `${gone ? `${cat.name} is sold out, as listed. ` : ''}Have a ticket here? Unlock the view from your seat for ${formatFee()}.`;
     $('#sc-actions').innerHTML = p?.status === 'confirmed'
       ? `<a class="btn btn-coral" href="#tour-${esc(p.id)}">Start my seat tour ${icon('i-arrow')}</a>`
-      : p?.status === 'checking' ? `<a class="btn btn-line" href="#passes">${icon('i-clock')}Pass in review</a>`
-        : `${buyLink(e, `Buy on tiket.com ${out}`)}<a class="btn btn-line" href="#unlock-${e.id}">${icon('i-lock')}Unlock 3D</a>`;
-    if (p?.status === 'confirmed') $('#sc-dist').textContent = 'Your pass is approved. The tour takes you to the seat on your e-ticket.';
+      : p?.status === 'checking' ? `<a class="btn btn-line" href="#passes">${icon('i-clock')}Waiting for payment</a>`
+        : `<a class="btn btn-coral" href="#unlock-${e.id}">Unlock 3D · ${formatFee()} ${icon('i-arrow')}</a>${buyLink(e, `Tickets ${out}`, 'btn btn-line')}`;
+    if (p?.status === 'confirmed') $('#sc-dist').textContent = 'Your pass is open. The tour takes you to your seat.';
     return;
   }
   $('#sc-actions').innerHTML = `

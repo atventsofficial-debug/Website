@@ -1,11 +1,9 @@
-// Buying on tiket.com and the 3D pass that follows.
+// Links to the official ticket sellers, and the 3D pass a fan buys here.
 //
-// Every "Buy on tiket.com" link carries a click id of ours (the affiliate link's sub id).
-// The click is recorded here and on the server. After buying, the fan claims a 3D pass
-// with the tiket.com order ID, the seat on the e-ticket and the e-ticket itself. A person
-// checks the e-ticket against the seat before the pass opens; a sale in the network's report
-// on one of this device's clicks confirms it too. Fans who bought elsewhere pay the Rp25.000
-// access fee first, then claim the same way.
+// Tickets are bought from the seller named on each concert (tiket.com, Loket and others).
+// A tiket.com link may carry a click id of ours (the affiliate link's sub id), recorded here
+// and on the server. The 3D seat view is sold here: the fan fills in the concert, the seat,
+// their name and email, pays the access fee, and the pass opens at once.
 import { eventMeta, isConcert, onTiket, sellerOf } from './events.js';
 import { CLICK_ID, maskRef, validAffiliate } from './rules.js';
 import { state, emit, esc, campaign } from './ui.js';
@@ -119,11 +117,11 @@ export function toggleSeat(p, seatId) {
   return next.includes(seatId);
 }
 
-// Claim a pass with the tiket.com booking. The server keeps the email and order ID; this
-// device keeps the pass, the token that opens it elsewhere and the last digits of the order.
-export async function claim({ eventId, orderRef, email, cat, qty, seat, route, payment, proof }) {
-  const r = await state.store.claim({ eventId, orderRef, email, cat, qty, seat, route, payment, proof, consent: true, clicks: clicksFor(eventId) });
-  const pass = { id: r.id, token: r.token || '', eventId, cat: r.cat, qty: r.qty, seat: r.seat || seat || '', route: r.route || route, status: r.status, ref: maskRef(orderRef), createdAt: r.createdAt, seats: r.seat || seat ? [r.seat || seat] : passes.get(r.id)?.seats || [] };
+// Open a pass with a paid order. The server keeps the name, email and payment; this device
+// keeps the pass, the token that opens it elsewhere and the payment's last digits.
+export async function claim({ eventId, name, email, cat, seat, payment }) {
+  const r = await state.store.claim({ eventId, name, email, cat, seat, payment, consent: true, clicks: clicksFor(eventId) });
+  const pass = { id: r.id, token: r.token || '', eventId, cat: r.cat, qty: r.qty || 1, seat: r.seat || seat || '', name: r.name || name, route: 'paid', status: r.status, ref: maskRef(payment), createdAt: r.createdAt, seats: r.seat || seat ? [r.seat || seat] : passes.get(r.id)?.seats || [] };
   passes.save(pass);
   return pass;
 }
@@ -146,7 +144,7 @@ export async function importPass(id, token) {
 export const passLink = p => (p.token ? `${location.origin}${location.pathname}#pass-${p.id}-${p.token}` : '');
 
 export const STATUS = {
-  checking: { label: 'In review', note: 'We are checking your e-ticket against your seat, usually within a few hours. We email you when your 3D view opens.' },
-  confirmed: { label: 'Approved', note: 'Your e-ticket matches. Your seat view is open until after the show.' },
-  rejected: { label: 'Not approved', note: 'Your e-ticket did not match the seat you entered, or we could not read it. Send it again or write to us.' },
+  checking: { label: 'Waiting for payment', note: 'Your seat view opens as soon as the payment goes through.' },
+  confirmed: { label: 'Paid · open', note: 'Paid. Your seat view is open until after the show.' },
+  rejected: { label: 'Closed', note: 'This pass was closed, for example after a refund. Write to us if that looks wrong.' },
 };

@@ -1,7 +1,7 @@
 // What visitors send us: clicks to tiket.com, 3D pass claims, partner requests and sign-ups,
 // and the admin's view of them. LocalStore keeps it all in this browser (demo, static
 // hosting), with the same rules as the server. ApiStore talks to server/server.mjs.
-import { checkClick, checkClaim, checkSubscription, checkLead, checkConversions, passStatus, PASS_STATUSES, MAX_CLICKS, TAKEN, ACCESS_FEE, PAYMENT_ID } from './rules.js';
+import { checkClick, checkClaim, checkSubscription, checkLead, checkConversions, passStatus, PASS_STATUSES, TAKEN, ACCESS_FEE, PAYMENT_ID } from './rules.js';
 
 const DB = 'atvents:demo-db';
 const fail = (status, message) => Object.assign(new Error(message), { status });
@@ -24,38 +24,27 @@ export class LocalStore {
     return { ok: true };
   }
 
-  // Same outcomes as POST /api/claims. One booking opens one pass: the same email gets that
-  // pass again, with any new clicks added; another email is refused unless the pass on the
-  // booking was closed.
+  // Same outcomes as POST /api/claims. A pass opens only on a paid order of the access fee,
+  // and one order opens one pass. Sending the same order again (a retry, a second tab) gives
+  // back that pass; another email on it is refused.
   async claim(d) {
     const { claim: c, error } = checkClaim(d);
     if (error) throw fail(400, error);
-    // A click recorded for another concert does not count for this one.
-    const clicks = c.clicks.filter(id => !this.db.clicks.some(x => x.id === id && x.eventId !== c.eventId));
-    let p = this.db.claims.find(x => x.eventId === c.eventId && x.orderRef === c.orderRef);
-    if (p && p.email !== c.email) {
-      if (p.status !== 'rejected') throw fail(409, TAKEN);
-      this.db.claims = this.db.claims.filter(x => x !== p);
-      p = null;
-    }
-    if (c.route === 'outside' && !this.db.payments.some(x => x.id === c.payment && x.status === 'paid')) throw fail(402, 'The Rp25.000 access fee has not been paid yet.');
-    if (p) {
-      p.clicks = [...new Set([...p.clicks, ...clicks])].slice(-MAX_CLICKS);
-      // A new e-ticket or seat goes back to the review queue.
-      if (c.seat) p.seat = c.seat;
-      if (c.proof) { p.proof = c.proof; if (p.status === 'checking') p.reviewed = false; }
-    } else this.db.claims.push(p = { id: newId('P'), ...c, clicks, status: 'checking', createdAt: new Date().toISOString() });
-    if (p.status === 'checking') p.status = passStatus(p.clicks.map(s => this.db.conversions[s]));
+    const pay = this.db.payments.find(x => x.id === c.payment);
+    if (!pay || pay.status !== 'paid') throw fail(402, 'The payment has not gone through yet.');
+    let p = this.db.claims.find(x => x.payment === c.payment);
+    if (p && p.email !== c.email) throw fail(409, TAKEN);
+    if (!p) this.db.claims.push(p = { id: newId('P'), ...c, status: 'confirmed', createdAt: new Date().toISOString() });
     this.save();
-    return { id: p.id, token: '', status: p.status, eventId: p.eventId, cat: p.cat, qty: p.qty, seat: p.seat || '', route: p.route || 'affiliate', createdAt: p.createdAt };
+    return { id: p.id, token: '', status: p.status, eventId: p.eventId, cat: p.cat, qty: p.qty, seat: p.seat || '', name: p.name, route: 'paid', createdAt: p.createdAt };
   }
 
-  // The Rp25.000 access fee for tickets bought elsewhere. In the demo nothing is charged: the
-  // payment page is a stand-in for the payment provider's own (Midtrans, Xendit), and
-  // payDemo marks the order paid the way the provider's webhook would.
-  async pay({ eventId, email }) {
+  // The access fee for a 3D seat view. In the demo nothing is charged: the payment page is a
+  // stand-in for the payment provider's own (Midtrans, Xendit), and payDemo marks the order
+  // paid the way the provider's webhook would.
+  async pay({ eventId, email, name, seat }) {
     const id = `PAY-${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
-    this.db.payments.push({ id, eventId, email, amount: ACCESS_FEE, status: 'pending', createdAt: new Date().toISOString() });
+    this.db.payments.push({ id, eventId, email, name, seat, amount: ACCESS_FEE, status: 'pending', createdAt: new Date().toISOString() });
     this.save();
     return { id, amount: ACCESS_FEE, status: 'pending', demo: true };
   }
@@ -76,7 +65,7 @@ export class LocalStore {
   async claimStatus(id) {
     const c = this.db.claims.find(x => x.id === id);
     if (!c) throw fail(404, 'Pass not found');
-    return { id: c.id, eventId: c.eventId, cat: c.cat, qty: c.qty, seat: c.seat || '', route: c.route || 'affiliate', status: c.status, createdAt: c.createdAt };
+    return { id: c.id, eventId: c.eventId, cat: c.cat, qty: c.qty, seat: c.seat || '', name: c.name || '', route: c.route || 'affiliate', status: c.status, createdAt: c.createdAt };
   }
 
   async subscribe(d) {

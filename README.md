@@ -4,6 +4,15 @@ Big concerts in Jakarta, bought on tiket.com, with a 3D view from your seat for 
 
 Atvents does not sell tickets or take payments. Every **Buy on tiket.com** button is an affiliate link, and tiket.com pays a commission on the sales that come through it. Fans who bought that way unlock the view from their seat; everyone else can look round the venue from above. The second side of the site, **For partners**, offers the same seat view to ticketing apps, promoters, venues, travel companies and brands.
 
+## The flow since November 2026
+
+- **One way into the seat view: payment.** On `#unlock` the fan picks the concert, category, section, row and seat, adds their name and email, and pays the access fee (`ACCESS_FEE` in `js/rules.js`, Rp25.000). The pass opens as soon as the payment is marked paid. There is no more free unlock through our tiket.com links and no e-ticket upload.
+- **No payment provider is connected yet.** `LocalStore.pay` / `payDemo` stand in for the provider (Midtrans or Xendit): the static site shows a preview sheet that charges nothing. Going live needs a provider account and a small backend for its payment page and webhook.
+- **The Node server (`server/`) still has the old claim rules** (order ID, e-ticket) and is not deployed; only the static front end runs on Cloudflare.
+- **Concert updates** on the home page (`concertNews` in `js/pages.js`) are built from `js/events.js`: sales opening, shows coming up, sold-out categories.
+- **Footage** (`#footage`) is a coming-soon page with a waiting list (`kind: 'footage'` sign-ups). Nothing can be bought there yet.
+- **Brand**: the Arena emblem lockup, Inter everywhere, and the Backstage / Ember / Flame / Amber / Spotlight / Paper palette (last block of `css/styles.css`).
+
 ## How the site earns
 
 - **Affiliate commission.** tiket.com's affiliate program, run through a network such as Involve Asia, pays on sales made through our links. The fan pays the same price.

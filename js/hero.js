@@ -2,6 +2,7 @@
 // from the seat in the middle of the audience; each slide puts its show's poster on the stage
 // screens, and a card at the bottom gives the facts and the way to buy. Slides move on by themselves
 // (with a pause button), or with the arrows, the tabs, a swipe or the arrow keys.
+import { formatFee } from './rules.js';
 import { getEvent, placeOf, minPrice, allSoldOut, sellerOf, onTiket, saleInfo } from './events.js';
 import { crowdSeats, heroSeat, formatRpShort } from './layouts.js';
 import { IMAGES, cover } from './media.js';
@@ -76,10 +77,10 @@ function card(e, n) {
       ${saleBox}
       <p class="hs-price"><small>${gone ? 'Sold out, as listed' : from < Infinity ? `From, on ${esc(seller)}` : 'Tickets on'}</small><b>${from < Infinity ? formatRpShort(from) : esc(seller)}</b></p>
       <div class="row-btns">
-        ${live ? buyLink(e, `${gone ? 'Check tiket.com' : 'Buy on tiket.com'} ${icon('i-out')}`) : ''}
+        ${live ? `<a class="btn btn-coral" href="#unlock-${esc(e.id)}"><span class="hs-wide">See my seat in 3D</span><span class="hs-narrow">My seat in 3D</span> ${icon('i-arrow')}</a>` : ''}
         <a class="btn btn-line" href="#event-${esc(e.id)}"><span class="hs-wide">Concert details</span><span class="hs-narrow">Details</span></a>
       </div>
-      ${live && !gone ? (onTiket(e) ? '<p class="hs-perk">Same price as on tiket.com, plus a 3D tour to your own seat.</p>' : `<p class="hs-perk">Sold on ${esc(seller)}, not on tiket.com. The 3D seat view is Rp25.000.</p>`) : ''}
+      ${live ? `<p class="hs-perk">The view from your seat, ${formatFee()}. Tickets: ${buyLink(e, `${esc(seller)} ${icon('i-out')}`, 'u hs-seller')}</p>` : ''}
     </div>
   </article>`;
 }
@@ -243,7 +244,7 @@ function aim() {
 
 // The arena every slide is seen in: the concert demo, its boards showing the site's name.
 let arena = null;
-const stageVenue = () => arena ||= { ...getEvent('demo-concert'), branding: { wall: 'ATVENTS', sub: 'LIVE IN 3D', band: ['ATVENTS', 'SEE YOUR SEAT IN 3D', 'BIG CONCERTS ON TIKET.COM', 'LIVE IN 3D'] } };
+const stageVenue = () => arena ||= { ...getEvent('demo-concert'), branding: { wall: 'ATVENTS', sub: 'LIVE IN 3D', band: ['ATVENTS', 'SEE YOUR SEAT IN 3D', 'BIG CONCERTS IN 3D', 'LIVE IN 3D'] } };
 
 // The arena, built once with the current show's poster on its screens; after that a new
 // slide only changes the poster. Drawn cheaply (medium quality at most, 30 fps), and not at

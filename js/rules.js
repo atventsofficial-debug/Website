@@ -106,37 +106,26 @@ export function checkClick(d) {
   return CLICK_ID.test(id) && isConcert(eventId) ? { id, eventId, src: cleanSource(d.src) } : null;
 }
 
-// A 3D pass claim: the tiket.com booking, and the click ids this device sent with it.
-// One booking opens one pass: the same email gets that pass again, with any new clicks
-// added (up to MAX_CLICKS); another email hears TAKEN, unless the pass was closed.
+// A 3D pass bought on this site: the concert, the seat, the buyer's name and email, and the
+// paid order of the access fee. Payment is the only way in: one paid order opens one pass,
+// for one seat, straight away. The ticket itself is bought from the official seller.
 export const MAX_CLICKS = 40;
-export const TAKEN = 'This order ID has already unlocked a 3D view with another email. Contact us if it is your booking.';
+export const TAKEN = 'This payment has already opened a 3D pass. Open it from My 3D passes, or contact us.';
 export function checkClaim(d = {}) {
   const eventId = line(d.eventId), v = isConcert(eventId) ? getEvent(eventId) : null;
-  const cat = line(d.cat), orderRef = normalRef(d.orderRef), mail = email(d.email);
+  const cat = line(d.cat), mail = email(d.email), name = line(d.name).slice(0, 120);
   if (!v) return no('eventId', 'Choose your concert.');
   if (!v.catById[cat]) return no('cat', 'Choose the category on your ticket.');
-  if (!Number.isInteger(d.qty) || d.qty < 1 || d.qty > MAX_QTY) return no('qty', `Tickets in the order: 1 to ${MAX_QTY}.`);
-  if (!isOrderRef(orderRef)) return no('orderRef', 'Check the order ID: the letters and numbers from your tiket.com booking, 6 to 24 of them.');
-  if (!isEmail(mail)) return no('email', 'Please enter the email you used on tiket.com.');
-  const route = d.route === 'outside' ? 'outside' : 'affiliate';
-  // The seat on the e-ticket, from the venue's own seat list: it has to exist, and sit in the
-  // category the fan chose. Older clients send none.
-  let seat = '';
-  if (d.seat != null && d.seat !== '') {
-    seat = line(d.seat);
-    const i = v.seatById.get(seat);
-    if (i === undefined) return no('seat', 'Choose the seat on your e-ticket.');
-    if (v.seats[i].cat !== cat) return no('seat', 'That seat is not in the category you chose. Check your e-ticket.');
-  }
-  // Bought elsewhere: the Rp25.000 access fee comes first, so a claim carries its payment.
-  const payment = route === 'outside' ? line(d.payment) : '';
-  if (route === 'outside' && !PAYMENT_ID.test(payment)) return no('payment', 'Pay the Rp25.000 access fee first.');
-  if (d.consent !== true) return no('consent', route === 'outside' ? 'Please confirm these are your tickets and accept the terms.' : 'Please confirm you bought through our link and accept the terms.');
-  const proof = d.proof && typeof d.proof === 'object' ? checkProof(d.proof) : null;
-  if (d.requireProof && !proof) return no('proof', 'Add your e-ticket: a photo, a screenshot or the PDF from tiket.com.');
+  const seat = line(d.seat), i = seat ? v.seatById.get(seat) : undefined;
+  if (i === undefined) return no('seat', 'Choose your seat.');
+  if (v.seats[i].cat !== cat) return no('seat', 'That seat is not in the category you chose.');
+  if (name.length < 2 || name.length > 80) return no('name', 'Please enter your name.');
+  if (!isEmail(mail)) return no('email', 'Please enter a valid email. Your pass and receipt go there.');
+  if (d.consent !== true) return no('consent', 'Please accept the terms and the privacy policy.');
+  const payment = line(d.payment);
+  if (d.requirePayment !== false && !PAYMENT_ID.test(payment)) return no('payment', `Pay the ${formatFee()} access fee first.`);
   const clicks = Array.isArray(d.clicks) ? [...new Set(d.clicks.filter(x => typeof x === 'string' && CLICK_ID.test(x)))].slice(0, 20) : [];
-  return { claim: { eventId, cat, qty: d.qty, orderRef, email: mail, clicks, route, seat, payment, proof } };
+  return { claim: { eventId, cat, qty: 1, name, email: mail, clicks, route: 'paid', seat, payment } };
 }
 
 // The e-ticket a fan sends with a claim, checked by a person before the 3D view opens.
@@ -150,15 +139,16 @@ export function checkProof(f) {
   return { name, type, size, data };
 }
 
-// The access fee for tickets bought outside our links, and the id of a paid order.
+// The price of one 3D seat view, for one concert, and the id of a paid order.
 export const ACCESS_FEE = 25000;
+export const formatFee = (n = ACCESS_FEE) => `Rp${n.toLocaleString('id-ID')}`;
 export const PAYMENT_ID = /^PAY-[A-Z0-9]{6,24}$/;
 
 // The news list, or alerts for one concert.
 export function checkSubscription(d = {}) {
   const mail = email(d.email), kind = line(d.kind), eventId = kind === 'alerts' ? line(d.eventId) : '';
   if (!isEmail(mail)) return no('email', 'Please enter a valid email address.');
-  if (kind !== 'newsletter' && kind !== 'alerts') return no('kind', 'Unknown list.');
+  if (!['newsletter', 'alerts', 'footage'].includes(kind)) return no('kind', 'Unknown list.');
   if (kind === 'alerts' && !isConcert(eventId)) return no('eventId', 'Choose a concert.');
   return { subscription: { email: mail, kind, eventId } };
 }
