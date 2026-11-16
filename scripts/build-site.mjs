@@ -18,6 +18,7 @@ const out = path.join(root, 'site');
 fs.rmSync(out, { recursive: true, force: true });
 fs.mkdirSync(out);
 fs.cpSync(path.join(root, 'assets'), path.join(out, 'assets'), { recursive: true });
+for (const name of ['favicon.ico', 'site.webmanifest']) fs.cpSync(path.join(root, name), path.join(out, name));
 
 let html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 let bundled = false;

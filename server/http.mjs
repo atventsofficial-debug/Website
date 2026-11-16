@@ -128,10 +128,10 @@ export function securityHeaders(root, isHttps) {
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
   '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp',
-  '.svg': 'image/svg+xml', '.ico': 'image/x-icon',
+  '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json',
 };
 // Only these paths are public. Server code, data, .env and node_modules never are.
-const PUBLIC = [/^\/index\.html$/, /^\/css\/[\w.-]+\.css$/, /^\/js\/[\w.-]+\.js$/, /^\/assets\/[\w/.-]+\.(png|jpe?g|webp|svg)$/, /^\/favicon\.ico$/];
+const PUBLIC = [/^\/index\.html$/, /^\/css\/[\w.-]+\.css$/, /^\/js\/[\w.-]+\.js$/, /^\/assets\/[\w/.-]+\.(png|jpe?g|webp|svg)$/, /^\/favicon\.ico$/, /^\/site\.webmanifest$/];
 
 export function serveStatic(root, req, res, headers) {
   let rel;
