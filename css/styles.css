@@ -1832,3 +1832,6 @@ body { font-family: var(--font); font-feature-settings: "cv11", "ss01"; }
 .btn-coral svg, .hs-card .btn-coral svg { background: var(--coral); color: #fff; }
 .plan.plan-coral, .plan.plan-coral * { color: var(--text); }
 .plan-coral li svg { color: var(--coral-2); }
+
+/* Footer wordmark: the vector from the logo, as wide as the footer content. */
+.footer .wordmark-svg { display: block; width: 100%; max-width: var(--max); height: auto; margin: var(--s7) auto 0; padding: 0; font: inherit; transform: none; color: rgba(245, 242, 238, 0.07); overflow: visible; }
