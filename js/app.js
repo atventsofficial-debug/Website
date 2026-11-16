@@ -9,7 +9,7 @@ import { startHero, stopHero } from './hero.js';
 import { renderPartners } from './partners.js';
 import { renderAdmin } from './admin.js';
 import { openViewer, closeViewer, bindViewer, paintViewer, loadScene3d } from './viewer.js';
-import { $, $$, state, on, toast, tickCountdowns, captureCampaign, fitGiants } from './ui.js';
+import { $, $$, state, on, toast, tickCountdowns, captureCampaign, fitGiants, bindSubscribe } from './ui.js';
 
 // Two sides of the site. The route decides which one shows; the toggle in the nav switches.
 const SIDE = 'atvents:side';
@@ -48,6 +48,7 @@ async function boot() {
   setInterval(tickCountdowns, 1000);
   bindBuyLinks();
   bindPassButtons();
+  if ($('#foot-alert')) bindSubscribe($('#foot-alert'), { kind: 'newsletter', done: 'You’re on the list. The next big concert lands in your inbox.' }, $('#foot-alert-msg'));
   bindViewer();
   navCount();
   on('passes', () => {

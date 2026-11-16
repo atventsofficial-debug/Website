@@ -1835,3 +1835,44 @@ body { font-family: var(--font); font-feature-settings: "cv11", "ss01"; }
 
 /* Footer wordmark: the vector from the logo, as wide as the footer content. */
 .footer .wordmark-svg { display: block; width: 100%; max-width: var(--max); height: auto; margin: var(--s7) auto 0; padding: 0; font: inherit; transform: none; color: rgba(245, 242, 238, 0.07); overflow: visible; }
+
+/* Footer concert alerts, under the partners line. */
+.foot-alert { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s5) var(--s7); align-items: end; max-width: var(--max); margin: var(--s6) auto 0; padding: var(--s6) 0 0; border-top: 1px solid var(--line); }
+.foot-alert .eyebrow { margin: 0 0 8px; }
+.foot-alert .eyebrow::before { background: var(--coral); }
+.fa-copy b { display: block; font: 600 clamp(20px, 2vw, 26px)/1.15 var(--display); letter-spacing: -0.03em; color: var(--text); }
+.fa-copy span { display: block; margin-top: 6px; color: var(--muted); font-size: 14px; line-height: 1.5; }
+.fa-field { display: flex; flex-wrap: wrap; gap: 10px; }
+.fa-field input { flex: 1 1 220px; min-width: 0; height: 48px; padding: 0 18px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--panel); color: var(--text); font: 400 15px/1 var(--font); }
+.fa-field input:focus { outline: none; border-color: var(--coral); }
+.fa-field .btn { height: 48px; }
+.fa-field .form-msg { flex-basis: 100%; margin: 0; }
+@media (max-width: 760px) { .foot-alert { grid-template-columns: 1fr; } .fa-field .btn { flex: 1 1 100%; justify-content: center; } }
+
+/* How it works: a plain four-step timeline, no panel and no cards. */
+#how, #how.sec { background: none !important; border: 0 !important; border-radius: 0; padding: 0 var(--gut); margin-top: var(--s9); max-width: none; overflow: visible; }
+#how::before { content: none; }
+#how .sec-head { border-top-color: var(--line); }
+#how .sec-side p { color: var(--muted); }
+.how-line { list-style: none; border: 0; border-radius: 0; background: none; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0 var(--s6); max-width: var(--max); margin: var(--s7) auto 0; padding: 0; counter-reset: none; }
+.how-line li { position: relative; display: block; padding-top: 28px; }
+.how-line li::before { content: ""; position: absolute; top: 5px; left: 0; right: calc(-1 * var(--s6)); height: 1px; background: var(--line-2); }
+.how-line li:last-child::before { right: 0; }
+.how-line li::after { content: ""; position: absolute; top: 0; left: 0; width: 11px; height: 11px; border-radius: 50%; background: var(--frame); border: 1px solid var(--muted); }
+.how-line li:first-child::after { background: var(--coral); border-color: var(--coral); }
+.tl-n { display: block; font: 600 13px/1 var(--mono); letter-spacing: 0.04em; color: var(--dimtext); margin-bottom: 14px; }
+.how-line h3 { margin: 0 0 8px; font: 600 clamp(19px, 1.6vw, 22px)/1.2 var(--display); letter-spacing: -0.03em; color: var(--text); text-transform: none; }
+.how-line p { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.5; max-width: 30ch; }
+.tl-cta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s4) var(--s6); max-width: var(--max); margin: var(--s7) auto 0; }
+.tl-free { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: 15px; text-decoration: none; }
+.tl-free svg { width: 14px; height: 14px; color: var(--coral); }
+.tl-free:hover { color: var(--text); }
+@media (max-width: 860px) {
+  #how, #how.sec { margin-left: 0; margin-right: 0; padding: 0 var(--gut); }
+  .how-line { grid-template-columns: 1fr; gap: 0; }
+  .how-line li { padding: 0 0 var(--s5) 32px; }
+  .how-line li::before { top: 6px; bottom: 0; left: 5px; right: auto; width: 1px; height: auto; }
+  .how-line li:last-child::before { display: none; }
+  .how-line li::after { top: 1px; }
+  .tl-n { margin-bottom: 8px; }
+}
