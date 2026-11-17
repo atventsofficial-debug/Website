@@ -156,10 +156,10 @@ export class HeroPhoto {
     // front of a side screen stays in front; the haze over the stage, the screens' own glow
     // and the rig's moving light are added on top.
     const box = (s, pts = grow(s.pts, 3)) => { const h = Math.round(1024 / s.aspect); return `width:1024px;height:${h}px;transform:${warp(1024, h, pts)}`; };
-    // The main screen's cabinet: a clean dark frame over the cut-out's edge, which in the
-    // photo is a few pixels of the screen's old blue. Nothing stands in front of it; the
+    // The main screen's edge: a thin dark line over the cut-out's edge, which in the photo
+    // is a few pixels of the screen's old blue. Nothing stands in front of it; the
     // side screens, with the truss in front, keep the photo's own black frame.
-    const frame = s => (s.kind || 'main') === 'main' ? `<i class="hs-frame" style="${box(s, outset(s.pts, 8))}"></i>` : '';
+    const frame = s => (s.kind || 'main') === 'main' ? `<i class="hs-frame" style="${box(s, outset(s.pts, 5))}"></i>` : '';
     root.innerHTML = `<div class="hs-room"><div class="hs-room-in">
       ${arena.screens.map(s => `<div class="hs-scr" data-kind="${s.kind || 'main'}" style="${box(s)}"><canvas></canvas><canvas></canvas></div>`).join('')}
       <img class="hs-room-img" alt="" decoding="async">
