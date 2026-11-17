@@ -1465,13 +1465,14 @@ body { counter-reset: sec; }
 .tkt:hover .tkt-bg img { transform: scale(1.07); }
 /* The poster is soft under the logo and date, sharp in the middle and soft again towards
    the name, so its own lettering never fights the card's. The middle keeps the poster's own
-   colours; a light shade at the top and a dark one under the name keep the type clear. */
+   colours; a light shade at the top and a thin dark one under the name keep the type clear
+   and let the poster show through. */
 .tkt-bg::before, .tkt-bg::after { content: ""; position: absolute; inset: 0; z-index: 1; }
-.tkt-bg::before { -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+.tkt-bg::before { -webkit-backdrop-filter: blur(9px); backdrop-filter: blur(9px);
   -webkit-mask: linear-gradient(180deg, #000 14%, transparent 32%, #000 58%); mask: linear-gradient(180deg, #000 14%, transparent 32%, #000 58%); }
 .tkt-bg::after { background:
   linear-gradient(180deg, rgba(12, 8, 6, 0.45) 0%, rgba(12, 8, 6, 0) 24%),
-  linear-gradient(180deg, rgba(30, 14, 10, 0) 36%, rgba(30, 14, 10, 0.72) 52%, rgba(30, 14, 10, 0.92) 66%, #3a170c 100%); }
+  linear-gradient(180deg, rgba(30, 14, 10, 0) 36%, rgba(30, 14, 10, 0.42) 54%, rgba(30, 14, 10, 0.6) 72%, rgba(30, 14, 10, 0.74) 100%); }
 .tkt-in { position: relative; display: flex; flex-direction: column; align-items: center; height: 100%; padding: 30px 22px 30px; text-align: center; }
 .tkt-top { display: flex; justify-content: space-between; align-items: flex-start; width: 100%; gap: var(--s4); margin-bottom: auto;
   text-shadow: 0 1px 10px rgba(0, 0, 0, 0.4); } /* stays legible on a light poster */
