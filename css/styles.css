@@ -1463,11 +1463,11 @@ body { counter-reset: sec; }
 .tkt-bg { position: absolute; inset: 0; z-index: -1; }
 .tkt-bg img { width: 100%; height: 100%; object-fit: cover; filter: saturate(1.15) contrast(1.05); transform: scale(1.02); transition: transform .6s; }
 .tkt:hover .tkt-bg img { transform: scale(1.07); }
-/* The poster stays sharp at the top and goes soft towards the name, so the poster's own
-   lettering never fights the card's; a light shade at the top keeps the logo and date clear. */
+/* The poster is soft under the logo and date, sharp in the middle and soft again towards
+   the name, so its own lettering never fights the card's; a light shade at the top helps. */
 .tkt-bg::before, .tkt-bg::after { content: ""; position: absolute; inset: 0; z-index: 1; }
 .tkt-bg::before { -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
-  -webkit-mask: linear-gradient(180deg, transparent 26%, #000 56%); mask: linear-gradient(180deg, transparent 26%, #000 56%); }
+  -webkit-mask: linear-gradient(180deg, #000 14%, transparent 32%, #000 58%); mask: linear-gradient(180deg, #000 14%, transparent 32%, #000 58%); }
 .tkt-bg::after { background:
   linear-gradient(180deg, rgba(12, 8, 6, 0.5) 0%, rgba(12, 8, 6, 0) 26%),
   linear-gradient(180deg, rgba(255, 90, 31, 0.28) 0%, rgba(110, 28, 8, 0.5) 38%, rgba(30, 14, 10, 0.9) 64%, #3a170c 100%); }
