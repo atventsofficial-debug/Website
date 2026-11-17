@@ -110,7 +110,8 @@ function titleLines(t) {
 // The home page's cards are concert passes: the poster behind, the logo and the date and
 // venue in the top corners, the name just above the perforation, and the price where a
 // ticket prints it. `run` makes one pass stand for every coming date of the show; a show
-// with nothing left to sell gets a stamp across the middle. The whole pass opens its page.
+// with nothing left to sell says so in red, like a date or a category that sold out. The
+// whole pass opens its page.
 function ticketCard(e, opts = {}) {
   const v = placeOf(e);
   const dates = opts.run ? datesOf(e).filter(x => x === e || upcoming(x)) : [e];
@@ -118,8 +119,9 @@ function ticketCard(e, opts = {}) {
   const live = dates.find(x => !allSoldOut(x)) || e, from = minPrice(live.id), name = titleLines(e.title);
   const tags = [];
   if (dates.some(x => activePass(x.id))) tags.push(`<span class="tag tag-coral">${icon('i-eye')}3D pass</span>`);
-  if (gone && !all) tags.push(`<span class="tag tag-dark">${plural(gone, 'date')} sold out</span>`);
-  else if (!all && live.soldOut?.length) tags.push(`<span class="tag tag-dark">${esc(getEvent(live.id).catById[live.soldOut[0]].name)} sold out</span>`);
+  if (all) tags.push('<span class="tag tag-sold">Sold out</span>');
+  else if (gone) tags.push(`<span class="tag tag-sold">${plural(gone, 'date')} sold out</span>`);
+  else if (live.soldOut?.length) tags.push(`<span class="tag tag-sold">${esc(getEvent(live.id).catById[live.soldOut[0]].name)} sold out</span>`);
   return `<article class="ev tkt">
     <div class="tkt-bg">${cardImg(e, `${v.name}, ${v.city}`)}</div>
     <div class="tkt-in">
@@ -134,8 +136,7 @@ function ticketCard(e, opts = {}) {
         <div class="tkt-code"><small>Concert pass</small><i class="barcode"></i></div>
         <p class="tkt-price">${priceTag(live, from)}</p>
       </div>
-    </div>${all ? `
-    <p class="tkt-stamp" aria-hidden="true"><span>Sold out</span></p>` : ''}</article>`;
+    </div></article>`;
 }
 
 // One card a show, soonest first, for the home page and "more concerts".
@@ -339,7 +340,7 @@ export function renderEvent(id) {
         ${poster}
         <div class="ev-info">
           <a class="back-link" href="#concerts">${icon('i-back')}All concerts</a>
-          <div class="tags"><span class="tag tag-coral">Concert</span><span class="tag tag-white">${dm.dow} ${dm.day} ${dm.mon}</span>${allSoldOut(e) ? '<span class="tag tag-dark">Sold out</span>' : ''}${pass ? `<span class="tag tag-line">${icon('i-eye')}3D pass on this device</span>` : ''}</div>
+          <div class="tags"><span class="tag tag-coral">Concert</span><span class="tag tag-white">${dm.dow} ${dm.day} ${dm.mon}</span>${allSoldOut(e) ? '<span class="tag tag-sold">Sold out</span>' : ''}${pass ? `<span class="tag tag-line">${icon('i-eye')}3D pass on this device</span>` : ''}</div>
           <p class="ev-blurb">${esc(e.blurb)}</p>
           ${live && saleInfo(e) ? `<p class="ev-sale">${icon('i-cal')}<span>${esc(saleInfo(e).line)}</span></p>` : ''}
           ${others.length ? `<p class="ev-dates">Also on ${others.map(x => `<a class="pill" href="#event-${x.id}">${esc(whenOf(x).block.dow)} ${whenOf(x).block.day} ${whenOf(x).block.mon}${allSoldOut(x) ? ' <span>sold out</span>' : ''}</a>`).join('')}</p>` : ''}
