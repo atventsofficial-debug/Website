@@ -74,55 +74,68 @@ export function dotMap(v, { byCat = !!v.zoneColors } = {}) {
     ${Object.entries(paths).map(([cat, d]) => (cat === 'all' ? `<path class="free" d="${d}" ${dot}/>` : `<path d="${d}" stroke="${esc(v.catById[cat].color)}" ${dot}/>`)).join('')}</svg>`;
 }
 
-function eventTags(e, { run = false } = {}) {
-  const tags = [];
-  if (activePass(e.id)) tags.push(`<span class="tag tag-coral">${icon('i-eye')}3D pass</span>`);
-  const more = run ? datesOf(e).filter(upcoming).length - 1 : 0;
-  if (more > 0) tags.push(`<span class="tag tag-white">+${plural(more, 'date')}</span>`);
-  if (allSoldOut(e)) tags.push('<span class="tag tag-dark">Sold out</span>');
-  else if (e.soldOut?.length) tags.push(`<span class="tag tag-dark">${esc(getEvent(e.id).catById[e.soldOut[0]].name)} sold out</span>`);
-  return tags.join('');
-}
-
 // Where the price is printed: the seller's name with it.
 const priceTag = (e, from) => (from == null ? `<small>Tickets on</small><b>${esc(sellerOf(e))}</b>` : `<small>From, on ${esc(sellerOf(e))}</small><b>${formatRpShort(from)}</b>`);
 
-// The whole card opens the concert page (a stretched link). `run` folds the other dates of
-// the same show into a tag, for lists that show each show once.
-function eventCard(e, opts = {}) {
-  const v = placeOf(e), dm = whenOf(e).block, from = minPrice(e.id);
-  const price = priceTag(e, from);
-  return `<article class="ev">
-    <div class="ev-cover">
-      <div class="ev-pic">${eventImg(e, `${v.name}, ${v.city}`)}</div>
-      <span class="ev-tags">${eventTags(e, opts)}</span>
-      <span class="ev-date"><b>${dm.day}</b><small>${dm.mon}</small></span>
-    </div>
-    <div class="ev-body">
-      <p class="ev-meta">Concert · ${keep(esc(v.city))}</p>
-      <h3><a class="ev-link" href="#event-${e.id}">${esc(e.title)}</a></h3>
-      <p class="ev-sub">${esc(e.subtitle)} · ${esc(v.name)}</p>
-      <div class="ev-foot"><div class="mini-tk"><span>${price}</span><em>${allSoldOut(e) ? 'Sold out' : 'Tickets'}</em></div></div>
-    </div></article>`;
+// The dates a pass stands for, as its corner prints them: "30 JAN 2027", "16 & 17 JAN 2027",
+// "26, 27 & 29 DEC 2026", "1–4 MAR 2027", or "30 DEC 2026 – 2 JAN 2027" across months.
+function datesText(list) {
+  const p = list.map(x => whenOf(x).pill.split(' ')), [d0, m0, y0] = p[0], [dN, mN, yN] = p[p.length - 1];
+  if (p.length === 1) return p[0].join(' ');
+  if (m0 !== mN || y0 !== yN) return `${d0} ${m0}${y0 === yN ? '' : ` ${y0}`} – ${dN} ${mN} ${yN}`;
+  if (p.length > 3) return `${d0}–${dN} ${m0} ${y0}`;
+  const days = p.map(x => x[0]);
+  return `${days.slice(0, -1).join(', ')} & ${dN} ${m0} ${y0}`;
 }
 
-// The home page's cards are concert passes: the poster behind, the name in tall caps, a
-// perforation, and the price where a ticket prints it. The whole pass opens the concert page.
+// The pass's name sits on one line when it still prints large there (30px on a 286px
+// card), else on two, split where the longer line is shortest; the card's width sets the
+// size (see .tkt-title). Widths are Inter Bold capitals at the title's tracking, in ems.
+const GLYPH = Object.fromEntries([
+  [0.2, ' '], [0.25, 'I'], [0.3, "'.,:!"], [0.4, '1'], [0.43, '-'], [0.53, 'L?'], [0.55, 'FJ7'],
+  [0.57, 'E'], [0.59, '25'], [0.62, 'PRS3689'], [0.63, 'BTZ'], [0.64, '04&'], [0.69, 'DK'],
+  [0.7, 'UYCX'], [0.71, 'AHV'], [0.72, 'G'], [0.73, 'N'], [0.74, 'OQ'], [0.9, 'M'], [1, 'W'],
+].flatMap(([w, cs]) => [...cs].map(c => [c, w])));
+const emOf = t => [...t.toUpperCase()].reduce((w, c) => w + (GLYPH[c] ?? 0.7), 0);
+function titleLines(t) {
+  const one = emOf(t), words = t.split(' ');
+  if (286 / one >= 30 || words.length < 2) return { lines: [t], em: one };
+  return words.slice(1).reduce((best, _, i) => {
+    const lines = [words.slice(0, i + 1).join(' '), words.slice(i + 1).join(' ')];
+    const em = Math.max(...lines.map(emOf));
+    return em < best.em ? { lines, em } : best;
+  }, { lines: [t], em: Infinity });
+}
+
+// The home page's cards are concert passes: the poster behind, the logo and the date and
+// venue in the top corners, the name just above the perforation, and the price where a
+// ticket prints it. `run` makes one pass stand for every coming date of the show; a show
+// with nothing left to sell gets a stamp across the middle. The whole pass opens its page.
 function ticketCard(e, opts = {}) {
-  const v = placeOf(e), dm = whenOf(e).block, from = minPrice(e.id);
+  const v = placeOf(e);
+  const dates = opts.run ? datesOf(e).filter(x => x === e || upcoming(x)) : [e];
+  const gone = dates.filter(allSoldOut).length, all = gone === dates.length;
+  const live = dates.find(x => !allSoldOut(x)) || e, from = minPrice(live.id), name = titleLines(e.title);
+  const tags = [];
+  if (dates.some(x => activePass(x.id))) tags.push(`<span class="tag tag-coral">${icon('i-eye')}3D pass</span>`);
+  if (gone && !all) tags.push(`<span class="tag tag-dark">${plural(gone, 'date')} sold out</span>`);
+  else if (!all && live.soldOut?.length) tags.push(`<span class="tag tag-dark">${esc(getEvent(live.id).catById[live.soldOut[0]].name)} sold out</span>`);
   return `<article class="ev tkt">
     <div class="tkt-bg">${eventImg(e, `${v.name}, ${v.city}`)}</div>
     <div class="tkt-in">
-      <div class="tkt-top"><span class="tkt-brand">${icon('i-mark')}<span>atvents<small>3D seat view</small></span></span><span class="ev-tags">${eventTags(e, opts)}</span></div>
-      <h3 class="tkt-title"><a class="ev-link" href="#event-${e.id}">${esc(e.title)}</a></h3>
-      <p class="tkt-sub">${esc(e.subtitle)}</p>
-      <p class="tkt-line"><span>${dm.day} ${dm.mon}</span><i>|</i><span>${keep(esc(v.city))}</span><i>|</i><span>Your seat in 3D</span></p>
+      <div class="tkt-top">
+        <span class="tkt-brand">${icon('i-mark')}<span>atvents<small>3D seat view</small></span></span>
+        <p class="tkt-when"><b>${datesText(dates)}</b><span>${esc(v.name)}, ${keep(esc(v.city))}</span></p>
+      </div>
+      ${tags.length ? `<p class="tkt-tags">${tags.join('')}</p>` : ''}
+      <h3 class="tkt-title" style="--em:${name.em.toFixed(2)}"><a class="ev-link" href="#event-${e.id}">${name.lines.map(esc).join('<br>')}${all ? '<span class="sr-only">, sold out</span>' : ''}</a></h3>
       <div class="tkt-cut" aria-hidden="true"></div>
       <div class="tkt-foot">
-        <div class="tkt-code"><small>${allSoldOut(e) ? 'Sold out' : 'Concert pass'}</small><i class="barcode"></i></div>
-        <p class="tkt-price">${priceTag(e, from)}</p>
+        <div class="tkt-code"><small>Concert pass</small><i class="barcode"></i></div>
+        <p class="tkt-price">${priceTag(live, from)}</p>
       </div>
-    </div></article>`;
+    </div>${all ? `
+    <p class="tkt-stamp" aria-hidden="true"><span>Sold out</span></p>` : ''}</article>`;
 }
 
 // One card a show, soonest first, for the home page and "more concerts".

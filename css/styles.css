@@ -1461,26 +1461,37 @@ body { counter-reset: sec; }
 .tkt-bg { position: absolute; inset: 0; z-index: -1; }
 .tkt-bg img { width: 100%; height: 100%; object-fit: cover; filter: saturate(1.15) contrast(1.05); transform: scale(1.02); transition: transform .6s; }
 .tkt:hover .tkt-bg img { transform: scale(1.07); }
-.tkt-bg::after { content: ""; position: absolute; inset: 0; background:
-  linear-gradient(180deg, rgba(255, 90, 31, 0.28) 0%, rgba(110, 28, 8, 0.5) 38%, rgba(30, 14, 10, 0.9) 64%, #3a170c 100%); mix-blend-mode: normal; }
+/* The poster stays sharp at the top and goes soft towards the name, so the poster's own
+   lettering never fights the card's; a light shade at the top keeps the logo and date clear. */
+.tkt-bg::before, .tkt-bg::after { content: ""; position: absolute; inset: 0; z-index: 1; }
+.tkt-bg::before { -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  -webkit-mask: linear-gradient(180deg, transparent 26%, #000 56%); mask: linear-gradient(180deg, transparent 26%, #000 56%); }
+.tkt-bg::after { background:
+  linear-gradient(180deg, rgba(12, 8, 6, 0.5) 0%, rgba(12, 8, 6, 0) 26%),
+  linear-gradient(180deg, rgba(255, 90, 31, 0.28) 0%, rgba(110, 28, 8, 0.5) 38%, rgba(30, 14, 10, 0.9) 64%, #3a170c 100%); }
 .tkt-in { position: relative; display: flex; flex-direction: column; align-items: center; height: 100%; padding: 30px 22px 30px; text-align: center; }
-.tkt-top { display: flex; justify-content: space-between; align-items: flex-start; width: 100%; gap: 8px; }
+.tkt-top { display: flex; justify-content: space-between; align-items: flex-start; width: 100%; gap: var(--s4); margin-bottom: auto; }
 .tkt-brand { display: inline-flex; align-items: center; gap: 8px; font: 600 15px/0.9 var(--display); letter-spacing: 0.02em; text-align: left; }
 .tkt-brand svg { width: 26px; height: 26px; color: #fff; }
 .tkt-brand small { display: block; font: 500 10px/1.2 var(--display); letter-spacing: 0.12em; color: #ffc2ad; margin-top: 3px; }
-.tkt .ev-tags { position: static; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
-.tkt .tkt-title { margin-top: auto; padding-top: var(--s6); font: 500 clamp(44px, 4.4vw, 62px)/0.9 var(--display); letter-spacing: -0.005em; text-transform: uppercase; text-wrap: balance; }
+/* Top right: the date (or dates) and the venue, as a ticket prints them. */
+.tkt-when { max-width: 58%; margin: 0; text-align: right; }
+.tkt-when b { display: block; font: 600 12px/1.2 var(--display); letter-spacing: 0.04em; text-transform: uppercase; }
+.tkt-when span { display: block; margin-top: 4px; font: 400 11px/1.35 var(--display); color: rgba(255, 255, 255, 0.78); text-wrap: balance; }
+.tkt-tags { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; margin: var(--s5) 0 10px; }
+.tkt .tkt-title { margin-top: 6px; font: 500 clamp(44px, 4.4vw, 62px)/0.9 var(--display); letter-spacing: -0.005em; text-transform: uppercase; text-wrap: balance; }
 .tkt .tkt-title a { color: #fff; }
-.tkt-sub { margin-top: 10px; font-size: 13.5px; color: rgba(255, 255, 255, 0.78); }
-.tkt-line { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 10px; margin-top: var(--s5); font: 400 15px/1 var(--display); letter-spacing: 0.06em; text-transform: uppercase; color: rgba(255, 255, 255, 0.92); }
-.tkt-line i { font-style: normal; opacity: 0.6; }
-.tkt-cut { width: calc(100% + 44px); margin: var(--s4) -22px 0; border-top: 2px dashed rgba(255, 255, 255, 0.55); }
+.tkt-cut { width: calc(100% + 44px); margin: var(--s5) -22px 0; border-top: 2px dashed rgba(255, 255, 255, 0.55); }
 .tkt-foot { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--s4); width: 100%; margin-top: var(--s4); text-align: left; }
 .tkt-code small { display: block; margin-bottom: 8px; font: 400 14px/1 var(--display); letter-spacing: 0.06em; text-transform: uppercase; }
 .tkt-code .barcode { width: 120px; height: 38px; color: #fff; }
 .tkt-price { text-align: right; }
 .tkt-price small { display: block; font-size: 11px; color: rgba(255, 255, 255, 0.7); }
 .tkt-price b { font: 500 34px/1 var(--display); letter-spacing: 0; }
+/* Nothing left to sell: the poster greyed out and the one word over it. */
+.tkt-stamp { position: absolute; inset: 0; z-index: 2; display: grid; place-items: center; margin: 0; pointer-events: none; }
+.tkt-stamp span { padding: 10px 18px 9px; border: 3px solid #fff; border-radius: 8px; background: rgba(12, 8, 6, 0.4); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  font: 700 40px/1 var(--display); letter-spacing: -0.02em; text-transform: uppercase; color: #fff; transform: rotate(-8deg); }
 .tkt-alerts { border-radius: 6px; min-height: 470px; border: 2px dashed rgba(255, 255, 255, 0.18); background: radial-gradient(90% 70% at 100% 0%, rgba(255, 90, 31, 0.22), transparent 70%), var(--panel); }
 .tkt-alerts h3 { font: 500 34px/0.95 var(--display); text-transform: uppercase; }
 @media (max-width: 640px) {
@@ -1806,7 +1817,11 @@ body { font-family: var(--font); font-feature-settings: "cv11", "ss01"; }
 .tkt-brand { font: 600 15px/0.9 var(--display); letter-spacing: -0.01em; text-transform: none; }
 .tkt-brand small { font: 500 10px/1.2 var(--display); letter-spacing: 0.02em; text-transform: none; }
 .tkt .tkt-title { font: 700 clamp(30px, 3vw, 44px)/0.95 var(--display); letter-spacing: -0.04em; }
-.tkt-line { font: 500 12px/1 var(--display); letter-spacing: 0.04em; }
+/* The name fills the card's width on its one or two lines (the template counts --em). */
+@supports (width: 1cqi) {
+  .tkt-in { container-type: inline-size; }
+  .tkt .tkt-title { font-size: min(44px, 100cqi / (var(--em) * 1.03)); white-space: nowrap; }
+}
 .tkt-code small { font: 500 12px/1 var(--display); letter-spacing: 0.04em; }
 .tkt-price b { font: 600 30px/1 var(--display); letter-spacing: -0.03em; }
 .tkt-alerts h3 { font: 600 30px/0.95 var(--display); letter-spacing: -0.03em; text-transform: none; }
