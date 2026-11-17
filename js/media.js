@@ -55,10 +55,12 @@ export function cover(key, venueKey) {
 // too: about 1.8 pixels per point on a card is sharp enough and far lighter. Artwork marked
 // `w: 480` is one small file.
 const smallOf = c => (c.w ? '' : c.src.replace(/\.webp$/, '-640.webp'));
+// A cover's two files as a srcset; '' for artwork that is one file.
+export const srcsetOf = c => (c.w ? '' : `${smallOf(c)} 640w, ${c.src} ${c.kind === 'render' ? 1280 : 1200}w`);
 export function coverImg(key, venueKey, alt, { eager = false } = {}) {
   const c = cover(key, venueKey);
   const small = eager ? '' : smallOf(c);
-  const srcset = small ? ` srcset="${small} 640w, ${c.src} ${c.kind === 'render' ? 1280 : 1200}w" sizes="(max-width: 640px) 50vw, 320px"` : '';
+  const srcset = small ? ` srcset="${srcsetOf(c)}" sizes="(max-width: 640px) 50vw, 320px"` : '';
   const pos = c.pos ? ` style="--pos:${c.pos}"` : '';
   return `<img class="cover-img cover-${c.kind}" src="${small || c.src}"${srcset}${pos} alt="${(c.alt || alt).replace(/"/g, '&quot;')}" ${eager ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async">${c.kind === 'render' ? `<span class="cover-credit">${c.credit}</span>` : ''}`;
 }

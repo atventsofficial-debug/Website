@@ -1464,11 +1464,13 @@ body { counter-reset: sec; }
 .tkt-bg img { width: 100%; height: 100%; object-fit: cover; transform: scale(1.02); transition: transform .6s; }
 .tkt:hover .tkt-bg img { transform: scale(1.07); }
 /* The poster is soft under the logo and date, sharp in the middle and soft again towards
-   the name, so its own lettering never fights the card's. The middle keeps the poster's own
-   colours; a light shade at the top and a thin dark one under the name keep the type clear
-   and let the poster show through. Below the cut the stub is solid (.tkt-cut). */
-.tkt-bg::before, .tkt-bg::after { content: ""; position: absolute; inset: 0; z-index: 1; }
-.tkt-bg::before { -webkit-backdrop-filter: blur(9px); backdrop-filter: blur(9px);
+   the name, so its own lettering never fights the card's. A poster's card file has that blur
+   drawn in (scripts/event-art.py), so scrolling past a row of cards costs no live blur; only a
+   venue render, for a show without a poster, is blurred here. The middle keeps the poster's
+   own colours; a light shade at the top and a thin dark one under the name keep the type
+   clear and let the poster show through. Below the cut the stub is solid (.tkt-cut). */
+.tkt-bg::after { content: ""; position: absolute; inset: 0; z-index: 1; }
+.tkt-bg:has(> .cover-render)::before { content: ""; position: absolute; inset: 0; z-index: 1; -webkit-backdrop-filter: blur(9px); backdrop-filter: blur(9px);
   -webkit-mask: linear-gradient(180deg, #000 14%, transparent 32%, transparent 50%, rgba(0, 0, 0, 0.55) 80%); mask: linear-gradient(180deg, #000 14%, transparent 32%, transparent 50%, rgba(0, 0, 0, 0.55) 80%); }
 .tkt-bg::after { background:
   linear-gradient(180deg, rgba(12, 8, 6, 0.45) 0%, rgba(12, 8, 6, 0) 24%),
@@ -1976,7 +1978,12 @@ body { font-family: var(--font); font-feature-settings: "cv11", "ss01"; }
    A slimmer card (smaller title, tighter rows) leaves more of the hero open, and
    herophoto.js places the photo so its screens sit whole in that part. */
 .hs-photo.is-ready .hs-room { transition: transform 1s var(--hs-ease); }
+/* The hero's card is written in by script; until then its place is held, so the slide
+   controls do not jump up when it arrives (the card is 229 px tall from 961 px up, and at
+   least 300 px below that). */
+.hs-stack:empty { min-height: 300px; }
 @media (min-width: 961px) {
+  .hs-stack:empty { min-height: 229px; }
   .hs-card { padding: 18px 26px; }
   .hs-body { align-items: center; gap: var(--s5); }
   .hs-info { gap: 6px; }

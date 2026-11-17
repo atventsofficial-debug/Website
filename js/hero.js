@@ -5,7 +5,7 @@
 import { formatFee } from './rules.js';
 import { placeOf, minPrice, allSoldOut, sellerOf, onTiket, saleInfo } from './events.js';
 import { formatRpShort } from './layouts.js';
-import { IMAGES, cover } from './media.js';
+import { IMAGES, cover, srcsetOf } from './media.js';
 import { whenOf } from './when.js';
 import { buyLink } from './passes.js';
 import { onSale, featured, datesOf, upcoming, timesLine } from './pages.js';
@@ -176,13 +176,21 @@ function hold(reason, on) {
 // The backdrops and the tabs, one a show; drawn again only when the shows on sale change.
 // A backdrop is the poster, sharp where the stage will be, over a blurred copy of itself:
 // it shows until the arena photo is ready, and instead of it for data savers.
-const fillBacks = (root = $('#hs-backs')) => { for (const img of root?.querySelectorAll('img[data-src]') || []) { img.src = img.dataset.src; img.removeAttribute('data-src'); } };
+const fillBacks = (root = $('#hs-backs')) => {
+  for (const img of root?.querySelectorAll('img[data-src]') || []) {
+    if (img.dataset.srcset) img.srcset = img.dataset.srcset;
+    img.src = img.dataset.src;
+    img.removeAttribute('data-src'); img.removeAttribute('data-srcset');
+  }
+};
 function build() {
   // Only the slide on show fetches its poster with the page; the others follow once the page
-  // has loaded, or the moment a visitor turns to them.
+  // has loaded, or the moment a visitor turns to them. A phone takes the 640 px file; the
+  // blurred copy names the same files and size, so it reuses the poster's download.
   $('#hs-backs').innerHTML = hero.list.map((e, k) => {
-    const src = esc(cover(e.image || e.photo, e.venue).src), at = k === hero.i ? 'src' : 'data-src';
-    return `<div class="hs-back"><img class="hs-blur" ${at}="${src}" alt="" decoding="async"><img class="hs-poster" ${at}="${src}" alt="" decoding="async"${k === hero.i ? ' fetchpriority="high"' : ''}></div>`;
+    const c = cover(e.image || e.photo, e.venue), set = srcsetOf(c), now = k === hero.i, at = now ? '' : 'data-';
+    const files = `${at}src="${esc(c.src)}"${set ? ` ${at}srcset="${esc(set)}" sizes="min(600px, 76vw)"` : ''}`;
+    return `<div class="hs-back"><img class="hs-blur" ${files} alt="" decoding="async"><img class="hs-poster" ${files} alt="" decoding="async"${now ? ' fetchpriority="high"' : ''}></div>`;
   }).join('');
   const rest = () => (window.requestIdleCallback || setTimeout)(() => fillBacks());
   if (document.readyState === 'complete') rest(); else addEventListener('load', rest, { once: true });
