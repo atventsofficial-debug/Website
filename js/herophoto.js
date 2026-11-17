@@ -9,27 +9,39 @@ import { IMAGES } from './media.js';
 // right, bottom right, bottom left. `aspect` is the shape the poster is drawn at (the real
 // screen's width over its height), so a screen seen at an angle still shows it undistorted.
 // `kind`: the stage's main screen, a side screen, or the phone a fan holds up in front,
-// whose own small picture of the stage shows the poster too.
+// whose own small picture of the stage shows the poster too. `frame`: a black edge drawn
+// over the photo, as [how far it reaches outside the screen, how wide it is]. `cab`: a
+// screen the photo does not have, hung in front of it (and of the truss) in a black
+// cabinet of this outline, its side included.
 export const ARENA = {
-  src: 'assets/hero/arena.webp', haze: 'assets/hero/arena-haze.webp',
+  // The side screens are painted out of this photo, the wall and the truss left whole, so
+  // the page can hang its own lower down, clear of the header's logo and links.
+  src: 'assets/hero/arena-v2.webp', haze: 'assets/hero/arena-haze.webp',
   w: 2400, h: 2241,
   screens: [
-    { kind: 'main', aspect: 30 / 13, pts: [[666, 485], [1702, 494], [1713, 940], [654, 938]] },
-    { kind: 'side', aspect: 16 / 9, pts: [[33, 408], [335, 450], [335, 663], [33, 647]] },
-    { kind: 'side', aspect: 16 / 9, pts: [[2020, 473], [2367, 438], [2367, 666], [2020, 677]] },
+    // Its edge in the photo still has a few pixels of the screen's old blue: a hairline covers it.
+    { kind: 'main', aspect: 30 / 13, frame: [5, 6], pts: [[666, 485], [1702, 494], [1713, 940], [654, 938]] },
+    // Where the photo had them, 80 pixels lower, in a cabinet like the one it showed.
+    { kind: 'side', aspect: 16 / 9, pts: [[33, 488], [335, 530], [335, 743], [33, 727]],
+      cab: [[0, 493], [26, 481], [342, 523], [342, 750], [26, 734], [0, 718]] },
+    { kind: 'side', aspect: 16 / 9, pts: [[2020, 553], [2367, 518], [2367, 746], [2020, 757]],
+      cab: [[2013, 546], [2374, 511], [2399, 521], [2399, 768], [2374, 753], [2013, 764]] },
     { kind: 'phone', aspect: 2, pts: [[1104, 1289], [1209, 1291], [1209, 1343], [1102, 1343]] },
   ],
   // Rows above this one are filler painted in over the rig, soft and blurred. They are never
   // shown, so the site's header sits over the real photo.
   clear: 300,
   // The rig, for the live light: the moving heads on the top truss sweep their beams down
-  // into the haze, and the lamps up the columns beside the main screen flash in turn.
+  // into the haze, and the lamps up the columns beside the main screen flash in turn. The
+  // columns stand in front of the screen: the four lamps lit in each (all but the lowest)
+  // throw their glare over its edge, as the photo shows it over the wall beside them.
   rig: {
     heads: [[680, 332], [910, 332], [1480, 340], [1712, 350]],
     columns: [
-      [[630, 490], [630, 590], [630, 690], [630, 800], [630, 910]],
-      [[1735, 490], [1735, 600], [1735, 700], [1735, 810], [1745, 910]],
+      [[634, 490], [629, 590], [626, 694], [619, 797], [630, 910]],
+      [[1727, 505], [1728, 602], [1738, 704], [1742, 800], [1745, 910]],
     ],
+    lit: 4,
   },
 };
 
@@ -38,7 +50,7 @@ const BEAM_COLORS = ['rgba(255, 244, 224, 0.85)', 'rgba(255, 215, 168, 0.85)', '
 
 // The light layer over the photo. Each piece is placed in the photo's pixels and moved by
 // CSS alone (styles.css, "live light"), so it costs no script while it runs.
-function rigLayer(rig) {
+function rigLayer(rig, screen) {
   if (!rig) return '';
   const n = rig.heads.length;
   // Each head points outwards from the middle and sweeps at its own pace.
@@ -49,7 +61,20 @@ function rigLayer(rig) {
   const heads = rig.heads.map(([x, y], i) => `<i class="hs-head" style="left:${x}px;top:${y}px;--t:-${(i * 0.9).toFixed(1)}s"></i>`).join('');
   const lamps = rig.columns.flatMap((col, k) => col.map(([x, y], i) =>
     `<i class="hs-lamp" style="left:${x}px;top:${y}px;--t:${(i * 0.16 + k * 0.08).toFixed(2)}s"></i>`)).join('');
-  return `<div class="hs-fx" aria-hidden="true">${beams}${heads}${lamps}<i class="hs-wash"></i><i class="hs-wash"></i></div>`;
+  return `<div class="hs-fx" aria-hidden="true">${beams}${heads}${lamps}${glare(rig, screen)}<i class="hs-wash"></i><i class="hs-wash"></i></div>`;
+}
+
+// What sets the main screen back behind the rig, kept to the screen and its frame: the lit
+// lamps' glare over it, and the haze between it and the crowd, thicker lower down.
+function glare(rig, screen) {
+  if (!screen || !rig.lit) return '';
+  const pts = outset(screen.pts, screen.frame ? screen.frame[0] : 0), xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+  const x = Math.min(...xs), y = Math.min(...ys);
+  const clip = pts.map(([px, py]) => `${px}px ${py}px`).join(',');
+  const lamps = rig.columns.flatMap(col => col.slice(0, rig.lit))
+    .map(([lx, ly]) => `<i class="hs-flare" style="left:${lx}px;top:${ly}px"></i>`).join('');
+  return `<div class="hs-glare" style="clip-path:polygon(${clip})">
+    <i class="hs-veil" style="left:${x}px;top:${y}px;width:${Math.max(...xs) - x}px;height:${Math.max(...ys) - y}px"></i>${lamps}</div>`;
 }
 
 // The poster's own colour, for the light washing over the crowd: its average, brightened
@@ -152,23 +177,45 @@ export class HeroPhoto {
     this.arena = arena;
     this.token = null;
     root.classList.add('hs-photo');
-    // Each screen's poster sits under the photo, whose screens are cut out, so the truss in
-    // front of a side screen stays in front; the haze over the stage, the screens' own glow
-    // and the rig's moving light are added on top.
+    // A screen's poster sits under the photo, seen through its cut-out, unless the page
+    // hangs the screen itself (the side screens, over the truss): then it is drawn over
+    // the photo, in its cabinet. The black edges come next, then the haze over the stage,
+    // the screens' own glow and the rig's moving light.
     const box = (s, pts = grow(s.pts, 3)) => { const h = Math.round(1024 / s.aspect); return `width:1024px;height:${h}px;transform:${warp(1024, h, pts)}`; };
-    // The main screen's edge: a thin dark line over the cut-out's edge, which in the photo
-    // is a few pixels of the screen's old blue. Nothing stands in front of it; the
-    // side screens, with the truss in front, keep the photo's own black frame.
-    const frame = s => (s.kind || 'main') === 'main' ? `<i class="hs-frame" style="${box(s, outset(s.pts, 5))}"></i>` : '';
+    const kind = s => s.kind || 'main';
+    const scr = (s, i) => `<div class="hs-scr" data-i="${i}" data-kind="${kind(s)}" style="${box(s)}"><canvas></canvas><canvas></canvas></div>`;
+    const frame = s => {
+      if (!s.frame) return '';
+      // The edge's width is given in the photo's pixels; the box it is drawn in is 1024
+      // wide, so its border is scaled to that box, across and down.
+      const [out, width] = s.frame, pts = outset(s.pts, out), h = Math.round(1024 / s.aspect);
+      const span = (a, b) => Math.hypot(b[0] - a[0], b[1] - a[1]);
+      const across = width * 1024 / ((span(pts[0], pts[1]) + span(pts[3], pts[2])) / 2);
+      const down = width * h / ((span(pts[0], pts[3]) + span(pts[1], pts[2])) / 2);
+      return `<i class="hs-frame" style="${box(s, pts)};border-width:${down.toFixed(1)}px ${across.toFixed(1)}px"></i>`;
+    };
+    const cab = s => {
+      const xs = s.cab.map(p => p[0]), ys = s.cab.map(p => p[1]), x = Math.min(...xs), y = Math.min(...ys);
+      const poly = s.cab.map(([px, py]) => `${px - x}px ${py - y}px`).join(',');
+      return `<i class="hs-cab" style="left:${x}px;top:${y}px;width:${Math.max(...xs) - x}px;height:${Math.max(...ys) - y}px;clip-path:polygon(${poly})"></i>`;
+    };
+    // The screens seen through the photo's cut-outs go under it; those the page hangs, over it.
+    const list = hung => arena.screens.map((s, i) => (!!s.cab === hung ? (hung ? cab(s) : '') + scr(s, i) : '')).join('');
     root.innerHTML = `<div class="hs-room"><div class="hs-room-in">
-      ${arena.screens.map(s => `<div class="hs-scr" data-kind="${s.kind || 'main'}" style="${box(s)}"><canvas></canvas><canvas></canvas></div>`).join('')}
+      ${list(false)}
       <img class="hs-room-img" alt="" decoding="async">
+      ${list(true)}
       ${arena.screens.map(frame).join('')}
       ${arena.haze ? '<img class="hs-haze" alt="" decoding="async">' : ''}
       ${arena.clear ? `<i class="hs-ceil" style="height:${arena.clear + 10}px"></i>` : ''}
-      ${arena.screens.map(s => `<div class="hs-glow" data-kind="${s.kind || 'main'}" style="${box(s)}"><canvas></canvas></div>`).join('')}
-      ${rigLayer(arena.rig)}
+      ${arena.screens.map((s, i) => `<div class="hs-glow" data-i="${i}" data-kind="${kind(s)}" style="${box(s)}"><canvas></canvas></div>`).join('')}
+      ${rigLayer(arena.rig, arena.screens.find(s => kind(s) === 'main'))}
     </div></div>`;
+    // Each screen's parts, in the order of arena.screens (the page's order differs).
+    this.screens = arena.screens.map((s, i) => ({
+      el: root.querySelector(`.hs-scr[data-i="${i}"]`),
+      glow: root.querySelector(`.hs-glow[data-i="${i}"] canvas`),
+    }));
     this.room = root.querySelector('.hs-room');
     this.room.style.width = `${arena.w}px`;
     this.room.style.height = `${arena.h}px`;
@@ -210,7 +257,7 @@ export class HeroPhoto {
     this.room.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) scale(${s.toFixed(5)})`;
     // The LED grid's pitch, in each screen's own pixels: about 2.5 of the visitor's, whatever
     // the screen's size on the page, so a small or far screen shows no moiré.
-    this.root.querySelectorAll('.hs-scr').forEach((el, i) => {
+    this.screens.forEach(({ el }, i) => {
       const [a, b] = screens[i].pts, perPx = Math.hypot(b[0] - a[0], b[1] - a[1]) / 1024 * s;
       el.style.setProperty('--led', `${Math.max(4, 2.5 / perPx).toFixed(1)}px`);
     });
@@ -227,13 +274,13 @@ export class HeroPhoto {
     if (tint) this.root.style.setProperty('--hs-tint', tint);
     else this.root.style.removeProperty('--hs-tint');
     this.arena.screens.forEach((s, i) => {
-      const scr = this.root.querySelectorAll('.hs-scr')[i];
+      const scr = this.screens[i].el;
       const [a, b] = scr.querySelectorAll('canvas');
       const next = a.classList.contains('is-on') ? b : a, prev = next === a ? b : a;
       drawPoster(next, img, s.aspect, focus);
       next.classList.add('is-on');
       prev.classList.remove('is-on');
-      const glow = this.root.querySelectorAll('.hs-glow canvas')[i];
+      const glow = this.screens[i].glow;
       glow.width = 128; glow.height = Math.round(128 / s.aspect);
       glow.getContext('2d').drawImage(next, 0, 0, glow.width, glow.height);
     });

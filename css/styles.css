@@ -275,9 +275,11 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
   repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.2) 0 calc(var(--p) / 4), transparent 0 var(--p)),
   repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.16) 0 calc(var(--p) / 4), transparent 0 var(--p)),
   radial-gradient(120% 120% at 50% 45%, transparent 60%, rgba(0, 0, 0, 0.28) 100%); }
-/* The main screen's edge (herophoto.js): a hairline of black cabinet, as an LED wall has,
-   just wide enough to cover the photo's old blue at the cut-out's edge. */
+/* The main screen's edge (herophoto.js `frame`, which sets its width): a hairline of black
+   cabinet over the photo's old blue at the cut-out's edge. */
 .hs-frame { position: absolute; left: 0; top: 0; transform-origin: 0 0; border: 6px solid #0b0b0c; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.4); }
+/* The cabinet a side screen hangs in (herophoto.js `cab`), as black as the photo's own were. */
+.hs-cab { position: absolute; background: #0e0e0f; }
 .hs-glow { mix-blend-mode: screen; opacity: 0.55; pointer-events: none; }
 /* Side screens: further away and turned towards the crowd, so a touch dimmer and softer,
    with less spill; the phone's little picture of the stage has no LED grid and no glow. */
@@ -313,6 +315,13 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
   animation: hs-wash 17s ease-in-out infinite alternate; }
 .hs-wash + .hs-wash { left: 44%; animation-duration: 13s; animation-direction: alternate-reverse; }
 @keyframes hs-wash { from { transform: translateX(-30%); } to { transform: translateX(40%); } }
+/* Kept to the main screen (herophoto.js `glare`), so the wall beside it, whose glare is in
+   the photo already, gets none twice. Flares: each lit lamp's glare, still. Veil: the haze
+   in front of the screen, a little more of it lower down, lifting its blacks. */
+.hs-glare { position: absolute; inset: 0; }
+.hs-flare { width: 300px; height: 300px; margin: -150px 0 0 -150px; border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 248, 232, 0.95) 12%, rgba(255, 232, 190, 0.6) 22%, rgba(255, 214, 160, 0.28) 42%, rgba(255, 205, 150, 0.1) 70%, transparent); }
+.hs-veil { background: linear-gradient(rgba(170, 160, 150, 0.05), rgba(170, 160, 150, 0.09) 55%, rgba(170, 160, 150, 0.16)); }
 .hero-show.is-away :is(.hs-room-in, .hs-haze, .hs-fx i) { animation-play-state: paused; }
 @media (prefers-reduced-motion: reduce) { .hs-room-in, .hs-haze, .hs-fx i { animation: none; } }
 .hs-shade { position: absolute; inset: 0; pointer-events: none; background:
@@ -1869,7 +1878,9 @@ body { font-family: var(--font); font-feature-settings: "cv11", "ss01"; }
 #how, .hs-card, .band, .plan.plan-coral, .host-plan, .route-switch button[aria-selected="true"] {
   background: var(--warm); border: 1px solid rgba(245, 242, 238, 0.09);
 }
-.hs-card { box-shadow: 0 30px 80px -30px rgba(0, 0, 0, 0.7); }
+/* The hero's card lets the arena show through it a little: the same panel, see-through
+   rather than blurred, as the header is. */
+.hs-card { background: linear-gradient(160deg, rgba(29, 26, 25, 0.7) 0%, rgba(22, 20, 19, 0.7) 100%); box-shadow: 0 30px 80px -30px rgba(0, 0, 0, 0.7); }
 #how::before { color: rgba(245, 242, 238, 0.04); }
 #how .sec-head { border-top-color: rgba(245, 242, 238, 0.14); }
 #how .sec-head::before, #how .sec-head::after, #how .big .ol { color: var(--muted); }
