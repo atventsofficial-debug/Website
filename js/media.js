@@ -5,11 +5,12 @@
 // The artwork was cropped from the listings on tiket.com. It belongs to the promoters:
 // before launch, use the files from their media kits, with permission.
 // To add one: put a 3:2 file in assets/events/ and add a line here, then `image: '<key>'`
-// on the event. `pos` is the part to keep when a square thumbnail crops it.
+// on the event. `pos` is the part to keep when a square thumbnail crops it; `screen` the
+// part to keep on the home hero's wide stage screens, when the middle would lose the title.
 export const IMAGES = {
-  'bts-arirang': { w: 480, src: 'assets/events/bts-arirang.webp', alt: 'BTS World Tour ARIRANG poster', credit: 'Poster · BIGHIT MUSIC, via tiket.com', pos: '42% 40%' },
-  'bocelli-romanza': { w: 480, src: 'assets/events/bocelli-romanza.webp', alt: 'Andrea Bocelli Romanza 30th anniversary poster', credit: 'Poster · Shoemaker Live, via tiket.com', pos: '30% 50%' },
-  'mcr-jakarta': { w: 480, src: 'assets/events/mcr-jakarta.webp', alt: 'My Chemical Romance Live in Jakarta poster', credit: 'Poster · Ravel Entertainment, via tiket.com', pos: '50% 30%' },
+  'bts-arirang': { w: 480, src: 'assets/events/bts-arirang.webp', alt: 'BTS World Tour ARIRANG poster', credit: 'Poster · BIGHIT MUSIC, via tiket.com', pos: '42% 40%', screen: '50% 75%' },
+  'bocelli-romanza': { w: 480, src: 'assets/events/bocelli-romanza.webp', alt: 'Andrea Bocelli Romanza 30th anniversary poster', credit: 'Poster · Shoemaker Live, via tiket.com', pos: '30% 50%', screen: '50% 55%' },
+  'mcr-jakarta': { w: 480, src: 'assets/events/mcr-jakarta.webp', alt: 'My Chemical Romance Live in Jakarta poster', credit: 'Poster · Ravel Entertainment, via tiket.com', pos: '50% 30%', screen: '50% 0%' },
 
   // Stand-in artwork made by Atvents until the promoter's poster is out. Swap in the official
   // file with the same name and change the credit.

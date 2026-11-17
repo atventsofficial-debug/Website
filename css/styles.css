@@ -271,10 +271,14 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
 .hs-scr canvas { opacity: 0; transition: opacity 0.9s ease; filter: saturate(1.08) brightness(1.1); }
 .hs-scr canvas.is-on { opacity: 1; }
 /* LED pixels and a little falloff towards the edges */
-.hs-scr::after { content: ""; position: absolute; inset: 0; background:
-  repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.2) 0 1px, transparent 1px 4px),
-  repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.16) 0 1px, transparent 1px 4px),
+.hs-scr::after { content: ""; position: absolute; inset: 0; --p: var(--led, 4px); background:
+  repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.2) 0 calc(var(--p) / 4), transparent 0 var(--p)),
+  repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.16) 0 calc(var(--p) / 4), transparent 0 var(--p)),
   radial-gradient(120% 120% at 50% 45%, transparent 60%, rgba(0, 0, 0, 0.28) 100%); }
+/* The main screen's cabinet (herophoto.js): a thin black frame with a faint lit edge on the
+   inside and a little shade over the panel's outer pixels. */
+.hs-frame { position: absolute; left: 0; top: 0; transform-origin: 0 0; border: 12px solid #08080a; border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05), inset 0 0 0 1px rgba(255, 255, 255, 0.1), inset 0 0 26px 4px rgba(0, 0, 0, 0.45); }
 .hs-glow { mix-blend-mode: screen; opacity: 0.55; pointer-events: none; }
 /* Side screens: further away and turned towards the crowd, so a touch dimmer and softer,
    with less spill; the phone's little picture of the stage has no LED grid and no glow. */

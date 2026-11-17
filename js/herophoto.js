@@ -75,6 +75,8 @@ function posterTint(img) {
 const POSTER_LIGHT = 0.22;
 
 const posterSrc = meta => IMAGES[meta?.image]?.src || '';
+// The part of the poster a wide screen keeps (`screen` in media.js), as fractions.
+const posterFocus = meta => (IMAGES[meta?.image]?.screen || '50% 50%').split(' ').map(v => parseFloat(v) / 100);
 const images = new Map();
 function loadImage(src) {
   if (!images.has(src)) {
@@ -98,26 +100,22 @@ function meanLight(c) {
   } catch { return 0; }
 }
 
-// The poster on a screen of that shape: whole, as large as it fits, over a dark soft copy
-// of itself that fills the rest (the same picture the 3D screens showed).
-function drawPoster(canvas, img, aspect) {
+// The poster on a screen of that shape, filling it edge to edge: cropped around `focus`
+// (x, y as fractions) where its shape differs from the screen's.
+function drawPoster(canvas, img, aspect, [fx, fy] = [0.5, 0.5]) {
   const w = canvas.width = 1024, h = canvas.height = Math.round(1024 / aspect);
   const g = canvas.getContext('2d');
   g.fillStyle = '#05060a';
   g.fillRect(0, 0, w, h);
   if (!img) return;
   const iw = img.naturalWidth, ih = img.naturalHeight;
-  const soft = document.createElement('canvas');
-  soft.width = 24; soft.height = Math.max(6, Math.round(24 / aspect));
-  const k = Math.max(soft.width / iw, soft.height / ih);
-  soft.getContext('2d').drawImage(img, (soft.width - iw * k) / 2, (soft.height - ih * k) / 2, iw * k, ih * k);
+  const f = Math.max(w / iw, h / ih);
   g.imageSmoothingQuality = 'high';
-  g.drawImage(soft, 0, 0, w, h);
-  g.fillStyle = 'rgba(0, 0, 0, 0.5)';
-  g.fillRect(0, 0, w, h);
-  const f = Math.min(w / iw, h / ih);
-  g.drawImage(img, (w - iw * f) / 2, (h - ih * f) / 2, iw * f, ih * f);
-  const light = meanLight(soft);
+  g.drawImage(img, (w - iw * f) * fx, (h - ih * f) * fy, iw * f, ih * f);
+  const small = document.createElement('canvas');
+  small.width = 32; small.height = Math.max(8, Math.round(32 / aspect));
+  small.getContext('2d').drawImage(canvas, 0, 0, small.width, small.height);
+  const light = meanLight(small);
   if (light > POSTER_LIGHT) {
     g.fillStyle = `rgba(0, 0, 0, ${1 - POSTER_LIGHT / light})`;
     g.fillRect(0, 0, w, h);
@@ -137,6 +135,11 @@ function warp(w, h, [[x0, y0], [x1, y1], [x2, y2], [x3, y3]]) {
   return `matrix3d(${m.map(v => +v.toFixed(8)).join(',')})`;
 }
 
+// Each edge moved `px` outwards (for a quad that is nearly a rectangle, as the screens are).
+function outset([[x0, y0], [x1, y1], [x2, y2], [x3, y3]], px) {
+  return [[x0 - px, y0 - px], [x1 + px, y1 - px], [x2 + px, y2 + px], [x3 - px, y3 + px]];
+}
+
 // Corners moved `px` away from their centre, so a poster reaches under the cut-out's soft edge.
 function grow(pts, px) {
   const cx = pts.reduce((a, p) => a + p[0], 0) / 4, cy = pts.reduce((a, p) => a + p[1], 0) / 4;
@@ -152,10 +155,15 @@ export class HeroPhoto {
     // Each screen's poster sits under the photo, whose screens are cut out, so the truss in
     // front of a side screen stays in front; the haze over the stage, the screens' own glow
     // and the rig's moving light are added on top.
-    const box = s => { const h = Math.round(1024 / s.aspect); return `width:1024px;height:${h}px;transform:${warp(1024, h, grow(s.pts, 3))}`; };
+    const box = (s, pts = grow(s.pts, 3)) => { const h = Math.round(1024 / s.aspect); return `width:1024px;height:${h}px;transform:${warp(1024, h, pts)}`; };
+    // The main screen's cabinet: a clean dark frame over the cut-out's edge, which in the
+    // photo is a few pixels of the screen's old blue. Nothing stands in front of it; the
+    // side screens, with the truss in front, keep the photo's own black frame.
+    const frame = s => (s.kind || 'main') === 'main' ? `<i class="hs-frame" style="${box(s, outset(s.pts, 8))}"></i>` : '';
     root.innerHTML = `<div class="hs-room"><div class="hs-room-in">
       ${arena.screens.map(s => `<div class="hs-scr" data-kind="${s.kind || 'main'}" style="${box(s)}"><canvas></canvas><canvas></canvas></div>`).join('')}
       <img class="hs-room-img" alt="" decoding="async">
+      ${arena.screens.map(frame).join('')}
       ${arena.haze ? '<img class="hs-haze" alt="" decoding="async">' : ''}
       ${arena.clear ? `<i class="hs-ceil" style="height:${arena.clear + 10}px"></i>` : ''}
       ${arena.screens.map(s => `<div class="hs-glow" data-kind="${s.kind || 'main'}" style="${box(s)}"><canvas></canvas></div>`).join('')}
@@ -200,6 +208,12 @@ export class HeroPhoto {
     const mainTop = Math.min(...screens[0].pts.map(p => p[1]));
     const y = Math.min(0, Math.max(h - H * s, top + open / 2 - b.cy * s), Math.max(-clear * s, top + 8 - mainTop * s));
     this.room.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) scale(${s.toFixed(5)})`;
+    // The LED grid's pitch, in each screen's own pixels: about 2.5 of the visitor's, whatever
+    // the screen's size on the page, so a small or far screen shows no moiré.
+    this.root.querySelectorAll('.hs-scr').forEach((el, i) => {
+      const [a, b] = screens[i].pts, perPx = Math.hypot(b[0] - a[0], b[1] - a[1]) / 1024 * s;
+      el.style.setProperty('--led', `${Math.max(4, 2.5 / perPx).toFixed(1)}px`);
+    });
   }
 
   // Draws the show's poster on every screen and fades it in over the last one. Resolves
@@ -209,14 +223,14 @@ export class HeroPhoto {
     const src = posterSrc(meta);
     const img = src ? await loadImage(src) : null;
     if (this.token !== token) return false;
-    const tint = posterTint(img);
+    const tint = posterTint(img), focus = posterFocus(meta);
     if (tint) this.root.style.setProperty('--hs-tint', tint);
     else this.root.style.removeProperty('--hs-tint');
     this.arena.screens.forEach((s, i) => {
       const scr = this.root.querySelectorAll('.hs-scr')[i];
       const [a, b] = scr.querySelectorAll('canvas');
       const next = a.classList.contains('is-on') ? b : a, prev = next === a ? b : a;
-      drawPoster(next, img, s.aspect);
+      drawPoster(next, img, s.aspect, focus);
       next.classList.add('is-on');
       prev.classList.remove('is-on');
       const glow = this.root.querySelectorAll('.hs-glow canvas')[i];
