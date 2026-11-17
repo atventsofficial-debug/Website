@@ -246,15 +246,25 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
    phone still scrolls (three.js sets touch-action: none on its canvas). */
 .hero-canvas { position: absolute; inset: 0; pointer-events: none; }
 /* The arena photo (herophoto.js): sized and placed by JS so its main screen sits in the open
-   part of the hero, drifting slowly closer. The posters lie under the photo, whose screens
-   are cut out; the haze over the stage and the screens' glow are added on top. */
-.hs-photo { overflow: hidden; opacity: 0; transition: opacity 1.2s ease; }
+   part of the hero. The camera wanders slowly, as the 3D one did: a little to the left,
+   closer, to the right. The posters lie under the photo, whose screens are cut out; the
+   haze over the stage, the screens' glow and the rig's moving light are added on top. */
+@property --hs-tint { syntax: '<color>'; inherits: true; initial-value: #ffb070; }
+.hs-photo { overflow: hidden; opacity: 0; transition: opacity 1.2s ease, --hs-tint 1.2s ease; }
 .hs-photo.is-ready { opacity: 1; }
 .hs-room { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
-.hs-room-in { position: absolute; inset: 0; transform-origin: 50% 30%; animation: hs-drift 26s ease-in-out infinite alternate; }
-@keyframes hs-drift { from { transform: none; } to { transform: scale(1.045) translate(-0.5%, 0.4%); } }
+.hs-room-in { position: absolute; inset: 0; transform-origin: 50% 30%; animation: hs-cam 44s ease-in-out infinite; }
+@keyframes hs-cam {
+  0%, 100% { transform: scale(1.03); }
+  25% { transform: scale(1.055) translate(-1.4%, 0.3%); }
+  50% { transform: scale(1.04) translate(0.3%, -0.3%); }
+  75% { transform: scale(1.06) translate(1.4%, 0.2%); }
+}
 .hs-room-img, .hs-haze { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-.hs-haze { mix-blend-mode: screen; }
+.hs-haze { mix-blend-mode: screen; animation: hs-haze 7s ease-in-out infinite alternate; }
+@keyframes hs-haze { from { opacity: 0.7; } to { opacity: 1; } }
+/* Over the filler above the rig, where a layout still shows it: the dark of the roof. */
+.hs-ceil { position: absolute; left: 0; right: 0; top: 0; background: linear-gradient(#0e0d0d, #0e0d0d calc(100% - 100px), transparent); }
 .hs-scr, .hs-glow { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
 .hs-scr canvas, .hs-glow canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 .hs-scr { background: #05060a; }
@@ -274,7 +284,34 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
 .hs-scr[data-kind="phone"]::after, .hs-glow[data-kind="phone"] { display: none; }
 .hs-scr[data-kind="phone"] canvas { filter: brightness(1.15) blur(3px); }
 .hs-glow canvas { filter: blur(46px) saturate(1.2); transform: scale(1.18); }
-@media (prefers-reduced-motion: reduce) { .hs-room-in { animation: none; } }
+/* Live light, in the photo's pixels (herophoto.js places each piece on the rig). The layer is
+   lit onto the photo as one (screen), so its pieces only add light. Beams: a soft cone from
+   each moving head, swinging either side of where it points. Heads: the lamps on the truss
+   breathing. Lamps: the columns beside the main screen flashing down in turn. Washes: the
+   poster's colour sweeping over the crowd. All of it stops for reduced motion (below) and
+   while the hero is out of sight. */
+.hs-fx { position: absolute; inset: 0; pointer-events: none; mix-blend-mode: screen; }
+.hs-fx i { position: absolute; display: block; }
+.hs-beam { width: 640px; height: 1500px; margin-left: -320px; transform-origin: 50% 0; opacity: 0.8; transform: rotate(var(--a));
+  background: conic-gradient(from 168deg at 50% 0, transparent, var(--c) 9deg 15deg, transparent 24deg);
+  -webkit-mask-image: linear-gradient(#000, rgba(0, 0, 0, 0.55) 50%, transparent); mask-image: linear-gradient(#000, rgba(0, 0, 0, 0.55) 50%, transparent);
+  animation: hs-sweep var(--d) ease-in-out var(--t) infinite alternate; }
+@keyframes hs-sweep { from { transform: rotate(calc(var(--a) - 20deg)); } to { transform: rotate(calc(var(--a) + 20deg)); } }
+.hs-head { width: 220px; height: 220px; margin: -110px 0 0 -110px; border-radius: 50%; opacity: 0.4;
+  background: radial-gradient(closest-side, rgba(255, 246, 230, 0.9), rgba(255, 220, 170, 0.35) 40%, transparent);
+  animation: hs-breathe 2.6s ease-in-out var(--t) infinite alternate; }
+@keyframes hs-breathe { from { opacity: 0.25; transform: scale(0.85); } to { opacity: 0.85; transform: scale(1.05); } }
+.hs-lamp { width: 170px; height: 170px; margin: -85px 0 0 -85px; border-radius: 50%; opacity: 0;
+  background: radial-gradient(closest-side, rgba(255, 250, 240, 0.95), rgba(255, 214, 160, 0.4) 35%, transparent);
+  animation: hs-chase 5.2s linear var(--t) infinite; }
+@keyframes hs-chase { 0%, 18%, 100% { opacity: 0; } 3% { opacity: 0.9; } 9% { opacity: 0.1; } 12% { opacity: 0.7; } }
+.hs-wash { left: 8%; top: 43%; width: 48%; height: 24%; border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--hs-tint) 45%, transparent), transparent);
+  animation: hs-wash 17s ease-in-out infinite alternate; }
+.hs-wash + .hs-wash { left: 44%; animation-duration: 13s; animation-direction: alternate-reverse; }
+@keyframes hs-wash { from { transform: translateX(-30%); } to { transform: translateX(40%); } }
+.hero-show.is-away :is(.hs-room-in, .hs-haze, .hs-fx i) { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) { .hs-room-in, .hs-haze, .hs-fx i { animation: none; } }
 .hs-shade { position: absolute; inset: 0; pointer-events: none; background:
   linear-gradient(180deg, rgba(22, 20, 20, 0.8) 0%, rgba(22, 20, 20, 0.2) 15%, rgba(22, 20, 20, 0) 30%, rgba(22, 20, 20, 0) 50%, rgba(22, 20, 20, 0.5) 68%, rgba(22, 20, 20, 0.9) 86%, var(--frame) 100%),
   radial-gradient(130% 100% at 50% 38%, transparent 55%, rgba(22, 20, 20, 0.6) 100%); }
@@ -1127,7 +1164,7 @@ input, select, textarea { border-radius: 0; }
 .hs-play:hover { background: var(--coral-2); }
 .hs-bar, .hs-bar i { border-radius: 0; height: 2px; }
 .hs-shade { background:
-  linear-gradient(180deg, rgba(17, 17, 17, 0.85) 0%, rgba(17, 17, 17, 0.2) 15%, rgba(17, 17, 17, 0) 32%, rgba(17, 17, 17, 0) 50%, rgba(17, 17, 17, 0.55) 68%, rgba(17, 17, 17, 0.92) 86%, var(--frame) 100%); }
+  linear-gradient(180deg, rgba(17, 17, 17, 0.4) 0%, rgba(17, 17, 17, 0.1) 11%, rgba(17, 17, 17, 0) 22%, rgba(17, 17, 17, 0) 50%, rgba(17, 17, 17, 0.55) 68%, rgba(17, 17, 17, 0.92) 86%, var(--frame) 100%); }
 .hero-shade { background:
   linear-gradient(180deg, rgba(17, 17, 17, 0.92) 0%, rgba(17, 17, 17, 0.5) 22%, rgba(17, 17, 17, 0.1) 44%, rgba(17, 17, 17, 0.2) 64%, rgba(17, 17, 17, 0.9) 88%, var(--frame) 100%),
   linear-gradient(90deg, rgba(17, 17, 17, 0.8) 0%, rgba(17, 17, 17, 0.2) 35%, rgba(17, 17, 17, 0) 50%, rgba(17, 17, 17, 0.2) 65%, rgba(17, 17, 17, 0.7) 100%); }

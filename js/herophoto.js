@@ -19,7 +19,56 @@ export const ARENA = {
     { kind: 'side', aspect: 16 / 9, pts: [[2020, 473], [2367, 438], [2367, 666], [2020, 677]] },
     { kind: 'phone', aspect: 2, pts: [[1104, 1289], [1209, 1291], [1209, 1343], [1102, 1343]] },
   ],
+  // Rows above this one are filler painted in over the rig, soft and blurred. They are never
+  // shown, so the site's header sits over the real photo.
+  clear: 300,
+  // The rig, for the live light: the moving heads on the top truss sweep their beams down
+  // into the haze, and the lamps up the columns beside the main screen flash in turn.
+  rig: {
+    heads: [[680, 332], [910, 332], [1480, 340], [1712, 350]],
+    columns: [
+      [[630, 490], [630, 590], [630, 690], [630, 800], [630, 910]],
+      [[1735, 490], [1735, 600], [1735, 700], [1735, 810], [1745, 910]],
+    ],
+  },
 };
+
+// The beams' colours, as on the 3D rig: warm white, amber, cool white.
+const BEAM_COLORS = ['rgba(255, 244, 224, 0.85)', 'rgba(255, 215, 168, 0.85)', 'rgba(232, 238, 255, 0.85)'];
+
+// The light layer over the photo. Each piece is placed in the photo's pixels and moved by
+// CSS alone (styles.css, "live light"), so it costs no script while it runs.
+function rigLayer(rig) {
+  if (!rig) return '';
+  const n = rig.heads.length;
+  // Each head points outwards from the middle and sweeps at its own pace.
+  const beams = rig.heads.map(([x, y], i) => {
+    const a = (0.5 - (i + 0.5) / n) * 100;
+    return `<i class="hs-beam" style="left:${x}px;top:${y}px;--a:${a.toFixed(1)}deg;--c:${BEAM_COLORS[i % 3]};--d:${(7 + i * 1.3).toFixed(1)}s;--t:-${(i * 2.1).toFixed(1)}s"></i>`;
+  }).join('');
+  const heads = rig.heads.map(([x, y], i) => `<i class="hs-head" style="left:${x}px;top:${y}px;--t:-${(i * 0.9).toFixed(1)}s"></i>`).join('');
+  const lamps = rig.columns.flatMap((col, k) => col.map(([x, y], i) =>
+    `<i class="hs-lamp" style="left:${x}px;top:${y}px;--t:${(i * 0.16 + k * 0.08).toFixed(2)}s"></i>`)).join('');
+  return `<div class="hs-fx" aria-hidden="true">${beams}${heads}${lamps}<i class="hs-wash"></i><i class="hs-wash"></i></div>`;
+}
+
+// The poster's own colour, for the light washing over the crowd: its average, brightened
+// and kept a little warm so a grey poster still gives a stage-like light.
+function posterTint(img) {
+  if (!img) return '';
+  try {
+    const c = document.createElement('canvas');
+    c.width = c.height = 8;
+    const g = c.getContext('2d');
+    g.drawImage(img, 0, 0, 8, 8);
+    const d = g.getImageData(0, 0, 8, 8).data;
+    const sum = [0, 0, 0];
+    for (let i = 0; i < d.length; i += 4) { sum[0] += d[i]; sum[1] += d[i + 1]; sum[2] += d[i + 2]; }
+    const top = Math.max(1, ...sum);
+    const [r, gr, b] = sum.map((v, i) => Math.round(255 * (0.7 * v / top) + [255, 190, 130][i] * 0.3));
+    return `rgb(${r}, ${gr}, ${b})`;
+  } catch { return ''; }
+}
 
 // How bright a poster may be before it is dimmed, as on the 3D screens: a light poster
 // would turn the wall into a white glare against the dark hall.
@@ -101,14 +150,16 @@ export class HeroPhoto {
     this.token = null;
     root.classList.add('hs-photo');
     // Each screen's poster sits under the photo, whose screens are cut out, so the truss in
-    // front of a side screen stays in front; the haze over the stage and the screens' own
-    // glow are added on top.
+    // front of a side screen stays in front; the haze over the stage, the screens' own glow
+    // and the rig's moving light are added on top.
     const box = s => { const h = Math.round(1024 / s.aspect); return `width:1024px;height:${h}px;transform:${warp(1024, h, grow(s.pts, 3))}`; };
     root.innerHTML = `<div class="hs-room"><div class="hs-room-in">
       ${arena.screens.map(s => `<div class="hs-scr" data-kind="${s.kind || 'main'}" style="${box(s)}"><canvas></canvas><canvas></canvas></div>`).join('')}
       <img class="hs-room-img" alt="" decoding="async">
       ${arena.haze ? '<img class="hs-haze" alt="" decoding="async">' : ''}
+      ${arena.clear ? `<i class="hs-ceil" style="height:${arena.clear + 10}px"></i>` : ''}
       ${arena.screens.map(s => `<div class="hs-glow" data-kind="${s.kind || 'main'}" style="${box(s)}"><canvas></canvas></div>`).join('')}
+      ${rigLayer(arena.rig)}
     </div></div>`;
     this.room = root.querySelector('.hs-room');
     this.room.style.width = `${arena.w}px`;
@@ -128,9 +179,10 @@ export class HeroPhoto {
 
   // Places the photo on a w x h stage so its screens sit whole in the part the card and the
   // controls leave open (`top` to `bottom`, from the stage's top): all three on a wide
-  // stage, the main one large on a narrow one. Never smaller than covering the stage.
+  // stage, the main one large on a narrow one. Never smaller than covering the stage, and
+  // showing as little as it can of the filler above `clear`.
   layout(w, h, top = 0, bottom = h) {
-    const { w: W, h: H, screens } = this.arena;
+    const { w: W, h: H, screens, clear = 0 } = this.arena;
     const open = Math.max(1, bottom - top);
     const box = list => {
       const xs = list.flatMap(s => s.pts.map(p => p[0])), ys = list.flatMap(s => s.pts.map(p => p[1]));
@@ -141,9 +193,12 @@ export class HeroPhoto {
     const stage = screens.filter(s => s.kind !== 'phone');
     const b = wide ? box(stage) : box(stage.slice(0, 1));
     let s = wide ? Math.min(open * 0.84 / b.h, w * 0.96 / b.w) : Math.min(open * 0.66 / b.h, w * 0.74 / b.w);
-    s = Math.max(s, w / W, h / H);
+    s = Math.max(s, w / W, h / (H - clear));
     const x = Math.min(0, Math.max(w - W * s, w / 2 - b.cx * s));
-    const y = Math.min(0, Math.max(h - H * s, top + open / 2 - b.cy * s));
+    // Lifted to hide the filler, but not so far that the main screen slips under the header
+    // (on a phone): what is left of the filler then fades into the dark (.hs-ceil).
+    const mainTop = Math.min(...screens[0].pts.map(p => p[1]));
+    const y = Math.min(0, Math.max(h - H * s, top + open / 2 - b.cy * s), Math.max(-clear * s, top + 8 - mainTop * s));
     this.room.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) scale(${s.toFixed(5)})`;
   }
 
@@ -154,6 +209,9 @@ export class HeroPhoto {
     const src = posterSrc(meta);
     const img = src ? await loadImage(src) : null;
     if (this.token !== token) return false;
+    const tint = posterTint(img);
+    if (tint) this.root.style.setProperty('--hs-tint', tint);
+    else this.root.style.removeProperty('--hs-tint');
     this.arena.screens.forEach((s, i) => {
       const scr = this.root.querySelectorAll('.hs-scr')[i];
       const [a, b] = scr.querySelectorAll('canvas');
@@ -171,6 +229,7 @@ export class HeroPhoto {
   dispose() {
     this.token = null;
     this.root.classList.remove('hs-photo', 'is-ready');
+    this.root.style.removeProperty('--hs-tint');
     this.root.innerHTML = '';
   }
 }

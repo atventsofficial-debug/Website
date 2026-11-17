@@ -145,6 +145,8 @@ function hold(reason, on) {
   else hero.held.delete(reason);
   const el = $('#home-hero');
   el.classList.toggle('is-held', hero.held.size > 0);
+  // The arena's light and camera stop only while nobody can see them.
+  el.classList.toggle('is-away', hero.held.has('away') || hero.held.has('hidden'));
   const paused = hero.held.has('pause');
   el.classList.toggle('is-auto', !paused);
   const btn = $('#hs-play');
