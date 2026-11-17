@@ -1,7 +1,7 @@
 """Draws a concert's artwork for the site from its poster (needs Pillow).
 
   python3 scripts/event-art.py <poster file> <key> [--card cover|band|top] [--at 0.33]
-                               [--crop x0,y0,x1,y1] [--wide <name>]
+                               [--to 1] [--crop x0,y0,x1,y1] [--wide <name>]
 
 Writes assets/events/card/<key>.webp (800 x 1120, 5:7, the ticket card) and a 480 px copy.
 With --wide, also assets/events/<name>.webp (1200 x 800, 3:2, the concert page and the stage
@@ -14,7 +14,8 @@ How the poster goes on the card:
          a share of the card's height (the card's date and logo take the top sixth, its
          name the part below the middle). --crop trims the poster first (shares of its size);
          the blurred copy behind it stays whole.
-  top    full width from --at down, the rest cut off: a tall poster whose title is at its top.
+  top    full width from --at down to --to, fading out there: a tall poster whose title is
+         at its top, its small print kept from under the card's name.
 The 3:2 file shows the poster whole, over a blurred copy of itself if it has another shape.
 """
 import argparse, os
@@ -49,15 +50,15 @@ def soft(w, h, edges, f):
     return m
 
 
-def draw(im, w, h, mode='band', at=0.5, bg=None):
+def draw(im, w, h, mode='band', at=0.5, bg=None, to=1.0):
     if mode == 'cover' or abs(im.width / im.height - w / h) < 0.02:
         return cover(im, w, h)
     out = backdrop(bg or im, w, h)
     if mode == 'top':
         y = round(h * at)
         art = im.resize((w, round(w * im.height / im.width)), Image.LANCZOS)
-        art = art.crop((0, 0, w, min(h - y, art.height)))
-        out.paste(art, (0, y), soft(w, art.height, 't' + ('b' if y + art.height < h else ''), 36))
+        art = art.crop((0, 0, w, min(round(h * to) - y, art.height)))
+        out.paste(art, (0, y), soft(w, art.height, 't' + ('b' if y + art.height < h else ''), 36 if to >= 1 else 90))
     elif im.width / im.height > w / h:
         bh = round(w * im.height / im.width)
         y = min(max(round(h * at - bh / 2), 0), h - bh)
@@ -79,6 +80,7 @@ if __name__ == '__main__':
     a.add_argument('poster'); a.add_argument('key')
     a.add_argument('--card', choices=['cover', 'band', 'top'], default='band')
     a.add_argument('--at', type=float, default=0.33)
+    a.add_argument('--to', type=float, default=1.0)
     a.add_argument('--crop'); a.add_argument('--wide')
     o = a.parse_args()
     im = Image.open(o.poster).convert('RGB')
@@ -87,6 +89,6 @@ if __name__ == '__main__':
         x0, y0, x1, y1 = (float(v) for v in o.crop.split(','))
         card = im.crop((round(x0 * im.width), round(y0 * im.height), round(x1 * im.width), round(y1 * im.height)))
     os.makedirs(os.path.join(OUT, 'card'), exist_ok=True)
-    save(draw(card, 800, 1120, o.card, o.at, bg=im), os.path.join(OUT, 'card', o.key), 480)
+    save(draw(card, 800, 1120, o.card, o.at, bg=im, to=o.to), os.path.join(OUT, 'card', o.key), 480)
     if o.wide:
         save(draw(im, 1200, 800), os.path.join(OUT, o.wide), 640)

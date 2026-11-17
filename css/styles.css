@@ -1466,13 +1466,13 @@ body { counter-reset: sec; }
 /* The poster is soft under the logo and date, sharp in the middle and soft again towards
    the name, so its own lettering never fights the card's. The middle keeps the poster's own
    colours; a light shade at the top and a thin dark one under the name keep the type clear
-   and let the poster show through. */
+   and let the poster show through. Below the cut the stub is solid (.tkt-cut). */
 .tkt-bg::before, .tkt-bg::after { content: ""; position: absolute; inset: 0; z-index: 1; }
 .tkt-bg::before { -webkit-backdrop-filter: blur(9px); backdrop-filter: blur(9px);
-  -webkit-mask: linear-gradient(180deg, #000 14%, transparent 32%, #000 58%); mask: linear-gradient(180deg, #000 14%, transparent 32%, #000 58%); }
+  -webkit-mask: linear-gradient(180deg, #000 14%, transparent 32%, transparent 50%, rgba(0, 0, 0, 0.55) 80%); mask: linear-gradient(180deg, #000 14%, transparent 32%, transparent 50%, rgba(0, 0, 0, 0.55) 80%); }
 .tkt-bg::after { background:
   linear-gradient(180deg, rgba(12, 8, 6, 0.45) 0%, rgba(12, 8, 6, 0) 24%),
-  linear-gradient(180deg, rgba(30, 14, 10, 0) 36%, rgba(30, 14, 10, 0.42) 54%, rgba(30, 14, 10, 0.6) 72%, rgba(30, 14, 10, 0.74) 100%); }
+  linear-gradient(180deg, rgba(30, 14, 10, 0) 42%, rgba(30, 14, 10, 0.32) 58%, rgba(30, 14, 10, 0.55) 76%); }
 .tkt-in { position: relative; display: flex; flex-direction: column; align-items: center; height: 100%; padding: 30px 22px 30px; text-align: center; }
 .tkt-top { display: flex; justify-content: space-between; align-items: flex-start; width: 100%; gap: var(--s4); margin-bottom: auto;
   text-shadow: 0 1px 10px rgba(0, 0, 0, 0.4); } /* stays legible on a light poster */
@@ -1485,8 +1485,10 @@ body { counter-reset: sec; }
 .tkt-when span { display: block; margin-top: 4px; font: 400 11px/1.35 var(--display); color: rgba(255, 255, 255, 0.78); text-wrap: balance; }
 .tkt-tags { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; margin: var(--s5) 0 10px; }
 .tkt .tkt-title { margin-top: 6px; font: 500 clamp(44px, 4.4vw, 62px)/0.9 var(--display); letter-spacing: -0.005em; text-transform: uppercase; text-wrap: balance; }
-.tkt .tkt-title a { color: #fff; }
-.tkt-cut { width: calc(100% + 44px); margin: var(--s5) -22px 0; border-top: 2px dashed rgba(255, 255, 255, 0.55); }
+.tkt .tkt-title a { color: #fff; text-shadow: 0 2px 18px rgba(0, 0, 0, 0.45); }
+.tkt-cut { position: relative; width: calc(100% + 44px); margin: var(--s5) -22px 0; border-top: 2px dashed rgba(255, 255, 255, 0.55); }
+/* The stub, from the cut down, is the ticket's own dark brown; the card clips it at the foot. */
+.tkt-cut::after { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 320px; z-index: -1; background: linear-gradient(180deg, #2a120c, #3a170c 120px); }
 .tkt-foot { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--s4); width: 100%; margin-top: var(--s4); text-align: left; }
 .tkt-code small { display: block; margin-bottom: 8px; font: 400 14px/1 var(--display); letter-spacing: 0.06em; text-transform: uppercase; }
 .tkt-code .barcode { width: 120px; height: 38px; color: #fff; }
