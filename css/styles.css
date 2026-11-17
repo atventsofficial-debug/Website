@@ -321,17 +321,12 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
   radial-gradient(130% 100% at 50% 38%, transparent 55%, rgba(22, 20, 20, 0.6) 100%); }
 .hs-in { display: flex; flex-direction: column; align-items: center; gap: var(--s3); }
 
-/* Cards share one grid cell, each at its own height on the bottom line: the old one fades
-   out quickly, then the new one comes in. `--shift` is set per move, so they travel the
-   way the visitor went. */
+/* One card that stays put (hero.js): a new slide only changes what is on it, fading in. */
 .hs-stack { display: grid; align-items: end; width: min(1080px, 100%); }
-.hs-card { grid-area: 1 / 1; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: var(--s6); padding: var(--s5) var(--s6); border-radius: var(--r); background: rgba(22, 20, 20, 0.82); border: 1px solid var(--line-2); box-shadow: 0 30px 80px -24px rgba(0, 0, 0, 0.7);
-  transition: opacity 0.45s ease 0.15s, transform 0.85s var(--hs-ease) 0.1s; }
-.hs-card.is-new, .hs-card.is-gone { opacity: 0; transform: translateX(var(--shift, 0)); }
-.hs-card.is-gone { pointer-events: none; transition: opacity 0.2s ease, transform 0.4s ease-in; }
-/* the title and the buy box travel a little further, so the card settles in layers */
-.hs-title, .hs-buy { transition: transform 0.95s var(--hs-ease) 0.15s; }
-.hs-card.is-new .hs-title, .hs-card.is-new .hs-buy { transform: translateX(calc(var(--shift, 0) * 0.7)); }
+.hs-card { grid-area: 1 / 1; overflow: hidden; padding: var(--s5) var(--s6); border-radius: var(--r); background: rgba(22, 20, 20, 0.82); border: 1px solid var(--line-2); box-shadow: 0 30px 80px -24px rgba(0, 0, 0, 0.7); }
+.hs-body { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: var(--s6); }
+.hs-body.is-new { animation: hs-fade 0.45s ease-out both; }
+@keyframes hs-fade { from { opacity: 0; } }
 .hs-info { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; min-width: 0; }
 .hs-title { font: 800 clamp(30px, 3.5vw, 54px)/0.94 var(--display); font-stretch: 125%; letter-spacing: -0.035em; text-transform: uppercase; }
 .hs-sub { font-size: 15.5px; color: rgba(244, 240, 238, 0.86); }
@@ -956,7 +951,7 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
   .ev-poster { justify-self: stretch; width: 100%; max-width: 560px; }
   .ev-poster figcaption { text-align: left; }
   /* the home hero's card: the details, then a row with the countdown, price and buttons */
-  .hs-card { grid-template-columns: minmax(0, 1fr); gap: var(--s4); }
+  .hs-body { grid-template-columns: minmax(0, 1fr); gap: var(--s4); }
   .hs-buy { flex-direction: row; flex-wrap: wrap; align-items: center; gap: var(--s3) var(--s5); padding: var(--s4) 0 0; border-left: 0; border-top: 1px solid var(--line); }
   .hs-price { text-align: left; }
   .hs-buy .row-btns { margin-left: auto; }
@@ -1049,7 +1044,8 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
   .hs-tab-t { display: none; }
   .hs-arrow, .hs-play { width: 40px; height: 40px; }
   .hs-play { margin-left: 0; }
-  .hs-card { gap: var(--s3); padding: var(--s4); border-radius: 18px; }
+  .hs-card { padding: var(--s4); border-radius: 18px; }
+  .hs-body { gap: var(--s3); }
   .hs-title { font-size: clamp(28px, 8.6vw, 38px); }
   .hs-sub { font-size: 14.5px; }
   .hs-facts { flex-direction: column; gap: 6px; font-size: 13px; }
@@ -1953,7 +1949,8 @@ body { font-family: var(--font); font-feature-settings: "cv11", "ss01"; }
    herophoto.js places the photo so its screens sit whole in that part. */
 .hs-photo.is-ready .hs-room { transition: transform 1s var(--hs-ease); }
 @media (min-width: 961px) {
-  .hs-card { align-items: center; gap: var(--s5); padding: 18px 26px; }
+  .hs-card { padding: 18px 26px; }
+  .hs-body { align-items: center; gap: var(--s5); }
   .hs-info { gap: 6px; }
   .hs-title { font-size: clamp(30px, 2.9vw, 46px); line-height: 0.95; }
   .hs-sub { font-size: 14px; }

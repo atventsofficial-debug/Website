@@ -58,7 +58,7 @@ function card(e, n) {
     : sale?.soon ? `<div class="hs-sale"><small>Ticket sale opens in</small>${countdownHtml(new Date(sale.ms).toISOString(), 'Time to the ticket sale')}</div>`
       : `<p class="hs-price hs-sale"><small>Ticket sale</small><b>${sale ? `Open since ${esc(sale.date)}` : 'Open now'}</b></p>`;
   return `<article class="hs-card" role="group" aria-roledescription="slide" aria-label="${n + 1} of ${hero.list.length}: ${esc(e.title)}">
-    <div class="hs-info">
+    <div class="hs-body"><div class="hs-info">
       <p class="eyebrow">${!live ? 'Taken place' : gone ? `Sold out on ${esc(seller)}` : `On sale on ${esc(seller)}`} · ${esc(v.city)}</p>
       <h2 class="hs-title">${esc(e.title)}</h2>
       <p class="hs-sub">${esc(e.subtitle.replace(/ · Day \d+$/, ''))}</p>
@@ -76,32 +76,31 @@ function card(e, n) {
         <a class="btn btn-line" href="#event-${esc(e.id)}"><span class="hs-wide">Concert details</span><span class="hs-narrow">Details</span></a>
       </div>
       ${live ? `<p class="hs-perk">The view from your seat, ${formatFee()}. Tickets: ${buyLink(e, `${esc(seller)} ${icon('i-out')}`, 'u hs-seller')}</p>` : ''}
-    </div>
+    </div></div>
   </article>`;
 }
 
 // ---------------------------------------------------------------- painting a slide
 
-// `dir`: 1 when the slide came from the right (next), -1 from the left, 0 without motion.
+// The card stays where it is; only what is on it changes: the new content fades in where
+// the old was, and the card eases to the new content's height.
+// `dir`: how the visitor moved (1 next, -1 back), 0 for a jump without motion.
 function paint(dir = 0) {
   const e = hero.list[hero.i];
   const stack = $('#hs-stack');
-  const old = [...stack.children].filter(c => !c.classList.contains('is-gone'));
-  stack.insertAdjacentHTML('beforeend', card(e, hero.i));
-  const fresh = stack.lastElementChild;
-  if (dir && !still.matches) {
-    // The old card leaves the way the new one pushes it; the new one slides in behind it.
-    // While it fades, it is out of reach of the keyboard and screen readers.
-    old.forEach(c => {
-      c.style.setProperty('--shift', `${-dir * 56}px`);
-      c.classList.add('is-gone');
-      c.inert = true;
-      setTimeout(() => c.remove(), 700);
-    });
-    fresh.style.setProperty('--shift', `${dir * 56}px`);
-    fresh.classList.add('is-new');
-    requestAnimationFrame(() => requestAnimationFrame(() => fresh.classList.remove('is-new')));
-  } else old.forEach(c => c.remove());
+  const shell = stack.querySelector('.hs-card');
+  const tpl = document.createElement('template');
+  tpl.innerHTML = card(e, hero.i);
+  const fresh = tpl.content.firstElementChild;
+  if (!shell) stack.append(fresh);
+  else {
+    shell.setAttribute('aria-label', fresh.getAttribute('aria-label'));
+    const body = fresh.querySelector('.hs-body');
+    if (dir && !still.matches) {
+      body.classList.add('is-new');
+      settle(shell, () => shell.replaceChildren(body));
+    } else shell.replaceChildren(body);
+  }
   tickCountdowns();
 
   $$('#hs-tabs .hs-tab').forEach((t, k) => {
@@ -115,6 +114,22 @@ function paint(dir = 0) {
   restartTimer();
 }
 
+// Runs `change` on the card, then eases the card from its old height to its new one.
+function settle(el, change) {
+  const from = el.getBoundingClientRect().height;
+  el.style.transition = 'none';
+  el.style.height = '';
+  change();
+  const to = el.getBoundingClientRect().height;
+  if (Math.abs(to - from) < 1) return;
+  el.style.height = `${from}px`;
+  el.getBoundingClientRect();
+  el.style.transition = 'height 0.35s ease';
+  el.style.height = `${to}px`;
+  clearTimeout(el.settling);
+  el.settling = setTimeout(() => { el.style.height = ''; el.style.transition = ''; }, 400);
+}
+
 function go(i, dir) {
   const n = hero.list.length;
   const next = ((i % n) + n) % n;
@@ -122,8 +137,8 @@ function go(i, dir) {
   hero.i = next;
   fillBacks($$('#hs-backs .hs-back')[next]);
   paint(dir);
-  // Drawing the poster for the screens holds the page for a moment. It waits until the card
-  // has started to move, which the browser then finishes on its own.
+  // Drawing the poster for the screens holds the page for a moment. It waits until the new
+  // content has started to fade in, which the browser then finishes on its own.
   requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(showArena)));
 }
 const step = d => go(hero.i + d, d);
