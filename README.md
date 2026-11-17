@@ -160,6 +160,7 @@ index.html              every view, the icons and the import map
 css/styles.css          design tokens and layout
 assets/covers/          renders of each venue's 3D model, 1280 px and 640 px
 assets/events/          concert artwork (promoters' posters), 3:2
+assets/events/card/     the same artwork at 5:7, the shape of a ticket card
 
 js/                     front end, plain ES modules
   app.js                boot, routing, the two sides
@@ -190,6 +191,7 @@ server/                 API and static files, all state in Postgres
   db.mjs, schema.sql    pool, transactions, schema
 
 scripts/build-preview.mjs   dist/preview.html for hosts that wrap the page in their own document
+scripts/event-art.py        a concert's 3:2 and 5:7 artwork from its poster (Pillow)
 test/                   api.test.mjs (Postgres), venues.test.mjs, when.test.mjs
 ```
 
@@ -201,7 +203,7 @@ Copy an entry in `EVENTS` (`js/events.js`):
 - `dateISO`, `time`, `doors` on the venue's clock; `'TBA'` for anything not announced.
 - `cats` with each category's announced price, and `zone(seat)` to map the layout's blocks to them; `soldOut` for categories that sold out.
 - `official.url`: the show's tiket.com page.
-- `image`: the artwork in `assets/events/` (480 × 320 JPEG) with a line in `IMAGES` in `js/media.js`. It shows on the cards, on the concert page and on the stage screens in 3D; without one the cards show the venue render and the screens the tour name.
+- `image`: the artwork, with a line in `IMAGES` in `js/media.js`: a 3:2 file in `assets/events/` (1200 px wide with a 640 px copy, or one 480 px file) for the concert page and the stage screens in 3D, and a 5:7 file in `assets/events/card/` (800 px wide with a 480 px copy) for the ticket cards. A poster of another shape goes in whole, over a blurred copy of itself: `scripts/event-art.py` draws both files from the poster. Without one the cards show the venue render and the screens the tour name.
 
 Past concerts drop off the lists a day after the show and stay in the catalogue, so passes still open. Update `LISTED` when you refresh the list.
 

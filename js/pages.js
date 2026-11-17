@@ -4,7 +4,7 @@
 import { formatRpShort, crowdSeats } from './layouts.js';
 import { loadScene3d } from './viewer.js';
 import { EVENTS, PLACES, CITY, LISTED, getEvent, eventMeta, placeOf, timeKnown, minPrice, soldOut, allSoldOut, isConcert, demoFor, onTiket, sellerOf, saleInfo } from './events.js';
-import { coverImg, eventImg, posterFig } from './media.js';
+import { cardImg, coverImg, eventImg, posterFig } from './media.js';
 import { picker } from './picker.js';
 import { whenOf, startOf, venueClock, gapText } from './when.js';
 import { justBought, buyUrl, buyAttrs, buyLink, passes, activePass, claim, refresh, passLink, clicksFor, STATUS } from './passes.js';
@@ -121,7 +121,7 @@ function ticketCard(e, opts = {}) {
   if (gone && !all) tags.push(`<span class="tag tag-dark">${plural(gone, 'date')} sold out</span>`);
   else if (!all && live.soldOut?.length) tags.push(`<span class="tag tag-dark">${esc(getEvent(live.id).catById[live.soldOut[0]].name)} sold out</span>`);
   return `<article class="ev tkt">
-    <div class="tkt-bg">${eventImg(e, `${v.name}, ${v.city}`)}</div>
+    <div class="tkt-bg">${cardImg(e, `${v.name}, ${v.city}`)}</div>
     <div class="tkt-in">
       <div class="tkt-top">
         <span class="tkt-brand">${icon('i-mark')}<span>atvents<small>3D seat view</small></span></span>

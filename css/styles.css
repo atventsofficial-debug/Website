@@ -1453,7 +1453,7 @@ body { counter-reset: sec; }
 
 /* ---------- home: concerts as tickets ---------- */
 .tkt-grid { gap: 8px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
-.tkt { --notch: 7px; --step: 22px; position: relative; padding: 0; border: 0; border-radius: 6px; overflow: hidden; min-height: 470px; background: #3a170c; color: #fff; isolation: isolate;
+.tkt { --notch: 7px; --step: 22px; position: relative; padding: 0; border: 0; border-radius: 6px; overflow: hidden; aspect-ratio: 5 / 7; background: #3a170c; color: #fff; isolation: isolate;
   -webkit-mask: radial-gradient(circle var(--notch) at 50% 0, transparent 98%, #000) top / var(--step) 51% repeat-x, radial-gradient(circle var(--notch) at 50% 100%, transparent 98%, #000) bottom / var(--step) 51% repeat-x;
           mask: radial-gradient(circle var(--notch) at 50% 0, transparent 98%, #000) top / var(--step) 51% repeat-x, radial-gradient(circle var(--notch) at 50% 100%, transparent 98%, #000) bottom / var(--step) 51% repeat-x;
   transition: transform .35s cubic-bezier(.2, .7, .2, 1); }
@@ -1492,11 +1492,11 @@ body { counter-reset: sec; }
 .tkt-stamp { position: absolute; inset: 0; z-index: 2; display: grid; place-items: center; margin: 0; pointer-events: none; }
 .tkt-stamp span { padding: 10px 18px 9px; border: 3px solid #fff; border-radius: 8px; background: rgba(12, 8, 6, 0.4); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
   font: 700 40px/1 var(--display); letter-spacing: -0.02em; text-transform: uppercase; color: #fff; transform: rotate(-8deg); }
-.tkt-alerts { border-radius: 6px; min-height: 470px; border: 2px dashed rgba(255, 255, 255, 0.18); background: radial-gradient(90% 70% at 100% 0%, rgba(255, 90, 31, 0.22), transparent 70%), var(--panel); }
+/* The alerts card keeps the tickets' shape, so a row of them stays even. */
+.tkt-alerts { border-radius: 6px; aspect-ratio: 5 / 7; border: 2px dashed rgba(255, 255, 255, 0.18); background: radial-gradient(90% 70% at 100% 0%, rgba(255, 90, 31, 0.22), transparent 70%), var(--panel); }
 .tkt-alerts h3 { font: 500 34px/0.95 var(--display); text-transform: uppercase; }
 @media (max-width: 640px) {
-  .tkt, .tkt-alerts { min-height: 440px; }
-  .tkt-alerts { min-height: 260px; }
+  .tkt-alerts { aspect-ratio: auto; min-height: 260px; }
 }
 
 /* =====================================================================
