@@ -245,6 +245,36 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
 /* The hero's 3D is a picture, not a control: touches and the wheel go to the page, so a
    phone still scrolls (three.js sets touch-action: none on its canvas). */
 .hero-canvas { position: absolute; inset: 0; pointer-events: none; }
+/* The arena photo (herophoto.js): sized and placed by JS so its main screen sits in the open
+   part of the hero, drifting slowly closer. The posters lie under the photo, whose screens
+   are cut out; the haze over the stage and the screens' glow are added on top. */
+.hs-photo { overflow: hidden; opacity: 0; transition: opacity 1.2s ease; }
+.hs-photo.is-ready { opacity: 1; }
+.hs-room { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+.hs-room-in { position: absolute; inset: 0; transform-origin: 50% 30%; animation: hs-drift 26s ease-in-out infinite alternate; }
+@keyframes hs-drift { from { transform: none; } to { transform: scale(1.045) translate(-0.5%, 0.4%); } }
+.hs-room-img, .hs-haze { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.hs-haze { mix-blend-mode: screen; }
+.hs-scr, .hs-glow { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+.hs-scr canvas, .hs-glow canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.hs-scr { background: #05060a; }
+.hs-scr canvas { opacity: 0; transition: opacity 0.9s ease; filter: saturate(1.08) brightness(1.1); }
+.hs-scr canvas.is-on { opacity: 1; }
+/* LED pixels and a little falloff towards the edges */
+.hs-scr::after { content: ""; position: absolute; inset: 0; background:
+  repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.2) 0 1px, transparent 1px 4px),
+  repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.16) 0 1px, transparent 1px 4px),
+  radial-gradient(120% 120% at 50% 45%, transparent 60%, rgba(0, 0, 0, 0.28) 100%); }
+.hs-glow { mix-blend-mode: screen; opacity: 0.55; pointer-events: none; }
+/* Side screens: further away and turned towards the crowd, so a touch dimmer and softer,
+   with less spill; the phone's little picture of the stage has no LED grid and no glow. */
+.hs-scr[data-kind="side"] canvas { filter: saturate(1.04) brightness(0.98) blur(1.2px); }
+.hs-glow[data-kind="side"] { opacity: 0.32; }
+.hs-scr[data-kind="phone"] { background: #0b0c10; }
+.hs-scr[data-kind="phone"]::after, .hs-glow[data-kind="phone"] { display: none; }
+.hs-scr[data-kind="phone"] canvas { filter: brightness(1.15) blur(3px); }
+.hs-glow canvas { filter: blur(46px) saturate(1.2); transform: scale(1.18); }
+@media (prefers-reduced-motion: reduce) { .hs-room-in { animation: none; } }
 .hs-shade { position: absolute; inset: 0; pointer-events: none; background:
   linear-gradient(180deg, rgba(22, 20, 20, 0.8) 0%, rgba(22, 20, 20, 0.2) 15%, rgba(22, 20, 20, 0) 30%, rgba(22, 20, 20, 0) 50%, rgba(22, 20, 20, 0.5) 68%, rgba(22, 20, 20, 0.9) 86%, var(--frame) 100%),
   radial-gradient(130% 100% at 50% 38%, transparent 55%, rgba(22, 20, 20, 0.6) 100%); }
@@ -1875,4 +1905,20 @@ body { font-family: var(--font); font-feature-settings: "cv11", "ss01"; }
   .how-line li:last-child::before { display: none; }
   .how-line li::after { top: 1px; }
   .tl-n { margin-bottom: 8px; }
+}
+
+/* ---------- home hero, arena photo: the stage stays clear of the card ----------
+   A slimmer card (smaller title, tighter rows) leaves more of the hero open, and
+   herophoto.js places the photo so its screens sit whole in that part. */
+.hs-photo.is-ready .hs-room { transition: transform 1s var(--hs-ease); }
+@media (min-width: 961px) {
+  .hs-card { align-items: center; gap: var(--s5); padding: 18px 26px; }
+  .hs-info { gap: 6px; }
+  .hs-title { font-size: clamp(30px, 2.9vw, 46px); line-height: 0.95; }
+  .hs-sub { font-size: 14px; }
+  .hs-facts { margin-top: 2px; }
+  .hs-buy { gap: 10px; padding-left: var(--s5); }
+  .hs-price b { font-size: 22px; }
+  .hs-card .hs-price.hs-sale b { font-size: 16px; }
+  .hs-buy .btn { min-height: 44px; }
 }

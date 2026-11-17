@@ -1,28 +1,23 @@
-// The home page hero: one slide per show on sale. One concert arena fills it in 3D, seen
-// from the seat in the middle of the audience; each slide puts its show's poster on the stage
-// screens, and a card at the bottom gives the facts and the way to buy. Slides move on by themselves
+// The home page hero: one slide per show on sale. One concert arena fills it, in a photo
+// taken from the middle of the audience; each slide puts its show's poster on the stage
+// screens (herophoto.js), and a card at the bottom gives the facts and the way to buy. Slides move on by themselves
 // (with a pause button), or with the arrows, the tabs, a swipe or the arrow keys.
 import { formatFee } from './rules.js';
-import { getEvent, placeOf, minPrice, allSoldOut, sellerOf, onTiket, saleInfo } from './events.js';
-import { crowdSeats, heroSeat, formatRpShort } from './layouts.js';
+import { placeOf, minPrice, allSoldOut, sellerOf, onTiket, saleInfo } from './events.js';
+import { formatRpShort } from './layouts.js';
 import { IMAGES, cover } from './media.js';
 import { whenOf } from './when.js';
 import { buyLink } from './passes.js';
 import { onSale, featured, datesOf, upcoming, timesLine } from './pages.js';
-import { loadScene3d } from './viewer.js';
-import { $, $$, esc, icon, QUALITY, countdownHtml, tickCountdowns } from './ui.js';
+import { HeroPhoto } from './herophoto.js';
+import { $, $$, esc, icon, countdownHtml, tickCountdowns } from './ui.js';
 
-// How long a slide stays before the next; how wide the view stays on a tall phone; how
-// far above the seat's eye height the camera is (a phone held up, over the heads in front);
-// how strong the light beams are, so the poster on the screens reads through them.
+// How long a slide stays before the next.
 const SLIDE_SECONDS = 9;
-const MIN_ACROSS = 54;
-const LIFT = 0.45;
-const BEAMS = 0.45;
 const still = matchMedia('(prefers-reduced-motion: reduce)');
 
 // `list`: the slides, and `key` the shows they were drawn for. `run` lives from startHero
-// to stopHero and holds the 3D scene. `held`: why the slides are not moving on (the
+// to stopHero and holds the arena photo. `held`: why the slides are not moving on (the
 // visitor paused them, is pointing at the card, is using the controls, has scrolled away
 // or switched tabs).
 const hero = { list: [], key: '', i: 0, run: null, bound: false, held: new Set() };
@@ -116,7 +111,7 @@ function paint(dir = 0) {
     else t.removeAttribute('aria-current');
   });
   $$('#hs-backs .hs-back').forEach((b, k) => b.classList.toggle('is-on', k === hero.i));
-  $('#hero-canvas').setAttribute('aria-label', `3D view of a concert arena from the middle of the audience, with the poster for ${e.title} on the stage screens`);
+  $('#hero-canvas').setAttribute('aria-label', `A concert arena seen from the middle of the audience, with the poster for ${e.title} on the stage screens`);
   restartTimer();
 }
 
@@ -129,7 +124,7 @@ function go(i, dir) {
   paint(dir);
   // Drawing the poster for the screens holds the page for a moment. It waits until the card
   // has started to move, which the browser then finishes on its own.
-  requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(showVenue)));
+  requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(showArena)));
 }
 const step = d => go(hero.i + d, d);
 
@@ -163,7 +158,7 @@ function hold(reason, on) {
 
 // The backdrops and the tabs, one a show; drawn again only when the shows on sale change.
 // A backdrop is the poster, sharp where the stage will be, over a blurred copy of itself:
-// it shows until the 3D is ready, while it changes venue, and instead of it for data savers.
+// it shows until the arena photo is ready, and instead of it for data savers.
 const fillBacks = (root = $('#hs-backs')) => { for (const img of root?.querySelectorAll('img[data-src]') || []) { img.src = img.dataset.src; img.removeAttribute('data-src'); } };
 function build() {
   // Only the slide on show fetches its poster with the page; the others follow once the page
@@ -225,11 +220,11 @@ function bind() {
   hold('pause', still.matches);
 }
 
-// ---------------------------------------------------------------- 3D
+// ---------------------------------------------------------------- the arena
 
 // The open part of the hero, between the site's nav and the card (or, on a phone, the
-// controls over the bottom of the 3D). The poster backdrop is centred in it, and the 3D
-// picture moves up so the stage sits in its middle.
+// controls over the bottom of the picture). The poster backdrop is centred in it, and the
+// arena photo is placed so its screens sit whole in it.
 function aim() {
   const stage = $('#home-hero .hs-stage'), c = stage.getBoundingClientRect();
   if (!c.height) return;
@@ -239,38 +234,26 @@ function aim() {
   const mid = (top + bottom) / 2 - c.top;
   stage.style.setProperty('--hs-mid', `${Math.round(mid)}px`);
   stage.style.setProperty('--hs-open', `${Math.round(Math.max(0, bottom - top))}px`);
-  hero.run?.scene?.setShift(Math.min(0.3, Math.max(0, 0.5 - mid / c.height)));
+  hero.run?.photo?.layout(c.width, c.height, top - c.top, bottom - c.top);
 }
 
-// The arena every slide is seen in: the concert demo, its boards showing the site's name.
-let arena = null;
-const stageVenue = () => arena ||= { ...getEvent('demo-concert'), branding: { wall: 'ATVENTS', sub: 'LIVE IN 3D', band: ['ATVENTS', 'SEE YOUR SEAT IN 3D', 'BIG CONCERTS IN 3D', 'LIVE IN 3D'] } };
-
-// The arena, built once with the current show's poster on its screens; after that a new
-// slide only changes the poster. Drawn cheaply (medium quality at most, 30 fps), and not at
-// all for visitors saving data: the poster backdrop stays.
-async function showVenue() {
+// The arena photo, put up once with the current show's poster on its screens; after that a
+// new slide only changes the poster. Not at all for visitors saving data: the poster
+// backdrop stays.
+async function showArena() {
   const run = hero.run;
   if (!run || navigator.connection?.saveData) return;
-  if (!run.built) {
-    let SeatScene;
-    try { ({ SeatScene } = await loadScene3d()); } catch { return; }
-    if (hero.run !== run || run.built) return;
-    // Without motion: no glide into the seat and no wandering gaze, just the view.
-    run.scene = new SeatScene($('#hero-canvas'), { interactive: false, labels: false, quality: QUALITY, maxLevel: 1, fps: 30, drift: still.matches ? 0 : 0.05 });
-    aim();
-    const venue = stageVenue();
+  if (!run.ready) {
+    run.photo = new HeroPhoto($('#hero-canvas'));
     run.poster = hero.list[hero.i];
-    run.built = run.scene.load({ ...venue, meta: run.poster }, crowdSeats(venue)).then(ok => {
-      if (ok && hero.run === run) run.scene.showFrom(heroSeat(venue), { look: venue.hero?.look, fov: venue.hero?.fov, lift: LIFT, fit: MIN_ACROSS, beams: BEAMS, dur: still.matches ? 0 : 2.6 });
-      return ok;
-    });
+    aim();
+    run.ready = Promise.all([run.photo.setPoster(run.poster), run.photo.load()]).then(([, ok]) => ok);
   }
-  if (!await run.built || hero.run !== run) return;
+  if (!await run.ready || hero.run !== run) return;
   const show = hero.list[hero.i];
   if (run.poster !== show) {
     run.poster = show;
-    run.scene.setPoster(show);
+    run.photo.setPoster(show);
   }
 }
 
@@ -286,15 +269,15 @@ export function startHero() {
   paint();
   if (!hero.run) {
     hero.run = {};
-    // The 3D arena waits until the page itself has loaded and the browser is idle, so the
-    // text and the poster are never held up by it.
-    const start = () => (window.requestIdleCallback || setTimeout)(showVenue, { timeout: 1500 });
+    // The arena photo waits until the page itself has loaded, so the text and the poster
+    // are never held up by it.
+    const start = () => (window.requestIdleCallback || setTimeout)(showArena, { timeout: 800 });
     if (document.readyState === 'complete') start(); else addEventListener('load', start, { once: true });
   }
 }
 
 export function stopHero() {
   if (!hero.run) return;
-  hero.run.scene?.dispose();
+  hero.run.photo?.dispose();
   hero.run = null;
 }
