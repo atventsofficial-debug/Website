@@ -1,6 +1,6 @@
 // The story at the end of a seat tour: a vertical 9:16 clip, about 15 seconds, of the same
 // three steps the fan just took (the whole venue, their category, the view from their seat),
-// ending on their seat pass, and the pass as an image. Every fan's story has the same look,
+// ending on their seat pass. Every fan's story has the same look,
 // in the colours of their show, so the stories of one concert read as a set and each one
 // asks the next fan where they are sitting. It is rendered from a second, hidden copy of the
 // venue at 720 x 1280, drawn onto a 2D canvas with the words and recorded with MediaRecorder.
@@ -90,15 +90,13 @@ export async function makeStory(pass) {
     cap.end = performance.now();
     sheet.progress(0.88, 'Your seat pass');
     await wait(1800);
-    // The finished pass, sticker and all, as the image.
-    const png = await new Promise(r => out.toBlob(r, 'image/png'));
     await wait(1800);
     rec.stop();
     await stopped;
     const blob = new Blob(chunks, { type: type.split(';')[0] });
     const ext = blob.type === 'video/mp4' ? 'mp4' : 'webm';
     const name = `atvents-${slug(e.title)}-my-seat`;
-    sheet.done(new File([blob], `${name}.${ext}`, { type: blob.type }), png && new File([png], `${name}.png`, { type: 'image/png' }), e, seat);
+    sheet.done(new File([blob], `${name}.${ext}`, { type: blob.type }), e, seat);
   } catch (err) {
     if (rec?.state === 'recording') rec.stop();
     sheet.fail();
@@ -124,7 +122,7 @@ const waitShown = scene => new Promise(r => { const t = () => (scene.shown || sc
 // One look for every fan, like a story template everyone fills in: the concert's colours,
 // the countdown, three beats (I'm going, my category, my view) and, for the last seconds, the
 // seat pass: the view from the seat in a window, the seat in big type, and a sticker that
-// asks the next person where they are sitting. The last frame is also saved as the image.
+// asks the next person where they are sitting.
 
 const FONT = '"Inter", "Helvetica Neue", Arial, sans-serif';
 // The logo's viewBox (assets/brand/atvents-logo-web.svg): an SVG without a size has none to read.
@@ -308,7 +306,7 @@ function pass(ctx, gl, k, t, look) {
   if (sk <= 0) return;
   ctx.save();
   ctx.translate(W / 2, Math.min(cy + used + 92, H - 150));
-  ctx.rotate(-0.045);
+  ctx.rotate(-0.045 + Math.sin(t / 380) * 0.012);
   ctx.scale(sk, sk);
   ctx.font = `900 38px ${FONT}`; track(ctx, -1);
   const q = 'WHERE ARE YOU SITTING?', qw = ctx.measureText(q).width + 64;
@@ -345,6 +343,9 @@ function pill(ctx, text, x, cy, color) {
   const w = ctx.measureText(text).width + 44;
   ctx.fillStyle = color;
   round(ctx, x - w, cy - 24, w, 48, 24); ctx.fill();
+  // The dot beats, like a live sign.
+  const beatK = (performance.now() % 1000) / 1000;
+  ctx.beginPath(); ctx.arc(x - w + 22, cy, 6 + beatK * 8, 0, Math.PI * 2); ctx.fillStyle = `rgba(255,255,255,${0.5 * (1 - beatK)})`; ctx.fill();
   ctx.beginPath(); ctx.arc(x - w + 22, cy, 6, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill();
   ctx.fillStyle = '#fff'; ctx.textBaseline = 'middle';
   ctx.fillText(text, x - w + 36, cy + 1);
@@ -417,7 +418,7 @@ function openSheet() {
   root.addEventListener('click', async ev => {
     const act = ev.target.closest('[data-story]')?.dataset.story;
     if (act === 'close') { urls.forEach(u => URL.revokeObjectURL(u)); root.remove(); }
-    if ((act === 'share' || act === 'share-img') && files[act]) {
+    if (act === 'share' && files.share) {
       try { await navigator.share({ files: [files[act]], title: 'My seat', text }); } catch { /* closed the share sheet */ }
     }
   });
@@ -425,10 +426,10 @@ function openSheet() {
     stage: $('#story-stage'),
     canvas: $('#story-canvas'),
     progress(k, label) { $('#story-bar').style.transform = `scaleX(${k})`; $('#story-note').textContent = `${label}…`; },
-    done(video, image, e, seat) {
-      const vurl = URL.createObjectURL(video), iurl = image ? URL.createObjectURL(image) : '';
-      urls = [vurl, iurl].filter(Boolean);
-      files = { share: video, 'share-img': image };
+    done(video, e, seat) {
+      const vurl = URL.createObjectURL(video);
+      urls = [vurl];
+      files = { share: video };
       // What WhatsApp, X and the like post with it; Instagram takes the file alone.
       const where = seat.standing ? seat.secName : `Row ${seat.row}, Seat ${seat.num}`;
       text = `I'm going to ${e.title}! ${where}. Where are you sitting? ${location.origin}/#event-${e.id}`;
@@ -438,16 +439,14 @@ function openSheet() {
       $('#story-bar').style.transform = 'scaleX(1)';
       $('#story-title').textContent = 'Your seat pass is ready';
       const canShare = !!navigator.canShare?.({ files: [video] });
-      const canShareImg = !!image && !!navigator.canShare?.({ files: [image] });
       $('#story-note').textContent = canShare
-        ? 'Post it to your story and let your friends answer where they are sitting. The video ends on your pass; the image is the pass alone.'
-        : 'Save it, then post it as a story from Instagram or TikTok on your phone. The video ends on your pass; the image is the pass alone.';
+        ? 'Post it to your story and let your friends answer where they are sitting.'
+        : 'Save it, then post it as a story from Instagram or TikTok on your phone.';
       $('#story-actions').innerHTML = `
         ${canShare ? `<button class="btn btn-coral" type="button" data-story="share">${icon('i-share', 'lead')}<span>Share video to story</span></button>` : `<a class="btn btn-coral" href="${vurl}" download="${esc(video.name)}">${icon('i-down', 'lead')}<span>Save video</span></a>`}
-        ${image ? (canShareImg ? `<button class="btn btn-line" type="button" data-story="share-img">${icon('i-share', 'lead')}<span>Share image</span></button>` : `<a class="btn btn-line" href="${iurl}" download="${esc(image.name)}">${icon('i-down', 'lead')}<span>Save image</span></a>`) : ''}
         ${canShare ? `<a class="link" href="${vurl}" download="${esc(video.name)}">Save the video to this device</a>` : ''}
         <button class="link" type="button" data-story="close">Close</button>`;
-      state.lastStory = { name: video.name, size: video.size, type: video.type, image: image?.size || 0, event: e.id };
+      state.lastStory = { name: video.name, size: video.size, type: video.type, event: e.id };
     },
     fail() {
       $('#story-title').textContent = 'The video could not be made';
