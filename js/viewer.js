@@ -259,6 +259,10 @@ function showTooltip(seat, ev) {
 // ---------------------------------------------------------------- controls
 
 export function bindViewer() {
+  // On phones the category rail and the tools sit above the bottom panel, whose height
+  // changes (the seat tour's panel is taller), so they follow its measured height.
+  const side = $('#app-side');
+  if (side && window.ResizeObserver) new ResizeObserver(() => side.parentElement.style.setProperty('--side-h', `${side.offsetHeight}px`)).observe(side);
   const toggle = (btn, key, apply) => btn.addEventListener('click', () => {
     state[key] = !state[key];
     btn.classList.toggle('is-on', state[key]);

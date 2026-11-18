@@ -294,3 +294,181 @@ export class HeroPhoto {
     this.root.innerHTML = '';
   }
 }
+
+// ---------------------------------------------------------------- the light version
+
+// Phones and tablets get the same picture drawn flat into one canvas the size of the hero:
+// the photo, the posters warped onto its screens, the haze over them. The full version
+// above stacks dozens of layers (3D-warped screens, blend modes, filters, moving light) over
+// a 2400 px photo; that costs more graphics memory than an in-app browser such as
+// Instagram's gives a page, and the page was killed and reloaded until it gave up. This one
+// holds two canvases of the hero's own size and nothing moves but the fade between posters.
+
+// The point (u, v) of the unit square on the quad, as warp() maps it.
+function quadPoint([[x0, y0], [x1, y1], [x2, y2], [x3, y3]]) {
+  const dx1 = x1 - x2, dx2 = x3 - x2, dy1 = y1 - y2, dy2 = y3 - y2;
+  const sx = x0 - x1 + x2 - x3, sy = y0 - y1 + y2 - y3;
+  const den = dx1 * dy2 - dx2 * dy1;
+  const g = (sx * dy2 - dx2 * sy) / den, h = (dx1 * sy - sx * dy1) / den;
+  const a = x1 - x0 + g * x1, b = x3 - x0 + h * x3, d = y1 - y0 + g * y1, e = y3 - y0 + h * y3;
+  return (u, v) => { const k = g * u + h * v + 1; return [(a * u + b * v + x0) / k, (d * u + e * v + y0) / k]; };
+}
+
+// `src` drawn onto the quad `pts` in small affine triangles, close enough to the true
+// perspective at this size.
+function drawQuad(g, src, pts, n = 8) {
+  const at = quadPoint(pts), W = src.width, H = src.height;
+  const tri = (s, d) => {
+    // The affine map taking the source triangle s onto d.
+    const [[sx0, sy0], [sx1, sy1], [sx2, sy2]] = s, [[dx0, dy0], [dx1, dy1], [dx2, dy2]] = d;
+    const den = (sx1 - sx0) * (sy2 - sy0) - (sx2 - sx0) * (sy1 - sy0);
+    if (!den) return;
+    const a = ((dx1 - dx0) * (sy2 - sy0) - (dx2 - dx0) * (sy1 - sy0)) / den;
+    const c = ((dx2 - dx0) * (sx1 - sx0) - (dx1 - dx0) * (sx2 - sx0)) / den;
+    const b = ((dy1 - dy0) * (sy2 - sy0) - (dy2 - dy0) * (sy1 - sy0)) / den;
+    const dd = ((dy2 - dy0) * (sx1 - sx0) - (dy1 - dy0) * (sx2 - sx0)) / den;
+    const e = dx0 - a * sx0 - c * sy0, f = dy0 - b * sx0 - dd * sy0;
+    // Each triangle reaches a little past its edges, so no hairline seams show between them.
+    const cx = (dx0 + dx1 + dx2) / 3, cy = (dy0 + dy1 + dy2) / 3;
+    const out = ([x, y]) => { const l = Math.hypot(x - cx, y - cy) || 1; return [x + (x - cx) / l * 0.8, y + (y - cy) / l * 0.8]; };
+    g.save();
+    g.beginPath();
+    d.map(out).forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
+    g.closePath();
+    g.clip();
+    g.transform(a, b, c, dd, e, f);
+    g.drawImage(src, 0, 0);
+    g.restore();
+  };
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < n; j++) {
+      const u0 = i / n, u1 = (i + 1) / n, v0 = j / n, v1 = (j + 1) / n;
+      const s = [[u0 * W, v0 * H], [u1 * W, v0 * H], [u1 * W, v1 * H], [u0 * W, v1 * H]];
+      const d = [at(u0, v0), at(u1, v0), at(u1, v1), at(u0, v1)];
+      tri([s[0], s[1], s[2]], [d[0], d[1], d[2]]);
+      tri([s[0], s[2], s[3]], [d[0], d[2], d[3]]);
+    }
+  }
+}
+
+export class FlatHeroPhoto {
+  constructor(root, arena = ARENA) {
+    this.root = root;
+    this.arena = arena;
+    this.token = null;
+    this.view = null;
+    this.posters = null;
+    this.tint = '';
+    root.classList.add('hs-photo', 'hs-flat');
+    root.innerHTML = '<canvas></canvas><canvas></canvas>';
+    this.canvases = [...root.querySelectorAll('canvas')];
+  }
+
+  async load() {
+    const [img, haze] = await Promise.all([loadImage(this.arena.src), this.arena.haze ? loadImage(this.arena.haze) : null]);
+    if (!img) return false;
+    this.img = img;
+    this.haze = haze;
+    this.draw();
+    this.root.classList.add('is-ready');
+    return true;
+  }
+
+  // The same placing as the full version, kept to redraw with.
+  layout(w, h, top = 0, bottom = h) {
+    const { w: W, h: H, screens, clear = 0 } = this.arena;
+    const open = Math.max(1, bottom - top);
+    const box = list => {
+      const xs = list.flatMap(q => q.pts.map(p => p[0])), ys = list.flatMap(q => q.pts.map(p => p[1]));
+      const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+      return { w: x1 - x0, h: y1 - y0, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2 };
+    };
+    const wide = w / open > 1.45;
+    const stage = screens.filter(q => q.kind !== 'phone');
+    const b = wide ? box(stage) : box(stage.slice(0, 1));
+    let s = wide ? Math.min(open * 0.84 / b.h, w * 0.96 / b.w) : Math.min(open * 0.66 / b.h, w * 0.74 / b.w);
+    s = Math.max(s, w / W, h / (H - clear));
+    const x = Math.min(0, Math.max(w - W * s, w / 2 - b.cx * s));
+    const mainTop = Math.min(...screens[0].pts.map(p => p[1]));
+    const y = Math.min(0, Math.max(h - H * s, top + open / 2 - b.cy * s), Math.max(-clear * s, top + 8 - mainTop * s));
+    const key = [w, h, x, y, s].map(v => v.toFixed(2)).join();
+    if (this.view?.key === key) return;
+    this.view = { w, h, x, y, s, key };
+    this.draw(true);
+  }
+
+  async setPoster(meta) {
+    const token = this.token = {};
+    const src = posterSrc(meta);
+    const img = src ? await loadImage(src) : null;
+    if (this.token !== token) return false;
+    const focus = posterFocus(meta);
+    this.tint = posterTint(img);
+    if (this.tint) this.root.style.setProperty('--hs-tint', this.tint);
+    else this.root.style.removeProperty('--hs-tint');
+    this.posters = this.arena.screens.map(s => { const c = document.createElement('canvas'); drawPoster(c, img, s.aspect, focus); return c; });
+    this.draw();
+    return true;
+  }
+
+  // Draws into the canvas not showing and fades it in; `same` redraws the one showing
+  // (a resize), with no fade.
+  draw(same = false) {
+    const v = this.view;
+    if (!v || !this.img || !this.posters || !v.w || !v.h) return;
+    const on = this.canvases.find(c => c.classList.contains('is-on'));
+    const c = same && on ? on : this.canvases.find(x => x !== on) || this.canvases[0];
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    c.width = Math.round(v.w * dpr);
+    c.height = Math.round(v.h * dpr);
+    const g = c.getContext('2d');
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.fillStyle = '#0f0d0d';
+    g.fillRect(0, 0, c.width, c.height);
+    g.setTransform(dpr * v.s, 0, 0, dpr * v.s, dpr * v.x, dpr * v.y);
+    g.imageSmoothingQuality = 'high';
+    const { screens, w: W, h: H } = this.arena;
+    // The screens seen through the photo's cut-outs, then the photo, then those hung in front.
+    screens.forEach((s, i) => { if (!s.cab) drawQuad(g, this.posters[i], grow(s.pts, 3)); });
+    g.drawImage(this.img, 0, 0, W, H);
+    screens.forEach((s, i) => {
+      if (!s.cab) return;
+      g.fillStyle = '#0e0e0f';
+      g.beginPath();
+      s.cab.forEach(([x, y], k) => (k ? g.lineTo(x, y) : g.moveTo(x, y)));
+      g.closePath();
+      g.fill();
+      drawQuad(g, this.posters[i], grow(s.pts, 3));
+    });
+    screens.forEach(s => {
+      if (!s.frame) return;
+      const pts = outset(s.pts, s.frame[0]);
+      g.strokeStyle = '#0b0b0c';
+      g.lineWidth = s.frame[1];
+      g.beginPath();
+      pts.forEach(([x, y], k) => (k ? g.lineTo(x, y) : g.moveTo(x, y)));
+      g.closePath();
+      g.stroke();
+    });
+    g.globalCompositeOperation = 'screen';
+    if (this.haze) { g.globalAlpha = 0.85; g.drawImage(this.haze, 0, 0, W, H); }
+    // The main screen's light spilling into the haze, in the poster's colour.
+    const m = screens[0].pts, cx = m.reduce((a, p) => a + p[0], 0) / 4, cy = m.reduce((a, p) => a + p[1], 0) / 4;
+    const glow = g.createRadialGradient(cx, cy, 0, cx, cy, 900);
+    const tint = (this.tint || 'rgb(255, 176, 112)').replace('rgb(', 'rgba(').replace(')', ', ');
+    glow.addColorStop(0, `${tint}0.22)`);
+    glow.addColorStop(1, `${tint}0)`);
+    g.globalAlpha = 1;
+    g.fillStyle = glow;
+    g.fillRect(cx - 900, cy - 900, 1800, 1800);
+    g.globalCompositeOperation = 'source-over';
+    if (c !== on) { c.classList.add('is-on'); on?.classList.remove('is-on'); }
+  }
+
+  dispose() {
+    this.token = null;
+    this.root.classList.remove('hs-photo', 'hs-flat', 'is-ready');
+    this.root.style.removeProperty('--hs-tint');
+    this.root.innerHTML = '';
+  }
+}

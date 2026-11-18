@@ -326,6 +326,9 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
 .hs-veil { background: linear-gradient(rgba(170, 160, 150, 0.05), rgba(170, 160, 150, 0.09) 55%, rgba(170, 160, 150, 0.16)); }
 .hero-show.is-away :is(.hs-room-in, .hs-haze, .hs-fx i) { animation-play-state: paused; }
 @media (prefers-reduced-motion: reduce) { .hs-room-in, .hs-haze, .hs-fx i { animation: none; } }
+/* The light version for phones (herophoto.js, FlatHeroPhoto): two canvases, crossfading. */
+.hs-flat canvas { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; transition: opacity 0.9s ease; }
+.hs-flat canvas.is-on { opacity: 1; }
 .hs-shade { position: absolute; inset: 0; pointer-events: none; background:
   linear-gradient(180deg, rgba(22, 20, 20, 0.8) 0%, rgba(22, 20, 20, 0.2) 15%, rgba(22, 20, 20, 0) 30%, rgba(22, 20, 20, 0) 50%, rgba(22, 20, 20, 0.5) 68%, rgba(22, 20, 20, 0.9) 86%, var(--frame) 100%),
   radial-gradient(130% 100% at 50% 38%, transparent 55%, rgba(22, 20, 20, 0.6) 100%); }
@@ -978,9 +981,9 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
   .event-card { top: 74px; right: max(16px, env(safe-area-inset-right, 0px)); width: auto; padding: var(--s3) var(--s4); gap: var(--s2); }
   .event-card h1 { font-size: 20px; }
   .event-card .label, .ev-stats { display: none; }
-  .tools { top: auto; bottom: 252px; transform: none; }
+  .tools { top: auto; bottom: calc(max(156px, var(--side-h, 0px)) + 96px); transform: none; }
   .stage.is-seat .tools { transform: none; }
-  .sections { left: max(12px, env(safe-area-inset-left, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); bottom: 168px; padding: 6px; border-radius: 26px; }
+  .sections { left: max(12px, env(safe-area-inset-left, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); bottom: calc(max(156px, var(--side-h, 0px)) + 12px); padding: 6px; border-radius: 26px; }
   .sb-label { display: none; }
   .app-side { left: max(12px, env(safe-area-inset-left, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); bottom: max(12px, env(safe-area-inset-bottom, 0px)); width: auto; padding: var(--s4); gap: var(--s2); }
   .app-side h2 { font-size: 19px; }
@@ -1280,7 +1283,7 @@ input, select, textarea { border-radius: 0; }
 /* ---------- the story video sheet ---------- */
 .story { position: fixed; z-index: 90; inset: 0; display: grid; place-items: center; padding: 16px; background: rgba(10, 10, 10, 0.82); backdrop-filter: blur(6px); }
 .story-card { display: grid; grid-template-columns: auto minmax(0, 320px); gap: var(--s6); align-items: center; padding: var(--s5); border-radius: var(--r); background: var(--panel-2); border: 1px solid var(--line-2); max-height: calc(100svh - 32px); }
-.story-frame { --k: min(1, calc((100svh - 120px) / 960px)); position: relative; width: calc(540px * var(--k)); height: calc(960px * var(--k)); max-width: calc(100vw - 64px); border-radius: var(--r-sm); overflow: hidden; background: #000; }
+.story-frame { --k: 1; position: relative; width: min(540px, calc((100vh - 120px) * 0.5625)); width: min(540px, calc((100svh - 120px) * 0.5625)); aspect-ratio: 9 / 16; max-width: calc(100vw - 64px); border-radius: var(--r-sm); overflow: hidden; background: #000; }
 .story-stage { position: absolute; left: 0; top: 0; width: 540px; height: 960px; transform: scale(var(--k)); transform-origin: 0 0; }
 .story-frame canvas, .story-frame video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .story-side { display: flex; flex-direction: column; gap: var(--s3); }
@@ -1295,7 +1298,7 @@ input, select, textarea { border-radius: 0; }
   .f-row-3 > label:first-child { grid-column: 1 / -1; }
   .review { grid-template-columns: 96px minmax(0, 1fr); }
   .story-card { grid-template-columns: minmax(0, 1fr); gap: var(--s4); padding: var(--s4); overflow-y: auto; }
-  .story-frame { --k: min(1, calc((100svh - 300px) / 960px), calc((100vw - 64px) / 540px)); justify-self: center; }
+  .story-frame { width: min(540px, calc((100vh - 300px) * 0.5625), calc(100vw - 64px)); width: min(540px, calc((100svh - 300px) * 0.5625), calc(100vw - 64px)); justify-self: center; }
 }
 
 /* In the seat tour the last step's panel stays: it holds "Upload to story" and "Back to home". */

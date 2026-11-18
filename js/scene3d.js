@@ -89,7 +89,10 @@ export class SeatScene {
     this.showCrowd = true;
 
     this.qualityMode = quality;
-    this.level = Math.min(maxLevel, quality === 'low' ? 0 : quality === 'medium' ? 1 : 2);
+    // Phones and tablets start a level lower: shadows at full size and the reflections cost
+    // more graphics memory than an in-app browser (Instagram's, say) gives a page.
+    const small = quality === 'auto' && matchMedia('(max-width: 760px), (pointer: coarse)').matches;
+    this.level = Math.min(maxLevel, quality === 'low' ? 0 : quality === 'medium' || small ? 1 : 2);
     this.perf = { frames: 0, time: 0, checks: 0 };
     this._applyQuality();
 

@@ -197,6 +197,12 @@ function openSheet() {
       </div>
     </div>`);
   const root = $('#story');
+  // The stage is drawn at 540 × 960 and scaled to the frame. The scale is set from here:
+  // dividing one length by another in CSS only works in the newest browsers.
+  const frame = root.querySelector('.story-frame');
+  const fit = () => frame.style.setProperty('--k', String(frame.clientWidth / 540 || 1));
+  fit();
+  if (window.ResizeObserver) new ResizeObserver(fit).observe(frame); else window.addEventListener('resize', fit);
   let file = null, url = '';
   root.addEventListener('click', async ev => {
     const act = ev.target.closest('[data-story]')?.dataset.story;

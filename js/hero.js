@@ -9,12 +9,15 @@ import { IMAGES, cover, srcsetOf } from './media.js';
 import { whenOf } from './when.js';
 import { buyLink } from './passes.js';
 import { onSale, featured, datesOf, upcoming, timesLine } from './pages.js';
-import { HeroPhoto } from './herophoto.js';
+import { HeroPhoto, FlatHeroPhoto } from './herophoto.js';
 import { $, $$, esc, icon, countdownHtml, tickCountdowns } from './ui.js';
 
 // How long a slide stays before the next.
 const SLIDE_SECONDS = 9;
 const still = matchMedia('(prefers-reduced-motion: reduce)');
+// Phones and tablets get the arena drawn flat (herophoto.js, FlatHeroPhoto): the layered
+// version needs more graphics memory than their in-app browsers allow.
+const light = () => matchMedia('(max-width: 760px), (pointer: coarse)').matches;
 
 // `list`: the slides, and `key` the shows they were drawn for. `run` lives from startHero
 // to stopHero and holds the arena photo. `held`: why the slides are not moving on (the
@@ -269,7 +272,7 @@ async function showArena() {
   const run = hero.run;
   if (!run || navigator.connection?.saveData) return;
   if (!run.ready) {
-    run.photo = new HeroPhoto($('#hero-canvas'));
+    run.photo = new (light() ? FlatHeroPhoto : HeroPhoto)($('#hero-canvas'));
     run.poster = hero.list[hero.i];
     aim();
     run.ready = Promise.all([run.photo.setPoster(run.poster), run.photo.load()]).then(([, ok]) => ok);
