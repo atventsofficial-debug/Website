@@ -477,6 +477,18 @@ export function renderUnlock(eventId) {
   $('#unlock-error').hidden = true;
   $('#pay-test').hidden = !state.store.sandbox;
   closePay(form);
+  // From the tab, the menu or Unlock 3D with no concert in hand: the events on sale first, as
+  // cards; one tap opens the form for it (#unlock-<id>), poster and all.
+  const picking = !isConcert(eventId) && !unlock.again;
+  $('#uf-pick').hidden = !picking;
+  form.hidden = picking;
+  if (picking) {
+    $('#unlock-note').hidden = true;
+    $('#uf-pick').innerHTML = `<div class="uf-head"><h2>Choose your event</h2><small>Then your seat, then pay</small></div>
+      <ul class="uf-pick-list">${onSale().map(e => `<li><a class="uf-pick-row" href="#unlock-${esc(e.id)}">
+        ${thumbImg(e)}<span class="uf-event-text"><b>${esc(e.title)}</b><small>${esc(whenOf(e).date)} · ${esc(placeOf(e).name)}</small></span>${icon('i-arrow')}</a></li>`).join('')}</ul>`;
+    return;
+  }
   const all = onSale();
   if (isConcert(eventId) && !all.some(e => e.id === eventId)) all.unshift(eventMeta(eventId));
   const pick = isConcert(eventId) ? eventId : (all.some(e => e.id === form.eventId.value) ? form.eventId.value : all[0]?.id);
@@ -1140,7 +1152,7 @@ function bindUnlock(form) {
   form.addEventListener('click', ev => {
     const sso = ev.target.closest('[data-sso]');
     if (sso) { signInWith(form, sso); return; }
-    if (ev.target.closest('#uf-event-change')) { unlock.fixed = false; paintEvent(form); form.eventId.focus(); return; }
+    if (ev.target.closest('#uf-event-change')) { location.hash = '#unlock'; return; }
     if (ev.target.closest('#uf-type')) { unlock.typing = true; paintWho(form); ready(form); form.name.focus(); return; }
     if (ev.target.closest('#uf-change')) { unlock.who = null; form.name.value = ''; form.email.value = ''; paintWho(form); ready(form); }
   });

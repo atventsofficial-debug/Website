@@ -17,6 +17,15 @@
 .stage .event-card, .stage .sections, .stage .app-side, .stage .tools, .stage .seatcard, .stage .pov-hint, .stage .zoom, .app-chip { transition: opacity .3s, transform .3s, visibility 0s; }
 .stage.is-min :is(.event-card, .sections, .app-side, .tools, .seatcard, .pov-hint, .zoom, .app-chip) { opacity: 0 !important; visibility: hidden; pointer-events: none !important; transition: opacity .3s, transform .3s, visibility 0s .3s; }
 .stage.is-min .sq-min { background: var(--coral); border-color: var(--coral); color: #fff; }
+/* Unlock 3D with no event chosen yet (js/pages.js, renderUnlock): the events as cards. */
+.uf-pick { padding: var(--s5); border: 1px solid var(--line-2); border-radius: 22px; background: var(--panel); }
+.uf-pick .uf-head { margin-bottom: 14px; }
+.uf-pick-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.uf-pick-row { display: flex; align-items: center; gap: 14px; padding: 10px 14px 10px 10px; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 16px; background: rgba(255, 255, 255, 0.035); transition: border-color .15s, background-color .15s; }
+.uf-pick-row:hover, .uf-pick-row:focus-visible { border-color: var(--coral); background: rgba(255, 255, 255, 0.06); outline: none; }
+.uf-pick-row .co-poster { width: 44px; border-radius: 6px; }
+.uf-pick-row > svg { width: 18px; height: 18px; color: var(--muted); }
+
 /* The event list's filter (js/pages.js, renderConcerts): one chip per kind of event on sale. */
 .type-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 26px; }
 .type-chip { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 16px; border: 1px solid var(--line-2); border-radius: 999px; background: transparent; color: var(--text); font: 600 14px/1 var(--font); cursor: pointer; transition: background-color .15s, color .15s, border-color .15s; }

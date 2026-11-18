@@ -47,8 +47,10 @@ export function mobileRoute(view) {
     if (a.dataset.tab === tab) a.setAttribute('aria-current', 'page');
     else a.removeAttribute('aria-current');
   });
-  document.body.classList.toggle('is-focus', FOCUS.has(view));
-  $('#nav-back').hidden = ROOTS.has(view) || view === 'seats';
+  // The checkout hides the tab bar once a concert is chosen; its list of events keeps it.
+  const choosing = view === 'unlock' && !/^#(unlock-|paid-)/.test(location.hash);
+  document.body.classList.toggle('is-focus', FOCUS.has(view) && !choosing);
+  $('#nav-back').hidden = ROOTS.has(view) || choosing || view === 'seats';
   if (view === 'concerts' && findNext) requestAnimationFrame(() => $('#concerts-q')?.focus());
   findNext = false;
 }
