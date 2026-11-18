@@ -355,7 +355,7 @@ export function renderEvent(id) {
       <div class="hero-bar">
         ${poster}
         <div class="ev-info">
-          <a class="back-link" href="#concerts">${icon('i-back')}All concerts</a>
+          <a class="back-link" href="#concerts">${icon('i-back')}All events</a>
           <div class="tags"><span class="tag tag-coral">Concert</span><span class="tag tag-white">${dm.dow} ${dm.day} ${dm.mon}</span>${allSoldOut(e) ? '<span class="tag tag-sold">Sold out</span>' : ''}${pass ? `<span class="tag tag-line">${icon('i-eye')}3D pass on this device</span>` : ''}</div>
           <p class="ev-blurb">${esc(e.blurb)}</p>
           ${live && saleInfo(e) ? `<p class="ev-sale">${icon('i-cal')}<span>${esc(saleInfo(e).line)}</span></p>` : ''}
