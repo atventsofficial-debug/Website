@@ -38,7 +38,8 @@ const easeOut = t => 1 - (1 - t) ** 3;
 const wrapAngle = a => Math.atan2(Math.sin(a), Math.cos(a));
 // Venue kinds drawn with the live crowd, the camera feel and the concert atmosphere
 // (crowd3d.js, post.js); the others keep the simpler figures for now.
-const REALISTIC = new Set(['concert']);
+// Concerts in a hall, and stadium concerts (a stadium with a show on it, not a match).
+const isRealistic = v => !!v && (v.kind === 'concert' || (v.kind === 'stadium' && !!v.show));
 const BUILDERS = { concert: buildConcert, cinema: buildCinema, combat: buildCombat, stadium: buildStadium };
 
 // The colour of a venue's seats as they are on the night. `seatColor` is one colour, or
@@ -214,7 +215,7 @@ export class SeatScene {
     this.scene = new THREE.Scene();
     this.scene.environment = this.envMap;
     this.focus = new THREE.Vector3(...venue.focus);
-    this.realistic = REALISTIC.has(venue.kind);
+    this.realistic = isRealistic(venue);
 
     BUILDERS[venue.kind](this, venue);
     this.buildSeats(venue);
@@ -391,7 +392,7 @@ export class SeatScene {
       this.composer.addPass(this.gradePass);
     }
     if (this.lensPass) {
-      const on = !!this.venue && REALISTIC.has(this.venue.kind);
+      const on = isRealistic(this.venue);
       this.lensPass.enabled = this.gradePass.enabled = on;
       this.lensPass.uniforms.uAO.value = lv === 2 ? 0.75 : 0;
       this.lensPass.uniforms.uTaps.value = lv === 2 ? 20 : 10;
@@ -500,7 +501,7 @@ export class SeatScene {
     let seed = 11;
     const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
     this.people = null;
-    if (REALISTIC.has(venue.kind)) this.buildPeople(venue);
+    if (isRealistic(venue)) this.buildPeople(venue);
     else {
       // The crowd, on the occupied seats.
       const g = crowdGeometries();
@@ -593,8 +594,18 @@ export class SeatScene {
     this.mood(this.people.material, 'envMapIntensity', 0.55, 0.06);
     // The act on stage, as many as the show's line-up, on the concert stage's deck and risers.
     this.band?.dispose();
-    this.band = venue.lineup?.length ? new Band(this.scene, this.people.material, venue.lineup,
-      { rnd: () => ((seed2 = (seed2 * 16807) % 2147483647) / 2147483647) }) : null;
+    const bandRnd = () => ((seed2 = (seed2 * 16807) % 2147483647) / 2147483647);
+    const stadium = venue.kind === 'stadium';
+    this.band = venue.lineup?.length && (!stadium || venue.show === 'end')
+      ? new Band(this.scene, this.people.material, venue.lineup, stadium
+        // A stadium's end stage is built facing +z at its front edge, then turned to the field.
+        ? { y: 2.2, front: 0, riserY: 2.8, riserZ: -9, risers: true, rnd: bandRnd }
+        : { rnd: bandRnd })
+      : null;
+    if (this.band && stadium) {
+      this.band.group.rotation.y = Math.PI / 2;
+      this.band.group.position.set(venue.stageX ?? -40, 0, 0);
+    }
     // Flip-up seats: the pan is down where somebody sits.
     const upAttr = this.seatMesh?.geometry.attributes.aUp;
     if (upAttr) {

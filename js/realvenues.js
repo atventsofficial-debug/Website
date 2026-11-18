@@ -359,4 +359,161 @@ function inaB2m() {
   });
 }
 
-export const REAL_BUILDERS = { 'madya-end': madyaEnd, 'jis-mcr': jisMcr, 'ina-5sos': ina5sos, 'ina-b2m': inaB2m };
+
+// ------------------------------------------------------------------ JIS: other shows
+
+// A show's floor on the pitch, from its plan: pens in front of the stage, numbered chairs
+// or standing floor, kept off the walkways, the B-stage and the sound desk. `pens` in order
+// of priority, each { sec, secName, cat, standing, step, at(d, z) } where d is the distance
+// out from the stage's front edge and z across the field (Left +z); the first pen whose `at`
+// holds takes the spot. `clear(d, z)` keeps a spot empty.
+function jisPitch(seats, pens, clear) {
+  for (const pen of pens) {
+    const sx = pen.standing ? (pen.step || 0.8) : 0.55, sz = pen.standing ? (pen.step || 0.8) : 0.9;
+    let row = -1;
+    for (let d = 2.4; d < 96; d += sz) {
+      let num = 0, started = false;
+      for (let z = 33; z > -33; z -= sx) {
+        if (clear(d, z)) continue;
+        const owner = pens.find(p => p.at(d, z));
+        if (owner !== pen) continue;
+        if (!started) { row++; started = true; }
+        const x = JIS_STAGE + d, dx = JIS_STAGE - 6 - x, dz = -z, l = Math.hypot(dx, dz);
+        pushSeat(seats, { ...pen, sx, sz, ...(pen.standing ? { standing: true } : {}) }, row, ++num, x, 0, z, dx / l, dz / l);
+      }
+    }
+  }
+}
+// Distance from (d, z) to a walkway from (d0, z0) to (d1, z1).
+const segDist = (d, z, [d0, z0, d1, z1]) => {
+  const vx = d1 - d0, vz = z1 - z0, t = Math.max(0, Math.min(1, ((d - d0) * vx + (z - z0) * vz) / (vx * vx + vz * vz)));
+  return Math.hypot(d - (d0 + vx * t), z - (z0 + vz * t));
+};
+// The stage's walkways in its own frame (x across = -z on the field, z out = d).
+const toThrust = ([d0, z0, d1, z1], w) => ({ x0: -z0, z0: d0, x1: -z1, z1: d1, w });
+
+function jisShow({ key, label, zone, pens, clear, stage, foh, categories, occupancy }) {
+  const seats = [];
+  jisBowl(seats, zone);
+  jisPitch(seats, pens, clear);
+  return {
+    key,
+    kind: 'stadium',
+    arch: 'jis',
+    show: 'end',
+    stageX: JIS_STAGE,
+    foh: [JIS_STAGE + foh, 0],
+    tiers: JIS,
+    stage,
+    label,
+    event: { title: 'Stadium concert', venue: 'Jakarta International Stadium' },
+    focus: [JIS_STAGE - 10, 7, 0],
+    overview: { pos: [100, 130, 160], target: [-6, 0, 0], min: 50, max: 320 },
+    hero: { along: 46, look: [JIS_STAGE - 10, 10, 0], fov: 54 },
+    seatStyle: 'shell',
+    seatColor: '#c8202f',
+    zoneColors: true,
+    occupancy,
+    categories,
+    seats,
+  };
+}
+const ab = (block, blocks) => (block >= blocks / 2 ? 'a' : 'b');   // A on the left (+z) as on the plans
+
+// BIGBANG 2026-2027 World Tour <XX : COSMOS>, 16 and 17 Jan 2027, after the plan on
+// bigbanginjakarta.com (PK Entertainment, AEG Presents Asia, Sound Rhythm): an X-shaped
+// thrust from the stage with the Ultimate VIP standing pens inside it, Diamond VIP chairs
+// round the X and Gold VIP chairs behind with the sound desk; the first tier CAT 2 with
+// CAT 1 A/B along the sides by the stage and CAT 6 A/B (restricted view) at its stage ends;
+// the middle tier CAT 3; the upper tier CAT 4, with CAT 5 A/B along its sides by the stage
+// and CAT 7 A/B (restricted view) at its stage ends.
+const BB_ARMS = [[0, 15, 34, -15], [0, -15, 34, 15]];   // the X's two arms: (d, z) to (d, z), crossing 17 m out
+const BB_SPINE = [0, 0, 17, 0];
+const BB_FOH = 56;
+function jisBigbang() {
+  const onX = (d, z, m) => BB_ARMS.some(a => segDist(d, z, a) < 1.6 + m) || segDist(d, z, BB_SPINE) < 1.1 + m;
+  return jisShow({
+    key: 'jis-bigbang',
+    label: 'Jakarta International Stadium, BIGBANG',
+    zone: ({ tier, block, blocks }) => {
+      const fromEnd = Math.min(block, blocks - 1 - block), side = ab(block, blocks);
+      if (tier === 1) return fromEnd === 0 ? `cat6${side}` : fromEnd <= 2 ? `cat1${side}` : 'cat2';
+      if (tier === 2) return 'cat3';
+      return fromEnd === 0 ? `cat7${side}` : fromEnd <= 3 ? `cat5${side}` : 'cat4';
+    },
+    pens: [
+      { sec: 'UVIP-A', secName: 'Ultimate VIP A', cat: 'uvip', standing: true, step: 0.75, at: (d, z) => z > 0 && d < 16 && Math.abs(z) < (17 - d) * 15 / 17 },
+      { sec: 'UVIP-B', secName: 'Ultimate VIP B', cat: 'uvip', standing: true, step: 0.75, at: (d, z) => z < 0 && d < 16 && Math.abs(z) < (17 - d) * 15 / 17 },
+      { sec: 'DVIP-A', secName: 'Diamond VIP Left', cat: 'dvip', at: (d, z) => z >= 0 && d < 46 && Math.abs(z) < 29 },
+      { sec: 'DVIP-B', secName: 'Diamond VIP Right', cat: 'dvip', at: (d, z) => z < 0 && d < 46 && Math.abs(z) < 29 },
+      { sec: 'GVIP-A', secName: 'Gold VIP Left', cat: 'gvip', at: (d, z) => z >= 0 && d >= 47.5 && d < 90 && Math.abs(z) < 29 },
+      { sec: 'GVIP-B', secName: 'Gold VIP Right', cat: 'gvip', at: (d, z) => z < 0 && d >= 47.5 && d < 90 && Math.abs(z) < 29 },
+    ],
+    clear: (d, z) => onX(d, z, 0.4) || (Math.abs(d - BB_FOH) < 4.2 && Math.abs(z) < 5) || Math.abs(z) < 0.9 && d > 34,
+    stage: { thrust: [...BB_ARMS.map(a => toThrust(a, 3.2)), toThrust(BB_SPINE, 2.2)] },
+    foh: BB_FOH,
+    occupancy: { uvip: 0.97, dvip: 0.92, gvip: 0.9, cat1a: 0.9, cat1b: 0.9, cat2: 0.9, cat3: 0.9, cat4: 0.88, cat5a: 0.88, cat5b: 0.88, cat6a: 0.85, cat6b: 0.85, cat7a: 0.85, cat7b: 0.85 },
+    categories: [
+      { id: 'uvip', name: 'Ultimate VIP', price: 6500000, color: '#e8392f', note: 'Standing, inside the X' },
+      { id: 'dvip', name: 'Diamond VIP', price: 6000000, color: '#f08fc9', note: 'Numbered chairs on the floor round the X' },
+      { id: 'gvip', name: 'Gold VIP', price: 5500000, color: '#f0943a', note: 'Numbered chairs on the floor, by the sound desk' },
+      { id: 'cat1a', name: 'CAT 1 A', price: 4750000, color: '#ec7a72' },
+      { id: 'cat1b', name: 'CAT 1 B', price: 4750000, color: '#ec7a72' },
+      { id: 'cat2', name: 'CAT 2', price: 3750000, color: '#3f5fd6' },
+      { id: 'cat3', name: 'CAT 3', price: 2850000, color: '#f2d24a' },
+      { id: 'cat4', name: 'CAT 4', price: 2550000, color: '#72e08a' },
+      { id: 'cat5a', name: 'CAT 5 A', price: 2250000, color: '#8b35c9' },
+      { id: 'cat5b', name: 'CAT 5 B', price: 2250000, color: '#8b35c9' },
+      { id: 'cat6a', name: 'CAT 6 A', price: 1850000, color: '#e33fe0', note: 'Restricted view' },
+      { id: 'cat6b', name: 'CAT 6 B', price: 1850000, color: '#e33fe0', note: 'Restricted view' },
+      { id: 'cat7a', name: 'CAT 7 A', price: 1550000, color: '#5fb7ec', note: 'Restricted view' },
+      { id: 'cat7b', name: 'CAT 7 B', price: 1550000, color: '#5fb7ec', note: 'Restricted view' },
+    ],
+  });
+}
+
+// Maroon 5 Asia 2027, 5 Feb 2027, after TEM Presents and Live Nation's plan on
+// maroon5jakarta2027.com: a runway from the stage to a B-stage on the Festival floor, the
+// sound desk and the delay towers at its back; CAT 1 the first tier's blocks facing the stage
+// behind the desk, CAT 2 the rest of the first tier, CAT 4 A/B its blocks by the stage
+// (restricted view); the middle tier CAT 3 with CAT 6 A/B by the stage; the upper tier CAT 5
+// with CAT 7 A/B by the stage (both restricted view).
+const M5_RUNWAY = [0, 0, 21, 0];
+const M5_B = { d: 25, half: 4 };
+const M5_FOH = 66;
+function jisMaroon5() {
+  return jisShow({
+    key: 'jis-maroon5',
+    label: 'Jakarta International Stadium, Maroon 5',
+    zone: ({ tier, block, blocks }) => {
+      const fromEnd = Math.min(block, blocks - 1 - block), side = ab(block, blocks);
+      if (tier === 1) return fromEnd === 0 ? `cat4${side}` : Math.abs(block - (blocks - 1) / 2) < 2.1 ? 'cat1' : 'cat2';
+      if (tier === 2) return fromEnd === 0 ? `cat6${side}` : 'cat3';
+      return fromEnd <= 1 ? `cat7${side}` : 'cat5';
+    },
+    pens: [
+      { sec: 'FES-A', secName: 'Festival Left', cat: 'festival', standing: true, at: (d, z) => z >= 0 && Math.abs(z) < 30 },
+      { sec: 'FES-B', secName: 'Festival Right', cat: 'festival', standing: true, at: (d, z) => z < 0 && Math.abs(z) < 30 },
+    ],
+    clear: (d, z) => segDist(d, z, M5_RUNWAY) < 2.6 || (Math.abs(d - M5_B.d) < M5_B.half + 1.2 && Math.abs(z) < M5_B.half + 1.2)
+      || (Math.abs(d - M5_FOH) < 4.2 && Math.abs(z) < 5) || (Math.abs(d - (M5_FOH - 2)) < 1.6 && Math.abs(Math.abs(z) - 14) < 1.6) || Math.abs(z) < 0.8 && d > M5_B.d + 6,
+    stage: { thrust: [toThrust(M5_RUNWAY, 3)], bstage: [{ x: 0, z: M5_B.d, w: M5_B.half * 2, d: M5_B.half * 2 }] },
+    foh: M5_FOH,
+    occupancy: { festival: 0.94, cat1: 0.9, cat2: 0.9, cat3: 0.9, cat4a: 0.85, cat4b: 0.85, cat5: 0.88, cat6a: 0.85, cat6b: 0.85, cat7a: 0.85, cat7b: 0.85 },
+    categories: [
+      { id: 'festival', name: 'Festival', price: 2750000, color: '#dfe3e6', note: 'Free standing; the Early Entry Package (Rp 4.9M) is a Festival ticket with early entry' },
+      { id: 'cat1', name: 'CAT 1', price: 3500000, color: '#9b97a8' },
+      { id: 'cat2', name: 'CAT 2', price: 2550000, color: '#6fd64a' },
+      { id: 'cat3', name: 'CAT 3', price: 2250000, color: '#e83ce0' },
+      { id: 'cat4a', name: 'CAT 4 A', price: 2050000, color: '#f08a3a', note: 'Restricted view' },
+      { id: 'cat4b', name: 'CAT 4 B', price: 2050000, color: '#f08a3a', note: 'Restricted view' },
+      { id: 'cat5', name: 'CAT 5', price: 1850000, color: '#2a3fe0' },
+      { id: 'cat6a', name: 'CAT 6 A', price: 1450000, color: '#6fe9ea', note: 'Restricted view' },
+      { id: 'cat6b', name: 'CAT 6 B', price: 1450000, color: '#6fe9ea', note: 'Restricted view' },
+      { id: 'cat7a', name: 'CAT 7 A', price: 1250000, color: '#f2ef4a', note: 'Restricted view' },
+      { id: 'cat7b', name: 'CAT 7 B', price: 1250000, color: '#f2ef4a', note: 'Restricted view' },
+    ],
+  });
+}
+
+export const REAL_BUILDERS = { 'madya-end': madyaEnd, 'jis-mcr': jisMcr, 'ina-5sos': ina5sos, 'ina-b2m': inaB2m, 'jis-bigbang': jisBigbang, 'jis-maroon5': jisMaroon5 };

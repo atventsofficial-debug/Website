@@ -56,7 +56,7 @@ const STAND_LIFT_LOCAL = 0.42;
 // ------------------------------------------------------------------ the body
 
 let bodyFile = null;
-// The body file: two levels of detail, each positions, normals, rig (bone, bone, weight of
+// The body file: levels of detail one after another (detailed, light, lightest), each positions, normals, rig (bone, bone, weight of
 // the second, ambient occlusion), tag (material, prop), female and heavier offsets, indices.
 export function loadBody(url = 'assets/crowd/body.bin') {
   bodyFile ||= fetch(url).then(r => {
@@ -65,7 +65,7 @@ export function loadBody(url = 'assets/crowd/body.bin') {
   }).then(buf => {
     const dv = new DataView(buf), lods = [];
     let o = 0;
-    for (let l = 0; l < 2; l++) {
+    while (o + 8 <= buf.byteLength) {
       const nv = dv.getUint32(o, true), ni = dv.getUint32(o + 4, true);
       o += 8;
       const take = n => { const a = new Float32Array(buf, o, n); o += n * 4; return a; };
@@ -433,6 +433,12 @@ const CAPS = ['#111214', '#efece4', '#22283a', '#6b1f26'];
 const STYLE = { short: 0, long: 1, cap: 2, hijab: 3, bun: 4 };
 
 export class Crowd {
+  // Above this many people the overview draws everyone in the lightest figure; from a seat,
+  // the light figure goes to the nearest MID_MAX within MID_R metres.
+  static BIG = 16000;
+  static MID_MAX = 6000;
+  static MID_R = 70;
+
   // `spots`: [{ x, y, z, yaw, standing }] where people are. `rnd`: a seeded random source.
   constructor(scene, spots, rnd) {
     this.scene = scene;
@@ -471,19 +477,21 @@ export class Crowd {
     });
     this.near = null;
     this.nearSlots = [];
+    this.midSlots = null;
     this.hidden = -1;
     this.meshes = [];
     this.visible = true;
     // The body arrives from its file; until then there is nobody, and a focus asked for in
-    // the meantime is applied when it does.
+    // the meantime is applied when it does. Three figures: the detailed body for the people
+    // round the seat, a light one for the rest of the hall, and for a stadium's far stands a
+    // lighter one still.
     this.ready = loadBody().then(lods => {
       if (this.disposed) return;
       this.lods = lods;
       this.far = this._mesh(bodyGeometry(lods[1], false), n);
-      this.far.visible = this.visible;
-      this._fill(this.far, null);
-      this.meshes.push(this.far);
-      scene.add(this.far);
+      this.tiny = lods[2] ? this._mesh(bodyGeometry(lods[2], false), n) : null;
+      for (const m of [this.far, this.tiny]) if (m) { m.visible = this.visible; this.meshes.push(m); scene.add(m); }
+      this._assign();
       if (this.pendingFocus) this.focusOn(...this.pendingFocus);
     });
   }
@@ -498,21 +506,19 @@ export class Crowd {
     return mesh;
   }
 
-  // Copies people into a mesh: all of them (`slots` null) or the listed ones.
-  _fill(mesh, slots) {
+  // Copies the listed people into a mesh.
+  _fill(mesh, list, calm = false) {
     if (!mesh) return;
     const d = this.data, geo = mesh.geometry;
-    const list = slots || Array.from({ length: this.n }, (_, k) => k);
     const zero = new THREE.Matrix4().makeScale(0, 0, 0).elements;
-    const near = new Set(slots ? [] : this.nearSlots);
     list.forEach((k, j) => {
-      const hide = (!slots && near.has(k)) || k === this.hidden || this.skip?.has(k);
+      const hide = k === this.hidden || this.skip?.has(k);
       mesh.instanceMatrix.array.set(hide ? zero : d.matrix.subarray(k * 16, k * 16 + 16), j * 16);
       for (const [key, name] of Object.entries(mesh.userData.src)) {
         const a = geo.attributes[name], sz = a.itemSize;
         a.array.set(d[key].subarray(k * sz, k * sz + sz), j * sz);
       }
-      if (slots && this.calm?.has(k) && [ACT.stick, ACT.phone, ACT.handsUp].includes(d.anim[k * 4])) {
+      if (calm && this.calm?.has(k) && [ACT.stick, ACT.phone, ACT.handsUp].includes(d.anim[k * 4])) {
         geo.attributes.aAnim.array[j * 4] = k % 2 ? ACT.clap : ACT.dance;
       }
     });
@@ -521,30 +527,52 @@ export class Crowd {
     for (const name of Object.values(mesh.userData.src)) geo.attributes[name].needsUpdate = true;
   }
 
+  // Who gets which figure: `nearSlots` the detailed one, `midSlots` the light one (null:
+  // everyone not near, in a hall), everyone else the lightest.
+  _assign() {
+    if (!this.far) return;
+    const near = new Set(this.nearSlots);
+    const all = Array.from({ length: this.n }, (_, k) => k).filter(k => !near.has(k));
+    let mid = all, far = [];
+    if (this.tiny && this.midSlots) {
+      const m = new Set(this.midSlots);
+      mid = all.filter(k => m.has(k)); far = all.filter(k => !m.has(k));
+    } else if (this.tiny && this.n > Crowd.BIG) {
+      // A stadium seen from above: everyone in the lightest figure.
+      mid = []; far = all;
+    }
+    this._fill(this.far, mid);
+    this._fill(this.tiny, far);
+    if (this.tiny) this.tiny.visible = this.visible && far.length > 0;
+  }
+
   // Detailed figures for everyone within `radius` metres of `eye` (closest first, at most
-  // `max`); everyone else stays cheap. `look`: where the camera will face. Null brings
-  // everyone back to the cheap figure.
+  // `max`); the light figure for the next ones out to `midRadius` (at most `midMax`); the
+  // lightest for everyone else. `look`: where the camera will face. Null brings everyone
+  // back to the overview's figures.
   // around: a 360° photo, where the people beside and behind you are part of the picture.
   focusOn(eye, look = null, radius = 24, max = 900, around = false) {
     if (!this.far) { this.pendingFocus = [eye, look, radius, max, around]; return; }
     this.pendingFocus = null;
-    if (!eye) { this.nearSlots = []; this.skip = null; this._fill(this.far, null); if (this.near) this.near.visible = false; return; }
+    if (!eye) { this.nearSlots = []; this.midSlots = null; this.skip = null; this._assign(); if (this.near) this.near.visible = false; return; }
     const d = this.data, cand = [];
     for (let k = 0; k < this.n; k++) {
       const dx = d.matrix[k * 16 + 12] - eye.x, dy = d.matrix[k * 16 + 13] - eye.y, dz = d.matrix[k * 16 + 14] - eye.z;
-      const dist = dx * dx + dy * dy + dz * dz;
-      if (dist < radius * radius) cand.push([dist, k]);
+      cand.push([dx * dx + dy * dy + dz * dz, k]);
     }
     cand.sort((a, b) => a[0] - b[0]);
-    this.nearSlots = cand.slice(0, Math.min(max, 900)).map(c => c[1]);
+    const within = cand.filter(c => c[0] < radius * radius);
+    this.nearSlots = within.slice(0, Math.min(max, 900)).map(c => c[1]);
+    const rest = cand.slice(this.nearSlots.length);
+    this.midSlots = rest.filter(c => c[0] < Crowd.MID_R * Crowd.MID_R).slice(0, Crowd.MID_MAX).map(c => c[1]);
     // The people right next to you keep their hands down: an arm up a metre from the camera
     // would fill the picture and say nothing about the view from the seat.
-    this.calm = new Set(cand.filter(c => c[0] < 3.2 * 3.2).map(c => c[1]));
+    this.calm = new Set(within.filter(c => c[0] < 3.2 * 3.2).map(c => c[1]));
     // Your neighbours in the same row sit beside the camera, not in front of it: drawn, they
     // would fill the edge of the picture as a dark wall.
     // Likewise anyone close by who is beside or behind you rather than in front.
     const fx = look ? look.x - eye.x : 0, fz = look ? look.z - eye.z : -1, fl = Math.hypot(fx, fz) || 1;
-    this.skip = new Set(cand.filter(([, k]) => {
+    this.skip = new Set(within.filter(([, k]) => {
       const dx = d.matrix[k * 16 + 12] - eye.x, dz = d.matrix[k * 16 + 14] - eye.z, dy = d.matrix[k * 16 + 13] - eye.y;
       const h = Math.hypot(dx, dz), ahead = (dx * fx + dz * fz) / fl;
       return (h < 0.85 && dy < -0.9) || (!around && h < 1.8 && ahead < 0.55);
@@ -555,20 +583,21 @@ export class Crowd {
       this.meshes.push(this.near);
     }
     this.near.visible = this.visible !== false;
-    this._fill(this.near, this.nearSlots);
-    this._fill(this.far, null);
+    this._fill(this.near, this.nearSlots, true);
+    this._assign();
   }
 
   // Hides (or shows again) the person in one slot: the seat you sit in.
   hide(k) {
     this.hidden = k;
-    this._fill(this.far, null);
-    if (this.near?.visible) this._fill(this.near, this.nearSlots);
+    this._assign();
+    if (this.near?.visible) this._fill(this.near, this.nearSlots, true);
   }
 
   setVisible(on) {
     this.visible = on;
     if (this.far) this.far.visible = on;
+    if (this.tiny) this.tiny.visible = on && this.tiny.count > 0;
     if (this.near) this.near.visible = on && this.nearSlots.length > 0;
   }
 
@@ -597,13 +626,22 @@ export class Crowd {
 // `stage`: the deck's top (y), its front edge (front) and the band risers (riserY, riserZ).
 const STAGE_WEAR = ['#0c0c0e', '#121215', '#e8e4dc', '#1c1d22', '#3a1216', '#20252f', '#2b2b2e', '#5a4a3a', '#0f1a2e'];
 export class Band {
-  constructor(scene, material, lineup, { y = 1.8, front = -34, riserY = 2.4, riserZ = -44, rnd = Math.random } = {}) {
+  constructor(scene, material, lineup, { y = 1.8, front = -34, riserY = 2.4, riserZ = -44, risers = false, rnd = Math.random } = {}) {
     this.scene = scene;
     this.material = material;
     this.group = new THREE.Group();
     scene.add(this.group);
     const spots = this._place(lineup, { y, front, riserY, riserZ });
     this.spots = spots;
+    // A stage without band risers of its own gets them under the drums and keys.
+    if (risers) {
+      const mat = new THREE.MeshLambertMaterial({ color: '#08080a' });
+      for (const [x, w] of [[0, 6], [-8, 5], [8, 5]]) {
+        const r = new THREE.Mesh(new THREE.BoxGeometry(w, riserY - y, 3), mat);
+        r.position.set(x, (riserY + y) / 2, riserZ);
+        this.group.add(r);
+      }
+    }
     this._gear(spots);
     loadBody().then(lods => {
       if (this.disposed) return;

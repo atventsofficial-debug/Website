@@ -1611,7 +1611,8 @@ function stadiumShow(ctx, venue, brand) {
   deckMat.map = grime().clone(); deckMat.map.repeat.set(20, 14); deckMat.map.needsUpdate = true;
   // The deck over the grass: the pitch, or at a real venue the standing floor and 2 m round it.
   let [cx0, cx1, cz] = [-52.5, 52.5, 34];
-  const floor = venue.arch && venue.seats.filter(s => s.standing);
+  // The floor: standing spots and chairs set out on the pitch (no tier).
+  const floor = venue.arch && venue.seats.filter(s => s.standing || !s.tier);
   if (floor?.length) {
     cx0 = Math.min(...floor.map(s => s.x)) - 2; cx1 = Math.max(...floor.map(s => s.x)) + 2;
     cz = Math.max(...floor.map(s => Math.abs(s.z))) + 2;
@@ -1670,6 +1671,28 @@ function stadiumShow(ctx, venue, brand) {
     const lip = new THREE.Mesh(new THREE.BoxGeometry(W, 0.05, 0.08), new THREE.MeshBasicMaterial({ color: '#ffffff', toneMapped: false }));
     lip.position.set(0, 2.22, 0);
     g.add(lip);
+    // Walkways out into the field and a B-stage, where the show's plan has them: in the
+    // stage's own frame, x across it and z out from its front edge.
+    for (const t of venue.stage?.thrust || []) {
+      const len = Math.hypot(t.x1 - t.x0, t.z1 - t.z0), h = t.h ?? 2.0;
+      const walk = new THREE.Mesh(new THREE.BoxGeometry(t.w, h, len), deck.material);
+      walk.position.set((t.x0 + t.x1) / 2, h / 2, (t.z0 + t.z1) / 2);
+      walk.rotation.y = Math.atan2(t.x1 - t.x0, t.z1 - t.z0);
+      walk.castShadow = walk.receiveShadow = true;
+      g.add(walk);
+      for (const side of [-1, 1]) {
+        const edge = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.05, len), lip.material);
+        edge.position.set(side * t.w / 2, h / 2 + 0.03, 0);
+        walk.add(edge);
+      }
+    }
+    for (const b of venue.stage?.bstage || []) {
+      const h = b.h ?? 2.0;
+      const plat = new THREE.Mesh(b.round ? new THREE.CylinderGeometry(b.w / 2, b.w / 2, h, 8) : new THREE.BoxGeometry(b.w, h, b.d), deck.material);
+      plat.position.set(b.x, h / 2, b.z);
+      plat.castShadow = plat.receiveShadow = true;
+      g.add(plat);
+    }
     const wall = screen(40, 16, 120);
     wall.position.set(0, 12, -D + 0.6);
     g.add(wall);
