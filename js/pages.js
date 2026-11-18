@@ -1218,7 +1218,7 @@ function showUnlocked(p, { emailed = false } = {}) {
         <p class="eyebrow">Pass ${esc(p.id)}</p>
         <h2 class="big"><span class="fade">You’re</span> <span class="ol">in</span></h2>
         <p class="lede">Paid. Your seat view for ${esc(e.title)} is open. Take the tour to your seat.</p>
-        <div class="row-btns"><a class="btn btn-coral" href="#tour-${esc(p.id)}">Start my seat tour ${icon('i-arrow')}</a><a class="btn btn-line" href="#passes">My 3D passes</a></div>
+        <div class="row-btns"><a class="btn btn-coral" href="#tour-${esc(p.id)}">Start my seat tour ${icon('i-arrow')}</a>${p.seat ? `<button class="btn btn-line" type="button" data-story-pass="${esc(p.id)}">${icon('i-share', 'lead')}<span>Post my seat to story</span></button>` : ''}<a class="btn btn-line" href="#passes">My 3D passes</a></div>
         ${wa ? `<div class="unlock-wa"><p class="fine">Meet other fans going to ${esc(e.title)} before the show.</p>${wa}</div>` : ''}
         ${emailed ? `<p class="unlock-mail">${icon('i-mail')}<span>The pass link is on its way to <b>${esc(p.email)}</b>. Open it on any phone or laptop to see your seat there too.</span></p>` : ''}
         ${p.token ? `<p class="fine">On another phone or laptop? <button class="link" type="button" data-copy-pass="${esc(p.id)}">Copy the pass link</button> and open it there. Keep it to yourself: the link opens your pass.</p>` : ''}
@@ -1256,7 +1256,7 @@ function passCard(p, { actions = true } = {}) {
       </dl>
       ${actions ? `<div class="row-btns">
         ${p.status === 'rejected' ? `<a class="btn btn-coral btn-sm" href="#unlock-${p.eventId}">Unlock again</a><a class="btn btn-line btn-sm" href="#contact">Write to us</a>`
-          : p.status === 'confirmed' ? `<a class="btn btn-coral btn-sm" href="#tour-${esc(p.id)}">Start my seat tour ${icon('i-arrow')}</a>`
+          : p.status === 'confirmed' ? `<a class="btn btn-coral btn-sm" href="#tour-${esc(p.id)}">Start my seat tour ${icon('i-arrow')}</a>${p.seat ? `<button class="btn btn-line btn-sm" type="button" data-story-pass="${esc(p.id)}">${icon('i-share')}Story</button>` : ''}`
             : `<a class="btn btn-line btn-sm" href="#seats-${p.eventId}">Look round the venue ${icon('i-arrow')}</a>`}
         ${p.token ? `<button class="btn btn-line btn-sm" type="button" data-copy-pass="${esc(p.id)}">${icon('i-link')}Copy pass link</button>` : ''}
       </div>${waButtons(p) ? `<div class="pass-wa">${waButtons(p)}</div>` : ''}
@@ -1279,13 +1279,20 @@ export function renderPasses({ check = false } = {}) {
   if (check) list.forEach(p => refresh(p));
 }
 
-// Pass buttons work wherever a pass card is drawn: copy its link, or take it off this device.
+// Pass buttons work wherever a pass card is drawn: copy its link, make its story video, or
+// take it off this device.
 export function bindPassButtons() {
   document.addEventListener('click', ev => {
     const copy = ev.target.closest('[data-copy-pass]');
     if (copy) {
       const link = passLink(passes.get(copy.dataset.copyPass) || {});
       if (link) copyText(link, 'Pass link copied. Open it on your other device.');
+      return;
+    }
+    // The story video of the seat (story.js), for an Instagram or TikTok story.
+    const story = ev.target.closest('[data-story-pass]');
+    if (story) {
+      import('./story.js').then(m => m.makeStory(passes.get(story.dataset.storyPass))).catch(() => toast('The story video could not start. Please try again.'));
       return;
     }
     // The bin opens a check on the card itself; only its Remove takes the pass off.

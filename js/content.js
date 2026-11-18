@@ -17,7 +17,7 @@ export const FAQ_FANS = [
   { id: 'tour', q: 'What does the seat tour show?',
     a: 'Three views, in order: the whole venue from above, then your category with your seat marked, then the view from your seat. Drag to look round. At the end you can go back home or make a story video.' },
   { id: 'story', q: 'How does the story video work?',
-    a: 'At the end of the tour, tap Upload to story. We make a 9:16 video in your browser, from the whole venue to your seat, with the concert and your seat written on it. On a phone you can share it straight to your story; anywhere else, save it and post it.' },
+    a: 'Once your pass is paid, tap Post my seat to story (or Upload to story at the end of the tour). We make a 12-second 9:16 video in your browser: your seat pass drops in, flips over to the view from your seat, and asks your friends where they are sitting. It shows your first name and seat, never your pass link. On a phone you can share it straight to your story; anywhere else, save it and post it.' },
   { id: 'locked', q: 'Can I look round before I pay?',
     a: 'Yes. Anyone can look round every venue from above and see where each category is. Want to try sitting down first? Use our <a class="u" href="#demo-concert">demo arena</a>.' },
   { id: 'devices', q: 'Can I open my pass on another device?',
