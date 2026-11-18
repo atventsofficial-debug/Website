@@ -2320,15 +2320,32 @@ body { font-family: var(--font); font-feature-settings: "cv11", "ss01"; }
 .pass .wa-tile:hover, .pass .wa-tile:focus-visible { border-color: #1fa855; background: #fff; }
 .pass .wa-txt small, .pass .wa-go svg { color: var(--ink-muted, #6b6b6b); }
 
-/* The pass card: the seat tour is the one thing to do; WhatsApp comes second, removing last. */
-.pass .row-btns { flex-direction: column; align-items: stretch; gap: 10px; }
+/* The pass card: the seat tour is the one thing to do, WhatsApp second. A bin at the top
+   right (on hover; always on touch screens) removes the pass, after a check on the card. */
+.pass .row-btns { flex-direction: column; align-items: stretch; gap: 10px; margin-top: var(--s5); padding-top: var(--s4); border-top: 1px solid rgba(20, 18, 18, 0.1); }
 .pass .row-btns .btn { width: 100%; justify-content: space-between; }
-.pass .btn-coral { min-height: 52px; padding: 0 10px 0 22px; background: var(--ink); color: #fff; border-color: var(--ink); font-weight: 700; font-size: 15px; }
-.pass .btn-coral:hover, .pass .btn-coral:focus-visible { background: #000; border-color: #000; color: #fff; }
-.pass .btn-coral svg { width: 16px; height: 16px; padding: 9px; margin: 0; background: var(--coral); color: #fff; }
-.pass-wa { margin-top: var(--s2); padding-top: var(--s3); }
+.pass .btn-coral { min-height: 52px; padding: 0 8px 0 22px; background: #fff; color: var(--ink); border: 1px solid rgba(20, 18, 18, 0.12); box-shadow: 0 1px 2px rgba(20, 18, 18, 0.06), 0 8px 20px -10px rgba(20, 18, 18, 0.25); font-weight: 700; font-size: 15px; }
+.pass .btn-coral:hover, .pass .btn-coral:focus-visible { background: #fff; color: var(--ink); border-color: rgba(20, 18, 18, 0.3); box-shadow: 0 1px 2px rgba(20, 18, 18, 0.06), 0 12px 26px -10px rgba(20, 18, 18, 0.35); }
+.pass .btn-coral svg { width: 16px; height: 16px; padding: 10px; margin: 0; background: var(--coral); color: #fff; }
+.pass-wa { margin-top: var(--s3); padding-top: var(--s3); }
 .pass .wa-tile { padding: 8px 12px 8px 8px; }
 .pass .wa-ico { width: 34px; height: 34px; border-radius: 9px; }
 .pass .wa-ico svg { width: 19px; height: 19px; }
-.pass-remove { align-self: center; margin: var(--s3) auto 0; font-size: 10px; letter-spacing: 0.08em; color: #8a837d; }
-.pass-remove:hover { color: var(--coral); }
+.pass-top .mono { margin-left: auto; }
+.pass-del { display: grid; place-items: center; width: 32px; height: 32px; margin: -4px -6px -4px 0; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--ink-muted, #6b6b6b); cursor: pointer; opacity: 0; transition: opacity .15s, background .15s, color .15s; }
+.pass-del svg { width: 18px; height: 18px; }
+.pass:hover .pass-del, .pass-del:focus-visible { opacity: 1; }
+.pass-del:hover, .pass-del:focus-visible { background: rgba(214, 48, 36, 0.1); color: #c4291d; outline: none; }
+@media (hover: none) { .pass-del { opacity: 1; } }
+.pass-confirm { position: absolute; inset: 0; z-index: 3; display: grid; place-items: center; padding: var(--s4); border-radius: 20px; background: rgba(12, 11, 11, 0.55); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); animation: pc-in .15s ease-out; }
+@keyframes pc-in { from { opacity: 0; } }
+.pass-confirm-box { width: min(340px, 100%); padding: var(--s5); border-radius: 18px; background: #fff; color: var(--ink); text-align: center; box-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.6); }
+.pass-confirm-ico { display: inline-grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: rgba(214, 48, 36, 0.1); color: #c4291d; }
+.pass-confirm-ico svg { width: 22px; height: 22px; }
+.pass-confirm h4 { margin: 12px 0 6px; font: 700 18px/1.2 var(--font); letter-spacing: -0.01em; }
+.pass-confirm p { margin: 0 0 var(--s4); font-size: 13.5px; line-height: 1.5; color: var(--ink-muted, #6b6b6b); }
+.pass-confirm-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pass-confirm-btns .btn { justify-content: center; width: 100%; }
+.pass-confirm-btns .btn-line { color: var(--ink); border-color: rgba(20, 18, 18, 0.2); background: #fff; }
+.pass-confirm-yes { background: #c4291d; color: #fff; border: 1px solid #c4291d; }
+.pass-confirm-yes:hover { background: #a92218; border-color: #a92218; }

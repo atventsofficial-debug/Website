@@ -1221,7 +1221,7 @@ function passCard(p, { actions = true } = {}) {
       <span class="pass-n">1 seat</span>
     </div>
     <div class="pass-body">
-      <div class="pass-top"><span class="pass-pill is-${p.status}">${st.label}</span><span class="mono">${esc(p.id)}</span></div>
+      <div class="pass-top"><span class="pass-pill is-${p.status}">${st.label}</span><span class="mono">${esc(p.id)}</span>${actions ? `<button class="pass-del" type="button" data-remove-pass="${esc(p.id)}" aria-label="Remove this pass from this device" title="Remove from this device">${icon('i-trash')}</button>` : ''}</div>
       <h3>${esc(e.title)}</h3>
       <p class="pass-when">${esc(w.date)} · ${esc(placeOf(e).name)}</p>
       <p class="pass-note">${esc(st.note)}</p>
@@ -1237,7 +1237,7 @@ function passCard(p, { actions = true } = {}) {
             : `<a class="btn btn-line btn-sm" href="#seats-${p.eventId}">Look round the venue ${icon('i-arrow')}</a>`}
         ${p.token ? `<button class="btn btn-line btn-sm" type="button" data-copy-pass="${esc(p.id)}">${icon('i-link')}Copy pass link</button>` : ''}
       </div>${waButtons(p) ? `<div class="pass-wa">${waButtons(p)}</div>` : ''}
-      <button class="link pass-remove" type="button" data-remove-pass="${esc(p.id)}">Remove from this device</button>` : ''}
+` : ''}
     </div>
   </article>`;
 }
@@ -1258,7 +1258,6 @@ export function renderPasses({ check = false } = {}) {
 
 // Pass buttons work wherever a pass card is drawn: copy its link, or take it off this device.
 export function bindPassButtons() {
-  let armed = null, armedTimer = 0;
   document.addEventListener('click', ev => {
     const copy = ev.target.closest('[data-copy-pass]');
     if (copy) {
@@ -1266,19 +1265,32 @@ export function bindPassButtons() {
       if (link) copyText(link, 'Pass link copied. Open it on your other device.');
       return;
     }
-    const rm = ev.target.closest('[data-remove-pass]');
-    if (!rm) return;
-    // A second tap confirms, so one slip does not lose a pass.
-    if (armed !== rm) {
-      armed = rm;
-      rm.textContent = 'Tap again to remove';
-      clearTimeout(armedTimer);
-      armedTimer = setTimeout(() => { if (armed === rm) { armed = null; rm.textContent = 'Remove from this device'; } }, 4000);
+    // The bin opens a check on the card itself; only its Remove takes the pass off.
+    const no = ev.target.closest('[data-remove-no]');
+    if (no) { no.closest('.pass-confirm')?.remove(); return; }
+    const yes = ev.target.closest('[data-remove-yes]');
+    if (yes) {
+      passes.remove(yes.dataset.removeYes);
+      toast('Removed from this device. Open its pass link to bring it back.');
       return;
     }
-    armed = null;
-    passes.remove(rm.dataset.removePass);
-    toast('Removed from this device. Open its pass link to bring it back.');
+    const rm = ev.target.closest('[data-remove-pass]');
+    if (!rm) return;
+    const card = rm.closest('.pass');
+    if (!card || card.querySelector('.pass-confirm')) return;
+    const id = rm.dataset.removePass, p = passes.get(id), e = p && eventMeta(p.eventId);
+    card.insertAdjacentHTML('beforeend', `<div class="pass-confirm" role="alertdialog" aria-labelledby="pc-${esc(id)}">
+        <div class="pass-confirm-box">
+          <span class="pass-confirm-ico">${icon('i-trash')}</span>
+          <h4 id="pc-${esc(id)}">Remove this pass?</h4>
+          <p>${e ? `Your 3D pass for ${esc(e.title)} will be removed from this device.` : 'This pass will be removed from this device.'} You can bring it back with the link in your pass email.</p>
+          <div class="pass-confirm-btns"><button class="btn btn-line btn-sm" type="button" data-remove-no>Cancel</button><button class="btn btn-sm pass-confirm-yes" type="button" data-remove-yes="${esc(id)}">Remove</button></div>
+        </div>
+      </div>`);
+    card.querySelector('[data-remove-no]')?.focus();
+  });
+  document.addEventListener('keydown', ev => {
+    if (ev.key === 'Escape') document.querySelectorAll('.pass-confirm').forEach(x => x.remove());
   });
 }
 
