@@ -8,7 +8,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
-import { Crowd } from './crowd3d.js';
+import { Crowd, Band } from './crowd3d.js';
 import { LensPass, GradePass, depthTarget } from './post.js';
 import { treadShading, concreteNormalMap } from './arena-detail.js';
 import { buildConcert, buildCinema, buildCombat, buildStadium, prepareVenue, preparePoster, posterArt, seatGeometry, crowdGeometries, mats, SEAT_HINGE } from './venues3d.js';
@@ -591,6 +591,10 @@ export class SeatScene {
     // house-lights fade here rather than in load().
     this.people.material.userData.envMood = true;
     this.mood(this.people.material, 'envMapIntensity', 0.55, 0.06);
+    // The act on stage, as many as the show's line-up, on the concert stage's deck and risers.
+    this.band?.dispose();
+    this.band = venue.lineup?.length ? new Band(this.scene, this.people.material, venue.lineup,
+      { rnd: () => ((seed2 = (seed2 * 16807) % 2147483647) / 2147483647) }) : null;
     // Flip-up seats: the pan is down where somebody sits.
     const upAttr = this.seatMesh?.geometry.attributes.aUp;
     if (upAttr) {

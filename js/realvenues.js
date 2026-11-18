@@ -8,7 +8,7 @@
 // from the block's left end as its row faces the stage or the field. The promoters give the
 // seat numbers only near the show, so rows and numbers inside a block are our estimate: the
 // pass lets the fan turn the numbering round (js/seatflip.js).
-import { gridRows, bowl } from './seatgeo.js';
+import { gridRows, bowl, pushSeat, superPoint, deg } from './seatgeo.js';
 
 const pad = n => String(n).padStart(2, '0');
 
@@ -190,4 +190,173 @@ function jisMcr() {
   };
 }
 
-export const REAL_BUILDERS = { 'madya-end': madyaEnd, 'jis-mcr': jisMcr };
+
+// ------------------------------------------------------------------ Indonesia Arena GBK
+
+// The concert hall's bowl (layouts.js concert, buildConcert in venues3d.js) set up the way
+// Indonesia Arena plays an end-stage show (16,088 seats for basketball; Kompas, GoodStats):
+// the telescopic first tier wraps the floor on three sides, the skybox ring above it, and
+// the fixed upper tiers above that, all closed behind the stage. Ten blocks a tier, 101 to
+// 110 and 201 to 210 from the right side's stage end round to the left side's. Promoters
+// sell by block and category; the seat numbers inside a block are our estimate.
+export const INA = {
+  cx: 0, cz: -10, p: 0.62, from: deg(-38), to: deg(218), sections: 10, spacing: 0.56,
+  lower: { rx0: 24, rz0: 30, rows: 12, gap: 0.9, rise: 0.42, baseY: 1.6 },
+  upper: { rx0: 37.4, rz0: 43.4, rows: 16, gap: 0.92, rise: 0.56, baseY: 9.9 },
+  stageFront: -34,  // the stage deck's front edge (venues3d.js buildConcert)
+  fohZ: 15,         // the sound desk, behind the floor
+  aisle: 1.6,       // kept clear between the floor and the first tier
+};
+// Where a block sits on the plans: 'end' by the stage (restricted view), 'side' along the
+// floor, 'back' facing the stage. `side` is 'L' or 'R' as the audience faces the stage
+// (Left is -x here, the plans' "A" side).
+export function inaBlock(s) {
+  const pos = s === 0 || s === 9 ? 'end' : s >= 3 && s <= 6 ? 'back' : 'side';
+  const t = INA.from + (s + 0.5) * (INA.to - INA.from) / INA.sections;
+  return { pos, side: Math.cos(t) < 0 ? 'L' : 'R' };
+}
+// The standing floor: rows across the hall from the stage front back to the sound desk,
+// as wide as the first tier allows less an aisle along it. `zones(x, z)` names each spot's
+// pen ({ sec, secName, cat }) or null to leave it clear (a catwalk, the desk).
+function inaFloor(seats, zones, step = 0.66) {
+  const { cx, cz, p, lower } = INA, e = 2 / p;
+  const inside = (x, z) => (Math.abs(x - cx) / (lower.rx0 - INA.aisle)) ** e + (Math.abs(z - cz) / (lower.rz0 - INA.aisle)) ** e < 1;
+  const rows = new Map(), counts = new Map();
+  for (let z = INA.stageFront + 3.3; z < INA.fohZ - 2.6; z += step) {
+    for (const dir of [-1, 1]) {
+      for (let x = dir * step / 2; inside(x, z); x += dir * step) {
+        const pen = zones(x, z);
+        if (!pen) continue;
+        const key = `${pen.sec}`;
+        if (!rows.has(key)) rows.set(key, { z: null, row: -1 });
+        const r = rows.get(key);
+        if (r.z !== z) { r.z = z; r.row++; counts.set(key, 0); }
+        const num = counts.get(key) + 1; counts.set(key, num);
+        const dx = 0 - x, dz = -40 - z, l = Math.hypot(dx, dz);
+        pushSeat(seats, { ...pen, standing: true, sx: step, sz: step }, r.row, num, x, 0, z, dx / l, dz / l);
+      }
+    }
+  }
+}
+// One show's plan on the bowl: `lower(block, row)` and `upper(block, row)` give each seat's
+// category id (block 0..9), `floor(x, z)` each standing spot's pen.
+function inaArena({ key, label, lower, upper, floor, stage, categories, occupancy }) {
+  const seats = [];
+  const common = { cx: INA.cx, cz: INA.cz, p: INA.p, from: INA.from, to: INA.to, sections: INA.sections, spacing: INA.spacing };
+  inaFloor(seats, floor);
+  bowl(seats, { ...common, ...INA.lower, tier: 1, cat: 'x',
+    name: s => ({ code: `${101 + s}`, label: `Block ${101 + s}` }),
+    catOf: (mid, row) => lower(Math.round((mid - INA.from) / ((INA.to - INA.from) / INA.sections) - 0.5), row) });
+  bowl(seats, { ...common, ...INA.upper, tier: 2, cat: 'x',
+    name: s => ({ code: `${201 + s}`, label: `Block ${201 + s}` }),
+    catOf: (mid, row) => upper(Math.round((mid - INA.from) / ((INA.to - INA.from) / INA.sections) - 0.5), row) });
+  return {
+    key,
+    kind: 'concert',
+    arch: 'ina',
+    aoKey: 'concert',
+    label,
+    event: { title: 'Arena concert', venue: 'Indonesia Arena' },
+    focus: [0, 5, -40],
+    overview: { pos: [0, 46, 60], target: [0, 0, -10], min: 25, max: 130 },
+    hero: { along: 29, look: [0, 6, -40], fov: 56 },
+    stage,
+    fohZ: INA.fohZ,
+    seatStyle: 'flipup',
+    seatColor: '#8a8e94',
+    zoneColors: true,
+    occupancy,
+    categories,
+    seats,
+  };
+}
+
+// 5 Seconds of Summer, 6 Dec 2026, after Chakra Live Asia's plan (5sosjakarta.com; prices
+// as reported by Popbela): GA standing on the whole floor, the GA VIP package's pen at its
+// front, the sound desk at the back. CAT 1 all round the first tier, with a CAT 1 VIP block
+// on each side towards the stage; the VIP Box seats in a ring above it; CAT 2 round the
+// upper tier, CAT 3 at its sides by the stage and CAT 4 in the end blocks beside the stage.
+function ina5sos() {
+  return inaArena({
+    key: 'ina-5sos',
+    label: 'Indonesia Arena, 5 Seconds of Summer',
+    floor: (x, z) => z < INA.stageFront + 7
+      ? { sec: 'GAVIP', secName: 'GA VIP', cat: 'gavip' }
+      : { sec: x < 0 ? 'GA-L' : 'GA-R', secName: x < 0 ? 'GA Left' : 'GA Right', cat: 'ga' },
+    lower: (b, row) => (b === 1 || b === 8) && row < 6 ? 'cat1vip' : 'cat1',
+    upper: (b, row) => {
+      const { pos } = inaBlock(b);
+      if (pos === 'end') return 'cat4';
+      if (row < 2) return 'vipbox';
+      return b === 1 || b === 8 ? 'cat3' : 'cat2';
+    },
+    stage: { w: 36, d: 13, barrier: 40 },
+    occupancy: { gavip: 0.97, ga: 0.95, cat1vip: 0.9, cat1: 0.9, vipbox: 0.85, cat2: 0.9, cat3: 0.88, cat4: 0.85 },
+    categories: [
+      { id: 'vipbox', name: "VIP Box 'No.1 Obsession'", code: 'VIP Box', price: 5000000, color: '#c9cbd0', note: 'Seat package with soundcheck and Q&A' },
+      { id: 'cat1vip', name: "CAT 1 VIP 'No.1 Obsession'", code: 'CAT 1 VIP', price: 4140000, color: '#7d1d1d', note: 'Numbered seat in CAT 1, with the VIP package' },
+      { id: 'gavip', name: "GA VIP 'No.1 Obsession'", code: 'GA VIP', price: 3950000, color: '#c4552a', note: 'Standing at the front of the floor' },
+      { id: 'cat1', name: 'CAT 1', price: 2140000, color: '#e2463a' },
+      { id: 'ga', name: 'GA', price: 1950000, color: '#ef8a4a', note: 'Standing' },
+      { id: 'cat2', name: 'CAT 2', price: 1630000, color: '#8a55b8' },
+      { id: 'cat3', name: 'CAT 3', price: 1320000, color: '#e2648e' },
+      { id: 'cat4', name: 'CAT 4', price: 910000, color: '#4ab7cf', note: 'Side view by the stage' },
+    ],
+  });
+}
+
+// Boyz II Men + Dewa19 feat. Ari Lasso & Virzha, 9 Dec 2026, after Rajawali Indonesia's
+// plan (prices from Loket.com): standing Festival on the floor round a catwalk from the
+// stage, the sound desk at the back. In the first tier VIP in the front rows (A on the
+// left, B on the right, C facing the stage), Diamond A and B behind it along the sides and
+// Platinum at the back; the VIP Box ring above; Silver A and B along the upper sides and
+// Gold at the back. Bronze (first tier) and Pearl (upper) in the end blocks by the stage,
+// sold as restricted view.
+const B2M_CATWALK = { halfW: 1.3, len: 13 };
+function inaB2m() {
+  const ab = b => (inaBlock(b).side === 'L' ? 'a' : 'b');
+  return inaArena({
+    key: 'ina-b2m',
+    label: 'Indonesia Arena, Boyz II Men + Dewa19',
+    floor: (x, z) => {
+      if (Math.abs(x) < B2M_CATWALK.halfW + 1.6 && z < INA.stageFront + B2M_CATWALK.len + 1.8) return null;
+      return { sec: x < 0 ? 'FES-L' : 'FES-R', secName: x < 0 ? 'Festival Left' : 'Festival Right', cat: 'festival' };
+    },
+    lower: (b, row) => {
+      const { pos } = inaBlock(b);
+      if (pos === 'end') return `bronze${ab(b)}`;
+      if (row < 6) return pos === 'back' ? 'vipc' : `vip${ab(b)}`;
+      return pos === 'back' ? 'platinum' : `diamond${ab(b)}`;
+    },
+    upper: (b, row) => {
+      const { pos } = inaBlock(b);
+      if (pos === 'end') return `pearl${ab(b)}`;
+      if (row < 2) return pos === 'back' ? 'vipboxc' : `vipbox${ab(b)}`;
+      return pos === 'back' ? 'gold' : `silver${ab(b)}`;
+    },
+    stage: { w: 36, d: 13, barrier: 40, catwalk: { w: B2M_CATWALK.halfW * 2, len: B2M_CATWALK.len } },
+    occupancy: { festival: 0.94, vipa: 0.85, vipb: 0.85, vipc: 0.85, diamonda: 0.85, diamondb: 0.85, platinum: 0.85,
+      vipboxa: 1, vipboxb: 1, vipboxc: 1, gold: 0.88, silvera: 1, silverb: 1, bronzea: 1, bronzeb: 1, pearla: 1, pearlb: 1 },
+    categories: [
+      { id: 'vipboxa', name: 'VIP Box A', code: 'VIP Box A', price: 7500000, color: '#e0352b' },
+      { id: 'vipboxb', name: 'VIP Box B', code: 'VIP Box B', price: 7500000, color: '#e0352b' },
+      { id: 'vipboxc', name: 'VIP Box C', code: 'VIP Box C', price: 7500000, color: '#e0352b' },
+      { id: 'vipa', name: 'VIP A', price: 5000000, color: '#8f5bd9' },
+      { id: 'vipb', name: 'VIP B', price: 5000000, color: '#8f5bd9' },
+      { id: 'vipc', name: 'VIP C', price: 5000000, color: '#8f5bd9' },
+      { id: 'diamonda', name: 'Diamond A', price: 3250000, color: '#ee8a2d' },
+      { id: 'diamondb', name: 'Diamond B', price: 3250000, color: '#ee8a2d' },
+      { id: 'platinum', name: 'Platinum', price: 2500000, color: '#4a7be0' },
+      { id: 'festival', name: 'Festival', price: 1750000, color: '#f08cc8', note: 'Standing' },
+      { id: 'gold', name: 'Gold', price: 1000000, color: '#c9a24a' },
+      { id: 'silvera', name: 'Silver A', price: 750000, color: '#5f9a3a' },
+      { id: 'silverb', name: 'Silver B', price: 750000, color: '#5f9a3a' },
+      { id: 'bronzea', name: 'Bronze A', price: 500000, color: '#8a5a4a', note: 'Restricted view' },
+      { id: 'bronzeb', name: 'Bronze B', price: 500000, color: '#8a5a4a', note: 'Restricted view' },
+      { id: 'pearla', name: 'Pearl A', price: 300000, color: '#a9abb0', note: 'Restricted view' },
+      { id: 'pearlb', name: 'Pearl B', price: 300000, color: '#a9abb0', note: 'Restricted view' },
+    ],
+  });
+}
+
+export const REAL_BUILDERS = { 'madya-end': madyaEnd, 'jis-mcr': jisMcr, 'ina-5sos': ina5sos, 'ina-b2m': inaB2m };

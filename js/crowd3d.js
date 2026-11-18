@@ -18,9 +18,12 @@
 import * as THREE from 'three';
 
 // Materials, as tagged on the vertices.
-const MAT = { shirt: 0, skin: 1, hair: 2, pants: 3, shoes: 4, screen: 5, glow: 6, plastic: 7, sleeve: 8, eye: 9, brow: 10 };
+const MAT = { shirt: 0, skin: 1, hair: 2, pants: 3, shoes: 4, screen: 5, glow: 6, plastic: 7, sleeve: 8, eye: 9, brow: 10, wood: 11, chrome: 12 };
 // What a person does once the show is on (the house lights keep everyone at rest).
-export const ACT = { watch: 0, clap: 1, stick: 2, phone: 3, handsUp: 4, dance: 5 };
+export const ACT = { watch: 0, clap: 1, stick: 2, phone: 3, handsUp: 4, dance: 5,
+  // On stage: singing into a handheld microphone, playing guitar or bass, drums (seated), keys,
+  // and a dance routine for groups. Performers show only once the house lights are down.
+  sing: 6, guitar: 7, drums: 8, keys: 9, routine: 10 };
 // Rig bones (as weighted in the body file).
 const BONE = { hips: 0, torso: 1, head: 2, hair: 3, upperL: 4, upperR: 5, foreL: 6, foreR: 7, thighL: 8, thighR: 9, shinL: 10, shinR: 11 };
 
@@ -36,6 +39,19 @@ const J = {
 // shader's turn brings them up the right way round.
 const POSE_PHONE = { a: [1.5, -0.3, 0], e: 0.7 };
 const POSE_STICK = { a: [2.55, 0, 0], e: 0.3 };
+// The performers' arms (solved offline for the male body's joints): the microphone at the
+// mouth, the hands on a guitar's neck and strings, the sticks over the snare, the hands on
+// the keys.
+const POSE_MIC = { a: [1.081, 0.568, 0.707], e: 2.065 };
+const POSE_FRET = { a: [-0.01, 0.1, -0.519], e: 1.638 };
+const POSE_STRUM = { a: [-0.173, 0.785, 0.002], e: 1.327 };
+const POSE_DRUM_L = { a: [0.356, -0.177, 0.006], e: 0.902 };
+const POSE_DRUM_R = { a: [0.23, 0, -0.145], e: 1.239 };
+const POSE_KEYS_L = { a: [0.77, -0.02, 0.07], e: 0.15 };
+const POSE_KEYS_R = { a: [0.77, 0.05, -0.04], e: 0.15 };
+const glv3 = a => `vec3(${a.map(x => x.toFixed(3)).join(', ')})`;
+// How far a standing person's origin sits above the floor (scene3d.js STAND_LIFT).
+const STAND_LIFT_LOCAL = 0.42;
 
 // ------------------------------------------------------------------ the body
 
@@ -68,33 +84,38 @@ const rotXYZ = ([x, y, z]) => new THREE.Matrix4().makeRotationZ(z).multiply(new 
 
 // A prop in the right hand: made in the pose that holds it, then turned back through the elbow
 // and the shoulder to the rest pose (the inverse of what the shader does).
-function unposeRight(points, pose) {
-  const S = v3(J.M.shoulderR), E = v3(J.M.elbowR);
+function unposeArm(points, pose, side = 'R') {
+  const S = v3(J.M['shoulder' + side]), E = v3(J.M['elbow' + side]);
   const Ainv = rotXYZ(pose.a).invert(), Einv = new THREE.Matrix4().makeRotationX(-pose.e);
   return points.map(p => {
     const u = p.clone().sub(S).applyMatrix4(Ainv).add(S);
     return u.sub(E).applyMatrix4(Einv).add(E);
   });
 }
-function posedRight(p, pose) {
-  const S = v3(J.M.shoulderR), E = v3(J.M.elbowR);
+function posedArm(p, pose, side = 'R') {
+  const S = v3(J.M['shoulder' + side]), E = v3(J.M['elbow' + side]);
   const e = p.clone().sub(E).applyMatrix4(new THREE.Matrix4().makeRotationX(pose.e)).add(E);
   return e.sub(S).applyMatrix4(rotXYZ(pose.a)).add(S);
 }
+const unposeRight = (points, pose) => unposeArm(points, pose, 'R');
+const posedRight = (p, pose) => posedArm(p, pose, 'R');
+const wristL = () => v3([-J.M.wristR[0], J.M.wristR[1], J.M.wristR[2]]);
 
 // Props as plain triangles (positions, normals), each tagged with a material and a prop id.
-function props(detail) {
+// `side` is the hand that holds it ('R' or 'L'), or 'torso' for a prop strapped to the body.
+function props(detail, band = false) {
   const out = [];
-  const add = (geo, mat, prop, pose) => {
+  const add = (geo, mat, prop, pose, side = 'R') => {
     const g = geo.index ? geo.toNonIndexed() : geo;
     const P = [], N = [];
     for (let i = 0; i < g.attributes.position.count; i++) {
       P.push(new THREE.Vector3().fromBufferAttribute(g.attributes.position, i));
       N.push(new THREE.Vector3().fromBufferAttribute(g.attributes.normal, i));
     }
-    const Pu = unposeRight(P, pose);
+    if (side === 'torso') { out.push({ P, N, mat, prop, side }); return; }
+    const Pu = unposeArm(P, pose, side);
     const Ninv = rotXYZ(pose.a).invert().premultiply(new THREE.Matrix4().makeRotationX(-pose.e));
-    out.push({ P: Pu, N: N.map(n => n.clone().applyMatrix4(Ninv).normalize()), mat, prop });
+    out.push({ P: Pu, N: N.map(n => n.clone().applyMatrix4(Ninv).normalize()), mat, prop, side });
   };
   {
     // Phone held up to film the stage: upright, its screen facing the holder.
@@ -112,24 +133,66 @@ function props(detail) {
     add(at(new THREE.CylinderGeometry(0.022, 0.026, 0.14, detail ? 8 : 4, 1, !detail), 0.2), MAT.glow, 2, POSE_STICK);
     if (detail) add(at(new THREE.CylinderGeometry(0.016, 0.016, 0.15, 6, 1, true), 0.07), MAT.plastic, 2, POSE_STICK);
   }
+  if (!band) return out;
+  {
+    // Handheld microphone: the handle in the fist, the grille at the mouth.
+    const W = posedRight(v3(J.M.wristR), POSE_MIC), E = posedRight(v3(J.M.elbowR), POSE_MIC);
+    const fore = W.clone().sub(E).normalize();
+    const hand = W.clone().addScaledVector(fore, 0.06);
+    const dir = new THREE.Vector3(0, 1.11, -0.13).sub(hand).normalize();
+    const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+    const at = (g, d) => g.applyQuaternion(q).translate(hand.x + dir.x * d, hand.y + dir.y * d, hand.z + dir.z * d);
+    add(at(new THREE.CylinderGeometry(0.019, 0.014, 0.17, 8), 0.02), MAT.plastic, 4, POSE_MIC);
+    add(at(new THREE.SphereGeometry(0.03, 8, 6), 0.12), MAT.chrome, 4, POSE_MIC);
+  }
+  {
+    // Guitar on its strap: the body across the hips, the neck up to the left hand.
+    const lower = new THREE.CylinderGeometry(0.185, 0.185, 0.075, 16).rotateX(Math.PI / 2);
+    const upper = new THREE.CylinderGeometry(0.145, 0.145, 0.075, 14).rotateX(Math.PI / 2).translate(-0.2, 0, 0);
+    const neck = new THREE.BoxGeometry(0.62, 0.052, 0.03).translate(-0.56, 0, -0.03);
+    const head = new THREE.BoxGeometry(0.17, 0.085, 0.02).translate(-0.95, 0, -0.03);
+    const tilt = Math.atan2(0.2, 0.39);   // the neck rises to the fretting hand
+    const place = g => g.rotateZ(-tilt).translate(0.05, 0.6, -0.215);
+    add(place(lower), MAT.wood, 3, null, 'torso');
+    add(place(upper), MAT.wood, 3, null, 'torso');
+    add(place(neck), MAT.plastic, 3, null, 'torso');
+    add(place(head), MAT.plastic, 3, null, 'torso');
+  }
+  {
+    // Drumsticks, one in each hand, tips to the snare.
+    for (const [side, pose] of [['L', POSE_DRUM_L], ['R', POSE_DRUM_R]]) {
+      const W = posedArm(side === 'R' ? v3(J.M.wristR) : wristL(), pose, side);
+      const E = posedArm(v3(J.M['elbow' + side]), pose, side);
+      const fore = W.clone().sub(E).normalize();
+      const hand = W.clone().addScaledVector(fore, 0.06);
+      const dir = new THREE.Vector3(0, 0.55, -0.55).sub(hand).normalize();
+      const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+      const g = new THREE.CylinderGeometry(0.008, 0.006, 0.4, 5).applyQuaternion(q).translate(hand.x + dir.x * 0.15, hand.y + dir.y * 0.15, hand.z + dir.z * 0.15);
+      add(g, MAT.wood, 5, pose, side);
+    }
+  }
   return out;
 }
 
 // A three.js geometry for one level of detail: the body plus the props.
-function bodyGeometry(lod, detail) {
-  const extra = props(detail);
+function bodyGeometry(lod, detail, band = false) {
+  const extra = props(detail, band);
   const nb = lod.P.length / 3, ne = extra.reduce((s, p) => s + p.P.length, 0), n = nb + ne;
   const P = new Float32Array(n * 3), N = new Float32Array(n * 3), rig = new Float32Array(n * 4), tag = new Float32Array(n * 2), fem = new Float32Array(n * 3), fat = new Float32Array(n * 3);
   P.set(lod.P); N.set(lod.N); rig.set(lod.rig); tag.set(lod.tag); fem.set(lod.fem); fat.set(lod.fat);
-  // The props move with the right hand, and with it between the two body shapes.
+  // The props move with the hand that holds them (or the torso), and with it between the two
+  // body shapes.
   const handFem = v3(J.F.wristR).sub(v3(J.M.wristR));
+  const torsoFem = v3(J.F.pelvis).sub(v3(J.M.pelvis));
+  const boneOf = { R: BONE.foreR, L: BONE.foreL, torso: BONE.torso };
   let k = nb;
   const idx = Array.from(lod.idx);
   for (const p of extra) {
     p.P.forEach((v, i) => {
       P.set([v.x, v.y, v.z], k * 3); N.set([p.N[i].x, p.N[i].y, p.N[i].z], k * 3);
-      rig.set([BONE.foreR, BONE.foreR, 0, 1], k * 4); tag.set([p.mat, p.prop], k * 2);
-      fem.set([handFem.x, handFem.y, handFem.z], k * 3);
+      const bone = boneOf[p.side || 'R'], f = p.side === 'torso' ? torsoFem : p.side === 'L' ? new THREE.Vector3(-handFem.x, handFem.y, handFem.z) : handFem;
+      rig.set([bone, bone, 0, 1], k * 4); tag.set([p.mat, p.prop], k * 2);
+      fem.set([f.x, f.y, f.z], k * 3);
       idx.push(k);
       k++;
     });
@@ -162,7 +225,7 @@ attribute vec4 aAnim;   // action, phase, tempo, energy
 attribute vec4 aCol;    // shirt, skin, hair, trousers: each an sRGB colour as one 24-bit number
 attribute vec4 aLook;   // hair style + 8 long sleeves + 16 standing + 32 female; light stick hue; lean; heavier
 uniform float uTime; uniform float uLive; uniform float uBpm;
-varying vec3 vCrowdCol; varying vec3 vGlowCol; varying float vRimK; varying float vAO;
+varying vec3 vCrowdCol; varying vec3 vGlowCol; varying float vRimK; varying float vAO; varying float vSpec;
 mat3 rotX(float a) { float c = cos(a), s = sin(a); return mat3(1., 0., 0., 0., c, s, 0., -s, c); }
 mat3 rotY(float a) { float c = cos(a), s = sin(a); return mat3(c, 0., -s, 0., 1., 0., s, 0., c); }
 mat3 rotZ(float a) { float c = cos(a), s = sin(a); return mat3(c, s, 0., -s, c, 0., 0., 0., 1.); }
@@ -238,6 +301,41 @@ else if (act == 2.) { aR = vec3(${POSE_STICK.a[0].toFixed(3)} + 0.08 * sin(beat 
 else if (act == 3.) { aR = vec3(${POSE_PHONE.a[0].toFixed(3)} + 0.02 * sin(uTime * 1.7 + ph), ${POSE_PHONE.a[1].toFixed(3)}, 0.); eR = ${POSE_PHONE.e.toFixed(3)}; }
 else if (act == 4.) { float pump = 0.2 * max(0., sin(beat * 2. * pi)); aL = vec3(2.75 + pump, 0., 0.28); aR = vec3(2.75 + pump, 0., -0.28); eL = eR = 0.2; }
 else if (act == 5.) { float sw = sin(beat * pi); aL = vec3(0.75 + 0.4 * sw, -0.2, 0.); aR = vec3(0.75 - 0.4 * sw, 0.2, 0.); eL = eR = 1.45; }
+else if (act == 6.) {
+  // Singing: the microphone at the mouth, the free arm reaching out to the crowd and back.
+  aR = ${glv3(POSE_MIC.a)}; eR = ${POSE_MIC.e.toFixed(3)};
+  float reach = 0.5 + 0.5 * sin(uTime * 0.55 + ph * 4.);
+  aL = vec3(0.25 + 1.45 * reach, 0.35 * reach, -0.12 - 0.25 * reach); eL = 0.9 - 0.7 * reach;
+}
+else if (act == 7.) {
+  // Guitar or bass: fretting hand on the neck, the strumming hand on the beat.
+  aL = ${glv3(POSE_FRET.a)} + vec3(0.04 * sin(uTime * 1.3 + ph), 0., 0.); eL = ${POSE_FRET.e.toFixed(3)};
+  aR = ${glv3(POSE_STRUM.a)}; eR = ${POSE_STRUM.e.toFixed(3)} + 0.16 * sin(beat * 4. * pi);
+}
+else if (act == 8.) {
+  // Drums: the sticks come down in turn, harder on the backbeat.
+  float h1 = max(0., sin(beat * 2. * pi)), h2 = max(0., sin(beat * 2. * pi + pi * 0.5));
+  aL = ${glv3(POSE_DRUM_L.a)} + vec3(0.32 * h1, 0., 0.); eL = ${POSE_DRUM_L.e.toFixed(3)} - 0.35 * h1;
+  aR = ${glv3(POSE_DRUM_R.a)} + vec3(0.32 * h2, 0., 0.); eR = ${POSE_DRUM_R.e.toFixed(3)} - 0.35 * h2;
+}
+else if (act == 9.) {
+  // Keys: both hands on the keyboard, playing.
+  aL = ${glv3(POSE_KEYS_L.a)} + vec3(0.03 * sin(uTime * 6.1 + ph), 0.04 * sin(uTime * 2.3 + ph), 0.); eL = ${POSE_KEYS_L.e.toFixed(3)};
+  aR = ${glv3(POSE_KEYS_R.a)} + vec3(0.03 * sin(uTime * 6.7 + ph * 2.), 0.04 * sin(uTime * 2.9 + ph), 0.); eR = ${POSE_KEYS_R.e.toFixed(3)};
+}
+else if (act == 10.) {
+  // A dance routine: a new arm shape every two beats, everyone in time.
+  float step8 = mod(floor(beat / 2.), 4.), f = smoothstep(0., 0.35, fract(beat / 2.));
+  vec3 L0 = vec3(0.2, 0., -0.3), R0 = vec3(0.2, 0., 0.3);
+  vec3 L1 = vec3(2.7, 0., 0.3), R1 = vec3(2.7, 0., -0.3);
+  vec3 L2 = vec3(1.4, -0.9, 0.), R2 = vec3(1.4, 0.9, 0.);
+  vec3 L3 = vec3(0.6, 0., -1.3), R3 = vec3(0.6, 0., 1.3);
+  vec3 Lp = step8 < 0.5 ? L3 : step8 < 1.5 ? L0 : step8 < 2.5 ? L1 : L2;
+  vec3 Ln = step8 < 0.5 ? L0 : step8 < 1.5 ? L1 : step8 < 2.5 ? L2 : L3;
+  vec3 Rp = step8 < 0.5 ? R3 : step8 < 1.5 ? R0 : step8 < 2.5 ? R1 : R2;
+  vec3 Rn = step8 < 0.5 ? R0 : step8 < 1.5 ? R1 : step8 < 2.5 ? R2 : R3;
+  aL = mix(Lp, Ln, f); aR = mix(Rp, Rn, f); eL = eR = 0.4 + 0.5 * f;
+}
 aL = mix(restL, aL, on); aR = mix(restR, aR, on); eL = mix(restE, eL, on); eR = mix(restE, eR, on);
 gMaL = rotZ(aL.z) * rotY(aL.y) * rotX(aL.x);
 gMaR = rotZ(aR.z) * rotY(aR.y) * rotX(aR.x);
@@ -253,26 +351,36 @@ gMkL = rotX(knee); gMkR = rotX(knee);
 float keep = 1.;
 if (prop == 1.) keep = act == 3. && on > 0.3 ? 1. : 0.;
 if (prop == 2.) keep = act == 2. && on > 0.3 ? 1. : 0.;
+if (prop == 3.) keep = act == 7. ? 1. : 0.;
+if (prop == 4.) keep = act == 6. ? 1. : 0.;
+if (prop == 5.) keep = act == 8. ? 1. : 0.;
 if (prop >= 16.) keep = mod(floor((prop - 16.) / exp2(style)), 2.) > 0.5 ? 1. : 0.;
+// The act takes the stage once the house lights are down.
+if (act > 5.5 && on < 0.25) keep = 0.;
 vec3 nrm = mix(boneTurn(aRig.x, objectNormal), boneTurn(aRig.y, objectNormal), aRig.z);
 // A few vertices of the coarse body have no normal of their own.
 objectNormal = dot(nrm, nrm) > 1e-8 ? normalize(nrm) : vec3(0., 1., 0.);
 // Colour by material.
-vGlowCol = vec3(0.); vRimK = 1.; vAO = aRig.w;
+vGlowCol = vec3(0.); vRimK = 1.; vAO = aRig.w; vSpec = 1.;
 if (mat == 0.) vCrowdCol = rgb(aCol.x);
 else if (mat == 1.) vCrowdCol = rgb(aCol.y);
 else if (mat == 2.) vCrowdCol = rgb(aCol.z);
 else if (mat == 3.) vCrowdCol = rgb(aCol.w);
-else if (mat == 4.) vCrowdCol = vec3(0.05);
+else if (mat == 4.) vCrowdCol = vec3(0.018);
 else if (mat == 8.) vCrowdCol = rgb(sleeves > 0.5 ? aCol.x : aCol.y);
 else if (mat == 9.) vCrowdCol = vec3(0.02);
 else if (mat == 10.) vCrowdCol = vec3(0.012, 0.009, 0.007);
+else if (mat == 11.) vCrowdCol = vec3(0.16, 0.035, 0.02);
+else if (mat == 12.) vCrowdCol = vec3(0.3);
 else if (mat == 5.) { vCrowdCol = vec3(0.02); vRimK = 0.; vAO = 1.;
   float flick = 0.75 + 0.25 * sin(uTime * 2.3 + ph * 11.) * sin(uTime * 0.7 + ph * 5.);
   vGlowCol = vec3(0.72, 0.8, 1.0) * 1.25 * flick * on; }
 else if (mat == 6.) { vCrowdCol = vec3(0.1); vRimK = 0.; vAO = 1.;
   vGlowCol = mix(vec3(1.), hue(aLook.y), 0.7) * (1.5 + 0.7 * max(0., sin(beat * 2. * pi))) * on; }
 else vCrowdCol = vec3(0.035);
+// Performers are lit by the stage's own lights: no stand-in rim light from the stage, and
+// colours scaled for the wash, which on the deck is many times what reaches the floor.
+if (act > 5.5) { vRimK = 0.; vSpec = 0.08; vCrowdCol *= 0.4; }
 `;
 
 const BEGIN = /* glsl */`
@@ -297,7 +405,8 @@ export function crowdMaterial() {
     sh.vertexShader = VERTEX_HEAD + sh.vertexShader
       .replace('#include <beginnormal_vertex>', '#include <beginnormal_vertex>\n' + POSE)
       .replace('#include <begin_vertex>', BEGIN);
-    sh.fragmentShader = 'uniform float uLive; uniform vec3 uRimDir; uniform vec3 uRimCol;\nvarying vec3 vCrowdCol; varying vec3 vGlowCol; varying float vRimK; varying float vAO;\n' + sh.fragmentShader
+    sh.fragmentShader = 'uniform float uLive; uniform vec3 uRimDir; uniform vec3 uRimCol;\nvarying vec3 vCrowdCol; varying vec3 vGlowCol; varying float vRimK; varying float vAO; varying float vSpec;\n' + sh.fragmentShader
+      .replace('#include <lights_fragment_end>', '#include <lights_fragment_end>\nreflectedLight.directSpecular *= vSpec;')
       .replace('#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.rgb *= vCrowdCol * mix(1.0, 0.6, uLive) * mix(1.0, vAO, 0.85);')
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
         totalEmissiveRadiance += vGlowCol;
@@ -308,7 +417,7 @@ export function crowdMaterial() {
           totalEmissiveRadiance += uRimCol * fr * side * uLive * vRimK * vAO * 0.9;
         }`);
   };
-  mat.customProgramCacheKey = () => 'atv-crowd-2';
+  mat.customProgramCacheKey = () => 'atv-crowd-3';
   return mat;
 }
 
@@ -476,5 +585,142 @@ export class Crowd {
     this.disposed = true;
     for (const mesh of this.meshes) { mesh.geometry.dispose(); this.scene.remove(mesh); }
     this.material.dispose();
+  }
+}
+
+// ------------------------------------------------------------------ the act on stage
+
+// Performers from the same body as the crowd, each posed for a role, with the gear round
+// them: no likeness of the real artists, just how many there are and what they play.
+// `lineup`: [{ role, female }] with role 'vocals' (handheld microphone), 'vocals-guitar'
+// (singing at a stand with a guitar on), 'guitar', 'bass', 'drums', 'keys' or 'dancer'.
+// `stage`: the deck's top (y), its front edge (front) and the band risers (riserY, riserZ).
+const STAGE_WEAR = ['#0c0c0e', '#121215', '#e8e4dc', '#1c1d22', '#3a1216', '#20252f', '#2b2b2e', '#5a4a3a', '#0f1a2e'];
+export class Band {
+  constructor(scene, material, lineup, { y = 1.8, front = -34, riserY = 2.4, riserZ = -44, rnd = Math.random } = {}) {
+    this.scene = scene;
+    this.material = material;
+    this.group = new THREE.Group();
+    scene.add(this.group);
+    const spots = this._place(lineup, { y, front, riserY, riserZ });
+    this.spots = spots;
+    this._gear(spots);
+    loadBody().then(lods => {
+      if (this.disposed) return;
+      const n = spots.length;
+      const geo = bodyGeometry(lods[0], true, true);
+      for (const name of ['aAnim', 'aCol', 'aLook']) geo.setAttribute(name, new THREE.InstancedBufferAttribute(new Float32Array(n * 4), 4));
+      const mesh = new THREE.InstancedMesh(geo, material, n);
+      mesh.frustumCulled = false;
+      const m = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0);
+      const pick = list => list[Math.floor(rnd() * list.length)];
+      const hex = h => parseInt(h.slice(1), 16);
+      spots.forEach((p, k) => {
+        q.setFromAxisAngle(up, Math.PI + p.turn);
+        const h = (p.female ? 1.02 : 1.04) + rnd() * 0.04;
+        m.compose(new THREE.Vector3(p.x, p.y, p.z), q, new THREE.Vector3(h, h, h));
+        mesh.setMatrixAt(k, m);
+        const act = { vocals: ACT.sing, 'vocals-guitar': ACT.guitar, guitar: ACT.guitar, bass: ACT.guitar, drums: ACT.drums, keys: ACT.keys, dancer: ACT.routine }[p.role];
+        // Everyone on the beat: the band together, a dance group exactly in step.
+        geo.attributes.aAnim.array.set([act, p.role === 'dancer' ? 0 : rnd() * 0.3, p.role === 'drums' ? 1 : 0.5, 1], k * 4);
+        const style = p.female ? (rnd() < 0.6 ? STYLE.long : STYLE.bun) : (rnd() < 0.7 ? STYLE.short : STYLE.long);
+        const shirt = pick(STAGE_WEAR);
+        geo.attributes.aCol.array.set([hex(shirt), hex(pick(SKINS)), hex(pick(HAIRS)), hex(pick(['#0c0c0e', '#16171b', '#22252c', '#2c3a52']))], k * 4);
+        const flags = style + (rnd() < 0.5 ? 8 : 0) + (p.seated ? 0 : 16) + (p.female ? 32 : 0);
+        geo.attributes.aLook.array.set([flags, 0.6, 0, rnd() * 0.3], k * 4);
+      });
+      mesh.instanceMatrix.needsUpdate = true;
+      this.mesh = mesh;
+      this.group.add(mesh);
+    });
+  }
+
+  // Where each member stands: singers and dancers along the front, guitars and bass at the
+  // sides, drums on the middle riser, keys on a side riser.
+  _place(lineup, { y, front, riserY, riserZ }) {
+    const out = [];
+    const frontLine = lineup.filter(m => ['vocals', 'vocals-guitar', 'dancer'].includes(m.role));
+    const dancers = frontLine.every(m => m.role === 'dancer') && frontLine.length > 4;
+    const rows = dancers ? [frontLine.slice(0, Math.ceil(frontLine.length / 2)), frontLine.slice(Math.ceil(frontLine.length / 2))] : [frontLine];
+    rows.forEach((row, r) => {
+      const gapX = row.length > 3 ? 2.1 : 2.6;
+      row.forEach((m, i) => out.push({ ...m, x: (i - (row.length - 1) / 2) * gapX + (r ? gapX / 2 : 0), y: y + STAND_LIFT_LOCAL, z: front - 3.2 - r * 1.9, turn: 0 }));
+    });
+    const strings = lineup.filter(m => m.role === 'guitar' || m.role === 'bass');
+    const sideX = [-6.4, 6.4, -9.6, 9.6];
+    strings.forEach((m, i) => out.push({ ...m, x: sideX[i % 4], y: y + STAND_LIFT_LOCAL, z: front - 4.6, turn: (sideX[i % 4] < 0 ? 0.25 : -0.25) }));
+    lineup.filter(m => m.role === 'keys').forEach((m, i) => {
+      const x = i % 2 ? 8 : -8;
+      out.push({ ...m, x, y: riserY + STAND_LIFT_LOCAL, z: riserZ - 0.2, turn: x < 0 ? 0.35 : -0.35 });
+    });
+    lineup.filter(m => m.role === 'drums').forEach((m, i) => out.push({ ...m, seated: true, x: i ? 4 : 0, y: riserY + 0.55 - 0.48, z: riserZ - 0.75, turn: 0 }));
+    return out;
+  }
+
+  // Microphone stands, amplifiers, monitors, the drum kit and keyboards: plain shapes.
+  _gear(spots) {
+    // Matte (Lambert) for the gear: under the stage wash a glossy black would read grey.
+    const metal = new THREE.MeshLambertMaterial({ color: '#0a0a0b' });
+    const black = new THREE.MeshLambertMaterial({ color: '#050506' });
+    const shell = new THREE.MeshLambertMaterial({ color: '#2a0709' });
+    const brass = new THREE.MeshStandardMaterial({ color: '#6a5222', roughness: 0.35, metalness: 0.9 });
+    const head = new THREE.MeshLambertMaterial({ color: '#3a3833' });
+    const add = (geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = true; this.group.add(m); return m; };
+    for (const p of spots) {
+      const floorY = p.seated ? p.y + 0.48 - 0.55 : p.y - STAND_LIFT_LOCAL;
+      const tz = p.z + 0.0;
+      if (p.role === 'vocals-guitar' || p.role === 'guitar' || p.role === 'bass') {
+        // A stand with its microphone at the mouth.
+        const sz = tz + 0.42 * Math.cos(p.turn), sx = p.x + 0.42 * Math.sin(p.turn);
+        add(new THREE.CylinderGeometry(0.16, 0.16, 0.02, 12), metal, sx, floorY + 0.01, sz);
+        add(new THREE.CylinderGeometry(0.012, 0.012, 1.55, 6), metal, sx, floorY + 0.78, sz);
+        add(new THREE.SphereGeometry(0.03, 8, 6), metal, sx, floorY + 1.6, sz - 0.03);
+        // The amp behind.
+        if (p.role !== 'vocals-guitar') {
+          add(new THREE.BoxGeometry(0.78, 0.78, 0.38), black, p.x, floorY + 0.39, tz - 1.5);
+          add(new THREE.BoxGeometry(0.78, 0.26, 0.3), black, p.x, floorY + 0.92, tz - 1.5);
+        }
+      }
+      if (!p.seated && p.role !== 'keys') {
+        // A wedge monitor in front.
+        const w = add(new THREE.BoxGeometry(0.62, 0.32, 0.45), black, p.x, floorY + 0.16, tz + 1.35);
+        w.rotation.x = -0.45;
+      }
+      if (p.role === 'keys') {
+        add(new THREE.BoxGeometry(1.25, 0.09, 0.36), black, p.x, floorY + 0.92, tz + 0.42);
+        add(new THREE.BoxGeometry(1.15, 0.012, 0.14), head, p.x, floorY + 0.97, tz + 0.36);
+        for (const sx of [-0.45, 0.45]) {
+          const leg = add(new THREE.BoxGeometry(0.04, 0.9, 0.04), metal, p.x + sx, floorY + 0.45, tz + 0.42);
+          leg.rotation.x = 0.35;
+          const leg2 = add(new THREE.BoxGeometry(0.04, 0.9, 0.04), metal, p.x + sx, floorY + 0.45, tz + 0.42);
+          leg2.rotation.x = -0.35;
+        }
+      }
+      if (p.role === 'drums') {
+        const fy = floorY;   // the riser's top
+        const kick = add(new THREE.CylinderGeometry(0.28, 0.28, 0.42, 20), shell, p.x, fy + 0.29, tz + 0.95);
+        kick.rotation.x = Math.PI / 2;
+        add(new THREE.CylinderGeometry(0.27, 0.27, 0.005, 20).rotateX(Math.PI / 2), head, p.x, fy + 0.29, tz + 1.165);
+        add(new THREE.CylinderGeometry(0.18, 0.18, 0.14, 16), head, p.x - 0.18, fy + 0.62, tz + 0.5);
+        for (const [dx, r, h, dz] of [[-0.14, 0.13, 0.18, 0.78], [0.16, 0.14, 0.2, 0.8]]) {
+          const t = add(new THREE.CylinderGeometry(r, r, h, 14), shell, p.x + dx, fy + 0.78, tz + dz);
+          t.rotation.x = 0.35;
+        }
+        add(new THREE.CylinderGeometry(0.2, 0.2, 0.36, 16), shell, p.x + 0.45, fy + 0.4, tz + 0.45);
+        for (const [dx, h, dz, r] of [[-0.5, 1.05, 0.55, 0.18], [-0.45, 1.45, 0.95, 0.24], [0.55, 1.5, 0.95, 0.26], [0.75, 1.3, 0.55, 0.22]]) {
+          add(new THREE.CylinderGeometry(0.008, 0.008, h, 5), metal, p.x + dx, fy + h / 2, tz + dz);
+          const c = add(new THREE.CylinderGeometry(r, r * 0.95, 0.008, 18), brass, p.x + dx, fy + h, tz + dz);
+          c.rotation.x = 0.18;
+        }
+        add(new THREE.CylinderGeometry(0.18, 0.2, 0.08, 12), black, p.x, p.y + 0.44, p.z + 0.02);
+        add(new THREE.CylinderGeometry(0.025, 0.025, 0.5, 6), metal, p.x, fy + 0.25, p.z + 0.02);
+      }
+    }
+  }
+
+  dispose() {
+    this.disposed = true;
+    this.mesh?.geometry.dispose();
+    this.scene.remove(this.group);
   }
 }
