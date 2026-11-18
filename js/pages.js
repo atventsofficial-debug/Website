@@ -1236,8 +1236,8 @@ function passCard(p, { actions = true } = {}) {
           : p.status === 'confirmed' ? `<a class="btn btn-coral btn-sm" href="#tour-${esc(p.id)}">Start my seat tour ${icon('i-arrow')}</a>`
             : `<a class="btn btn-line btn-sm" href="#seats-${p.eventId}">Look round the venue ${icon('i-arrow')}</a>`}
         ${p.token ? `<button class="btn btn-line btn-sm" type="button" data-copy-pass="${esc(p.id)}">${icon('i-link')}Copy pass link</button>` : ''}
-        <button class="link" type="button" data-remove-pass="${esc(p.id)}">Remove from this device</button>
-      </div>${waButtons(p) ? `<div class="pass-wa">${waButtons(p)}</div>` : ''}` : ''}
+      </div>${waButtons(p) ? `<div class="pass-wa">${waButtons(p)}</div>` : ''}
+      <button class="link pass-remove" type="button" data-remove-pass="${esc(p.id)}">Remove from this device</button>` : ''}
     </div>
   </article>`;
 }
