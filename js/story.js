@@ -32,7 +32,10 @@ export async function makeStory(pass) {
   const sheet = openSheet();
   let scene = null, rec = null;
   try {
+    // The captions' font (css/styles.css): a canvas does not fetch a web font by itself.
+    const font = Promise.all(['500', '600'].map(w => document.fonts?.load(`${w} 30px Inter`))).catch(() => {});
     const { SeatScene } = await loadScene3d();
+    await font;
     scene = new SeatScene(sheet.stage, { quality: 'medium', interactive: false, labels: false, fps: 30, drift: 0.05 });
     scene.renderer.setPixelRatio(W / sheet.stage.clientWidth);
     scene.resize();

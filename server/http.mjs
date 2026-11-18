@@ -109,8 +109,8 @@ export function securityHeaders(root, isHttps, { midtrans = false } = {}) {
   const csp = [
     "default-src 'self'",
     `script-src 'self' ${mapHash} ${cdn}${pay ? ` ${pay}` : ''}`,
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "font-src 'self' https://fonts.gstatic.com",
+    "style-src 'self' 'unsafe-inline'",
+    "font-src 'self'",
     `img-src 'self' data: blob:${qr}`,
     "connect-src 'self'",
     `frame-src ${pay || "'none'"}`,
@@ -135,9 +135,10 @@ const MIME = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
   '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp',
   '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json',
+  '.woff2': 'font/woff2', '.bin': 'application/octet-stream',
 };
 // Only these paths are public. Server code, data, .env and node_modules never are.
-const PUBLIC = [/^\/index\.html$/, /^\/auth\.html$/, /^\/css\/[\w.-]+\.css$/, /^\/js\/[\w.-]+\.js$/, /^\/assets\/[\w/.-]+\.(png|jpe?g|webp|svg)$/, /^\/favicon\.ico$/, /^\/site\.webmanifest$/];
+const PUBLIC = [/^\/index\.html$/, /^\/auth\.html$/, /^\/css\/[\w.-]+\.css$/, /^\/js\/[\w.-]+\.js$/, /^\/assets\/[\w/.-]+\.(png|jpe?g|webp|svg|woff2|bin)$/, /^\/favicon\.ico$/, /^\/site\.webmanifest$/];
 
 export function serveStatic(root, req, res, headers) {
   let rel;

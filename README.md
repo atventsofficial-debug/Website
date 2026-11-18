@@ -51,7 +51,7 @@ npm install
 npm start                     # http://localhost:8080, creates the tables on first start
 ```
 
-Needs Node 18 or newer. The only runtime dependency is `pg`. three.js 0.160.0 loads from the jsDelivr CDN.
+Needs Node 18 or newer. The only runtime dependency is `pg`. three.js 0.160.0 is bundled into the static build (`npm run build:site`); pages served by the Node server load it from the jsDelivr CDN through the import map.
 
 Without the server (any static hosting of `index.html`), the site runs in **demo mode**: clicks, passes, partner requests and sign-ups are kept in the browser, and `#admin` shows what that browser stored.
 

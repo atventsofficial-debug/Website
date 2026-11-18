@@ -58,7 +58,8 @@ const STAND_LIFT_LOCAL = 0.42;
 let bodyFile = null;
 // The body file: levels of detail one after another (detailed, light, lightest), each positions, normals, rig (bone, bone, weight of
 // the second, ambient occlusion), tag (material, prop), female and heavier offsets, indices.
-export function loadBody(url = 'assets/crowd/body.bin') {
+// `?v=` changes with the file, past the day the browser may keep it (_headers).
+export function loadBody(url = 'assets/crowd/body.bin?v=3') {
   bodyFile ||= fetch(url).then(r => {
     if (!r.ok) throw new Error(`crowd body: ${r.status}`);
     return r.arrayBuffer();

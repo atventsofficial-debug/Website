@@ -11,8 +11,10 @@
 // The scripts and the stylesheet are bundled and minified with esbuild, under names that
 // carry a hash of their contents, so browsers can keep them for a year and still get every
 // new release at once. The 3D code stays a file of its own, fetched only when a 3D view
-// opens. If esbuild is not installed the source files are copied as they are: the site
-// still works, only heavier.
+// opens, with three.js bundled into it (devDependency, the version the import map names):
+// one request to this site instead of a chain of module files from the CDN, and no
+// third party on the page. If esbuild is not installed the source files are copied as they
+// are: the site still works, only heavier, with three.js from the CDN.
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -36,7 +38,6 @@ try {
     entryPoints: [path.join(root, 'js/app.js'), path.join(root, 'js/auth.js')],
     outdir: path.join(out, 'js'),
     bundle: true, splitting: true, format: 'esm', minify: true, target: 'es2020',
-    external: ['three', 'three/addons/*'],
     entryNames: '[name]-[hash]', chunkNames: 'chunk-[hash]',
     metafile: true, logLevel: 'warning',
   });
@@ -50,6 +51,8 @@ try {
   const swap = (from, to) => { if (!html.includes(from)) throw new Error(`index.html has no ${from}`); html = html.replace(from, to); };
   swap('src="js/app.js"', `src="js/${path.basename(entry)}"`);
   swap('href="css/styles.css"', `href="css/${cssName}"`);
+  // three.js is in the bundle: the import map that points it at the CDN goes.
+  html = html.replace(/<script type="importmap">[\s\S]*?<\/script>\n?/, '');
   if (!auth.includes('src="js/auth.js"')) throw new Error('auth.html has no src="js/auth.js"');
   auth = auth.replace('src="js/auth.js"', `src="js/${path.basename(authEntry)}"`);
   bundled = true;
@@ -73,7 +76,7 @@ fs.writeFileSync(path.join(out, 'auth.html'), auth);
 const block = (route, rules, drop = []) => `${route}\n${[...drop.map(k => `  ! ${k}`), ...Object.entries(rules).map(([k, v]) => `  ${k}: ${v}`)].join('\n')}\n`;
 const code = bundled ? 'public, max-age=31536000, immutable' : 'public, max-age=300';
 fs.writeFileSync(path.join(out, '_headers'), [
-  block('/*', securityHeaders(root, true, { midtrans: true })),
+  block('/*', securityHeaders(out, true, { midtrans: true })),   // from the page as built: no import map, no CDN
   block('/js/*', { 'cache-control': code }),
   block('/css/*', { 'cache-control': code }),
   block('/assets/*', { 'cache-control': 'public, max-age=86400, stale-while-revalidate=604800' }),
