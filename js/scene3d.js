@@ -84,7 +84,11 @@ export class SeatScene {
     this.ready = false;
     this.running = false;
 
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    // Phones and tablets (also below): they draw through the lens and bloom passes from
+    // the first frame, which do not use the canvas's own antialiasing, so it would only cost
+    // graphics memory there.
+    this.small = matchMedia('(max-width: 760px), (pointer: coarse)').matches;
+    this.renderer = new THREE.WebGLRenderer({ antialias: !this.small, powerPreference: 'high-performance' });
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -123,7 +127,7 @@ export class SeatScene {
     this.qualityMode = quality;
     // Phones and tablets start a level lower: shadows at full size and the reflections cost
     // more graphics memory than an in-app browser (Instagram's, say) gives a page.
-    const small = quality === 'auto' && matchMedia('(max-width: 760px), (pointer: coarse)').matches;
+    const small = quality === 'auto' && this.small;
     this.level = Math.min(maxLevel, quality === 'low' ? 0 : quality === 'medium' || small ? 1 : 2);
     this.perf = { frames: 0, time: 0, checks: 0 };
     this._applyQuality();
@@ -425,7 +429,7 @@ export class SeatScene {
     const seatMat = style === 'cinema'
       ? new THREE.MeshPhysicalMaterial({ roughness: 0.85, sheen: 1, sheenRoughness: 0.5, sheenColor: new THREE.Color('#ff8a8a') })
       : new THREE.MeshStandardMaterial({ roughness: style === 'shell' ? 0.38 : style === 'flipup' ? 0.5 : 0.82, metalness: 0.0, vertexColors: style === 'flipup' });
-    const seatGeo = seatGeometry(style);
+    const seatGeo = seatGeometry(style, { lite: this.small });
     // Standing spots are floor markers only while the crowd is hidden (to show the plan); with
     // people on the floor it stays bare, as a festival floor is. They still pick either way.
     // Flip-up seats keep their pan folded up when nobody sits there.
@@ -587,6 +591,8 @@ export class SeatScene {
     });
     let seed2 = 5;
     this.people = new Crowd(this.scene, spots, () => ((seed2 = (seed2 * 16807) % 2147483647) / 2147483647));
+    // From a seat on a phone, the light figures stop at the nearest 2,500 people.
+    if (this.small) this.people.midMax = 2500;
     this.people.setVisible(this.showCrowd);
     // The bodies arrive from their file after the scene is built, so their material joins the
     // house-lights fade here rather than in load().

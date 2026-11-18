@@ -565,7 +565,7 @@ export class Crowd {
     const within = cand.filter(c => c[0] < radius * radius);
     this.nearSlots = within.slice(0, Math.min(max, 900)).map(c => c[1]);
     const rest = cand.slice(this.nearSlots.length);
-    this.midSlots = rest.filter(c => c[0] < Crowd.MID_R * Crowd.MID_R).slice(0, Crowd.MID_MAX).map(c => c[1]);
+    this.midSlots = rest.filter(c => c[0] < Crowd.MID_R * Crowd.MID_R).slice(0, this.midMax ?? Crowd.MID_MAX).map(c => c[1]);
     // The people right next to you keep their hands down: an arm up a metre from the camera
     // would fill the picture and say nothing about the view from the seat.
     this.calm = new Set(within.filter(c => c[0] < 3.2 * 3.2).map(c => c[1]));

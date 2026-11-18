@@ -44,13 +44,16 @@ try {
   const entryOf = name => Object.entries(js.metafile.outputs).find(([, o]) => o.entryPoint?.replace(/\\/g, '/').endsWith(`js/${name}`))?.[0];
   const entry = entryOf('app.js'), authEntry = entryOf('auth.js');
   if (!entry || !authEntry) throw new Error('no entry file');
-  const css = await esbuild.transform(fs.readFileSync(path.join(root, 'css/styles.css'), 'utf8'), { loader: 'css', minify: true });
+  // The phone layout (css/mobile.css) goes after the main sheet, in the same file.
+  const sheets = ['styles.css', 'mobile.css'].map(f => fs.readFileSync(path.join(root, 'css', f), 'utf8')).join('\n');
+  const css = await esbuild.transform(sheets, { loader: 'css', minify: true });
   const cssName = `styles-${crypto.createHash('sha256').update(css.code).digest('hex').slice(0, 10)}.css`;
   fs.mkdirSync(path.join(out, 'css'));
   fs.writeFileSync(path.join(out, 'css', cssName), css.code);
   const swap = (from, to) => { if (!html.includes(from)) throw new Error(`index.html has no ${from}`); html = html.replace(from, to); };
   swap('src="js/app.js"', `src="js/${path.basename(entry)}"`);
   swap('href="css/styles.css"', `href="css/${cssName}"`);
+  swap('<link rel="stylesheet" href="css/mobile.css">\n', '');
   // three.js is in the bundle: the import map that points it at the CDN goes.
   html = html.replace(/<script type="importmap">[\s\S]*?<\/script>\n?/, '');
   if (!auth.includes('src="js/auth.js"')) throw new Error('auth.html has no src="js/auth.js"');

@@ -1,0 +1,165 @@
+/* Phones: the site as an app (js/mobile.js).
+   Up to 760 px wide the page gets a slim top bar with a back button on inner pages, a tab
+   bar at the bottom (Home, Concerts, My seat 3D, Passes, More), concert cards as compact
+   rows, and only what it takes to find a concert, buy the ticket and pay for the seat view.
+   The rest (the tour pictures, why see it first, venues, footage, questions, alerts, the
+   partner band, the big footer) stays on the wider layout and in the More menu.
+   Bundled after styles.css (scripts/build-site.mjs), so these rules win at equal weight.
+   No backdrop blur and no drop-shadow filters here: on a phone they are repainted on every
+   scrolled frame, and solid colours look the same at this size. */
+
+.tabbar, .nav-back, .m-find { display: none; }
+
+@media (max-width: 760px) {
+  :root { --bar-h: 58px; --tab-h: 62px; --gut: 16px; }
+  html { scroll-padding-top: 72px; }
+  body { padding-bottom: calc(var(--tab-h) + env(safe-area-inset-bottom)); -webkit-tap-highlight-color: transparent; }
+  body.is-focus { padding-bottom: 0; }
+  body[data-view="seats"] { padding-bottom: 0; }
+  .frame::after { display: none; }   /* the film grain: a full-page overlay blended on every frame */
+
+  /* ---------- top bar ---------- */
+  .nav { position: sticky; top: 0; height: var(--bar-h); gap: 10px; padding: 0 var(--gut); border-bottom: 1px solid transparent; transition: background-color .2s, border-color .2s; }
+  .nav.is-solid { background: rgba(18, 16, 16, 0.97); border-bottom-color: var(--line); }
+  .nav .logo { margin-right: auto; }
+  .nav .logo-img { height: 24px; width: auto; }
+  .nav-cta .nav-btn, .nav-cta .burger { display: none; }
+  .nav-back { display: grid; place-items: center; flex: none; width: 38px; height: 38px; margin-left: -4px; padding: 0; border: 0; border-radius: 50%; background: rgba(255, 255, 255, 0.08); color: var(--text); cursor: pointer; }
+  .nav-back svg { width: 18px; height: 18px; }
+  .nav-back[hidden] { display: none; }
+  .hero, .hero-show { margin-top: calc(-1 * var(--bar-h)); }
+  .hero { padding-top: calc(var(--bar-h) + 12px); }
+
+  /* ---------- tab bar ---------- */
+  .tabbar { position: fixed; z-index: 50; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); height: calc(var(--tab-h) + env(safe-area-inset-bottom)); padding: 0 4px env(safe-area-inset-bottom); background: rgba(14, 12, 12, 0.98); border-top: 1px solid var(--line); }
+  .tabbar > * { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-width: 0; padding: 0; border: 0; background: none; color: var(--dim); font: 600 10.5px/1 var(--font); letter-spacing: 0.01em; white-space: nowrap; cursor: pointer; transition: color .15s; }
+  .tabbar > * > svg { width: 22px; height: 22px; }
+  .tabbar > :active { scale: 0.94; }
+  .tabbar [aria-current="page"], .tabbar [aria-expanded="true"] { color: var(--text); }
+  .tabbar a[aria-current="page"]:not(.tab-main)::before { content: ""; position: absolute; top: 0; left: 50%; width: 22px; height: 2px; margin-left: -11px; border-radius: 0 0 2px 2px; background: var(--coral); }
+  .tab-main { color: var(--text); }
+  .tab-main b { display: grid; place-items: center; width: 48px; height: 32px; border-radius: 12px; background: var(--coral); color: #fff; box-shadow: 0 6px 16px -6px var(--glow); }
+  .tab-main b svg { width: 20px; height: 20px; }
+  .tab-badge { position: absolute; top: 7px; left: calc(50% + 6px); margin: 0; }
+  body.is-focus .tabbar, body[data-view="seats"] .tabbar { display: none; }
+
+  /* ---------- More: the menu as a sheet above the tab bar ---------- */
+  .menu { position: fixed; z-index: 45; inset: auto 0 calc(var(--tab-h) + env(safe-area-inset-bottom)); max-height: calc(100svh - var(--tab-h) - 72px); overflow-y: auto; overscroll-behavior: contain;
+    padding: 10px var(--gut) 18px; border: 1px solid var(--line-2); border-bottom: 0; border-radius: 22px 22px 0 0; background: #1b1818; translate: 0 18px;
+    box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0); transition: opacity .2s ease, translate .25s ease, box-shadow .25s, visibility 0s linear .25s; }
+  .menu.is-open { box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.55); translate: none; }
+  .menu::before { content: ""; display: block; width: 38px; height: 4px; margin: 0 auto 14px; border-radius: 4px; background: var(--line-2); }
+  .menu-in { gap: 14px; align-items: stretch; }
+  .menu .mode-lg { display: flex; width: 100%; }
+  .menu .mode-lg a { flex: 1; justify-content: center; height: 40px; font-size: 14px; }
+  .menu-links { gap: 0; }
+  .menu-links a { display: flex; align-items: center; justify-content: space-between; padding: 14px 2px; border-bottom: 1px solid var(--line); font: 600 17px/1.2 var(--font); font-stretch: 100%; letter-spacing: -0.01em; text-transform: none; color: var(--text); -webkit-text-stroke: 0; }
+  .menu-links a[aria-current="page"] { color: var(--coral-2); }
+  .menu-links .badge { vertical-align: 0; }
+  .menu-sub { gap: 6px; }
+
+  /* ---------- sections, tighter ---------- */
+  .sec { padding-top: 36px; }
+  .sec.page-top { padding-top: 14px; }
+  .sec-head { gap: 6px; margin-bottom: 16px; }
+  .sec-head .big, .big { font-size: 27px; line-height: 1.05; }
+  .big-xl { font-size: 32px; }
+  .sec-side p { font-size: 14px; }
+
+  /* ---------- home: hero, search, on sale, updates, three steps ---------- */
+  #view-home > .sec:not(#on-sale):not(#news):not(#how) { display: none; }
+  .hero-show { --stage-h: clamp(270px, 42svh, 380px); }
+  .hs-card { padding: 14px; }
+  .hs-title { font-size: clamp(26px, 7.6vw, 32px); }
+  .hs-credit { display: none; }
+  .m-find { display: flex; align-items: center; gap: 10px; height: 48px; margin: 6px var(--gut) 0; padding: 0 16px; border: 1px solid var(--line-2); border-radius: 14px; background: var(--panel); color: var(--muted); font-size: 15px; }
+  .m-find svg { width: 18px; height: 18px; color: var(--text); }
+  #on-sale { padding-top: 26px; }
+  #view-home .sec-head { display: flex; align-items: baseline; justify-content: space-between; }
+  #view-home .sec-side p { display: none; }
+  #view-home .sec-side { flex: none; margin-left: auto; }
+  #view-home .sec-head .big { flex: none; font-size: 25px; white-space: nowrap; }
+  .ev-alerts { display: none; }
+  #home-news li:nth-child(n + 4) { display: none; }
+  #news .sec-side { display: none; }
+  .how-line li { padding-bottom: 16px; }
+  .how-line li p { font-size: 13.5px; }
+  .tl-cta { flex-direction: column; align-items: stretch; gap: 12px; }
+  .tl-cta .btn { justify-content: center; }
+
+  /* ---------- concerts as rows: poster, name, date and venue, price ---------- */
+  .tkt-grid { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .tkt { display: grid; grid-template-columns: 96px minmax(0, 1fr); aspect-ratio: auto; min-height: 118px; border: 1px solid var(--line); border-radius: 16px; background: var(--panel); -webkit-mask: none; mask: none; }
+  .tkt:hover, .tkt:active { transform: none; }
+  .tkt:active { background: var(--panel-2); }
+  .tkt-bg { position: relative; inset: auto; z-index: 0; grid-area: 1 / 1; }
+  .tkt-bg::before, .tkt-bg::after { display: none; }
+  .tkt-bg img, .tkt:hover .tkt-bg img { transform: none; transition: none; }
+  .tkt-in { grid-area: 1 / 2; align-items: flex-start; justify-content: center; gap: 4px; height: auto; padding: 12px 14px; text-align: left; }
+  .tkt-top { order: 2; width: auto; margin: 0; }
+  .tkt-brand, .tkt-cut, .tkt-code { display: none; }
+  .tkt-when { max-width: none; text-align: left; }
+  .tkt-when b { font: 700 11px/1.2 var(--font); letter-spacing: 0.06em; color: var(--coral-2); }
+  .tkt-when span { margin-top: 2px; font: 400 12.5px/1.3 var(--font); color: var(--muted); }
+  .tkt .tkt-title { order: 1; margin: 0; font: 700 17px/1.2 var(--font); letter-spacing: -0.015em; text-transform: none; white-space: normal; }
+  .tkt .tkt-title br { display: none; }
+  .tkt .tkt-title a { color: var(--text); text-shadow: none; }
+  .tkt .tkt-title a::after { border-radius: 16px; }
+  .tkt-tags { order: 3; justify-content: flex-start; margin: 2px 0 0; }
+  .tkt-tags .tag { height: 20px; padding: 0 8px; font-size: 9px; }
+  .tkt-foot { order: 4; width: auto; margin-top: 4px; }
+  .tkt-price { display: flex; align-items: baseline; gap: 6px; text-align: left; }
+  .tkt-price small { font-size: 11.5px; color: var(--muted); }
+  .tkt-price b { font: 700 15px/1 var(--font); letter-spacing: -0.01em; }
+
+  /* ---------- concert list: the search stays under the top bar ---------- */
+  #view-concerts .sec-side { display: none; }
+  .ev-tools { position: sticky; top: var(--bar-h); z-index: 12; margin: 0 calc(-1 * var(--gut)) 12px; padding: 8px var(--gut); background: var(--frame); }
+
+  /* ---------- concert page: facts, 3D, categories; the buy bar sits at the bottom ---------- */
+  #view-event { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
+  .ev-bar { position: fixed; z-index: 40; top: auto; left: 0; right: 0; bottom: 0; padding-bottom: env(safe-area-inset-bottom); border-bottom: 0; background: rgba(14, 12, 12, 0.98); }
+  .ev-bar-in { padding: 10px var(--gut); gap: 12px; }
+  .ev-bar .btn { height: 48px; }
+  .hero-title { font-size: clamp(34px, 11vw, 52px); }
+  .ev-official { font-size: 13px; }
+  .ev-info .back-link { display: none; }
+  .ev-info .row-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .ev-info .row-btns .btn { justify-content: center; padding: 0 12px; }
+  .ev-info .row-btns .btn:first-child { grid-column: 1 / -1; height: 50px; }
+  #view-event > .sec:has(#ev-faq) { display: none; }
+  .host-card { display: none; }
+  .about-text p:nth-of-type(n + 3) { display: none; }
+  #ev-more .tkt:nth-child(n + 4) { display: none; }
+  /* Categories: each a slim ticket, the whole ticket still the link to the seller. */
+  .tk-grid, .tk-grid:has(> :nth-child(2):last-child), .tk-grid:has(> :nth-child(4):last-child) { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .tk, .tk-out { --tk-r: 14px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); min-height: 0; filter: none; }
+  .tk-out { opacity: 0.55; }
+  .tk:hover { transform: none; }
+  .tk-stub { justify-content: center; gap: 2px; padding: 12px 12px 12px 14px; }
+  .tk-ev { font-size: 0; }
+  .tk-ev small { font: 700 14px/1.2 var(--font); color: var(--ink); }
+  .tk-dark .tk-ev small { color: #fff; }
+  .tk-code, .tk-top, .tk-label { display: none; }
+  .tk-buy { align-self: flex-start; height: 30px; margin-top: 6px; padding: 0 14px; font-size: 11px; }
+  .tk-body { justify-content: center; gap: 4px; padding: 12px 14px; }
+  .tk-price, .tk-price.tk-price-long { font-size: 24px; }
+  .tk-price small { width: 22px; height: 22px; font-size: 8.5px; }
+  .tk-price.tk-price-na { font-size: 15px; }
+  .tk-meta { margin-top: 0; padding-top: 2px; font-size: 10.5px; }
+
+  /* ---------- checkout: the form, and the pay button kept in reach ---------- */
+  #view-unlock .sec-side { display: none; }
+  #view-unlock .host-side { display: none; }
+  #view-unlock { padding-bottom: 24px; }
+  #pay-start { position: sticky; z-index: 5; bottom: calc(10px + env(safe-area-inset-bottom)); height: 54px; box-shadow: 0 10px 30px -8px rgba(0, 0, 0, 0.7); }
+
+  /* ---------- footer: the legal lines only ---------- */
+  .footer { margin-top: 40px; padding: 24px var(--gut) 20px; border-top: 1px solid var(--line); }
+  .footer-grid > :not(:last-child), .footer .switch, .footer .foot-alert, .footer .wordmark { display: none; }
+  .footer-grid { display: block; }
+  .footer-grid > :last-child { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; }
+  .footer-grid > :last-child h4 { display: none; }
+  .footer .disclose { margin-top: 14px; font-size: 11.5px; line-height: 1.5; color: var(--dim); }
+  body.is-focus .footer { display: none; }
+}

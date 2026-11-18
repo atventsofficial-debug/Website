@@ -9,6 +9,7 @@ import { startHero, stopHero } from './hero.js';
 import { renderPartners } from './partners.js';
 import { renderAdmin } from './admin.js';
 import { openViewer, closeViewer, bindViewer, paintViewer, loadScene3d } from './viewer.js';
+import { mobileRoute } from './mobile.js';
 import { $, $$, state, on, toast, tickCountdowns, captureCampaign, fitGiants, bindSubscribe } from './ui.js';
 
 // Two sides of the site. The route decides which one shows; the toggle in the nav switches.
@@ -62,7 +63,7 @@ async function boot() {
   burger.addEventListener('click', () => setMenu(!menuOpen()));
   $('#menu').addEventListener('click', e => { if (e.target.closest('a')) setMenu(false); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && menuOpen()) { setMenu(false); burger.focus(); } });
-  document.addEventListener('pointerdown', e => { if (menuOpen() && !e.target.closest('#menu, #burger')) setMenu(false); });
+  document.addEventListener('pointerdown', e => { if (menuOpen() && !e.target.closest('#menu, #burger, [data-tab="more"]')) setMenu(false); });
   setInterval(tickCountdowns, 1000);
   bindBuyLinks();
   bindPassButtons();
@@ -177,6 +178,7 @@ async function route() {
     default: break;
   }
   fitGiants($(`[data-view-id="${r.view}"]`) || document);
+  mobileRoute(r.view);
   if (inApp) return;
   // The viewer's back button returns to the page it was opened from.
   state.page = location.hash || '#home';

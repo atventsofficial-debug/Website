@@ -2004,7 +2004,10 @@ function flipUpSeat() {
   ]);
 }
 
-export function seatGeometry(style) {
+// `lite` (phones): the stadium shell with a three-point profile and no stem, about a third
+// of the triangles. Tens of thousands of seats are drawn, most under a person, so on a
+// phone the difference is felt in every frame and not seen.
+export function seatGeometry(style, { lite = false } = {}) {
   if (style === 'flipup') return flipUpSeat();
   if (style === 'cinema') {
     return merge([
@@ -2025,7 +2028,8 @@ export function seatGeometry(style) {
     ]);
   }
   // Moulded plastic stadium shell: an L-shaped profile extruded across the seat width.
-  const pts = [[-0.21, 0.4], [-0.1, 0.425], [0.08, 0.43], [0.15, 0.46], [0.19, 0.55], [0.22, 0.7], [0.235, 0.8]];
+  const pts = lite ? [[-0.21, 0.4], [0.12, 0.44], [0.2, 0.58], [0.235, 0.8]]
+    : [[-0.21, 0.4], [-0.1, 0.425], [0.08, 0.43], [0.15, 0.46], [0.19, 0.55], [0.22, 0.7], [0.235, 0.8]];
   const th = 0.028;
   const outer = [], inner = [];
   pts.forEach((p, i) => {
@@ -2043,7 +2047,7 @@ export function seatGeometry(style) {
   const shell = new THREE.ExtrudeGeometry(shape, { depth: 0.44, bevelEnabled: false, curveSegments: 1 });
   shell.rotateY(Math.PI / 2);
   shell.translate(-0.22, 0, 0);
-  return merge([shell, box(0.06, 0.4, 0.06, 0, 0.2, 0.1)]);
+  return lite ? shell : merge([shell, box(0.06, 0.4, 0.06, 0, 0.2, 0.1)]);
 }
 
 export function crowdGeometries() {

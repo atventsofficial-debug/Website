@@ -13,6 +13,7 @@
 <link rel="manifest" href="site.webmanifest?v=arena2">
 <meta name="theme-color" content="#0b0a0a">
 <link rel="stylesheet" href="css/styles.css">
+<link rel="stylesheet" href="css/mobile.css">
 <script type="importmap">
 { "imports": {
   "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js",
@@ -53,6 +54,8 @@
   <symbol id="i-google" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></symbol>
   <symbol id="i-microsoft" viewBox="0 0 21 21"><path fill="#F25022" d="M1 1h9v9H1z"/><path fill="#7FBA00" d="M11 1h9v9h-9z"/><path fill="#00A4EF" d="M1 11h9v9H1z"/><path fill="#FFB900" d="M11 11h9v9h-9z"/></symbol>
   <symbol id="i-card" viewBox="0 0 24 24"><path d="M3 6h18v12H3zM3 10h18M7 15h4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol><symbol id="i-wallet" viewBox="0 0 24 24"><path d="M4 7h15a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1zM4 7l11-3v3M16 13h1.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol><symbol id="i-bank" viewBox="0 0 24 24"><path d="M3.5 9.5 12 5l8.5 4.5M5.5 10v7M10 10v7M14 10v7M18.5 10v7M3.5 19.5h17" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol><symbol id="i-store" viewBox="0 0 24 24"><path d="M4.5 9.5 6 5h12l1.5 4.5M5 9.5V19h14V9.5M4.5 9.5h15M10 19v-4.5h4V19" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V20h-5.5v-5.5h-5V20H4z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
   <symbol id="i-mail" viewBox="0 0 24 24"><path d="M3 6h18v12H3zM3.5 7l8.5 6 8.5-6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
   <symbol id="i-copy" viewBox="0 0 24 24"><path d="M8 8h12v12H8zM16 8V4H4v12h4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
   <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8.5 5.5v13M15.5 5.5v13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
@@ -63,6 +66,7 @@
 <div class="frame" id="frame">
 <!-- ======================================================= GLOBAL NAV -->
 <header class="nav" id="nav">
+  <button class="nav-back" id="nav-back" type="button" aria-label="Back" hidden><svg><use href="#i-back"/></svg></button>
   <a class="logo" id="logo" href="#home" aria-label="Home"><img class="logo-img" src="assets/brand/atvents-logo-web.svg" alt="" width="150" height="30"><span class="sr-only" data-brand>Atvents</span></a>
   <div class="nav-cta">
     <nav class="mode mode-nav" aria-label="Choose your side">
@@ -113,7 +117,9 @@
     </div>
   </section>
 
-  <section class="sec">
+  <a class="m-find" id="m-find" href="#concerts"><svg><use href="#i-search"/></svg><span>Search an artist or a venue</span></a>
+
+  <section class="sec" id="on-sale">
     <header class="sec-head">
       <h2 class="big"><span class="fade">On sale</span> <span class="ol">now</span></h2>
       <div class="sec-side"><p>Every big concert in Jakarta, with dates, prices and the official seller. See the view from your seat before the night for <b data-fee>Rp25.000</b>.</p><a class="pill-link" href="#concerts">All concerts <svg><use href="#i-arrow"/></svg></a></div>
@@ -685,6 +691,15 @@
   <svg class="wordmark wordmark-svg" aria-hidden="true" focusable="false" viewBox="24 -687 3405 699" preserveAspectRatio="xMidYMax meet"><path fill="currentColor" d="M257 10Q190 10 137.5 -23.0Q85 -56 54.5 -113.0Q24 -170 24 -243Q24 -316 54.5 -373.0Q85 -430 137.5 -463.0Q190 -496 257 -496Q306 -496 345.5 -477.0Q385 -458 410.0 -424.5Q435 -391 438 -348V-138Q435 -95 410.5 -61.5Q386 -28 346.0 -9.0Q306 10 257 10ZM288 -128Q337 -128 367.0 -160.5Q397 -193 397 -243Q397 -277 383.5 -303.0Q370 -329 345.5 -343.5Q321 -358 289 -358Q257 -358 232.5 -343.5Q208 -329 193.5 -303.0Q179 -277 179 -243Q179 -210 193.0 -184.0Q207 -158 232.0 -143.0Q257 -128 288 -128ZM391 0V-131L414 -249L391 -367V-486H541V0ZM708 0V-687H861V0ZM598 -356V-486H971V-356ZM1181 0 975 -486H1140L1280 -81H1208L1348 -486H1510L1304 0ZM1795 11Q1716 11 1654.5 -21.5Q1593 -54 1558.0 -112.0Q1523 -170 1523 -243Q1523 -316 1557.5 -373.5Q1592 -431 1651.0 -464.0Q1710 -497 1784 -497Q1856 -497 1911.0 -466.0Q1966 -435 1997.5 -380.0Q2029 -325 2029 -254Q2029 -241 2027.5 -226.5Q2026 -212 2022 -193L1603 -192V-297L1957 -298L1891 -254Q1890 -296 1878.0 -323.5Q1866 -351 1842.5 -365.5Q1819 -380 1785 -380Q1749 -380 1722.5 -363.5Q1696 -347 1681.5 -317.0Q1667 -287 1667 -244Q1667 -201 1682.5 -170.5Q1698 -140 1726.5 -123.5Q1755 -107 1794 -107Q1830 -107 1859.0 -119.5Q1888 -132 1910 -157L1994 -73Q1958 -31 1907.0 -10.0Q1856 11 1795 11ZM2414 0V-277Q2414 -315 2390.5 -338.5Q2367 -362 2331 -362Q2306 -362 2287.0 -351.5Q2268 -341 2257.0 -321.5Q2246 -302 2246 -277L2187 -306Q2187 -363 2212.0 -406.0Q2237 -449 2281.5 -472.5Q2326 -496 2382 -496Q2436 -496 2477.5 -470.5Q2519 -445 2543.0 -403.0Q2567 -361 2567 -311V0ZM2093 0V-486H2246V0ZM2724 0V-687H2877V0ZM2614 -356V-486H2987V-356ZM3221 12Q3178 12 3136.5 1.0Q3095 -10 3059.5 -30.5Q3024 -51 2999 -78L3086 -166Q3110 -140 3143.0 -125.5Q3176 -111 3215 -111Q3242 -111 3256.5 -119.0Q3271 -127 3271 -141Q3271 -159 3253.5 -168.5Q3236 -178 3209.0 -185.5Q3182 -193 3152.0 -202.0Q3122 -211 3095.0 -227.0Q3068 -243 3051.0 -271.5Q3034 -300 3034 -344Q3034 -391 3058.0 -425.5Q3082 -460 3126.0 -480.0Q3170 -500 3229 -500Q3291 -500 3343.5 -478.5Q3396 -457 3429 -415L3342 -327Q3319 -354 3290.5 -365.0Q3262 -376 3235 -376Q3209 -376 3196.0 -368.5Q3183 -361 3183 -347Q3183 -332 3200.0 -323.0Q3217 -314 3244.0 -307.0Q3271 -300 3301.0 -290.0Q3331 -280 3358.0 -263.0Q3385 -246 3402.0 -217.5Q3419 -189 3419 -143Q3419 -72 3365.5 -30.0Q3312 12 3221 12Z"/></svg>
 </footer>
 </div>
+
+<!-- ======================================================= PHONE TAB BAR (css/mobile.css, js/mobile.js) -->
+<nav class="tabbar" id="tabbar" aria-label="Main">
+  <a href="#home" data-tab="home"><svg><use href="#i-home"/></svg><span>Home</span></a>
+  <a href="#concerts" data-tab="concerts"><svg><use href="#i-search"/></svg><span>Concerts</span></a>
+  <a class="tab-main" href="#unlock" data-tab="unlock"><b><svg><use href="#i-seat"/></svg></b><span>My seat 3D</span></a>
+  <a href="#passes" data-tab="passes"><svg><use href="#i-tix"/></svg><span>Passes</span><span class="badge tab-badge" data-count="passes" hidden></span></a>
+  <button type="button" data-tab="more" aria-controls="menu" aria-expanded="false"><svg><use href="#i-more"/></svg><span>More</span></button>
+</nav>
 
 <!-- ======================================================= 3D SEAT VIEW -->
 <div id="view-seats" class="view app" data-view-id="seats" hidden>

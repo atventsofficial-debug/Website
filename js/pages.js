@@ -135,7 +135,7 @@ function ticketCard(e, opts = {}) {
         <p class="tkt-when"><b>${datesText(dates)}</b><span>${esc(v.name)}, ${keep(esc(v.city))}</span></p>
       </div>
       ${tags.length ? `<p class="tkt-tags">${tags.join('')}</p>` : ''}
-      <h3 class="tkt-title" style="--em:${name.em.toFixed(2)}"><a class="ev-link" href="#event-${e.id}">${name.lines.map(esc).join('<br>')}${all ? '<span class="sr-only">, sold out</span>' : ''}</a></h3>
+      <h3 class="tkt-title" style="--em:${name.em.toFixed(2)}"><a class="ev-link" href="#event-${e.id}">${name.lines.map(esc).join('<br> ')}${all ? '<span class="sr-only">, sold out</span>' : ''}</a></h3>
       <div class="tkt-cut" aria-hidden="true"></div>
       <div class="tkt-foot">
         <div class="tkt-code"><small>Concert pass</small><i class="barcode"></i></div>
@@ -301,7 +301,9 @@ export function stopEventHero() {
 }
 async function startEventHero(id) {
   stopEventHero();
-  if (navigator.connection?.saveData) return;
+  // Phones keep the cover picture: a second live venue behind a page being scrolled is what
+  // makes them stutter, and the 3D view itself is one tap away.
+  if (navigator.connection?.saveData || matchMedia('(max-width: 760px)').matches) return;
   evHero.id = id;
   // After the page has loaded and the browser is idle: the 3D never holds up the page.
   if (document.readyState !== 'complete') await new Promise(r => addEventListener('load', r, { once: true }));
