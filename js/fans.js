@@ -38,6 +38,21 @@ export const mateTags = (ownSeat) => (mates.data?.fans || []).map(f => (f.mine &
 
 export const openInstagram = f => window.open(igUrl(f.instagram), '_blank', 'noopener,noreferrer');
 
+// The WhatsApp links of a paid pass as tiles: the community (and a concert's fanbase group,
+// when one is set). Used on the pass card, the "You're in" page and the 3D view.
+export function waTiles(wa) {
+  if (!wa?.group && !wa?.community) return '';
+  const tile = (href, title, sub) => `<a class="wa-tile" href="${esc(href)}" target="_blank" rel="noopener noreferrer">
+      <span class="wa-ico">${icon('i-chat')}</span>
+      <span class="wa-txt"><b>${title}</b><small>${sub}</small></span>
+      <span class="wa-go">${icon('i-out')}</span>
+    </a>`;
+  return `<div class="wa-tiles">${[
+    wa.group && tile(wa.group, 'Fanbase group', 'Fans of this concert, on WhatsApp'),
+    wa.community && tile(wa.community, 'Atvents community', 'Meet other fans on WhatsApp'),
+  ].filter(Boolean).join('')}</div>`;
+}
+
 // The panel block: the WhatsApp group, the fan's own profile, and who else shows theirs.
 export function matesBlock(p, { cats = {} } = {}) {
   if (!p || p.status !== 'confirmed' || !can()) return '';
@@ -46,8 +61,7 @@ export function matesBlock(p, { cats = {} } = {}) {
   const d = mates.data;
   if (!d) return '';
   const others = d.fans.filter(f => !f.mine);
-  const wa = (href, text) => `<a class="btn btn-wa btn-sm mates-wa" href="${esc(href)}" target="_blank" rel="noopener noreferrer">${icon('i-out')}${text}</a>`;
-  const group = [d.group && wa(d.group, 'Join the fanbase group on WhatsApp'), d.community && wa(d.community, d.group ? 'Atvents members community' : 'Join the Atvents community on WhatsApp')].filter(Boolean).join('');
+  const group = waTiles(d);
   const count = others.length ? `${others.length} fan${others.length === 1 ? '' : 's'} at this concert ${others.length === 1 ? 'shows' : 'show'} their Instagram on their seat. Tap a tag to say hi.`
     : 'No other fans show their Instagram yet. Be the first, and they will find you.';
   let mine;

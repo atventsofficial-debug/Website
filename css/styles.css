@@ -2303,11 +2303,19 @@ body { font-family: var(--font); font-feature-settings: "cv11", "ss01"; }
   .mates-list { display: none; }
 }
 
-/* WhatsApp: the fanbase group and the Atvents community, for paid passes. */
-.btn-wa { background: transparent; color: #25d366; border: 1px solid rgba(37, 211, 102, 0.55); }
-.btn-wa:hover, .btn-wa:focus-visible { background: rgba(37, 211, 102, 0.1); border-color: #25d366; color: #25d366; }
-.btn-wa svg { color: #25d366; }
-.unlock-wa { display: flex; flex-direction: column; gap: 10px; margin: 4px 0 8px; }
-.pass .btn-wa, .pass .btn-wa svg { color: #0f7a43; }
-.pass .btn-wa { border-color: rgba(15, 122, 67, 0.45); }
-.pass .btn-wa:hover, .pass .btn-wa:focus-visible { background: rgba(15, 122, 67, 0.08); color: #0f7a43; border-color: #0f7a43; }
+/* WhatsApp: the Atvents community (and a concert's fanbase group), for paid passes. */
+.wa-tiles { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+.wa-tile { display: grid; grid-template-columns: 40px minmax(0, 1fr) 20px; align-items: center; gap: 12px; padding: 10px 14px 10px 10px; border: 1px solid var(--line); border-radius: 14px; background: rgba(255, 255, 255, 0.03); color: var(--text); text-decoration: none; transition: border-color .15s, background .15s; }
+.wa-tile:hover, .wa-tile:focus-visible { border-color: rgba(37, 211, 102, 0.6); background: rgba(37, 211, 102, 0.06); outline: none; }
+.wa-ico { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; background: #25d366; color: #fff; }
+.wa-ico svg { width: 22px; height: 22px; }
+.wa-txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.wa-txt b { font: 600 14px/1.25 var(--font); color: inherit; }
+.wa-txt small { font: 400 12px/1.35 var(--font); color: var(--muted); }
+.wa-go svg { width: 18px; height: 18px; color: var(--muted); }
+.wa-tile:hover .wa-go svg { color: #25d366; }
+.unlock-wa { display: flex; flex-direction: column; gap: 10px; margin: 6px 0 10px; max-width: 440px; }
+.pass-wa { margin-top: var(--s3); padding-top: var(--s3); border-top: 1px dashed rgba(20, 18, 18, 0.2); }
+.pass .wa-tile { border-color: rgba(20, 18, 18, 0.14); background: #fff; color: var(--ink); }
+.pass .wa-tile:hover, .pass .wa-tile:focus-visible { border-color: #1fa855; background: #fff; }
+.pass .wa-txt small, .pass .wa-go svg { color: var(--ink-muted, #6b6b6b); }

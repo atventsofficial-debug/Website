@@ -7,6 +7,7 @@ import { EVENTS, PLACES, CITY, LISTED, getEvent, eventMeta, placeOf, timeKnown, 
 import { cardImg, eventImg, placeCover, posterFig, thumbImg } from './media.js';
 import { picker } from './picker.js';
 import { whenOf, startOf, venueClock, gapText } from './when.js';
+import { waTiles } from './fans.js';
 import { justBought, buyUrl, buyAttrs, buyLink, passes, activePass, claim, holdPass, refresh, passLink, clicksFor, STATUS } from './passes.js';
 import { checkClaim, formatFee } from './rules.js';
 import { ACCESS_FEE, PAY_MINUTES, line, email as cleanEmail, isEmail } from './order.js';
@@ -1180,13 +1181,8 @@ async function signInWith(form, btn) {
   }
 }
 
-// The WhatsApp buttons of a paid pass (passes.js waLinks): the fanbase group, the community.
-const waButtons = (p, size = '') => {
-  const wa = p?.status === 'confirmed' ? p.wa : null;
-  if (!wa) return '';
-  const b = (href, text) => `<a class="btn btn-wa${size}" href="${esc(href)}" target="_blank" rel="noopener noreferrer">${icon('i-out')}${text}</a>`;
-  return [wa.group && b(wa.group, 'Join the fanbase group'), wa.community && b(wa.community, wa.group ? 'Atvents community' : 'Join the Atvents community')].filter(Boolean).join('');
-};
+// The WhatsApp tiles of a paid pass (passes.js waLinks, fans.js waTiles).
+const waButtons = p => (p?.status === 'confirmed' ? waTiles(p.wa) : '');
 
 function showUnlocked(p, { emailed = false } = {}) {
   p = passes.get(p.id) || p;
@@ -1200,7 +1196,7 @@ function showUnlocked(p, { emailed = false } = {}) {
         <h2 class="big"><span class="fade">You’re</span> <span class="ol">in</span></h2>
         <p class="lede">Paid. Your seat view for ${esc(e.title)} is open. Take the tour to your seat.</p>
         <div class="row-btns"><a class="btn btn-coral" href="#tour-${esc(p.id)}">Start my seat tour ${icon('i-arrow')}</a><a class="btn btn-line" href="#passes">My 3D passes</a></div>
-        ${wa ? `<div class="unlock-wa"><p class="fine">Meet other fans going to ${esc(e.title)} before the show, on WhatsApp.</p><div class="row-btns">${wa}</div></div>` : ''}
+        ${wa ? `<div class="unlock-wa"><p class="fine">Meet other fans going to ${esc(e.title)} before the show.</p>${wa}</div>` : ''}
         ${emailed ? `<p class="unlock-mail">${icon('i-mail')}<span>The pass link is on its way to <b>${esc(p.email)}</b>. Open it on any phone or laptop to see your seat there too.</span></p>` : ''}
         ${p.token ? `<p class="fine">On another phone or laptop? <button class="link" type="button" data-copy-pass="${esc(p.id)}">Copy the pass link</button> and open it there. Keep it to yourself: the link opens your pass.</p>` : ''}
       </div>
@@ -1237,11 +1233,11 @@ function passCard(p, { actions = true } = {}) {
       </dl>
       ${actions ? `<div class="row-btns">
         ${p.status === 'rejected' ? `<a class="btn btn-coral btn-sm" href="#unlock-${p.eventId}">Unlock again</a><a class="btn btn-line btn-sm" href="#contact">Write to us</a>`
-          : p.status === 'confirmed' ? `<a class="btn btn-coral btn-sm" href="#tour-${esc(p.id)}">Start my seat tour ${icon('i-arrow')}</a>${waButtons(p, ' btn-sm')}`
+          : p.status === 'confirmed' ? `<a class="btn btn-coral btn-sm" href="#tour-${esc(p.id)}">Start my seat tour ${icon('i-arrow')}</a>`
             : `<a class="btn btn-line btn-sm" href="#seats-${p.eventId}">Look round the venue ${icon('i-arrow')}</a>`}
         ${p.token ? `<button class="btn btn-line btn-sm" type="button" data-copy-pass="${esc(p.id)}">${icon('i-link')}Copy pass link</button>` : ''}
         <button class="link" type="button" data-remove-pass="${esc(p.id)}">Remove from this device</button>
-      </div>` : ''}
+      </div>${waButtons(p) ? `<div class="pass-wa">${waButtons(p)}</div>` : ''}` : ''}
     </div>
   </article>`;
 }
