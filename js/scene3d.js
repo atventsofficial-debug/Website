@@ -1066,20 +1066,23 @@ export class SeatScene {
   }
 
   // A slow turn round the overview's target, `deg` degrees in `dur` seconds: the opening
-  // shot of a story video.
-  orbit(deg = 30, dur = 3) {
+  // shot of a story video. `push` brings the camera in to that share of its distance as it
+  // turns, and `toward` (x, y, z) moves what it looks at there, both easing out.
+  orbit(deg = 30, dur = 3, { push = 1, toward = null } = {}) {
     if (!this.scene || this.mode !== 'overview') return;
-    const target = this.controls.target.clone();
-    const off = this.camera.position.clone().sub(target);
+    const t0 = this.controls.target.clone(), t1 = toward ? new THREE.Vector3(...toward) : t0.clone();
+    const off = this.camera.position.clone().sub(t0);
     const a0 = Math.atan2(off.x, off.z), r = Math.hypot(off.x, off.z), y = off.y;
-    const turn = THREE.MathUtils.degToRad(deg);
+    const turn = THREE.MathUtils.degToRad(deg), target = new THREE.Vector3();
     this.controls.enabled = false;
     this.anim = {
       t: 0, dur,
       step: t => {
-        const a = a0 + turn * (t / dur);
-        this.camera.position.set(target.x + Math.sin(a) * r, target.y + y, target.z + Math.cos(a) * r);
+        const k = t / dur, e = 1 - (1 - k) ** 2, a = a0 + turn * k, d = 1 + (push - 1) * e;
+        target.lerpVectors(t0, t1, e);
+        this.camera.position.set(target.x + Math.sin(a) * r * d, target.y + y * d, target.z + Math.cos(a) * r * d);
         this.camera.lookAt(target);
+        this.controls.target.copy(target);
       },
       done: () => { this.controls.enabled = this.interactive; this.controls.update(); },
     };
