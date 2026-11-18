@@ -12,6 +12,7 @@ import { superPoint } from './layouts.js';
 import { IMAGES } from './media.js';
 import { themeOf } from './themes.js';
 import { MADYA, jisEnd } from './realvenues.js';
+import { buildArenaDetail, concreteNormalMap } from './arena-detail.js';
 
 // ------------------------------------------------------------------ helpers
 
@@ -387,6 +388,19 @@ export function buildConcert(ctx, venue) {
   scene.add(room);
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(W, D), new THREE.MeshStandardMaterial({ color: '#4a4a4c', map: grime(), roughness: 0.42, metalness: 0.05 }));
   floor.material.map = grime().clone(); floor.material.map.repeat.set(12, 12); floor.material.map.needsUpdate = true;
+  if (ctx.realistic) {
+    // Polished concrete with relief, and the shading the tiers, the stage and the seat blocks
+    // cast on the floor, baked in Blender (Cycles ambient occlusion) from this same model.
+    floor.material.normalMap = concreteNormalMap().clone();
+    floor.material.normalMap.repeat.set(30, 30);
+    floor.material.normalScale.set(0.35, 0.35);
+    new THREE.TextureLoader().load(`assets/venues/${venue.key}-floor-ao.jpg`, t => {
+      t.flipY = false;
+      floor.material.aoMap = t;
+      floor.material.aoMapIntensity = 1;
+      floor.material.needsUpdate = true;
+    });
+  }
   floor.rotation.x = -Math.PI / 2;
   floor.position.z = CZ;
   floor.receiveShadow = true;
@@ -516,6 +530,15 @@ export function buildConcert(ctx, venue) {
   const audience = new THREE.HemisphereLight('#3a3f5c', '#000000', 1);
   ctx.mood(audience, 'intensity', 0, 0.35);
   scene.add(audience);
+  // Light spilling off the stage onto the crowd, pulsing gently with the music: the backs of
+  // heads stay dark, shoulders and the tiers facing the stage catch it.
+  const spill = new THREE.SpotLight('#ffcf9e', 1, 120, 1.05, 0.9, 1.4);
+  spill.position.set(0, 15, -33);
+  spill.target.position.set(0, 3, 12);
+  const spillRig = { base: 0 };
+  ctx.mood(spillRig, 'base', 0, 1300);
+  scene.add(spill, spill.target);
+  ctx.onTick(t => { spill.intensity = spillRig.base * (0.85 + 0.15 * Math.max(0, Math.sin(t * 118 / 60 * Math.PI * 2))); });
 
   // Barricade and front-of-house mix position.
   const barrier = new THREE.Mesh(crowdBarrier(30), mats.steel());
@@ -544,6 +567,8 @@ export function buildConcert(ctx, venue) {
   bandTex.repeat.set(6, 1);
   const band = new THREE.Mesh(ribbon({ ...opts, rx: 36.75, rz: 42.75, y0: 8.6, y1: 9.5, uRepeat: 1 }), new THREE.MeshBasicMaterial({ map: bandTex, toneMapped: false, side: THREE.DoubleSide }));
   scene.add(band);
+
+  if (ctx.realistic) buildArenaDetail(ctx, venue);
 
   ctx.onTick((t, dt) => {
     wallMatLed.uniforms.uTime.value = t;
@@ -1765,7 +1790,96 @@ function stadiumShow(ctx, venue, brand) {
 // ------------------------------------------------------------------ seats & crowd geometry
 
 // Seats face -z; backrest on +z.
+// Flip-up arena seat (the moulded plastic seats of Indonesia Arena's tiers): a contoured back
+// and a seat pan on a hinge, between two painted steel standards bolted to the tread. Vertex
+// colour tells plastic (white, tinted per seat) from steel; `aPan` marks the pan, which the
+// seat material folds up about SEAT_HINGE when nobody sits there.
+export const SEAT_HINGE = { y: 0.415, z: 0.1 };
+function surfaceGrid(nu, nv, at, flip = false) {
+  const pos = [], idx = [];
+  for (let j = 0; j <= nv; j++) for (let i = 0; i <= nu; i++) pos.push(...at(i / nu * 2 - 1, j / nv));
+  for (let j = 0; j < nv; j++) for (let i = 0; i < nu; i++) {
+    const a = j * (nu + 1) + i, b = a + 1, c = a + nu + 1, d = c + 1;
+    idx.push(...(flip ? [a, c, b, b, c, d] : [a, b, c, b, d, c]));
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return g;
+}
+// A shell from a centre surface: front and back faces `th` apart, and a rim joining them.
+function shellPanel(nu, nv, at, th, flipFront) {
+  const front = surfaceGrid(nu, nv, at, flipFront);
+  const off = (u, v) => {
+    const p = new THREE.Vector3(...at(u, v));
+    const du = new THREE.Vector3(...at(Math.min(1, u + 0.01), v)).sub(new THREE.Vector3(...at(Math.max(-1, u - 0.01), v)));
+    const dv = new THREE.Vector3(...at(u, Math.min(1, v + 0.01))).sub(new THREE.Vector3(...at(u, Math.max(0, v - 0.01))));
+    const n = du.cross(dv).normalize().multiplyScalar(flipFront ? -th : th);
+    return p.sub(n).toArray();
+  };
+  const back = surfaceGrid(nu, nv, off, !flipFront);
+  // The rim: a strip round the outline, from the front face to the back face.
+  const ring = [];
+  for (let i = 0; i <= nu; i++) ring.push([i / nu * 2 - 1, 0]);
+  for (let j = 1; j <= nv; j++) ring.push([1, j / nv]);
+  for (let i = nu - 1; i >= 0; i--) ring.push([i / nu * 2 - 1, 1]);
+  for (let j = nv - 1; j >= 1; j--) ring.push([-1, j / nv]);
+  const pos = [];
+  for (let k = 0; k < ring.length; k++) {
+    const [u0, v0] = ring[k], [u1, v1] = ring[(k + 1) % ring.length];
+    const a = at(u0, v0), b = at(u1, v1), c = off(u0, v0), d = off(u1, v1);
+    pos.push(...(flipFront ? [...a, ...b, ...c, ...b, ...d, ...c] : [...a, ...c, ...b, ...b, ...c, ...d]));
+  }
+  const rim = new THREE.BufferGeometry();
+  rim.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  rim.computeVertexNormals();
+  return [front, back, rim];
+}
+function tag(g, rgb, pan) {
+  const n = g.attributes.position.count;
+  g.setAttribute('color', new THREE.Float32BufferAttribute(new Array(n).fill(rgb).flat(), 3));
+  g.setAttribute('aPan', new THREE.Float32BufferAttribute(new Array(n).fill(pan), 1));
+  return g;
+}
+function flipUpSeat() {
+  const plastic = [1, 1, 1], steel = [0.32, 0.33, 0.35], H = SEAT_HINGE;
+  // Back: reclined, with lumbar support, its sides curving round the sitter, an arched top.
+  const back = shellPanel(10, 8, (u, v) => {
+    const y = 0.47 + 0.39 * v - 0.028 * u ** 4 * v ** 3;
+    const z = 0.165 + 0.075 * v - 0.016 * Math.sin(Math.PI * Math.min(1, v * 1.25)) - 0.032 * u * u;
+    return [u * (0.226 - 0.012 * v), y, z];
+  }, 0.022, false);
+  // Seat pan: dished, the front edge rolled down (the waterfall), sides turned up a little.
+  const pan = shellPanel(10, 7, (u, v) => {
+    const zf = -0.27 + (H.z - 0.008 + 0.27) * v;
+    const roll = v < 0.12 ? -0.03 * (1 - v / 0.12) ** 2 : 0;
+    const y = H.y + 0.02 + 0.016 * (1 - v) - 0.01 * Math.sin(Math.PI * v) + 0.009 * u * u + roll;
+    return [u * 0.222, y, zf];
+  }, 0.03, true);
+  // Standards: steel plates from the tread up to the hinge and the back's foot.
+  const std = [];
+  for (const sx of [-1, 1]) {
+    const sh = new THREE.Shape();
+    const P = [[-0.05, 0], [0.2, 0], [0.205, 0.04], [0.19, 0.6], [0.15, 0.62], [0.13, 0.47], [0.04, 0.43], [-0.03, 0.4], [-0.06, 0.05]];
+    P.forEach(([z, y], i) => (i ? sh.lineTo(-z, y) : sh.moveTo(-z, y)));
+    sh.closePath();
+    const g = new THREE.ExtrudeGeometry(sh, { depth: 0.016, bevelEnabled: false, curveSegments: 1 });
+    g.rotateY(Math.PI / 2).translate(sx * 0.262 - 0.008, 0, 0);
+    std.push(tag(g.toNonIndexed(), steel, 0));
+  }
+  // The bar the back and the pan hang on.
+  const bar = new THREE.CylinderGeometry(0.012, 0.012, 0.5, 6).rotateZ(Math.PI / 2).translate(0, H.y, H.z + 0.02);
+  return merge([
+    ...back.map(g => tag(g, plastic, 0)),
+    ...pan.map(g => tag(g, plastic, 1)),
+    ...std,
+    tag(bar, steel, 0),
+  ]);
+}
+
 export function seatGeometry(style) {
+  if (style === 'flipup') return flipUpSeat();
   if (style === 'cinema') {
     return merge([
       rbox(0.54, 0.16, 0.5, 0.06, 3, 0, 0.44, -0.04),

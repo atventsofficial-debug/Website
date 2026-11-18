@@ -28,8 +28,10 @@ const MODEL = 'The 3D venue is our illustration of the venue and the category la
 // `art`: the venue's picture on its home page card (assets/covers/place, media.js).
 // `seatColor`: the building's own seats, where a source says what they look like: GBK red,
 // white and grey, laid out like a wrapped flag (Medcom); JIS orange, with grey mixed in up top
-// (StadiumDB); Madya white (Football Tribe); Istora three greys (Wikipedia). Elsewhere the
-// seats take the show's theme colour (themes.js).
+// (StadiumDB); Madya white (Football Tribe); Istora three greys (Wikipedia); Indonesia Arena
+// grey moulded flip-up seats (Datra Avant; FIBA World Cup 2023 photos on Wikimedia Commons).
+// Elsewhere the seats take the show's theme colour (themes.js). `seatStyle`: the seat's shape
+// where the building's own is known (venues3d.js seatGeometry), else the template's.
 const JIEXPO = { name: 'JIExpo Kemayoran', art: 'jiexpo', city: 'Jakarta', address: 'Jl. Benyamin Sueb, Kemayoran, Jakarta Pusat', transit: 'KRL to Kemayoran station, then a short ride', capacity: '' };
 const GBK = { name: 'Gelora Bung Karno Main Stadium', art: 'gbk', seatColor: { bands: ['#eceef0', '#c8102e'], speckle: ['#8e9297', 0.12] }, city: 'Jakarta', address: 'Jl. Pintu Satu Senayan, Gelora, Tanah Abang, Jakarta Pusat', transit: 'MRT Istora Mandiri station', capacity: '' };
 const JIS = { name: 'Jakarta International Stadium', art: 'jis', seatColor: { bands: ['#e2701f', '#e2701f', ['#e2701f', '#e2701f', '#9da2a8']] }, city: 'Jakarta', address: 'Jl. R.E. Martadinata, Papanggo, Tanjung Priok, Jakarta Utara', transit: '', capacity: '' };
@@ -38,7 +40,7 @@ const MADYA = { name: 'Stadion Madya GBK', art: 'madya', seatColor: '#e8eaed', c
 const ISTORA = { name: 'Istora Senayan GBK', art: 'istora', seatColor: { mix: ['#6c7075', '#979ba0', '#c0c3c7'] }, city: 'Jakarta', address: 'Kompleks Gelora Bung Karno, Senayan, Jakarta Pusat', transit: 'MRT Istora Mandiri station', capacity: '' };
 const BASKET = { name: 'Basket Hall GBK', art: 'basket-hall', city: 'Jakarta', address: 'Kompleks Gelora Bung Karno, Senayan, Jakarta Pusat', transit: 'MRT Istora Mandiri station', capacity: '' };
 const TENNIS = { name: 'Tennis Indoor GBK', art: 'tennis-indoor', city: 'Jakarta', address: 'Kompleks Gelora Bung Karno, Senayan, Jakarta Pusat', transit: 'MRT Istora Mandiri station', capacity: '' };
-const INA_ARENA = { name: 'Indonesia Arena', art: 'indonesia-arena', city: 'Jakarta', address: 'Kompleks Gelora Bung Karno, Senayan, Jakarta Pusat', transit: 'MRT Istora Mandiri station', capacity: '' };
+const INA_ARENA = { name: 'Indonesia Arena', art: 'indonesia-arena', seatColor: '#8a8e94', seatStyle: 'flipup', city: 'Jakarta', address: 'Kompleks Gelora Bung Karno, Senayan, Jakarta Pusat', transit: 'MRT Istora Mandiri station', capacity: '' };
 
 // Shows announced for the next six months whose seating plan we have not modelled yet.
 // They run on a stand-in layout: the My Chemical Romance stadium plan (stadium-end) for
@@ -276,6 +278,7 @@ export function getEvent(id) {
       place: e.place,
       // The building's own seats where we know them, else the show's colour, else the template's.
       seatColor: e.place?.seatColor || THEMES[e.theme]?.seat || base.seatColor,
+      seatStyle: e.place?.seatStyle || base.seatStyle,
       branding: e.branding,
       categories,
       catById: Object.fromEntries(categories.map(c => [c.id, c])),
