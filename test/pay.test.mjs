@@ -10,6 +10,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { writeWorkerCatalog } from '../scripts/worker-catalog.mjs';
 import { EVENTS, getEvent, isConcert } from '../js/events.js';
 import { checkClaim } from '../js/rules.js';
+import { PAY_METHODS } from '../js/paymethods.js';
 
 writeWorkerCatalog(path.resolve(new URL('..', import.meta.url).pathname));
 const { default: worker } = await import('../worker/index.mjs');
@@ -31,13 +32,32 @@ function fakeD1() {
   return { prepare: sql => stmt(sql), rows: () => db.prepare('SELECT * FROM orders').all() };
 }
 
-// Midtrans, as far as the Worker sees it: Snap makes a payment page, the status API answers
-// with whatever the test puts in `paid`. Resend takes the emails into `mails`.
-let calls, paid, snapFails, mails, mailFails;
+// Midtrans, as far as the Worker sees it: Snap makes a card payment page; the Core API charge
+// answers each way to pay as Midtrans' docs show it (or with `chargeAnswer`, when a test sets
+// one) and leaves the order pending; cancel closes a pending order ('404' with none, '412'
+// once it is closed or paid, or `cancelCode`); the status API answers with whatever is in
+// `paid`. Resend takes the emails into `mails`.
+let calls, paid, snapFails, mails, mailFails, chargeAnswer, cancelCode;
+const API = 'https://api.sandbox.midtrans.com';
+function chargeOk(b) {
+  const tid = 'a1b2c3d4-0000-4000-8000-123456789abc';
+  const base = { status_code: '201', status_message: 'Success', transaction_id: tid, order_id: b.transaction_details.order_id, gross_amount: '25000.00', currency: 'IDR', payment_type: b.payment_type, transaction_status: 'pending' };
+  const qr = kind => ({ name: 'generate-qr-code', method: 'GET', url: `${API}/v2/${kind}/${tid}/qr-code` });
+  switch (b.payment_type) {
+    case 'bank_transfer': return { ...base, va_numbers: [{ bank: b.bank_transfer.bank, va_number: '12345678901' }] };
+    case 'permata': return { ...base, permata_va_number: '8562000011112222' };
+    case 'echannel': return { ...base, biller_code: '70012', bill_key: '990011223344' };
+    case 'qris': return { ...base, actions: [qr('qris')] };
+    case 'gopay': return { ...base, actions: [qr('gopay'), { name: 'deeplink-redirect', method: 'GET', url: `gojek://gopay/merchanttransfer?tref=${tid}&amount=25000` }] };
+    case 'shopeepay': return { ...base, actions: [{ name: 'deeplink-redirect', method: 'GET', url: `https://wsa.uat.wallet.airpay.co.id/universal-link/wallet/pay?token=${tid}` }] };
+    case 'cstore': return { ...base, store: b.cstore.store, payment_code: b.cstore.store === 'alfamart' ? 'ALFA01234567' : '0123456789' };
+    default: return { status_code: '402', status_message: 'Payment channel is not activated.' };
+  }
+}
 const realFetch = globalThis.fetch, realError = console.error, realLog = console.log;
 let logged;
 beforeEach(() => {
-  calls = []; paid = {}; snapFails = false; logged = []; mails = []; mailFails = false;
+  calls = []; paid = {}; snapFails = false; logged = []; mails = []; mailFails = false; chargeAnswer = null; cancelCode = null;
   console.error = (...a) => logged.push(a.join(' '));
   console.log = (...a) => logged.push(a.join(' '));
   globalThis.fetch = async (url, init = {}) => {
@@ -51,6 +71,19 @@ beforeEach(() => {
       if (snapFails) return Response.json({ error_messages: ['transaction_details.gross_amount is not equal to the sum of item_details'] }, { status: 400 });
       const host = new URL(url).origin;
       return Response.json({ token: 'snap-token-1', redirect_url: `${host}/snap/v4/redirection/snap-token-1` }, { status: 201 });
+    }
+    if (/^https:\/\/api\.(?:sandbox\.)?midtrans\.com\/v2\/charge$/.test(String(url))) {
+      const b = JSON.parse(init.body);
+      const a = chargeAnswer ? chargeAnswer(b) : Response.json(chargeOk(b));
+      if (!chargeAnswer) paid[b.transaction_details.order_id] = { transaction_status: 'pending' };
+      return a;
+    }
+    const c = /^https:\/\/api\.(?:sandbox\.)?midtrans\.com\/v2\/([^/]+)\/cancel$/.exec(String(url));
+    if (c) {
+      const id = decodeURIComponent(c[1]), t = paid[id];
+      const code = cancelCode || (!t ? '404' : t.transaction_status === 'pending' ? '200' : '412');
+      if (code === '200') paid[id] = { transaction_status: 'cancel' };
+      return Response.json({ status_code: code, status_message: code === '200' ? 'Success, transaction is canceled' : 'Cannot cancel' });
     }
     const m = /^https:\/\/api\.(?:sandbox\.)?midtrans\.com\/v2\/([^/]+)\/status$/.exec(String(url));
     if (m) {
@@ -71,21 +104,28 @@ const post = (body, { headers = {}, ...more } = {}) => req('/api/payments', {
   method: 'POST', headers: { 'content-type': 'application/json', origin: ORIGIN, ...headers }, body: typeof body === 'string' ? body : JSON.stringify(body), ...more,
 });
 
-// A real seat of a concert on sale, and an order for it.
+// A real seat of a concert on sale, and an order for it, paid by card unless a test says.
 const live = EVENTS.find(e => isConcert(e.id) && concert(e.id) && concert(e.id).start > Date.now());
 const venue = getEvent(live.id), seat = venue.seats[Math.floor(venue.seats.length / 2)];
-const order = (more = {}) => ({ eventId: live.id, cat: seat.cat, seat: seat.id, name: 'Rani Putri', email: 'Rani@Example.com', consent: true, ...more });
+const order = (more = {}) => ({ eventId: live.id, cat: seat.cat, seat: seat.id, name: 'Rani Putri', email: 'Rani@Example.com', consent: true, method: 'card', ...more });
 
 test('payments stay off until the server key is set', async () => {
   assert.equal((await req('/api/config', { env: env({ MIDTRANS_SERVER_KEY: '' }) })).status, 404);
   assert.equal((await post(order(), { env: env({ MIDTRANS_SERVER_KEY: undefined }) })).status, 503);
   const c = await (await req('/api/config')).json();
-  assert.deepEqual(c, { mode: 'pay', provider: 'midtrans', sandbox: true, fee: 25000, mail: false });
+  assert.deepEqual(c, { mode: 'pay', provider: 'midtrans', sandbox: true, fee: 25000, mail: false, methods: PAY_METHODS.map(m => m.id) });
   assert.equal((await (await req('/api/config', { env: env({ MIDTRANS_SERVER_KEY: 'Mid-server-LIVEKEY0123456789' }) })).json()).sandbox, false);
   assert.equal((await (await req('/api/config', { env: env({ MIDTRANS_ENV: 'production' }) })).json()).sandbox, false);
 });
 
-test('an order makes a Snap payment at the access fee and gives back a waiting pass', async () => {
+test('MIDTRANS_METHODS narrows the ways to pay, and a list with none the checkout knows means all', async () => {
+  const methods = async v => (await (await req('/api/config', { env: env({ MIDTRANS_METHODS: v }) })).json()).methods;
+  assert.deepEqual(await methods(' BCA, qris ,paypal'), ['qris', 'bca']);
+  assert.deepEqual(await methods('paypal'), PAY_METHODS.map(m => m.id));
+  assert.deepEqual(await methods(''), PAY_METHODS.map(m => m.id));
+});
+
+test('a card order makes a Snap payment at the access fee and gives back a waiting pass', async () => {
   const r = await post(order({ amount: 1, gross_amount: 1 }));
   assert.equal(r.status, 201);
   assert.equal(r.headers.get('cache-control'), 'no-store');
@@ -114,6 +154,10 @@ test('an order makes a Snap payment at the access fee and gives back a waiting p
   assert.ok(Math.abs(start - Date.parse(p.createdAt)) < 1000);
   assert.equal(Date.parse(p.expiresAt) - Date.parse(p.createdAt), 36e5);
   assert.equal(p.snap, 'snap-token-1', 'the token that opens the form inside the page');
+  assert.equal(p.method, 'card');
+  assert.deepEqual(body.enabled_payments, ['credit_card'], 'Snap shows the card form alone');
+  assert.equal(body.credit_card.secure, true);
+  assert.ok(!calls.some(c => c.url.endsWith('/v2/charge')));
   assert.equal(p.email, 'rani@example.com');
   assert.ok(!JSON.stringify(p).includes(KEY));
 });
@@ -138,6 +182,9 @@ test('the order is checked the way the page checks it', async () => {
     [order({ name: 'R' }), 'name'],
     [order({ email: 'not-an-email' }), 'email'],
     [order({ consent: 'yes' }), 'consent'],
+    [order({ method: undefined }), 'method'],
+    [order({ method: 'paypal' }), 'method'],
+    [order({ method: '__proto__' }), 'method'],
   ];
   for (const [o, field] of cases) {
     const r = await post(o);
@@ -145,6 +192,91 @@ test('the order is checked the way the page checks it', async () => {
     assert.equal((await r.json()).field, field);
   }
   assert.equal(calls.length, 0, 'nothing reached Midtrans');
+});
+
+// What each way to pay sends Midtrans, and what the page gets back to pay with.
+const WAYS = {
+  qris: [{ payment_type: 'qris', qris: { acquirer: 'gopay' } }, { qr: `${API}/v2/qris/a1b2c3d4-0000-4000-8000-123456789abc/qr-code` }],
+  gopay: [{ payment_type: 'gopay', gopay: { enable_callback: true, callback_url: `${ORIGIN}/pay/done` } }, { qr: `${API}/v2/gopay/a1b2c3d4-0000-4000-8000-123456789abc/qr-code`, app: 'gojek://gopay/merchanttransfer?tref=a1b2c3d4-0000-4000-8000-123456789abc&amount=25000' }],
+  shopeepay: [{ payment_type: 'shopeepay', shopeepay: { callback_url: `${ORIGIN}/pay/done` } }, { qr: '', app: 'https://wsa.uat.wallet.airpay.co.id/universal-link/wallet/pay?token=a1b2c3d4-0000-4000-8000-123456789abc' }],
+  bca: [{ payment_type: 'bank_transfer', bank_transfer: { bank: 'bca' } }, { va: '12345678901' }],
+  bni: [{ payment_type: 'bank_transfer', bank_transfer: { bank: 'bni' } }, { va: '12345678901' }],
+  bri: [{ payment_type: 'bank_transfer', bank_transfer: { bank: 'bri' } }, { va: '12345678901' }],
+  cimb: [{ payment_type: 'bank_transfer', bank_transfer: { bank: 'cimb' } }, { va: '12345678901' }],
+  permata: [{ payment_type: 'permata' }, { va: '8562000011112222' }],
+  mandiri: [{ payment_type: 'echannel' }, { billerCode: '70012', billKey: '990011223344' }],
+  alfamart: [{ payment_type: 'cstore', cstore: { store: 'alfamart', alfamart_free_text_1: '3D seat view, Atvents' } }, { code: 'ALFA01234567' }],
+  indomaret: [{ payment_type: 'cstore', cstore: { store: 'indomaret', message: '3D seat view, Atvents' } }, { code: '0123456789' }],
+};
+
+test('every way but the card is a Core API charge, and the page gets what to pay with', async () => {
+  assert.deepEqual(Object.keys(WAYS).sort(), PAY_METHODS.filter(m => m.kind !== 'card').map(m => m.id).sort());
+  for (const [method, [sent, got]] of Object.entries(WAYS)) {
+    calls = [];
+    const r = await post(order({ method }));
+    assert.equal(r.status, 201, method);
+    const p = await r.json();
+    assert.equal(p.method, method);
+    assert.deepEqual(p.pay, got, method);
+    assert.equal(p.snap, undefined);
+    assert.equal(p.url, undefined);
+    assert.equal(calls.length, 1, 'one call: the charge');
+    const [c] = calls;
+    assert.equal(c.url, `${API}/v2/charge`);
+    assert.equal(c.init.headers.authorization, `Basic ${btoa(`${KEY}:`)}`);
+    assert.equal(c.init.headers['x-append-notification'], `${ORIGIN}/api/midtrans/notify`);
+    const body = JSON.parse(c.init.body);
+    for (const [k, v] of Object.entries(sent)) {
+      if (k === 'echannel') continue;
+      assert.deepEqual(body[k], v, `${method} ${k}`);
+    }
+    if (method === 'mandiri') assert.ok(body.echannel.bill_info1.length <= 10 && body.echannel.bill_info2.length <= 30, 'Mandiri’s bill lines fit');
+    assert.deepEqual(body.transaction_details, { order_id: p.id, gross_amount: 25000 });
+    assert.equal(body.item_details.reduce((a, i) => a + i.price * i.quantity, 0), 25000);
+    assert.deepEqual(body.customer_details, { first_name: 'Rani Putri', email: 'rani@example.com' });
+    assert.equal(body.custom_expiry.expiry_duration, 60);
+    assert.equal(body.custom_expiry.unit, 'minute');
+    assert.ok(Math.abs(Date.parse(body.custom_expiry.order_time.replace(' ', 'T').replace(' +0700', '+07:00')) - Date.parse(p.createdAt)) < 1000);
+    assert.equal(Date.parse(p.expiresAt) - Date.parse(p.createdAt), 36e5);
+  }
+});
+
+test('a way the Worker has switched off is refused before Midtrans hears of it', async () => {
+  const r = await post(order({ method: 'qris' }), { env: env({ MIDTRANS_METHODS: 'bca,card' }) });
+  assert.equal(r.status, 400);
+  assert.equal((await r.json()).field, 'method');
+  assert.equal(calls.length, 0);
+});
+
+test('a channel Midtrans refuses asks for another way; an answer the page cannot use is a 502', async () => {
+  chargeAnswer = () => Response.json({ status_code: '402', status_message: 'Payment channel is not activated.' });
+  let r = await post(order({ method: 'qris' }));
+  assert.equal(r.status, 409);
+  const e = await r.json();
+  assert.equal(e.field, 'method');
+  assert.match(e.error, /^QRIS is not open right now/);
+
+  chargeAnswer = () => Response.json({ status_code: '500', status_message: 'Sorry, we encountered internal server error.' }, { status: 500 });
+  assert.equal((await post(order({ method: 'bca' }))).status, 502, 'Midtrans down');
+
+  // Answers that look paid-for but carry nothing safe to show: a QR code from another host,
+  // a wallet link to anywhere else, an account number that is not digits, no store code.
+  const bad = [
+    ['qris', b => ({ ...chargeOk(b), actions: [{ name: 'generate-qr-code', url: 'https://evil.example/qr-code' }] })],
+    ['gopay', b => ({ ...chargeOk(b), actions: [{ name: 'deeplink-redirect', url: 'javascript:alert(1)' }] })],
+    ['shopeepay', b => ({ ...chargeOk(b), actions: [{ name: 'deeplink-redirect', url: 'https://airpay.co.id.evil.example/pay' }] })],
+    ['bca', b => ({ ...chargeOk(b), va_numbers: [{ bank: 'bca', va_number: '1234<script>' }] })],
+    ['mandiri', b => ({ ...chargeOk(b), bill_key: '' })],
+    ['alfamart', b => ({ ...chargeOk(b), payment_code: 'ALFA "1"' })],
+  ];
+  for (const [method, answer] of bad) {
+    chargeAnswer = b => Response.json(answer(b));
+    r = await post(order({ method }));
+    assert.equal(r.status, 502, method);
+    const text = await r.text();
+    assert.ok(!text.includes('evil') && !text.includes('script'), method);
+  }
+  assert.ok(logged.every(l => !l.includes(KEY) && !l.includes(btoa(`${KEY}:`))));
 });
 
 test('a concert that is over sells no more passes', async () => {
@@ -231,6 +363,56 @@ test('a pass opens only with its own key', async () => {
   assert.ok(calls.every(c => !c.url.includes('/status')), 'Midtrans is asked only for a valid key');
 });
 
+// ---------------------------------------------------------------- another way to pay
+
+const cancel = (id, token, more = {}) => req(`/api/passes/${id}/cancel`, { method: 'POST', headers: { 'x-pass-token': token, origin: ORIGIN, ...more.headers }, ...more });
+
+test('choosing another way closes the order at Midtrans first', async () => {
+  const p = await (await post(order({ method: 'bca' }))).json();
+  calls = [];
+  const r = await cancel(p.id, p.token);
+  assert.equal(r.status, 200);
+  assert.equal((await r.json()).status, 'rejected');
+  assert.equal(calls[0].url, `${API}/v2/${p.id}/cancel`);
+  assert.equal(calls[0].init.method, 'POST');
+  assert.equal(paid[p.id].transaction_status, 'cancel');
+
+  // A card form nobody used has no transaction at Midtrans: nothing to close.
+  const q = await newPass();
+  assert.equal((await (await cancel(q.id, q.token)).json()).status, 'rejected');
+});
+
+test('an order paid before it could be closed opens its pass instead', async () => {
+  const { e, p } = await mailedOrder();
+  paid[p.id] = { transaction_status: 'settlement' };
+  const r = await cancel(p.id, p.token, { env: e });
+  assert.equal(r.status, 200);
+  assert.equal((await r.json()).status, 'confirmed');
+  await settled();
+  assert.equal(mails.length, 1, 'and its email goes');
+});
+
+test('an order Midtrans would not close stays as it is, and the page is told to try again', async () => {
+  const p = await (await post(order({ method: 'alfamart' }))).json();
+  cancelCode = '412';
+  const r = await cancel(p.id, p.token);
+  assert.equal(r.status, 409);
+  assert.equal(paid[p.id].transaction_status, 'pending');
+});
+
+test('only the site, with the pass key, can close an order', async () => {
+  const p = await (await post(order({ method: 'bca' }))).json(), other = await newPass();
+  calls = [];
+  assert.equal((await cancel(p.id, p.token, { headers: { origin: 'https://evil.example' } })).status, 403);
+  assert.equal((await cancel(p.id, other.token)).status, 404);
+  assert.equal((await cancel(p.id, '')).status, 404);
+  assert.equal((await cancel('PAY-../../x', p.token)).status, 404);
+  assert.equal((await req(`/api/passes/${p.id}/cancel`, { headers: { 'x-pass-token': p.token } })).status, 405);
+  assert.equal((await cancel(p.id, p.token, { env: env({ STATUS_LIMIT: { limit: async () => ({ success: false }) } }) })).status, 429);
+  assert.equal(calls.length, 0, 'Midtrans is not asked');
+  assert.equal(paid[p.id].transaction_status, 'pending');
+});
+
 // ---------------------------------------------------------------- notifications and the pass email
 
 const MAILING = { RESEND_API_KEY: 're_test_0123456789abcdef' };
@@ -255,8 +437,20 @@ test('the order book keeps each order, and the config says the email is on', asy
   assert.equal(row.email, 'rani@example.com');
   assert.equal(row.status, 'checking');
   assert.equal(row.origin, ORIGIN);
+  assert.equal(row.method, 'card');
   assert.equal(row.created_at, Date.parse(p.createdAt));
   assert.equal(row.emailed_at, null);
+});
+
+test('an order book made before the way to pay was kept gets its column', async () => {
+  const DB = fakeD1();
+  await DB.prepare(`CREATE TABLE orders (id TEXT PRIMARY KEY, event_id TEXT NOT NULL, title TEXT NOT NULL, cat TEXT NOT NULL, seat TEXT NOT NULL,
+    seat_label TEXT NOT NULL, name TEXT NOT NULL, email TEXT NOT NULL, amount INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'checking',
+    origin TEXT NOT NULL, created_at INTEGER NOT NULL, paid_at INTEGER, emailed_at INTEGER)`).run();
+  const p = await (await post(order({ method: 'bca' }), { env: env({ DB, ...MAILING }) })).json();
+  const [row] = DB.rows();
+  assert.equal(row.id, p.id);
+  assert.equal(row.method, 'bca');
 });
 
 test('Midtrans’ signed notification of a paid order sends the pass email, once', async () => {
@@ -279,6 +473,13 @@ test('Midtrans’ signed notification of a paid order sends the pass email, once
   assert.equal(pass.seat, seat.id);
   assert.ok(m.html.includes(link[0].replace(/&/g, '&amp;')));
   assert.ok(m.html.includes('&lt;b&gt;Rani&lt;/b&gt;') && !m.html.includes('<b>Rani'), 'the name is escaped');
+  // The concert's poster and the logo, from the site's own address; the way it was paid.
+  const poster = concert(live.id).poster;
+  assert.match(poster.src, /^assets\/mail\/[\w.-]+\.jpg$/);
+  assert.ok(m.html.includes(`src="${ORIGIN}/${poster.src}"`), 'the poster');
+  assert.ok(m.html.includes(`src="${ORIGIN}/assets/mail/atvents-logo.png"`), 'the logo');
+  assert.ok(m.html.includes('Credit or debit card') && m.text.includes('Paid with: Credit or debit card'));
+  assert.ok(m.text.includes(`Seat: ${DB.rows()[0].seat_label}`));
   assert.equal(DB.rows()[0].status, 'confirmed');
   assert.ok(DB.rows()[0].paid_at && DB.rows()[0].emailed_at);
 

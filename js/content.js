@@ -11,7 +11,7 @@ export const FAQ_FANS = [
   { id: 'unlock', q: 'How do I get the view from my seat?',
     a: 'Open <a class="u" href="#unlock">Unlock 3D</a>, choose your concert, category, section, row and seat, add your name and email, and pay. Your pass opens straight away and the seat tour starts from there.' },
   { id: 'pay', q: 'How can I pay?',
-    a: 'QRIS, e-wallets, bank transfer or card, in the secure Midtrans payment form right on this site. Midtrans handles the payment: we never see your card, wallet or bank details. Once it is paid, the pass opens and its link comes to your email.' },
+    a: 'QRIS, GoPay, ShopeePay, bank transfer, card, or cash at Alfamart or Indomaret, right on this site. Midtrans handles the payment: card numbers go only into Midtrans’ own card form, and we never see your card, wallet or bank details. Once it is paid, the pass opens and its link comes to your email.' },
   { id: 'seller', q: 'Do you sell concert tickets?',
     a: 'No. Each concert page names its official seller (tiket.com, Loket, TipTip or Traveloka) and links to it. The 3D view does not include a ticket.' },
   { id: 'tour', q: 'What does the seat tour show?',

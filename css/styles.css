@@ -1866,11 +1866,74 @@ body { font-family: var(--font); font-feature-settings: "cv11", "ss01"; }
 .pay-sheet .co-status { color: var(--text); }
 .unlock-mail { display: flex; gap: 10px; align-items: flex-start; padding: 12px 16px; border-radius: var(--r-sm); background: var(--panel-2); font-size: 14px; line-height: 1.5; }
 .unlock-mail svg { flex: none; width: 16px; height: 16px; margin-top: 2px; color: var(--coral); }
+.co-back { display: inline-flex; align-items: center; gap: 6px; }
+.co-back svg { width: 14px; height: 14px; }
+.pay-sheet .co-error { padding: 12px 16px; border-radius: var(--r-sm); background: rgba(236, 84, 70, 0.12); border: 1px solid rgba(236, 84, 70, 0.45); color: var(--text); }
+/* the ways to pay: Midtrans' logo kit on small white plates, as the banks and wallets draw
+   their marks; rows for wallets and the card, tiles for banks and stores */
+.pm-group { display: flex; flex-direction: column; gap: 10px; margin-top: var(--s2); }
+.pm-h { font: 600 11px/1.2 var(--font); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.pm-list { display: flex; flex-direction: column; gap: 8px; }
+.pm { position: relative; display: flex; align-items: center; gap: 14px; width: 100%; padding: 10px 16px 10px 10px; border-radius: 16px; background: var(--panel); border: 1px solid var(--line); text-align: left; cursor: pointer; transition: border-color .2s, background .2s; }
+.pm:disabled { cursor: progress; opacity: 0.5; }
+.pm.is-busy { opacity: 1; border-color: var(--coral); }
+.pm > svg { margin-left: auto; width: 18px; height: 18px; color: var(--dim); transition: transform .2s, color .2s; }
+@media (hover: hover) {
+  .pm:hover { border-color: rgba(255, 125, 107, 0.55); background: #241f1e; }
+  .pm:hover > svg { color: var(--coral-2); transform: translateX(3px); }
+  }
+.pm.is-busy > svg { visibility: hidden; }
+.pm.is-busy::after { content: ""; position: absolute; right: 16px; top: 50%; width: 16px; height: 16px; margin-top: -8px; border: 2px solid var(--line-2); border-top-color: var(--coral-2); border-radius: 50%; animation: spin .8s linear infinite; }
+.pm-logo { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 96px; height: 48px; padding: 9px 11px; border-radius: 11px; background: #fff; }
+.pm-logo img { display: block; max-width: 100%; max-height: 100%; width: auto; height: auto; }
+.pm-logo.is-many { width: auto; padding-inline: 12px; }
+.pm-logo.is-many img { height: 22px; max-width: 46px; }
+.pm-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pm-text b { font-weight: 600; font-size: 15px; }
+.pm-text small { color: var(--muted); font-size: 13px; line-height: 1.35; }
+.pm-va, .pm-store { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.pm-va .pm, .pm-store .pm { flex-direction: column; align-items: stretch; gap: 8px; padding: 8px 8px 10px; text-align: center; }
+.pm-va .pm-logo, .pm-store .pm-logo { width: 100%; height: 50px; }
+.pm-va .pm-text small, .pm-store .pm-text small, .pm-va .pm > svg, .pm-store .pm > svg { display: none; }
+.pm-va .pm-text b, .pm-store .pm-text b { font-size: 13px; font-weight: 500; color: var(--muted); }
+.pm-va .pm.is-busy::after, .pm-store .pm.is-busy::after { top: auto; bottom: 10px; right: 10px; margin: 0; }
+/* what to pay with, on the site's own dark checkout */
+.co-pay { display: flex; flex-direction: column; gap: var(--s4); padding: var(--s5); border-radius: 18px; background: var(--panel); border: 1px solid var(--line); }
+.co-way { display: flex; align-items: center; gap: 14px; }
+.co-way > span:last-child { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.co-way b { font-weight: 600; }
+.co-way small { color: var(--muted); font-size: 13px; }
+.co-fields { display: flex; flex-direction: column; gap: 8px; }
+.co-field { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); padding: 12px 14px 12px 18px; border-radius: 14px; background: var(--frame); border: 1px solid var(--line); }
+.co-field > span { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.co-field small { color: var(--muted); font-size: 12px; }
+.co-field b { font-size: 17px; font-weight: 600; overflow-wrap: anywhere; }
+.co-field.is-big b { font-size: clamp(22px, 2.6vw, 28px); font-weight: 600; letter-spacing: 0.02em; color: #fff; }
+.co-field .btn, .pay-sheet .co-alt { flex: none; gap: 6px; background: transparent; color: var(--text); border-color: var(--line-2); }
+.co-field .btn:hover, .pay-sheet .co-alt:hover { border-color: rgba(255, 255, 255, 0.5); background: transparent; }
+.co-field .btn svg { width: 15px; height: 15px; color: var(--coral-2); }
+.co-qr { display: grid; place-items: center; width: fit-content; min-width: 260px; min-height: 260px; margin: 0 auto; padding: 14px; border-radius: 18px; background: #fff; }
+.co-qr img { display: block; width: 232px; height: 232px; }
+.pay-sheet .co-qr-off { max-width: 220px; color: var(--ink-muted); text-align: center; }
+.co-steps { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: var(--s4) 0 0 20px; border-top: 1px solid var(--line); color: rgba(244, 240, 238, 0.86); font-size: 14px; line-height: 1.5; }
+.co-steps li::marker { color: var(--coral-2); font-weight: 700; }
 @media (max-width: 560px) {
-  .pay-sheet.panel-box:has(.co-form) { padding: var(--s5) var(--s4); }
+  .pay-sheet.panel-box { padding: var(--s5) var(--s4); }
   .co-bleed { margin-inline: calc(-1 * var(--s4)); }
   .co-form { height: 600px; border-radius: 0; }
   .co-order { flex-direction: column; align-items: flex-start; gap: var(--s2); }
+  .pm-logo { width: 84px; height: 44px; padding: 8px 9px; }
+  .pm-logo.is-many { gap: 5px; padding-inline: 9px; }
+  .pm-logo.is-many img { height: 15px; max-width: 30px; }
+  .pm-va .pm-logo, .pm-store .pm-logo { height: 44px; padding: 8px; }
+  .co-pay { padding: var(--s4); }
+  /* The copy button beside the label, so a long number has the field's whole width. */
+  .co-field { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; row-gap: 2px; padding: 10px 10px 12px 14px; }
+  .co-field > span { display: contents; }
+  .co-field small { grid-area: 1 / 1; }
+  .co-field .btn { grid-area: 1 / 2; }
+  .co-field b { grid-area: 2 / 1 / 3 / 3; }
+  .pay-sheet .row-btns .btn { flex: 1 1 100%; }
 }
 .hs-perk .hs-seller { color: inherit; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
 .hs-perk .hs-seller svg { width: 12px; height: 12px; }

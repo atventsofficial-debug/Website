@@ -100,16 +100,18 @@ export function securityHeaders(root, isHttps, { midtrans = false } = {}) {
     }
   } catch { /* no index.html */ }
   // Concert tickets are bought from the official seller, in its own tab. The 3D pass is paid
-  // in Midtrans' form inside the page (js/snap.js), only on the static build, which pays
-  // through the Worker: then, and only then, Midtrans' two hosts may load that script and
-  // the frame it opens. snap.js fetches nothing itself.
+  // through Midtrans, only on the static build, which pays through the Worker: then, and
+  // only then, Midtrans' two app hosts may load the card form's script and the frame it
+  // opens (js/snap.js), and its two API hosts may serve the QRIS and GoPay codes as images.
+  // Nothing on the page fetches from Midtrans itself.
   const pay = midtrans ? 'https://app.midtrans.com https://app.sandbox.midtrans.com' : '';
+  const qr = midtrans ? ' https://api.midtrans.com https://api.sandbox.midtrans.com' : '';
   const csp = [
     "default-src 'self'",
     `script-src 'self' ${mapHash} ${cdn}${pay ? ` ${pay}` : ''}`,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
-    "img-src 'self' data: blob:",
+    `img-src 'self' data: blob:${qr}`,
     "connect-src 'self'",
     `frame-src ${pay || "'none'"}`,
     "object-src 'none'",

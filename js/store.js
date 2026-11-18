@@ -159,18 +159,21 @@ export class LocalStore {
 // Everything else stays in this browser, as in LocalStore. `sandbox`: the Worker has a
 // Midtrans Sandbox key, so nothing is charged.
 export class PayStore extends LocalStore {
-  // From /api/config: Sandbox or not, the client key that opens Midtrans' form inside the
-  // page (without it, the fan goes to Midtrans' payment page), and whether the pass email
-  // is switched on.
-  constructor({ sandbox = false, clientKey = '', mail = false } = {}) {
+  // From /api/config: Sandbox or not, the client key that opens Midtrans' card form inside
+  // the page (without it, a card payment goes to Midtrans' payment page), whether the pass
+  // email is switched on, and the ways to pay switched on (js/paymethods.js).
+  constructor({ sandbox = false, clientKey = '', mail = false, methods = null } = {}) {
     super();
     this.sandbox = !!sandbox;
     this.clientKey = typeof clientKey === 'string' ? clientKey : '';
     this.mail = !!mail;
+    this.methods = Array.isArray(methods) ? methods.filter(m => typeof m === 'string') : null;
   }
   get mode() { return 'pay'; }
   get live() { return true; }
   pay(d) { return call('api/payments', { method: 'POST', body: d }); }
+  // Another way to pay: the server has Midtrans close this order first.
+  cancelPay(id, token) { return call(`api/passes/${encodeURIComponent(id)}/cancel`, { method: 'POST', headers: { 'x-pass-token': token } }); }
   // A pass from the preview, without a key, is still this browser's.
   claimStatus(id, token) {
     return token ? call(`api/passes/${encodeURIComponent(id)}`, { headers: { 'x-pass-token': token } }) : super.claimStatus(id);

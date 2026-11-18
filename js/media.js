@@ -7,11 +7,12 @@
 // kits, with permission.
 // To add one: put a 3:2 file in assets/events/ (1200 px wide, with a -640 copy, or one 480 px
 // file marked `w: 480`), a 5:7 one in assets/events/card/ (800 px wide, with a -480 copy, named
-// after the key), add a line here, then `image: '<key>'` on the event. A poster of another
-// shape goes whole into both, over a blurred copy of itself. `pos` is the part to keep when a
-// square thumbnail crops it; `screen` the part to keep on the home hero's wide stage screens,
-// when the middle would lose the title. A file that replaces another takes a new name, so a
-// browser that has the old one cached fetches it.
+// after the key), add a line here, then `image: '<key>'` on the event, and run
+// scripts/mail-art.py for the pass email's JPEG copy. A poster of another shape goes whole
+// into both, over a blurred copy of itself. `pos` is the part to keep when a square thumbnail
+// crops it; `screen` the part to keep on the home hero's wide stage screens, when the middle
+// would lose the title. A file that replaces another takes a new name, so a browser that has
+// the old one cached fetches it.
 export const IMAGES = {
   'bts-arirang': { src: 'assets/events/bts-arirang-official.webp', alt: 'BTS World Tour ARIRANG poster', credit: 'Poster · BIGHIT MUSIC, via indonesia.travel', pos: '42% 40%', screen: '50% 75%' },
   'bocelli-romanza': { w: 480, src: 'assets/events/bocelli-romanza.webp', alt: 'Andrea Bocelli Romanza 30th anniversary poster', credit: 'Poster · Shoemaker Live, via tiket.com', pos: '30% 50%', screen: '50% 55%' },

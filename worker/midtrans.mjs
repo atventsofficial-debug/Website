@@ -1,4 +1,5 @@
-// Midtrans, the payment provider: Snap, its hosted payment page, and the status API.
+// Midtrans, the payment provider: the Core API charge for each way to pay but the card
+// (js/paymethods.js), Snap for the card, and the status and cancel APIs.
 //
 // It needs one secret, MIDTRANS_SERVER_KEY, from the Midtrans dashboard (Settings, Access
 // keys). A Sandbox key (SB-Mid-server-…) talks to the Sandbox, where nothing is charged;
@@ -6,9 +7,11 @@
 // guess. The key only ever travels to Midtrans, in the Authorization header, and is never
 // logged or sent to the browser.
 //
-// MIDTRANS_CLIENT_KEY (Mid-client-…, from the same page, not a secret) lets the payment
-// form open inside the site's own page (Snap embed). Without it the fan goes to Midtrans'
-// payment page and comes back.
+// MIDTRANS_CLIENT_KEY (Mid-client-…, from the same page, not a secret) lets Midtrans' card
+// form open inside the site's own page (Snap embed). Without it a card payment goes to
+// Midtrans' payment page and comes back.
+import { payDetails } from '../js/paymethods.js';
+
 const HOSTS = {
   sandbox: { snap: 'https://app.sandbox.midtrans.com', api: 'https://api.sandbox.midtrans.com' },
   production: { snap: 'https://app.midtrans.com', api: 'https://api.midtrans.com' },
@@ -42,6 +45,40 @@ export const isPaymentPage = (url, sandbox) => {
 };
 
 export class MidtransError extends Error {}
+// Midtrans answered and said no: most often a channel not switched on for this account.
+export class PaymentRefused extends MidtransError {}
+
+// What the Core API charge needs beyond the order, for each way to pay but the card. GoPay
+// and ShopeePay send the fan back from their app to /pay/done, like Snap's finish address.
+export function chargeOf(method, origin) {
+  const back = `${origin}/pay/done`, what = '3D seat view, Atvents';
+  switch (method) {
+    case 'qris': return { payment_type: 'qris', qris: { acquirer: 'gopay' } };
+    case 'gopay': return { payment_type: 'gopay', gopay: { enable_callback: true, callback_url: back } };
+    case 'shopeepay': return { payment_type: 'shopeepay', shopeepay: { callback_url: back } };
+    case 'bca': case 'bni': case 'bri': case 'cimb': return { payment_type: 'bank_transfer', bank_transfer: { bank: method } };
+    case 'permata': return { payment_type: 'permata' };
+    // Mandiri's bill lines: at most 10 and 30 characters.
+    case 'mandiri': return { payment_type: 'echannel', echannel: { bill_info1: 'Payment:', bill_info2: what } };
+    case 'alfamart': return { payment_type: 'cstore', cstore: { store: 'alfamart', alfamart_free_text_1: what } };
+    case 'indomaret': return { payment_type: 'cstore', cstore: { store: 'indomaret', message: what } };
+    default: return null;
+  }
+}
+
+// What the fan pays with, out of Midtrans' answer to the charge, checked as the page checks
+// it (payDetails in js/paymethods.js). Null when the answer lacks what the way to pay needs.
+const actionOf = (data, name) => [].concat(data.actions || []).find(a => a?.name === name)?.url;
+export function payDetailsOf(method, data) {
+  if (!data || typeof data !== 'object') return null;
+  const vas = [].concat(data.va_numbers || []);
+  return payDetails(method, {
+    va: method === 'permata' ? data.permata_va_number : (vas.find(v => v?.bank === method) || vas[0])?.va_number,
+    billerCode: data.biller_code, billKey: data.bill_key,
+    qr: actionOf(data, 'generate-qr-code'), app: actionOf(data, 'deeplink-redirect'),
+    code: data.payment_code,
+  });
+}
 
 export function midtrans({ key, sandbox }) {
   const host = HOSTS[sandbox ? 'sandbox' : 'production'];
@@ -57,7 +94,8 @@ export function midtrans({ key, sandbox }) {
         signal: AbortSignal.timeout(10000),
       });
     } catch (err) {
-      throw new MidtransError(`${new URL(url).pathname.startsWith('/snap') ? 'Snap' : 'Status'} unreachable: ${err?.name || 'Error'}`);
+      const p = new URL(url).pathname, what = p.startsWith('/snap') ? 'Snap' : p.endsWith('/charge') ? 'Charge' : p.endsWith('/cancel') ? 'Cancel' : 'Status';
+      throw new MidtransError(`${what} unreachable: ${err?.name || 'Error'}`);
     }
     const data = await r.json().catch(() => ({}));
     return { status: r.status, data };
@@ -72,6 +110,23 @@ export function midtrans({ key, sandbox }) {
         throw new MidtransError(`Snap ${status}: ${[].concat(data.error_messages || []).join('; ').slice(0, 300)}`);
       }
       return { token: data.token, url: data.redirect_url };
+    },
+    // A Core API charge: Midtrans makes the virtual account, the QR code or the store code
+    // at once. A refusal (the channel is off, say) is a PaymentRefused; Midtrans down or out
+    // of reach a MidtransError.
+    async charge(body, { notify } = {}) {
+      const { status, data } = await call(`${host.api}/v2/charge`, { method: 'POST', body: JSON.stringify(body) }, notify ? { 'x-append-notification': notify } : {});
+      const code = String(data.status_code ?? status), why = `Charge ${status}/${code}: ${String(data.status_message || '').slice(0, 200)}`;
+      if (code === '201' || code === '200') return data;
+      throw status >= 500 || code.startsWith('5') ? new MidtransError(why) : new PaymentRefused(why);
+    },
+    // Closes an order nobody paid, so its account number or code stops taking money. '200'
+    // cancelled, '404' no transaction to cancel, '412' too late (paid, or already closed).
+    async cancel(orderId) {
+      const { status, data } = await call(`${host.api}/v2/${encodeURIComponent(orderId)}/cancel`, { method: 'POST' });
+      const code = String(data.status_code ?? status);
+      if (status >= 500 || code.startsWith('5')) throw new MidtransError(`Cancel ${status}/${code}`);
+      return code;
     },
     // The order as Midtrans has it, or null while it has no transaction yet: the fan has
     // not picked a way to pay on the payment page.

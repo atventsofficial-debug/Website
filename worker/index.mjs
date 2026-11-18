@@ -2,9 +2,10 @@
 // Midtrans, and the email that sends the pass. Cloudflare serves every file in site/ itself;
 // only addresses with no file behind them reach this code.
 //
-//   GET  /api/config            { mode: 'pay', sandbox, fee, clientKey, mail } once MIDTRANS_SERVER_KEY is set, else 404
-//   POST /api/payments          an order: the payment form's token, the Midtrans payment page and the key to the pass
+//   GET  /api/config            { mode: 'pay', sandbox, fee, clientKey, mail, methods } once MIDTRANS_SERVER_KEY is set, else 404
+//   POST /api/payments          an order and the way to pay it: what to pay with, and the key to the pass
 //   GET  /api/passes/<id>       how that payment is going (header x-pass-token: the key)
+//   POST /api/passes/<id>/cancel  the fan picks another way to pay: Midtrans closes this one
 //   POST /api/midtrans/notify   Midtrans telling us a payment changed (signed with the server key)
 //   GET  /pay/done              where Midtrans sends the fan back, on to #paid-<id>
 //
@@ -16,7 +17,8 @@
 // (js/store.js).
 import { ACCESS_FEE, PAY_MINUTES, PAYMENT_ID, line, checkBuyer } from '../js/order.js';
 import { concert, onSale, seatOf } from './catalog.mjs';
-import { paymentsOf, midtrans, MidtransError, passStateOf, signedByMidtrans, jakartaTime } from './midtrans.mjs';
+import { paymentsOf, midtrans, MidtransError, PaymentRefused, chargeOf, payDetailsOf, passStateOf, signedByMidtrans, jakartaTime } from './midtrans.mjs';
+import { payMethod, methodsOn } from '../js/paymethods.js';
 import { signPass, readPass } from './passkey.mjs';
 import { hasOrders, saveOrder, setStatus, takeEmail, returnEmail } from './orders.mjs';
 import { mailerOf, passEmail } from './mail.mjs';
@@ -47,6 +49,8 @@ export default {
       if (path === '/api/payments') return method === 'POST' ? await createPayment(request, env, url) : notAllowed('POST');
       const pass = /^\/api\/passes\/([^/]{1,40})$/.exec(path);
       if (pass) return method === 'GET' ? await passStatus(request, env, ctx, pass[1]) : notAllowed('GET');
+      const cancel = /^\/api\/passes\/([^/]{1,40})\/cancel$/.exec(path);
+      if (cancel) return method === 'POST' ? await cancelPayment(request, env, ctx, url, cancel[1]) : notAllowed('POST');
       if (path === '/api/midtrans/notify') return method === 'POST' ? await notified(request, env) : notAllowed('POST');
       if (path === '/pay/done') return backFromPayment(url);
       if (path.startsWith('/api/')) return fail(404, 'Not found');
@@ -69,6 +73,7 @@ function config(env) {
     mode: 'pay', provider: 'midtrans', sandbox: pay.sandbox, fee: ACCESS_FEE,
     ...(pay.clientKey ? { clientKey: pay.clientKey } : {}),
     mail: !!mailerOf(env) && hasOrders(env),   // the pass email goes out once paid
+    methods: methodsOn(env.MIDTRANS_METHODS),
   });
 }
 
@@ -98,8 +103,10 @@ const later = (ctx, promise) => (ctx?.waitUntil ? ctx.waitUntil(promise) : promi
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const newOrderId = () => `PAY-${[...crypto.getRandomValues(new Uint8Array(16))].map(b => ALPHABET[b & 31]).join('')}`;
 
-// The order: the concert, the seat and the buyer, checked as the page checks them; then a
-// Snap transaction at the access fee, which the browser cannot change, open for an hour.
+// The order: the concert, the seat, the buyer and the way to pay, checked as the page checks
+// them; then the charge at the access fee, which the browser cannot change, open for an hour.
+// A card opens Midtrans' card form (Snap); every other way is a Core API charge, and its
+// account number, QR code or store code comes back for the page to show.
 async function createPayment(request, env, url) {
   const pay = paymentsOf(env);
   if (!pay) return fail(503, 'Payments are not switched on yet.');
@@ -117,25 +124,49 @@ async function createPayment(request, env, url) {
   if (!seat) return fail(400, 'Choose your seat.', { field: 'seat' });
   const { buyer, field, error } = checkBuyer(d);
   if (error) return fail(400, error, { field });
+  const way = payMethod(line(d.method));
+  if (!way || !methodsOn(env.MIDTRANS_METHODS).includes(way.id)) return fail(400, 'Choose how to pay.', { field: 'method' });
 
   const id = newOrderId(), createdAt = Date.now();
   const where = seat.standing ? `${seat.secName}, standing` : `${seat.secName}, row ${seat.row}, seat ${seat.num}`;
-  const page = await midtrans(pay).createPayment({
+  const order = {
     transaction_details: { order_id: id, gross_amount: ACCESS_FEE },
     item_details: [{ id: '3D-PASS', price: ACCESS_FEE, quantity: 1, name: `3D seat view: ${e.title}`.slice(0, 50) }],
     customer_details: { first_name: buyer.name.slice(0, 80), email: buyer.email },
-    credit_card: { secure: true },
-    expiry: { start_time: jakartaTime(createdAt), unit: 'minute', duration: PAY_MINUTES },
-    callbacks: { finish: `${url.origin}/pay/done` },
     custom_field1: `${eventId} / ${e.cats[cat]}`.slice(0, 255),
     custom_field2: where.slice(0, 255),
-  }, { notify: url.protocol === 'https:' ? `${url.origin}/api/midtrans/notify` : '' });
+  };
+  const notify = url.protocol === 'https:' ? `${url.origin}/api/midtrans/notify` : '';
+  const mt = midtrans(pay);
+  let paying;
+  if (way.kind === 'card') {
+    const page = await mt.createPayment({
+      ...order,
+      enabled_payments: ['credit_card'],
+      credit_card: { secure: true },
+      expiry: { start_time: jakartaTime(createdAt), unit: 'minute', duration: PAY_MINUTES },
+      callbacks: { finish: `${url.origin}/pay/done` },
+    }, { notify });
+    paying = { snap: page.token, url: page.url };
+  } else {
+    let answer;
+    try {
+      answer = await mt.charge({ ...order, ...chargeOf(way.id, url.origin), custom_expiry: { order_time: jakartaTime(createdAt), expiry_duration: PAY_MINUTES, unit: 'minute' } }, { notify });
+    } catch (err) {
+      if (!(err instanceof PaymentRefused)) throw err;
+      console.error(`POST /api/payments ${way.id}: ${err.message}`);
+      return fail(409, `${way.name} is not open right now. Please choose another way to pay.`, { field: 'method' });
+    }
+    const details = payDetailsOf(way.id, answer);
+    if (!details) throw new MidtransError(`Charge ${way.id}: the answer has no payment details`);
+    paying = { pay: details };
+  }
   // Without the order book the pass still opens on this device; only the email cannot go.
-  await saveOrder(env, { id, eventId, title: e.title, cat, seat: seat.id, seatLabel: where, name: buyer.name, email: buyer.email, amount: ACCESS_FEE, origin: url.origin, createdAt })
+  await saveOrder(env, { id, eventId, title: e.title, cat, seat: seat.id, seatLabel: where, name: buyer.name, email: buyer.email, amount: ACCESS_FEE, method: way.id, origin: url.origin, createdAt })
     .catch(err => console.error(`order ${id} not saved: ${err?.message || err}`));
   const token = await signPass(pay.key, { id, eventId, cat, seat: seat.id, createdAt });
   return json(201, {
-    id, token, snap: page.token, url: page.url, amount: ACCESS_FEE, sandbox: pay.sandbox,
+    id, token, method: way.id, ...paying, amount: ACCESS_FEE, sandbox: pay.sandbox,
     status: 'checking', eventId, cat, qty: 1, seat: seat.id, name: buyer.name, email: buyer.email, route: 'paid',
     createdAt: new Date(createdAt).toISOString(), expiresAt: new Date(createdAt + PAY_WINDOW).toISOString(),
   });
@@ -146,15 +177,46 @@ async function passStatus(request, env, ctx, id) {
   const pay = paymentsOf(env);
   if (!pay) return fail(503, 'Payments are not switched on yet.');
   if (await tooMany(env, 'STATUS_LIMIT', request)) return fail(429, 'Too many tries. Please wait a minute.');
-  const p = PAYMENT_ID.test(id) ? await readPass(pay.key, request.headers.get('x-pass-token')) : null;
-  if (!p || p.id !== id) return fail(404, 'Pass not found');
+  const p = await passOf(pay, request, id);
+  if (!p) return fail(404, 'Pass not found');
   const t = await midtrans(pay).status(id);
   const status = !t && Date.now() - p.createdAt > UNPAID_CLOSE ? 'rejected' : passStateOf(t, { id, amount: ACCESS_FEE });
   if (status !== 'checking') later(ctx, settle(env, pay, id, status));
-  return json(200, {
-    id, eventId: p.eventId, cat: p.cat, qty: 1, seat: p.seat, route: 'paid', status,
-    createdAt: new Date(p.createdAt).toISOString(), expiresAt: new Date(p.createdAt + PAY_WINDOW).toISOString(),
-  });
+  return passJson(p, status);
+}
+
+const passOf = async (pay, request, id) => {
+  const p = PAYMENT_ID.test(id) ? await readPass(pay.key, request.headers.get('x-pass-token')) : null;
+  return p && p.id === id ? p : null;
+};
+const passJson = (p, status) => json(200, {
+  id: p.id, eventId: p.eventId, cat: p.cat, qty: 1, seat: p.seat, route: 'paid', status,
+  createdAt: new Date(p.createdAt).toISOString(), expiresAt: new Date(p.createdAt + PAY_WINDOW).toISOString(),
+});
+
+// The fan picks another way to pay: Midtrans closes this order, so its account number or
+// code stops taking money and one seat is never paid twice. Then Midtrans' own status says
+// where it stands: paid after all opens the pass; closed is 'rejected'. Only this site's
+// pages may ask, with the pass key.
+async function cancelPayment(request, env, ctx, url, id) {
+  const pay = paymentsOf(env);
+  if (!pay) return fail(503, 'Payments are not switched on yet.');
+  const origin = request.headers.get('origin');
+  if (origin && origin !== url.origin) return fail(403, 'Forbidden');
+  if (await tooMany(env, 'STATUS_LIMIT', request)) return fail(429, 'Too many tries. Please wait a minute.');
+  const p = await passOf(pay, request, id);
+  if (!p) return fail(404, 'Pass not found');
+  const mt = midtrans(pay);
+  const answer = await mt.cancel(id), t = await mt.status(id);
+  let status = passStateOf(t, { id, amount: ACCESS_FEE });
+  if (status === 'checking') {
+    // Still open at Midtrans and not cancelled: say so rather than let it take money unseen.
+    // No transaction at all (a card form nobody used) has nothing to close.
+    if (t && answer !== '200') return fail(409, 'This payment could not be changed just now. Please try again.');
+    status = 'rejected';
+  }
+  later(ctx, settle(env, pay, id, status));
+  return passJson(p, status);
 }
 
 // Midtrans' notification. Only its signature makes it count, and even then the status is

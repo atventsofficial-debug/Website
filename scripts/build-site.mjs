@@ -60,13 +60,17 @@ fs.writeFileSync(path.join(out, 'index.html'), html);
 
 // Hashed files never change, so they are kept for a year. Pictures keep their names when one
 // is replaced, so they are kept for a day and refreshed in the background for a week.
-const block = (route, rules) => `${route}\n${Object.entries(rules).map(([k, v]) => `  ${k}: ${v}`).join('\n')}\n`;
+// The pass email's pictures (assets/mail/) are shown by mail apps, from other addresses, so
+// their rule takes back the same-origin-only resource policy that /* gives every file
+// ("! header" removes a header an earlier rule set) and lets any site show them.
+const block = (route, rules, drop = []) => `${route}\n${[...drop.map(k => `  ! ${k}`), ...Object.entries(rules).map(([k, v]) => `  ${k}: ${v}`)].join('\n')}\n`;
 const code = bundled ? 'public, max-age=31536000, immutable' : 'public, max-age=300';
 fs.writeFileSync(path.join(out, '_headers'), [
   block('/*', securityHeaders(root, true, { midtrans: true })),
   block('/js/*', { 'cache-control': code }),
   block('/css/*', { 'cache-control': code }),
   block('/assets/*', { 'cache-control': 'public, max-age=86400, stale-while-revalidate=604800' }),
+  block('/assets/mail/*', { 'cross-origin-resource-policy': 'cross-origin' }, ['cross-origin-resource-policy']),
 ].join('\n'));
 writeWorkerCatalog(root);
 console.log(`site/ and worker/catalog.json ready${bundled ? ' (bundled)' : ''}`);

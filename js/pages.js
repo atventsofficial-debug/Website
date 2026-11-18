@@ -9,7 +9,8 @@ import { picker } from './picker.js';
 import { whenOf, startOf, venueClock, gapText } from './when.js';
 import { justBought, buyUrl, buyAttrs, buyLink, passes, activePass, claim, holdPass, refresh, passLink, clicksFor, STATUS } from './passes.js';
 import { checkClaim, formatFee } from './rules.js';
-import { PAY_MINUTES } from './order.js';
+import { ACCESS_FEE, PAY_MINUTES } from './order.js';
+import { PAY_GROUPS, PAY_METHODS, payMethod, payDetails, wayName } from './paymethods.js';
 import { loadSnap, embedSnap, hideSnap } from './snap.js';
 import { FAQ_FANS, faqHtml } from './content.js';
 import { $, $$, esc, icon, state, QUALITY, entranceTicket, share, copyText, bindSubscribe, toast } from './ui.js';
@@ -466,8 +467,9 @@ export function renderUnlock(eventId) {
   form.eventId.innerHTML = all.map(e => `<option value="${e.id}">${esc(e.title)} · ${esc(whenOf(e).date)}</option>`).join('');
   form.eventId.value = pick;
   fillCats(form);
-  if (unlock.again?.eventId === pick) prefill(form, unlock.again);
+  const again = unlock.again?.eventId === pick ? unlock.again : null;
   unlock.again = null;
+  if (again) prefill(form, again);
   const note = $('#unlock-note');
   if (justBought.id && justBought.id === pick) {
     const e = eventMeta(pick);
@@ -476,6 +478,12 @@ export function renderUnlock(eventId) {
     justBought.id = '';
   } else note.hidden = true;
   summary(form);
+  // Another way to pay for the same order: straight back to the ways, the details kept.
+  if (again?.ways) {
+    form.consent.checked = true;
+    const data = checkForm(form);
+    if (data) { unlock.data = data; showWays(form); }
+  }
 }
 
 // A seat as a pass names it.
@@ -566,9 +574,10 @@ function chosenSeat(form) {
   return form.num.value;
 }
 
-// The payment. With live payments (PayStore) the pass waits on this device and the checkout
-// opens at #paid-<id>, with Midtrans' payment form inside the page. In the preview, a
-// stand-in sheet that charges nothing marks the order paid.
+// The payment, in two steps like a ticket shop's checkout: the form, then the ways to pay
+// (js/paymethods.js), each with its logo. With live payments (PayStore) the way the fan picks
+// makes the order, the pass waits on this device, and the checkout opens at #paid-<id> with
+// what to pay with. In the preview, a stand-in sheet that charges nothing marks it paid.
 function checkForm(form) {
   const err = $('#unlock-error');
   const say = (msg, field) => { err.textContent = msg; err.hidden = false; if (field && form[field]) form[field].focus(); return null; };
@@ -584,53 +593,122 @@ function checkForm(form) {
   return data;
 }
 
-async function startPayment(form) {
+function startPayment(form) {
   const data = checkForm(form);
   if (!data) return;
-  const btn = $('#pay-start');
-  btn.disabled = true;
-  let leaving = false;   // the button stays off while Midtrans' page loads
+  unlock.data = data;
+  showWays(form);
+}
+
+// A phone or tablet, where GoPay and ShopeePay open their app instead of showing a code to
+// scan. iPads say they are Macs, but have a touch screen.
+const isPhone = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+const logos = (way, alt = '') => `<span class="pm-logo${way.logos.length > 1 ? ' is-many' : ''}">${way.logos.map((l, i) => `<img src="assets/pay/${l}.webp" alt="${i ? '' : esc(alt)}" decoding="async">`).join('')}</span>`;
+// The ways switched on (PayStore has the list from /api/config; the preview shows them all),
+// without ShopeePay away from a phone: it only pays in its app.
+const waysOn = () => PAY_METHODS.filter(m => (!state.store.methods || state.store.methods.includes(m.id)) && (!m.phone || isPhone()));
+
+// What the fan is buying, as the checkout shows it on every step.
+function orderSum(p) {
+  const e = eventMeta(p.eventId), s = seatIn(p.eventId, p.seat);
+  return `<div class="order-sum co-order">
+      <span><b>3D seat view</b><small>${esc(e?.title || '')}${e ? ` · ${esc(whenOf(e).date)}` : ''}</small>${s ? `<small>${esc(seatText(s))}</small>` : ''}${p.email ? `<small>${esc(p.name || '')} · ${esc(p.email)}</small>` : ''}</span>
+      <b class="order-price">${formatFee()}</b>
+    </div>`;
+}
+
+// Step two: how to pay. Wallets and the card as rows; banks and stores as tiles of logos.
+function showWays(form) {
+  const data = unlock.data, sheet = $('#pay-sheet'), ways = waysOn();
+  stopCheckout();
+  form.hidden = true;
+  sheet.hidden = false;
+  sheet.innerHTML = `
+    <div class="co-head">
+      <p class="eyebrow">${icon('i-card')}Payment</p>
+      <button class="link co-back" type="button" id="pay-cancel">${icon('i-back')}Change details</button>
+    </div>
+    <h2 class="pay-state">Choose how to pay</h2>
+    ${orderSum(data)}
+    <p class="co-error" id="pm-error" role="alert" hidden></p>
+    ${PAY_GROUPS.map(g => {
+      const list = ways.filter(m => m.group === g.id);
+      return list.length ? `<section class="pm-group" aria-label="${esc(g.name)}"><h3 class="pm-h">${esc(g.name)}</h3><div class="pm-list pm-${g.id}">${list.map(wayButton).join('')}</div></section>` : '';
+    }).join('')}
+    ${state.store.sandbox ? '<p class="fine pay-test">Test mode: this payment goes to the Midtrans Sandbox, and nothing is charged.</p>' : ''}
+    <p class="fine co-safe">${icon('i-lock')}<span>Payments run through Midtrans. Card numbers go into Midtrans’ own form and never reach us.</span></p>`;
+  // After the router's own scroll to the top of the page.
+  requestAnimationFrame(() => sheet.scrollIntoView({ block: 'start' }));
+}
+
+const wayButton = m => `<button class="pm" type="button" data-method="${m.id}">
+    ${logos(m, wayName(m))}
+    <span class="pm-text"><b>${esc(m.name)}</b>${m.note ? `<small>${esc(m.note)}</small>` : ''}</span>
+    ${icon('i-arrow')}
+  </button>`;
+
+async function chooseWay(form, method, btn) {
+  const data = unlock.data;
+  if (!data) return closePay(form);
+  const all = $$('#pay-sheet .pm'), err = $('#pm-error');
+  all.forEach(b => { b.disabled = true; });
+  btn.classList.add('is-busy');
+  err.hidden = true;
+  let leaving = false;   // the buttons stay off while the next screen loads
   try {
-    const p = await state.store.pay({ eventId: data.eventId, cat: data.cat, seat: data.seat, name: data.name, email: data.email, consent: true });
+    const p = await state.store.pay({ eventId: data.eventId, cat: data.cat, seat: data.seat, name: data.name, email: data.email, consent: true, method });
     if (state.store.live) {
       const held = holdPass(p);
-      // Without the client key the form cannot open here: Midtrans' own page, then back.
-      if (!state.store.clientKey && held.url) { leaving = true; location.assign(held.url); return; }
-      location.hash = `#paid-${p.id}`;   // the checkout (renderPaid)
+      leaving = true;
+      // A card without the client key: Midtrans' own card page, then back.
+      if (held.method === 'card' && !state.store.clientKey && held.url) location.assign(held.url);
+      else location.hash = `#paid-${p.id}`;   // the checkout (renderPaid)
       return;
     }
     unlock.payment = p;
-    unlock.data = data;
-    if (p.url) { location.href = p.url; return; }
-    const e = eventMeta(data.eventId), s = seatIn(data.eventId, data.seat);
-    const sheet = $('#pay-sheet');
-    form.hidden = true;
-    sheet.hidden = false;
-    sheet.innerHTML = `
-      <p class="eyebrow">${icon('i-card')}Payment</p>
-      <div class="pay-row">
-        <div>
-          <h2>${formatFee(p.amount)}</h2>
-          <p>3D seat view · ${esc(e.title)}<br>${esc(seatText(s))}<br>${esc(data.name)} · ${esc(data.email)}</p>
-        </div>
-      </div>
-      <p class="fine">Preview mode: no payment provider is connected yet, so nothing is charged. On the live site this step opens the payment form (QRIS, e-wallets, bank transfer, card) right on this page, and your pass opens by itself once it is paid.</p>
-      <div class="row-btns"><button class="btn btn-coral" type="button" id="pay-demo">Pay ${formatFee(p.amount)} (preview) ${icon('i-arrow')}</button><button class="btn btn-line" type="button" id="pay-cancel">Change details</button></div>`;
-    sheet.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (p.url) { leaving = true; location.href = p.url; return; }
+    previewSheet(p, data, payMethod(method));
   } catch (e) {
-    if (e.field && form[e.field]) { $('#unlock-error').textContent = e.message; $('#unlock-error').hidden = false; form[e.field].focus(); }
-    else toast(e.status === 429 ? 'Too many tries. Please wait a minute.' : e.message || 'The payment could not start. Please try again.');
-  } finally { if (!leaving) btn.disabled = false; }
+    if (e.field && e.field !== 'method' && form[e.field]) {
+      closePay(form);
+      $('#unlock-error').textContent = e.message;
+      $('#unlock-error').hidden = false;
+      form[e.field].focus();
+      return;
+    }
+    err.textContent = e.status === 429 ? 'Too many tries. Please wait a minute.' : e.message || 'The payment could not start. Please try again.';
+    err.hidden = false;
+  } finally {
+    if (!leaving) { all.forEach(b => { b.disabled = false; }); btn.classList.remove('is-busy'); }
+  }
+}
+
+// The preview's stand-in for the live checkout: nothing is charged.
+const WHAT = { va: 'the virtual account number to transfer to', bill: 'the bill key to pay', qr: 'the QR code to scan', app: 'the button that opens the app', store: 'the code to show at the cashier', card: 'Midtrans’ card form' };
+function previewSheet(p, data, way) {
+  const e = eventMeta(data.eventId), s = seatIn(data.eventId, data.seat);
+  $('#pay-sheet').innerHTML = `
+    <p class="eyebrow">${icon('i-card')}Payment</p>
+    <div class="pay-row">
+      <div>
+        <h2>${formatFee(p.amount)}</h2>
+        <p>3D seat view · ${esc(e.title)}<br>${esc(seatText(s))}<br>${esc(data.name)} · ${esc(data.email)}</p>
+      </div>
+      ${way ? logos(way, wayName(way)) : ''}
+    </div>
+    <p class="fine">Preview mode: no payment provider is connected yet, so nothing is charged. On the live site, ${way ? `${esc(wayName(way))} shows ${WHAT[way.kind]}` : 'the way you chose opens'} right on this page, and your pass opens by itself once it is paid.</p>
+    <div class="row-btns"><button class="btn btn-coral" type="button" id="pay-demo">Pay ${formatFee(p.amount)} (preview) ${icon('i-arrow')}</button><button class="btn btn-line" type="button" id="pay-ways">Choose another way</button></div>`;
 }
 
 // ---------------------------------------------------------------- the checkout (#paid-<id>)
 
-// One order on screen at a time, like a ticket shop's checkout: the order and a clock for
-// the hour it stays open, Midtrans' payment form below them, and the pass opening the moment
-// Midtrans says it is paid. The page asks the Worker how the payment is going: every 10 s
-// while the fan chooses, every 5 s once they have the details to pay with, every 3 s right
-// after Midtrans says it went through, and at once when they come back to the tab (from a
-// banking or e-wallet app). Back from Midtrans' own payment page, the same screen.
+// One order on screen at a time, like a ticket shop's checkout: what to pay with (the
+// account number, the QR code, the store code, or Midtrans' card form), a clock for the
+// hour the order stays open, and the pass opening the moment Midtrans says it is paid. The
+// page asks the Worker how the payment is going: every 10 s, every 5 s for a QR code or an
+// app, every 3 s right after the card form says it went through, and at once when the fan
+// comes back to the tab (from a banking or e-wallet app). Back from Midtrans' card page or
+// from GoPay, the same screen.
 const co = { run: 0, poll: 0, tick: 0, every: 10000, wake: null };
 const LATE = 15 * 6e4;    // after the order closes, how long the page still asks
 const expiryOf = p => (Date.parse(p.expiresAt) || Date.parse(p.createdAt) + PAY_MINUTES * 6e4 || 0);
@@ -654,7 +732,9 @@ export function renderPaid(id) {
   form.hidden = true;
   sheet.hidden = false;
   if (!first) { sheet.innerHTML = paidSheet(null, id); return; }
-  const until = expiryOf(first);
+  // What to pay with is checked again as it comes back from the device, like the Worker
+  // checked Midtrans' answer: only digits, Midtrans' QR codes and the wallets' own links.
+  const until = expiryOf(first), way = payMethod(first.method), pay = way ? payDetails(way.id, first.pay) : null;
   const alive = () => co.run === run && location.hash === here;
   let inForm = false;
 
@@ -685,13 +765,9 @@ export function renderPaid(id) {
   };
   co.wake = check;
   co.every = 10000;
-
-  if (state.store.clientKey && first.snap && Date.now() < until) {
-    inForm = true;
-    sheet.innerHTML = checkoutSheet(first, id);
-    const say = t => { const el = $('#co-status'); if (el) el.textContent = t; };
-    const to = first.email && state.store.mail ? ` and the link goes to ${first.email}` : '';
-    // The clock; at zero the form closes and the sheet says the time ran out.
+  const say = t => { const el = $('#co-status'); if (el) el.textContent = t; };
+  // The clock; at zero the order closes and the sheet says the time ran out.
+  const startClock = () => {
     const tick = () => {
       if (!alive()) return clearInterval(co.tick);
       const left = until - Date.now(), clock = $('#co-clock');
@@ -700,17 +776,35 @@ export function renderPaid(id) {
     };
     tick();
     co.tick = setInterval(tick, 1000);
+  };
+  const open = Date.now() < until;
+
+  if (open && way && pay) {
+    // What to pay with, drawn here: the number, the code, the QR code, the app button.
+    inForm = true;
+    sheet.innerHTML = payingSheet({ ...first, pay }, id, way);
+    const qr = sheet.querySelector('.co-qr img');
+    qr?.addEventListener('error', () => { qr.closest('.co-qr').innerHTML = '<p class="co-qr-off">The QR code did not load. Reload the page, or choose another way to pay.</p>'; });
+    startClock();
+    if (way.kind === 'qr' || way.kind === 'app') co.every = 5000;
+    co.poll = setTimeout(check, co.every);
+  } else if (open && state.store.clientKey && first.snap) {
+    // The card: Midtrans' card form inside the page.
+    inForm = true;
+    sheet.innerHTML = cardSheet(first, id);
+    const to = first.email && state.store.mail ? ` and the link goes to ${first.email}` : '';
+    startClock();
     loadSnap(state.store).then(snap => {
       if (!alive() || !inForm) return;
       $('#snap-box').innerHTML = '';
       embedSnap(snap, first.snap, 'snap-box', {
         onSuccess: () => { say('Paid. Opening your pass…'); co.every = 3000; check(); },
-        onPending: () => { say(`Waiting for your payment. Pay with the details above: your pass opens here by itself${to}.`); co.every = 5000; check(); },
+        onPending: () => { say(`Waiting for your bank to confirm the card. Your pass opens here by itself${to}.`); co.every = 5000; check(); },
         onError: () => { say('That did not go through. Try again, or choose another way to pay.'); check(); },
       });
     }).catch(() => {
       if (!alive() || !inForm) return;
-      $('#snap-box').innerHTML = `<div class="co-fallback"><p>The payment form could not load on this page.</p>${first.url ? `<a class="btn btn-coral" href="${esc(first.url)}">Pay on Midtrans’ page ${icon('i-arrow')}</a><p class="fine">It brings you back here when you are done.</p>` : '<p class="fine">Please reload the page and try again.</p>'}</div>`;
+      $('#snap-box').innerHTML = `<div class="co-fallback"><p>The card form could not load on this page.</p>${first.url ? `<a class="btn btn-coral" href="${esc(first.url)}">Pay on Midtrans’ page ${icon('i-arrow')}</a><p class="fine">It brings you back here when you are done.</p>` : '<p class="fine">Please reload the page and try again.</p>'}</div>`;
     });
     co.poll = setTimeout(check, co.every);
   } else {
@@ -720,23 +814,77 @@ export function renderPaid(id) {
   }
 }
 
-// The checkout: the order, the clock, and the box Midtrans' form opens in.
-function checkoutSheet(p, id) {
-  const e = eventMeta(p.eventId), s = seatIn(p.eventId, p.seat);
-  return `
+const head = (p, id) => `
     <div class="co-head">
       <p class="eyebrow">${icon('i-card')}Payment <span class="mono">${esc(id)}</span></p>
       <p class="co-clock" id="co-clock">${icon('i-clock')}Pay within <b class="mono">${clockText(expiryOf(p) - Date.now())}</b></p>
+    </div>`;
+const waiting = p => `<p class="fine co-status" id="co-status" aria-live="polite">Waiting for your payment. Your pass opens here by itself${p.email && state.store.mail ? `, and the link goes to ${esc(p.email)}` : ''}.</p>`;
+const otherWayBtn = id => `<button class="btn btn-line co-alt" type="button" id="pay-other" data-id="${esc(id)}">Choose another way to pay</button>`;
+
+// What to pay with, for every way but the card, in the site's own design.
+const BANK_APP = { bca: 'BCA mobile or myBCA', bni: 'wondr by BNI or BNI Mobile Banking', bri: 'BRImo', permata: 'PermataMobile X', cimb: 'OCTO Mobile', mandiri: 'Livin’ by Mandiri' };
+// Long numbers and codes in groups of four, as banks and cashiers read them out; copied whole.
+const fours = v => v.replace(/(.{4})(?=.)/g, '$1 ');
+const field = (label, value, shown = value, big = true) => `<div class="co-field${big ? ' is-big' : ''}">
+        <span><small>${esc(label)}</small><b class="mono">${esc(shown)}</b></span>
+        <button class="btn btn-line btn-sm" type="button" data-copy="${esc(value)}" aria-label="Copy ${esc(label.toLowerCase())}">${icon('i-copy')}Copy</button>
+      </div>`;
+const qrBox = (src, alt) => `<figure class="co-qr"><img src="${esc(src)}" alt="${esc(alt)}" width="232" height="232" referrerpolicy="no-referrer"></figure>`;
+
+function payingSheet(p, id, way) {
+  const d = p.pay, fee = formatFee(), phone = isPhone();
+  const amount = field('Amount', String(ACCESS_FEE), fee, false);
+  let title = `Pay with ${way.name}`, body = '', steps = [], tap = false;
+  if (way.kind === 'va') {
+    title = `Transfer to your ${way.bank} virtual account`;
+    body = field('Virtual account number', d.va, fours(d.va)) + amount;
+    steps = [`Open ${BANK_APP[way.id]}, or go to a ${way.bank} ATM.`, `Choose transfer to a virtual account${way.id === 'bri' ? ' (BRIVA)' : ''} and enter the number above.`, `Check that the amount is ${fee}, then pay.`];
+  } else if (way.kind === 'bill') {
+    title = 'Pay your Mandiri bill';
+    body = field('Company code', d.billerCode) + field('Bill key', d.billKey, fours(d.billKey)) + amount;
+    steps = [`Open ${BANK_APP.mandiri}, or go to a Mandiri ATM.`, 'Choose Pay (Bayar), then find the company code above.', `Enter the bill key, check that the amount is ${fee}, then pay.`];
+  } else if (way.kind === 'qr') {
+    title = 'Scan to pay with QRIS';
+    body = qrBox(d.qr, `QRIS code to pay ${fee}`);
+    steps = ['Open GoPay, OVO, DANA, ShopeePay, LinkAja or your bank’s app, and choose Scan or Pay.', phone ? 'On this phone? Press and hold the code to save it, then pick it from your gallery in the app’s scanner.' : 'Scan the code on this screen.', `Check that the amount is ${fee}, then pay.`];
+  } else if (way.kind === 'app') {
+    tap = !!d.app && (phone || !d.qr);
+    body = (tap ? `<a class="btn btn-coral btn-block co-app" href="${esc(d.app)}">Open ${esc(way.name)} ${icon('i-out')}</a>` : '')
+      + (d.qr && !(tap && phone) ? qrBox(d.qr, `${way.name} code to pay ${fee}`) : '');
+    steps = tap
+      ? [`Tap Open ${way.name}: the app shows the payment of ${fee}.`, 'Check it and pay.', 'Come back to this page. Your pass opens here by itself.']
+      : ['Open the Gojek or GoPay app on your phone and tap Pay.', 'Scan the code on this screen.', `Check that the amount is ${fee}, then pay.`];
+  } else if (way.kind === 'store') {
+    title = `Pay at ${way.name}`;
+    body = field('Payment code', d.code, fours(d.code)) + amount;
+    steps = [way.id === 'alfamart' ? 'Go to any Alfamart, Alfamidi or Dan+Dan.' : 'Go to any Indomaret.', 'Show this code to the cashier. They check the details with you.', `Pay ${fee} at the till and keep the receipt.`];
+  }
+  const by = new Date(expiryOf(p)).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  return `${head(p, id)}
+    <h2 class="pay-state">${esc(title)}</h2>
+    <div class="co-pay is-${way.kind}">
+      <div class="co-way">${logos(way, wayName(way))}<span><b>${esc(wayName(way))}</b><small>Open until ${esc(by)}</small></span></div>
+      <div class="co-fields">${body}</div>
+      <ol class="co-steps">${steps.map(s => `<li>${esc(s)}</li>`).join('')}</ol>
     </div>
-    <h2 class="pay-state">Choose how to pay</h2>
-    <div class="order-sum co-order">
-      <span><b>3D seat view</b><small>${esc(e?.title || '')}${e ? ` · ${esc(whenOf(e).date)}` : ''}</small>${s ? `<small>${esc(seatText(s))}</small>` : ''}${p.email ? `<small>${esc(p.name || '')} · ${esc(p.email)}</small>` : ''}</span>
-      <b class="order-price">${formatFee()}</b>
-    </div>
-    <div class="co-bleed"><div class="co-form" id="snap-box"><p class="co-loading">Loading the payment form…</p></div></div>
-    <p class="fine co-status" id="co-status" aria-live="polite">Your pass opens here as soon as it is paid${p.email && state.store.mail ? `, and the link goes to ${esc(p.email)}` : ''}.</p>
-    <p class="fine co-safe">${icon('i-lock')}<span>Secured by Midtrans: your card, wallet and bank details go to Midtrans, never to us.${p.url ? ` Trouble with the form? <a class="u" href="${esc(p.url)}">Pay on Midtrans’ page</a>.` : ''}</span></p>
-    <div class="row-btns"><button class="btn btn-line" type="button" id="pay-change" data-id="${esc(id)}">Change details</button></div>`;
+    ${waiting(p)}
+    <div class="row-btns"><button class="btn ${tap ? 'btn-line co-alt' : 'btn-coral'}" type="button" id="pay-check" data-id="${esc(id)}">I have paid ${tap ? '' : icon('i-check')}</button>${otherWayBtn(id)}</div>
+    ${orderSum(p)}
+    <p class="fine co-safe">${icon('i-lock')}<span>The payment goes to Atvents through Midtrans. Paid already and this page did not move? It checks again by itself; you can close it, the pass link comes by email.</span></p>`;
+}
+
+// The card: Midtrans' card form (white, as Midtrans draws it) inside the checkout.
+function cardSheet(p, id) {
+  const way = payMethod('card');
+  return `${head(p, id)}
+    <h2 class="pay-state">Pay by card</h2>
+    <div class="co-way">${logos(way, way.note)}<span><b>Credit or debit card</b><small>${esc(way.note)}</small></span></div>
+    <div class="co-bleed"><div class="co-form" id="snap-box"><p class="co-loading">Loading the card form…</p></div></div>
+    ${waiting(p)}
+    <div class="row-btns">${otherWayBtn(id)}</div>
+    ${orderSum(p)}
+    <p class="fine co-safe">${icon('i-lock')}<span>Your card details go to Midtrans, never to us.${p.url ? ` Trouble with the form? <a class="u" href="${esc(p.url)}">Pay on Midtrans’ page</a>.` : ''}</span></p>`;
 }
 
 function paidSheet(p, id) {
@@ -776,14 +924,41 @@ function closePay(form) {
   form.hidden = false;
 }
 
-// Back to the form, filled in from the order. "Change details" lets the order go on this
-// device; if it is paid after all, the pass link still comes by email.
-function backToForm(id, { drop = false } = {}) {
+// Back to the checkout's first steps, filled in from the order: the ways to pay (`ways`) or
+// the form.
+function backToForm(id, { ways = false } = {}) {
   const p = passes.get(id);
   stopCheckout();
-  if (drop && p?.status === 'checking') passes.remove(id);
-  unlock.again = p || null;
+  unlock.again = p ? { ...p, ways } : null;
   location.hash = p ? `#unlock-${p.eventId}` : '#unlock';
+}
+
+// "Choose another way to pay": Midtrans closes this order first, so its number or code
+// stops taking money. Paid after all? The pass opens instead.
+async function otherWay(id, btn) {
+  const p = passes.get(id);
+  if (!p?.token || !state.store.cancelPay) return backToForm(id, { ways: true });
+  btn.disabled = true;
+  try {
+    const r = await state.store.cancelPay(id, p.token);
+    if (r.status === 'confirmed') { passes.save({ ...p, status: 'confirmed' }); renderPaid(id); return; }
+    backToForm(id, { ways: true });
+    passes.remove(id);   // closed and never paid: nothing to keep
+  } catch (e) {
+    btn.disabled = false;
+    toast(e.status === 429 ? 'Too many tries. Please wait a minute.' : e.message || 'This payment could not be changed just now. Please try again.');
+  }
+}
+
+// "I have paid": ask now, and say so if the money has not arrived yet.
+async function checkNow(id, btn) {
+  btn.disabled = true;
+  if (!co.wake) { renderPaid(id); return; }
+  await co.wake();
+  if (!btn.isConnected) return;
+  btn.disabled = false;
+  const el = $('#co-status');
+  if (el && passes.get(id)?.status === 'checking') el.textContent = 'Not in yet. A bank transfer or a store payment can take a few minutes to reach Midtrans; this page keeps checking and opens your pass by itself.';
 }
 
 async function paid(form) {
@@ -809,14 +984,20 @@ function bindUnlock(form) {
   form.row.addEventListener('change', () => { fillNums(form); summary(form); });
   form.num.addEventListener('change', () => summary(form));
   $('#pay-sheet').addEventListener('click', ev => {
-    if (ev.target.closest('#pay-cancel')) { unlock.payment = null; closePay(form); }
-    if (ev.target.closest('#pay-demo')) paid(form);
-    const change = ev.target.closest('#pay-change');
-    if (change) backToForm(change.dataset.id, { drop: true });
-    const again = ev.target.closest('[data-again]');
-    if (again) backToForm(again.dataset.again);
-    const check = ev.target.closest('#pay-check');
-    if (check) { check.disabled = true; co.wake ? co.wake() : renderPaid(check.dataset.id); }
+    const t = ev.target;
+    if (t.closest('#pay-cancel')) { unlock.payment = null; closePay(form); return; }
+    if (t.closest('#pay-ways')) { unlock.payment = null; showWays(form); return; }
+    if (t.closest('#pay-demo')) { paid(form); return; }
+    const way = t.closest('.pm[data-method]');
+    if (way && !way.disabled) { chooseWay(form, way.dataset.method, way); return; }
+    const copy = t.closest('[data-copy]');
+    if (copy) { copyText(copy.dataset.copy, 'Copied.'); return; }
+    const other = t.closest('#pay-other');
+    if (other) { otherWay(other.dataset.id, other); return; }
+    const again = t.closest('[data-again]');
+    if (again) { backToForm(again.dataset.again, { ways: true }); return; }
+    const check = t.closest('#pay-check');
+    if (check) checkNow(check.dataset.id, check);
   });
   form.addEventListener('submit', ev => { ev.preventDefault(); startPayment(form); });
   form.addEventListener('change', () => { $('#unlock-error').hidden = true; });
