@@ -126,6 +126,14 @@ export async function claim({ eventId, name, email, cat, seat, payment }) {
   return pass;
 }
 
+// A live order (PayStore): the pass waits on this device for its payment, as 'checking',
+// with the key that asks the Worker how the payment went.
+export function holdPass(r) {
+  const pass = { id: r.id, token: r.token, eventId: r.eventId, cat: r.cat, qty: 1, seat: r.seat, name: r.name, route: 'paid', status: r.status, ref: maskRef(r.id), createdAt: r.createdAt, seats: [r.seat] };
+  passes.save(pass);
+  return pass;
+}
+
 // Ask how the check is going. Offline, or without the token, the pass stays as it was.
 export async function refresh(p) {
   if (state.store.mode === 'server' && !p.token) return;
@@ -146,5 +154,5 @@ export const passLink = p => (p.token ? `${location.origin}${location.pathname}#
 export const STATUS = {
   checking: { label: 'Waiting for payment', note: 'Your seat view opens as soon as the payment goes through.' },
   confirmed: { label: 'Paid · open', note: 'Paid. Your seat view is open until after the show.' },
-  rejected: { label: 'Closed', note: 'This pass was closed, for example after a refund. Write to us if that looks wrong.' },
+  rejected: { label: 'Closed', note: 'This pass is closed: its payment did not go through, or it was refunded. Write to us if that looks wrong.' },
 };

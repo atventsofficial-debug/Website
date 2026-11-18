@@ -1845,6 +1845,10 @@ body { font-family: var(--font); font-feature-settings: "cv11", "ss01"; }
 .order-price { flex: none; font: 600 24px/1 var(--display); letter-spacing: -0.03em; }
 .pay-sheet.panel-box { border-style: solid; padding: var(--s6); gap: var(--s4); }
 .pay-sheet .pay-row p { color: var(--text); font-size: 15px; line-height: 1.55; }
+.pay-sheet .pay-state { font: 500 clamp(26px, 3.4vw, 38px)/1.1 var(--font); letter-spacing: -0.02em; }
+.pay-sheet .pay-state + p { color: var(--text); font-size: 15px; line-height: 1.55; }
+.pay-sheet .eyebrow .mono { letter-spacing: 0; text-transform: none; }
+.pay-test { padding: 10px 12px; border-radius: var(--r-sm); border: 1px dashed var(--line-2); }
 .hs-perk .hs-seller { color: inherit; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
 .hs-perk .hs-seller svg { width: 12px; height: 12px; }
 

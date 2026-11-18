@@ -3,3 +3,6 @@ data/
 .env
 dist/
 site/
+worker/catalog.json
+.dev.vars
+.wrangler/

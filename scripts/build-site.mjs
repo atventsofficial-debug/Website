@@ -1,7 +1,9 @@
-// Builds site/: the front end alone, for static hosting such as Cloudflare Pages. Only the
-// files the browser needs are copied (no server code, tests or docs), with a _headers file
+// Builds site/: the front end alone, for static hosting such as Cloudflare. Only the files
+// the browser needs are copied (no server code, tests or docs), with a _headers file
 // carrying the same security headers the Node server sends. Without the server the site
 // runs in demo mode: everything works, and passes and clicks stay in the visitor's browser.
+// It also writes worker/catalog.json, the concerts and seats the payment Worker checks
+// orders against (scripts/worker-catalog.mjs).
 //
 // The scripts and the stylesheet are bundled and minified with esbuild, under names that
 // carry a hash of their contents, so browsers can keep them for a year and still get every
@@ -12,6 +14,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { securityHeaders } from '../server/http.mjs';
+import { writeWorkerCatalog } from './worker-catalog.mjs';
 
 const root = path.resolve(new URL('..', import.meta.url).pathname);
 const out = path.join(root, 'site');
@@ -62,4 +65,5 @@ fs.writeFileSync(path.join(out, '_headers'), [
   block('/css/*', { 'cache-control': code }),
   block('/assets/*', { 'cache-control': 'public, max-age=86400, stale-while-revalidate=604800' }),
 ].join('\n'));
-console.log(`site/ ready${bundled ? ' (bundled)' : ''}`);
+writeWorkerCatalog(root);
+console.log(`site/ and worker/catalog.json ready${bundled ? ' (bundled)' : ''}`);

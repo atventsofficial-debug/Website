@@ -1,10 +1,10 @@
 // Boot and routing. Fan pages are drawn by pages.js, the home page's hero by hero.js, the
 // partner page by partners.js, the admin by admin.js and the 3D seat view by viewer.js.
 import { getEvent, isConcert, demoFor } from './events.js';
-import { LocalStore, ApiStore } from './store.js';
+import { LocalStore, ApiStore, PayStore } from './store.js';
 import { bindBuyLinks, importPass, passes } from './passes.js';
-import { validAffiliate, formatFee } from './rules.js';
-import { stopEventHero, renderHome, renderConcerts, renderEvent, renderUnlock, renderFootage, renderPasses, renderFaq, bindPassButtons, navCount } from './pages.js';
+import { validAffiliate, formatFee, PAYMENT_ID } from './rules.js';
+import { stopEventHero, renderHome, renderConcerts, renderEvent, renderUnlock, renderPaid, renderFootage, renderPasses, renderFaq, bindPassButtons, navCount } from './pages.js';
 import { startHero, stopHero } from './hero.js';
 import { renderPartners } from './partners.js';
 import { renderAdmin } from './admin.js';
@@ -24,13 +24,31 @@ const LEGACY = {
 
 // ---------------------------------------------------------------- boot
 
+// Sandbox payments are for the owner's tests: they open on a device that has visited
+// #paytest (#paytest-off ends them). Everyone else keeps the preview until the Worker has
+// the production key.
+const PAYTEST = 'atvents:paytest';
+function payTestSwitch() {
+  const h = location.hash;
+  if (h !== '#paytest' && h !== '#paytest-off') return false;
+  try { if (h === '#paytest') localStorage.setItem(PAYTEST, '1'); else localStorage.removeItem(PAYTEST); } catch { /* ignore */ }
+  history.replaceState(null, '', `${location.pathname}${location.search}#unlock`);
+  return true;
+}
+const payTest = () => { try { return localStorage.getItem(PAYTEST) === '1'; } catch { return false; } };
+
 async function boot() {
+  payTestSwitch();
   try {
     const r = await fetch('api/config', { headers: { accept: 'application/json' } });
     if (r.ok && (r.headers.get('content-type') || '').includes('json')) {
       const c = await r.json();
-      if (validAffiliate(c.affiliateLink)) state.cfg.affiliateLink = c.affiliateLink;
-      state.store = new ApiStore('');
+      // The Worker on Cloudflare: real payments, everything else in this browser.
+      if (c.mode === 'pay') { if (!c.sandbox || payTest()) state.store = new PayStore(c); }
+      else {
+        if (validAffiliate(c.affiliateLink)) state.cfg.affiliateLink = c.affiliateLink;
+        state.store = new ApiStore('');
+      }
     }
   } catch { /* static hosting: demo mode, everything stays in this browser */ }
   state.store ||= new LocalStore();
@@ -56,14 +74,15 @@ async function boot() {
     if (state.view === 'passes') renderPasses();
     if (state.view === 'seats') paintViewer();
   });
-  window.addEventListener('hashchange', route);
+  window.addEventListener('hashchange', () => { if (payTestSwitch()) location.reload(); else route(); });
   route();
 }
 
 // ---------------------------------------------------------------- routing
 
 // Hash routes are plain tokens: #event-<id>, #seats-<id>--<category>, #seats-<id>@<seat>,
-// #demo-<layout>, #unlock-<id>, #pass-<id>-<token>.
+// #demo-<layout>, #unlock-<id>, #paid-<order id> (back from the payment page),
+// #pass-<id>-<token>.
 function parse(hash) {
   let h = hash.split('?')[0];
   if (LEGACY[h]) h = LEGACY[h];
@@ -74,6 +93,7 @@ function parse(hash) {
   if (PARTNER_ANCHORS.has(h)) return { view: 'partners', anchor: h };
   if (PAGES.has(h)) return { view: h };
   if (h.startsWith('unlock-') && isConcert(h.slice(7))) return { view: 'unlock', id: h.slice(7) };
+  if (h.startsWith('paid-') && PAYMENT_ID.test(h.slice(5))) return { view: 'unlock', paid: h.slice(5) };
   if (h.startsWith('event-') && isConcert(h.slice(6))) return { view: 'event', id: h.slice(6) };
   if (h.startsWith('tour-')) {
     const p = passes.get(h.slice(5));
@@ -118,7 +138,7 @@ function setSide(side) {
 async function route() {
   // A pass link from another device. The token is a secret, so it leaves the address bar
   // and the history before anything else happens.
-  const link = location.hash.match(/^#pass-(P-[A-Z0-9]{4,20})-([A-Za-z0-9_-]{16,64})$/);
+  const link = location.hash.match(/^#pass-((?:P|PAY)-[A-Z0-9]{4,24})-([A-Za-z0-9_.-]{16,400})$/);
   if (link) {
     history.replaceState(null, '', `${location.pathname}${location.search}#passes`);
     try { await importPass(link[1], link[2]); toast('Pass added to this device.'); } catch { toast('That pass link did not work. Write to us with your payment reference.'); }
@@ -146,7 +166,7 @@ async function route() {
     case 'concerts': renderConcerts(); break;
     case 'event': renderEvent(r.id); loadScene3d().catch(() => {}); break;   // likely next: the 3D venue
     case 'seats': openViewer(r.id, { cat: r.cat, seat: r.seat, back: state.page, tour: r.tour }); break;
-    case 'unlock': renderUnlock(r.id); break;
+    case 'unlock': if (r.paid) renderPaid(r.paid); else renderUnlock(r.id); break;
     case 'footage': renderFootage(); break;
     case 'passes': renderPasses({ check: true }); break;
     case 'partners': renderPartners(); break;

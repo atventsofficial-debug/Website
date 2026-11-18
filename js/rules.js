@@ -1,13 +1,15 @@
 // Formats and checks the browser and the server agree on. The page checks a form before
 // sending it, the server (or the demo store) again before storing. Pure functions, no DOM.
 import { getEvent, isConcert } from './events.js';
+import { ACCESS_FEE, PAYMENT_ID, EMAIL, formatFee, line, email, isEmail, checkBuyer } from './order.js';
+
+export { ACCESS_FEE, PAYMENT_ID, EMAIL, formatFee };
 
 // Tickets a fan can unlock on one booking. tiket.com caps most shows at four per account.
 export const MAX_QTY = 8;
 
 // Our click id, sent to tiket.com in the affiliate link and back in the network's report.
 export const CLICK_ID = /^[a-z0-9]{12}$/;
-export const EMAIL = /^[^\s@<>()"',;:]{1,64}@[^\s@<>()"',;:]{1,190}\.[a-z]{2,24}$/i;
 export const PHONE = /^\+?[0-9 ()-]{6,24}$/;
 
 // A tiket.com order id as the fan types it: spaces and dots dropped, upper case.
@@ -75,14 +77,10 @@ export function parseConversions(text) {
 
 // ---------------------------------------------------------------- what visitors send
 
-// Typed text: control characters and invisible direction marks become spaces, so a name
-// cannot reorder what the admin reads. Only a message keeps its line breaks.
-const LINE_JUNK = /[\u0000-\u001f\u007f​-‏‪-‮⁦-⁩]/g;
+// Typed text (order.js cleans a line): control characters and invisible direction marks
+// become spaces. Only a message keeps its line breaks.
 const TEXT_JUNK = /[\u0000-\u0009\u000b-\u001f\u007f​-‏‪-‮⁦-⁩]/g;
-const line = v => String(v ?? '').replace(LINE_JUNK, ' ').trim();
 const text = v => String(v ?? '').replace(/\r\n?/g, '\n').replace(TEXT_JUNK, ' ').trim();
-const email = v => line(v).toLowerCase();
-const isEmail = v => v.length <= 160 && EMAIL.test(v);
 const no = (field, error) => ({ field, error });
 
 // A website as typed: empty is fine, "example.com" gets https://, anything else must be a
@@ -113,19 +111,18 @@ export const MAX_CLICKS = 40;
 export const TAKEN = 'This payment has already opened a 3D pass. Open it from My 3D passes, or contact us.';
 export function checkClaim(d = {}) {
   const eventId = line(d.eventId), v = isConcert(eventId) ? getEvent(eventId) : null;
-  const cat = line(d.cat), mail = email(d.email), name = line(d.name).slice(0, 120);
+  const cat = line(d.cat);
   if (!v) return no('eventId', 'Choose your concert.');
   if (!v.catById[cat]) return no('cat', 'Choose the category on your ticket.');
   const seat = line(d.seat), i = seat ? v.seatById.get(seat) : undefined;
   if (i === undefined) return no('seat', 'Choose your seat.');
   if (v.seats[i].cat !== cat) return no('seat', 'That seat is not in the category you chose.');
-  if (name.length < 2 || name.length > 80) return no('name', 'Please enter your name.');
-  if (!isEmail(mail)) return no('email', 'Please enter a valid email. Your pass and receipt go there.');
-  if (d.consent !== true) return no('consent', 'Please accept the terms and the privacy policy.');
+  const { buyer, field, error } = checkBuyer(d);
+  if (error) return no(field, error);
   const payment = line(d.payment);
   if (d.requirePayment !== false && !PAYMENT_ID.test(payment)) return no('payment', `Pay the ${formatFee()} access fee first.`);
   const clicks = Array.isArray(d.clicks) ? [...new Set(d.clicks.filter(x => typeof x === 'string' && CLICK_ID.test(x)))].slice(0, 20) : [];
-  return { claim: { eventId, cat, qty: 1, name, email: mail, clicks, route: 'paid', seat, payment } };
+  return { claim: { eventId, cat, qty: 1, ...buyer, clicks, route: 'paid', seat, payment } };
 }
 
 // The e-ticket a fan sends with a claim, checked by a person before the 3D view opens.
@@ -138,11 +135,6 @@ export function checkProof(f) {
   const data = typeof f.data === 'string' && f.data.startsWith(`data:${type};base64,`) ? f.data : '';
   return { name, type, size, data };
 }
-
-// The price of one 3D seat view, for one concert, and the id of a paid order.
-export const ACCESS_FEE = 25000;
-export const formatFee = (n = ACCESS_FEE) => `Rp${n.toLocaleString('id-ID')}`;
-export const PAYMENT_ID = /^PAY-[A-Z0-9]{6,24}$/;
 
 // The news list, or alerts for one concert.
 export function checkSubscription(d = {}) {

@@ -1,11 +1,24 @@
 // What visitors send us: clicks to tiket.com, 3D pass claims, partner requests and sign-ups,
 // and the admin's view of them. LocalStore keeps it all in this browser (demo, static
-// hosting), with the same rules as the server. ApiStore talks to server/server.mjs.
+// hosting), with the same rules as the server. PayStore is LocalStore with real payments,
+// through the site's Worker (worker/) and Midtrans. ApiStore talks to server/server.mjs.
 import { checkClick, checkClaim, checkSubscription, checkLead, checkConversions, passStatus, PASS_STATUSES, TAKEN, ACCESS_FEE, PAYMENT_ID } from './rules.js';
 
 const DB = 'atvents:demo-db';
 const fail = (status, message) => Object.assign(new Error(message), { status });
 const newId = prefix => `${prefix}-${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+
+// A JSON request to our own API; an error carries the status and the server's message.
+async function call(path, { method = 'GET', body, headers = {}, keepalive = false } = {}) {
+  const r = await fetch(path, {
+    method, keepalive,
+    headers: { ...(body ? { 'content-type': 'application/json' } : {}), ...headers },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(fail(r.status, data.error || `HTTP ${r.status}`), { field: data.field });
+  return data;
+}
 
 export class LocalStore {
   constructor() {
@@ -14,6 +27,7 @@ export class LocalStore {
     this.db = { clicks: [], claims: [], conversions: {}, leads: [], subscribers: [], payments: [], ...saved };
   }
   get mode() { return 'demo'; }
+  get live() { return false; }
   save() { try { localStorage.setItem(DB, JSON.stringify(this.db)); } catch { /* memory only */ } }
 
   async click(d) {
@@ -140,31 +154,40 @@ export class LocalStore {
   }
 }
 
+// Live payments. The order goes to the Worker, which hands over to Midtrans' payment page
+// and gives back the pass with its key; the pass then asks the Worker how the payment went.
+// Everything else stays in this browser, as in LocalStore. `sandbox`: the Worker has a
+// Midtrans Sandbox key, so nothing is charged.
+export class PayStore extends LocalStore {
+  constructor({ sandbox = false } = {}) {
+    super();
+    this.sandbox = !!sandbox;
+  }
+  get mode() { return 'pay'; }
+  get live() { return true; }
+  pay(d) { return call('api/payments', { method: 'POST', body: d }); }
+  // A pass from the preview, without a key, is still this browser's.
+  claimStatus(id, token) {
+    return token ? call(`api/passes/${encodeURIComponent(id)}`, { headers: { 'x-pass-token': token } }) : super.claimStatus(id);
+  }
+}
+
 export class ApiStore {
   constructor(base = '') {
     this.base = base;
     try { this.adminToken = sessionStorage.getItem('atvents:admin') || ''; } catch { this.adminToken = ''; }
   }
   get mode() { return 'server'; }
+  get live() { return false; }
 
   setAdminToken(t) {
     this.adminToken = t;
     try { sessionStorage.setItem('atvents:admin', t); } catch { /* memory only */ }
   }
 
-  async req(path, { method = 'GET', body, headers = {}, keepalive = false } = {}) {
-    const r = await fetch(this.base + path, {
-      method, keepalive,
-      headers: {
-        ...(body ? { 'content-type': 'application/json' } : {}),
-        ...(this.adminToken && path.startsWith('api/admin/') ? { authorization: `Bearer ${this.adminToken}` } : {}),
-        ...headers,
-      },
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    const data = await r.json().catch(() => ({}));
-    if (!r.ok) throw fail(r.status, data.error || `HTTP ${r.status}`);
-    return data;
+  req(path, { headers = {}, ...opts } = {}) {
+    const admin = this.adminToken && path.startsWith('api/admin/') ? { authorization: `Bearer ${this.adminToken}` } : {};
+    return call(this.base + path, { ...opts, headers: { ...admin, ...headers } });
   }
 
   // keepalive: the fan is on their way to tiket.com, the record must still arrive.
