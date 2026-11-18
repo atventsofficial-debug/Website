@@ -8,6 +8,7 @@ import { eventMeta, isConcert, onTiket, sellerOf } from './events.js';
 import { CLICK_ID, maskRef, validAffiliate } from './rules.js';
 import { payMethod, payDetails } from './paymethods.js';
 import { state, emit, esc, campaign } from './ui.js';
+import { WA_GROUP } from './fanrules.js';
 
 const WALLET = 'atvents:passes';
 const CLICKS = 'atvents:clicks';
@@ -147,13 +148,26 @@ export function holdPass(r) {
 export async function refresh(p) {
   if (state.store.mode === 'server' && !p.token) return;
   const r = await state.store.claimStatus(p.id, p.token).catch(() => null);
-  if (r && (r.status !== p.status || (r.seat && r.seat !== p.seat))) passes.save({ ...p, status: r.status, seat: r.seat || p.seat, seats: r.seat ? [r.seat] : p.seats });
+  if (!r) return;
+  // The Worker says which WhatsApp links a paid pass has; the demo store says nothing.
+  const wa = r.status !== 'confirmed' ? null : 'wa' in r ? waLinks(r.wa) : p.wa || null;
+  if (r.status !== p.status || (r.seat && r.seat !== p.seat) || JSON.stringify(wa) !== JSON.stringify(p.wa || null)) {
+    passes.save({ ...p, status: r.status, seat: r.seat || p.seat, seats: r.seat ? [r.seat] : p.seats, wa });
+  }
+}
+
+// The WhatsApp links a paid pass gets from the Worker (FANBASE_WA): the concert's fanbase
+// group and the Atvents members' community. Only WhatsApp's own invite links are kept.
+export function waLinks(v) {
+  const ok = x => (typeof x === 'string' && WA_GROUP.test(x) ? x : '');
+  const group = ok(v?.group), community = ok(v?.community);
+  return group || community ? { group, community } : null;
 }
 
 // A pass link from another device: #pass-<id>-<token>.
 export async function importPass(id, token) {
   const r = await state.store.claimStatus(id, token);
-  const p = { id: r.id, token, eventId: r.eventId, cat: r.cat, qty: r.qty, seat: r.seat || '', route: r.route || 'affiliate', status: r.status, ref: passes.get(r.id)?.ref || '', createdAt: r.createdAt, seats: r.seat ? [r.seat] : passes.get(r.id)?.seats || [] };
+  const p = { id: r.id, token, eventId: r.eventId, cat: r.cat, qty: r.qty, seat: r.seat || '', route: r.route || 'affiliate', status: r.status, ref: passes.get(r.id)?.ref || '', createdAt: r.createdAt, seats: r.seat ? [r.seat] : passes.get(r.id)?.seats || [], wa: waLinks(r.wa) };
   // How the fan set the venue's numbering stays with the pass on this device (seatflip.js).
   const numbering = passes.get(r.id)?.numbering;
   if (numbering) p.numbering = numbering;

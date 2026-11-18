@@ -2302,3 +2302,12 @@ body { font-family: var(--font); font-feature-settings: "cv11", "ss01"; }
   .mates { gap: 8px; padding-top: var(--s2); }
   .mates-list { display: none; }
 }
+
+/* WhatsApp: the fanbase group and the Atvents community, for paid passes. */
+.btn-wa { background: transparent; color: #25d366; border: 1px solid rgba(37, 211, 102, 0.55); }
+.btn-wa:hover, .btn-wa:focus-visible { background: rgba(37, 211, 102, 0.1); border-color: #25d366; color: #25d366; }
+.btn-wa svg { color: #25d366; }
+.unlock-wa { display: flex; flex-direction: column; gap: 10px; margin: 4px 0 8px; }
+.pass .btn-wa, .pass .btn-wa svg { color: #0f7a43; }
+.pass .btn-wa { border-color: rgba(15, 122, 67, 0.45); }
+.pass .btn-wa:hover, .pass .btn-wa:focus-visible { background: rgba(15, 122, 67, 0.08); color: #0f7a43; border-color: #0f7a43; }

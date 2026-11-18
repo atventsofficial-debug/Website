@@ -338,7 +338,7 @@ test('the pass opens once Midtrans has the payment settled', async () => {
   assert.equal(await check(), 'checking');
   paid[p.id] = { transaction_status: 'settlement' };
   const r = await (await status(p.id, p.token)).json();
-  assert.deepEqual(r, { id: p.id, eventId: live.id, cat: seat.cat, qty: 1, seat: seat.id, route: 'paid', status: 'confirmed', createdAt: p.createdAt, expiresAt: p.expiresAt });
+  assert.deepEqual(r, { id: p.id, eventId: live.id, cat: seat.cat, qty: 1, seat: seat.id, route: 'paid', status: 'confirmed', createdAt: p.createdAt, expiresAt: p.expiresAt, wa: null });
   paid[p.id] = { transaction_status: 'capture', fraud_status: 'accept' };
   assert.equal(await check(), 'confirmed');
   for (const s of ['expire', 'cancel', 'deny', 'failure', 'refund', 'partial_refund', 'chargeback']) {
@@ -632,7 +632,7 @@ test('seat mates: only a paid pass gets in, and a fan shows only what they chose
   paid[b.id] = { transaction_status: 'settlement' };
   r = await mates(a, { env: e });
   assert.equal(r.status, 200);
-  assert.deepEqual(await r.json(), { eventId: live.id, group: WA, me: null, fans: [] });
+  assert.deepEqual(await r.json(), { eventId: live.id, group: '', community: WA, me: null, fans: [] });
   await settled();
 
   // Without the box ticked, or with no Instagram, nothing is saved.
@@ -659,19 +659,32 @@ test('seat mates: only a paid pass gets in, and a fan shows only what they chose
   assert.deepEqual((await (await mates(b, { env: e })).json()).fans, []);
 });
 
-test('seat mates: the WhatsApp group can be set per concert, and only WhatsApp invites count', async () => {
-  const DB = fakeD1();
-  const group = async FANBASE_WA => {
-    const e = env({ DB, FANBASE_WA });
-    const p = await (await post(order(), { env: e })).json();
-    paid[p.id] = { transaction_status: 'settlement' };
-    return (await (await mates(p, { env: e })).json()).group;
-  };
-  assert.equal(await group(JSON.stringify({ [live.id]: WA, '*': 'https://chat.whatsapp.com/OtherOther0000' })), WA);
-  assert.equal(await group(JSON.stringify({ '*': WA })), WA);
-  assert.equal(await group('https://evil.example/join'), '');
-  assert.equal(await group(''), '');
+test('a paid pass gets the WhatsApp links: the concert\'s fanbase group and the community, in the answer and the email', async () => {
+  const GROUP = 'https://chat.whatsapp.com/DewaDewa19Group', COMMUNITY = 'https://chat.whatsapp.com/KHrYTEwiAhnEjN4eMuOSio';
+  const DB = fakeD1(), e = env({ DB, ...MAILING, FANBASE_WA: JSON.stringify({ '*': COMMUNITY, [live.id]: GROUP }) });
+  const p = await (await post(order(), { env: e })).json();
+  // Not paid: no links.
+  assert.equal((await (await status(p.id, p.token, { env: e })).json()).wa, undefined);
+  paid[p.id] = { transaction_status: 'settlement' };
+  assert.deepEqual((await (await status(p.id, p.token, { env: e })).json()).wa, { group: GROUP, community: COMMUNITY });
   await settled();
+  assert.equal(mails.length, 1);
+  assert.ok(mails[0].html.includes(GROUP) && mails[0].html.includes(COMMUNITY));
+  assert.ok(mails[0].text.includes(GROUP) && mails[0].text.includes(COMMUNITY));
+  const m = await (await mates(p, { env: e })).json();
+  assert.equal(m.group, GROUP);
+  assert.equal(m.community, COMMUNITY);
+});
+
+test('the WhatsApp links: one link is the community, JSON sets a group per concert, and only WhatsApp invites count', async () => {
+  const { waLinksFor } = await import('../js/fanrules.js');
+  const C = 'https://chat.whatsapp.com/KHrYTEwiAhnEjN4eMuOSio', G = 'https://chat.whatsapp.com/DewaDewa19Group';
+  assert.deepEqual(waLinksFor(C, 'x'), { group: '', community: C });
+  assert.deepEqual(waLinksFor(JSON.stringify({ '*': C, x: G }), 'x'), { group: G, community: C });
+  assert.deepEqual(waLinksFor(JSON.stringify({ '*': C, x: G }), 'y'), { group: '', community: C });
+  assert.deepEqual(waLinksFor(JSON.stringify({ '*': 'https://evil.example/join', x: 'http://chat.whatsapp.com/AbCdEfGhIj12' }), 'x'), { group: '', community: '' });
+  assert.deepEqual(waLinksFor('', 'x'), { group: '', community: '' });
+  assert.deepEqual(waLinksFor('{oops', 'x'), { group: '', community: '' });
 });
 
 test('seat mates stay off without the order book', async () => {

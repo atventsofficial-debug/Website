@@ -34,16 +34,26 @@ export function checkFan(d = {}) {
 // The concert's fan group on WhatsApp: an invite link from WhatsApp itself, nothing else.
 export const WA_GROUP = /^https:\/\/(?:chat\.whatsapp\.com\/[A-Za-z0-9]{10,40}|(?:www\.)?whatsapp\.com\/channel\/[A-Za-z0-9]{10,40})\/?$/;
 
-// FANBASE_WA, set in the dashboard: one invite link for every concert, or JSON with a link
-// per concert id and "*" for the rest. Anything that is not a WhatsApp invite is ignored.
-export function waGroupFor(setting, eventId) {
-  const s = String(setting ?? '').trim();
-  if (!s) return '';
-  if (WA_GROUP.test(s)) return s;
+// FANBASE_WA, set in the dashboard: the WhatsApp links a paid pass gets. One invite link is
+// the Atvents members' community, for every concert. JSON gives a link per concert id, the
+// artist's fanbase group, and "*" for the community:
+//   {"*": "https://chat.whatsapp.com/<community>", "evt-boyz2men-dewa19": "https://chat.whatsapp.com/<group>"}
+// Anything that is not a WhatsApp invite is ignored. { group, community }, each '' when unset.
+export function waLinksFor(setting, eventId) {
+  const s = String(setting ?? '').trim(), ok = v => (typeof v === 'string' && WA_GROUP.test(v.trim()) ? v.trim() : '');
+  if (!s) return { group: '', community: '' };
+  if (WA_GROUP.test(s)) return { group: '', community: s };
   try {
     const map = JSON.parse(s);
-    if (!map || typeof map !== 'object' || Array.isArray(map)) return '';
-    const link = Object.hasOwn(map, eventId) ? map[eventId] : map['*'];
-    return typeof link === 'string' && WA_GROUP.test(link.trim()) ? link.trim() : '';
-  } catch { return ''; }
+    if (!map || typeof map !== 'object' || Array.isArray(map)) return { group: '', community: '' };
+    const group = Object.hasOwn(map, eventId) ? ok(map[eventId]) : '';
+    const community = ok(map['*']);
+    return { group, community: community === group ? '' : community };
+  } catch { return { group: '', community: '' }; }
+}
+
+// Only the links that are set, for a pass's JSON; null when there are none.
+export function waOf(setting, eventId) {
+  const { group, community } = waLinksFor(setting, eventId);
+  return group || community ? { ...(group ? { group } : {}), ...(community ? { community } : {}) } : null;
 }

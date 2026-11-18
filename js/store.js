@@ -99,7 +99,7 @@ export class LocalStore {
     if (change !== undefined) this.save();
     const rows = list.filter(f => f.eventId === p.eventId), me = rows.find(f => f.id === p.id);
     return {
-      eventId: p.eventId, group: '', me: me ? { name: me.name, instagram: me.instagram } : null,
+      eventId: p.eventId, group: '', community: '', me: me ? { name: me.name, instagram: me.instagram } : null,
       fans: rows.map(f => ({ seat: f.seat, cat: f.cat, name: f.name, instagram: f.instagram, ...(f.id === p.id ? { mine: true } : {}) })),
     };
   }

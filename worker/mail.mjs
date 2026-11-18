@@ -52,7 +52,7 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 // The pass email for a paid order: { subject, html, text }.
 //   order: the orders row (worker/orders.mjs); concert: its catalog entry (worker/catalog.mjs:
 //   when, venue, cats, poster); link: the pass link.
-export function passEmail({ order, concert, link }) {
+export function passEmail({ order, concert, link, wa = {} }) {
   const title = concert?.title || order.title;
   const firstName = order.name.split(' ')[0];
   const category = concert?.cats?.[order.cat] || '';
@@ -76,6 +76,12 @@ export function passEmail({ order, concert, link }) {
   const cell = (k, v) => `<td width="50%" valign="top" style="width:50%;padding:0 12px 16px 0;"><div style="${label}">${esc(k)}</div><div style="font:700 15px/1.3 ${font};color:${ink};">${esc(v)}</div></td>`;
   const grid = [];
   for (let i = 0; i < details.length; i += 2) grid.push(`<tr>${cell(...details[i])}${details[i + 1] ? cell(...details[i + 1]) : '<td width="50%" style="width:50%;"></td>'}</tr>`);
+  // The WhatsApp links a paid pass gets (FANBASE_WA): the concert's fanbase group, and the
+  // Atvents members' community.
+  const waLinks = [
+    wa.group && ['Join the fanbase group', wa.group],
+    wa.community && ['Join the Atvents community', wa.community],
+  ].filter(Boolean);
   const step = (n, head, sub) => `<tr><td width="40" valign="top" style="width:40px;padding:0 0 14px;font:700 13px/1.5 ${mono};color:${orange};">${n}</td><td valign="top" style="padding:0 0 14px;"><div style="font:600 15px/1.5 ${font};color:${light};">${head}</div><div style="font:400 14px/1.5 ${font};color:${muted};">${sub}</div></td></tr>`;
 
   const html = `<!doctype html>
@@ -146,7 +152,14 @@ ${poster ? `      <tr><td style="padding:0;"><a href="${esc(link)}" style="text-
         </td></tr></table>
         <p style="margin:0 0 28px;font:400 13px/1.55 ${font};color:${muted};text-align:center;">Opens on any phone or laptop, until the day after the show. Keep this email to yourself: the link opens your pass.</p>
 
-        <div style="border-top:1px solid ${edge};font-size:0;line-height:0;">&nbsp;</div>
+${waLinks.length ? `        <div style="border-top:1px solid ${edge};font-size:0;line-height:0;">&nbsp;</div>
+        <p style="margin:24px 0 8px;font:700 11px/1.2 ${font};letter-spacing:0.14em;text-transform:uppercase;color:${muted};">Meet other fans</p>
+        <p style="margin:0 0 16px;font:400 14px/1.55 ${font};color:#d6d2cf;">Fans going to ${esc(title)} chat on WhatsApp before the show: who is sitting where, how to get there, meeting up on the day.</p>
+${waLinks.map(([t, href]) => `        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 10px;"><tr><td align="center" style="border:1px solid #25d366;border-radius:999px;">
+          <a href="${esc(href)}" style="display:block;padding:14px 22px;font:700 15px/1.2 ${font};color:#25d366;text-decoration:none;border-radius:999px;">${esc(t)} &rarr;</a>
+        </td></tr></table>`).join('\n')}
+        <p style="margin:6px 0 28px;font:400 13px/1.55 ${font};color:${muted};text-align:center;">In the 3D view you can also show your Instagram on your seat, so fans near you can find you.</p>
+` : ''}        <div style="border-top:1px solid ${edge};font-size:0;line-height:0;">&nbsp;</div>
         <p style="margin:24px 0 16px;font:700 11px/1.2 ${font};letter-spacing:0.14em;text-transform:uppercase;color:${muted};">Your seat tour</p>
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
           ${step('01', 'The whole venue', 'The stage, the screens and every section, from above.')}
@@ -182,6 +195,8 @@ ${poster ? `      <tr><td style="padding:0;"><a href="${esc(link)}" style="text-
     link,
     '',
     'Opens on any phone or laptop, until the day after the show. Keep this email to yourself: the link opens your pass.',
+    ...(waLinks.length ? ['', 'Meet other fans on WhatsApp:', ...waLinks.map(([t, href]) => `${t}: ${href}`)] : []),
+    '',
     'The 3D view is not a concert ticket. Your ticket comes from the concert’s official seller.',
     '',
     'Questions? Reply to this email and we will help.',

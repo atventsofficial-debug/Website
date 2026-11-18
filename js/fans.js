@@ -46,7 +46,8 @@ export function matesBlock(p, { cats = {} } = {}) {
   const d = mates.data;
   if (!d) return '';
   const others = d.fans.filter(f => !f.mine);
-  const group = d.group ? `<a class="btn btn-coral btn-sm mates-wa" href="${esc(d.group)}" target="_blank" rel="noopener noreferrer">${icon('i-out')}Join the WhatsApp fan group</a>` : '';
+  const wa = (href, text) => `<a class="btn btn-wa btn-sm mates-wa" href="${esc(href)}" target="_blank" rel="noopener noreferrer">${icon('i-out')}${text}</a>`;
+  const group = [d.group && wa(d.group, 'Join the fanbase group on WhatsApp'), d.community && wa(d.community, d.group ? 'Atvents members community' : 'Join the Atvents community on WhatsApp')].filter(Boolean).join('');
   const count = others.length ? `${others.length} fan${others.length === 1 ? '' : 's'} at this concert ${others.length === 1 ? 'shows' : 'show'} their Instagram on their seat. Tap a tag to say hi.`
     : 'No other fans show their Instagram yet. Be the first, and they will find you.';
   let mine;

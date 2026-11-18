@@ -25,7 +25,7 @@ import { clientsOf } from '../js/sso.js';
 import { signPass, readPass } from './passkey.mjs';
 import { hasOrders, saveOrder, setStatus, statusOf, takeEmail, returnEmail } from './orders.mjs';
 import { hasFans, fansOf, saveFan, dropFan, dropConcert, KEEP_AFTER } from './fans.mjs';
-import { checkFan, waGroupFor } from '../js/fanrules.js';
+import { checkFan, waLinksFor, waOf } from '../js/fanrules.js';
 import { mailerOf, passEmail } from './mail.mjs';
 
 const MAX_BODY = 4096, NOTIFY_BODY = 16384;
@@ -192,17 +192,23 @@ async function passStatus(request, env, ctx, id) {
   const t = await midtrans(pay).status(id);
   const status = !t && Date.now() - p.createdAt > UNPAID_CLOSE ? 'rejected' : passStateOf(t, { id, amount: ACCESS_FEE });
   if (status !== 'checking') later(ctx, settle(env, pay, id, status));
-  return passJson(p, status);
+  return passJson(p, status, env);
 }
 
 const passOf = async (pay, request, id) => {
   const p = PAYMENT_ID.test(id) ? await readPass(pay.key, request.headers.get('x-pass-token')) : null;
   return p && p.id === id ? p : null;
 };
-const passJson = (p, status) => json(200, {
-  id: p.id, eventId: p.eventId, cat: p.cat, qty: 1, seat: p.seat, route: 'paid', status,
-  createdAt: new Date(p.createdAt).toISOString(), expiresAt: new Date(p.createdAt + PAY_WINDOW).toISOString(),
-});
+// A paid pass also gets the WhatsApp links (FANBASE_WA): the fanbase group, the community.
+const passJson = (p, status, env) => {
+  // Always there once paid (null when none is set), so a link taken out goes from the page too.
+  const wa = status === 'confirmed' ? { wa: waOf(env?.FANBASE_WA, p.eventId) } : {};
+  return json(200, {
+    id: p.id, eventId: p.eventId, cat: p.cat, qty: 1, seat: p.seat, route: 'paid', status,
+    createdAt: new Date(p.createdAt).toISOString(), expiresAt: new Date(p.createdAt + PAY_WINDOW).toISOString(),
+    ...wa,
+  });
+};
 
 // The fan picks another way to pay: Midtrans closes this order, so its account number or
 // code stops taking money and one seat is never paid twice. Then Midtrans' own status says
@@ -226,7 +232,7 @@ async function cancelPayment(request, env, ctx, url, id) {
     status = 'rejected';
   }
   later(ctx, settle(env, pay, id, status));
-  return passJson(p, status);
+  return passJson(p, status, env);
 }
 
 // Midtrans' notification. Only its signature makes it count, and even then the status is
@@ -266,7 +272,7 @@ async function sendPass(env, pay, id) {
   if (!order) return true;    // sent already, or not an order in the book
   try {
     const token = await signPass(pay.key, { id, eventId: order.event_id, cat: order.cat, seat: order.seat, createdAt: order.created_at });
-    const mail = passEmail({ order, concert: concert(order.event_id), link: `${order.origin}/#pass-${id}-${token}` });
+    const mail = passEmail({ order, concert: concert(order.event_id), link: `${order.origin}/#pass-${id}-${token}`, wa: waLinksFor(env.FANBASE_WA, order.event_id) });
     await mailer.send({ to: order.email, ...mail });
     console.log(`pass email sent: ${id}`);
     return true;
@@ -314,7 +320,7 @@ async function seatMates(request, env, ctx, url, id) {
   const me = rows.find(r => r.order_id === id);
   return json(200, {
     eventId: p.eventId,
-    group: waGroupFor(env.FANBASE_WA, p.eventId),
+    ...waLinksFor(env.FANBASE_WA, p.eventId),
     me: me ? { name: me.name, instagram: me.instagram } : null,
     fans: rows.map(r => ({ seat: r.seat, cat: r.cat, name: r.name, instagram: r.instagram, ...(r.order_id === id ? { mine: true } : {}) })),
   });
