@@ -6,7 +6,8 @@ import { cleanSource } from './rules.js';
 export const $ = sel => document.querySelector(sel);
 export const $$ = sel => [...document.querySelectorAll(sel)];
 export const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-export const icon = id => `<svg><use href="#${id}"/></svg>`;
+// `lead` for an icon before the words: the round coral-button icon then keeps clear of them.
+export const icon = (id, cls = '') => `<svg${cls ? ` class="${cls}"` : ''}><use href="#${id}"/></svg>`;
 export const QUALITY = new URLSearchParams(location.search).get('quality') || 'auto';
 
 export const state = {

@@ -274,7 +274,7 @@ function fillSeatCard(seat) {
   }
   $('#sc-actions').innerHTML = `
     <button class="btn btn-line" type="button" data-act="back">${icon('i-back')}Back to the map</button>
-    ${p ? `<button class="btn ${mine ? 'btn-line' : 'btn-coral'}" type="button" data-act="mine" aria-pressed="${mine}">${icon(mine ? 'i-minus' : 'i-check')}${mine ? 'Not my seat' : 'This is my seat'}</button>` : ''}
+    ${p ? `<button class="btn ${mine ? 'btn-line' : 'btn-coral'}" type="button" data-act="mine" aria-pressed="${mine}">${icon(mine ? 'i-minus' : 'i-check', 'lead')}${mine ? 'Not my seat' : 'This is my seat'}</button>` : ''}
     <button class="btn btn-line" type="button" data-act="share">${icon('i-share')}Share</button>`;
 }
 
@@ -523,7 +523,7 @@ function paintTour() {
       ${seatNote(p, s)}
       ${numberingControls(p, s)}
       <div class="tour-end">
-        <button class="btn btn-coral" type="button" data-tour="story">${icon('i-share')}Upload to story</button>
+        <button class="btn btn-coral" type="button" data-tour="story">${icon('i-share', 'lead')}<span>Upload to story</span></button>
         <a class="btn btn-line" href="#home">${icon('i-back')}Back to home</a>
       </div>
       <p class="fine"><button class="link" type="button" data-tour="again">Take the tour again</button></p>`;

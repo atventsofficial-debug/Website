@@ -1266,8 +1266,8 @@ input, select, textarea { border-radius: 0; }
 .tour-steps li.is-done { border-top-color: rgba(255, 255, 255, 0.7); color: var(--text); }
 .tour-steps li.is-on { border-top-color: var(--coral); color: var(--text); }
 .app-side b { color: var(--text); }
-.tour-end { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s2); margin-top: 4px; }
-.tour-end .btn { padding: 0 14px; }
+.tour-end { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s2); margin-top: 4px; width: 100%; }
+.tour-end .btn { padding: 0 22px; }
 .cat-pill.is-off { opacity: 0.35; cursor: not-allowed; }
 .cat-pill.is-off:hover { border-color: var(--line-2); }
 .cat-pill.is-own:not([aria-pressed="true"]) { border-color: var(--coral); }
@@ -1316,6 +1316,9 @@ input, select, textarea { border-radius: 0; }
 .story-side h2 { font: 500 28px/1.05 var(--font); text-transform: uppercase; letter-spacing: -0.02em; }
 .story-side p:not(.eyebrow) { color: var(--muted); font-size: 14px; }
 .story-bar { height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.15); overflow: hidden; }
+.story-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; }
+.story-actions .btn { flex: 1 1 100%; }
+.story-actions .link { font-size: 13px; color: var(--muted); }
 .story-bar i { display: block; height: 100%; background: var(--coral); transform: scaleX(0); transform-origin: left; transition: transform .4s ease; }
 
 @media (max-width: 760px) {
@@ -1430,6 +1433,9 @@ body { counter-reset: sec; }
 .btn-coral:hover { background: var(--coral-2); }
 .btn-coral svg { box-sizing: content-box; width: 14px; height: 14px; padding: 6px; margin-right: -16px; border-radius: 50%; background: #fff; color: var(--coral); }
 .btn-sm.btn-coral svg { padding: 5px; margin-right: -10px; }
+/* An icon before the words (icon(id, 'lead')) hugs the left edge instead, clear of the words. */
+.btn-coral svg.lead { margin-right: 0; margin-left: -14px; }
+.btn-sm.btn-coral svg.lead { margin-right: 0; margin-left: -8px; }
 .btn-line { background: #fff; color: var(--ink); border-color: #fff; }
 .btn-line:hover { background: #e9e8e6; border-color: #e9e8e6; }
 .btn-line svg { color: var(--coral); }

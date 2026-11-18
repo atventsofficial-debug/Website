@@ -80,7 +80,7 @@ function reviewCard(c) {
         <div><dt>Email</dt><dd>${esc(c.email)}</dd></div>
         <div><dt>Access</dt><dd>${c.route === 'outside' ? `Paid Rp25.000 <span class="mono">${esc(c.payment || '')}</span>` : `Our link · ${n(c.clicks?.length)} click${c.clicks?.length === 1 ? '' : 's'}`}</dd></div>
       </dl>
-      <div class="row-btns"><button class="btn btn-coral btn-sm" type="button" data-claim="${esc(c.id)}" data-status="confirmed">${icon('i-check')}Approve</button><button class="btn btn-line btn-sm" type="button" data-claim="${esc(c.id)}" data-status="rejected">${icon('i-x')}Reject</button></div>
+      <div class="row-btns"><button class="btn btn-coral btn-sm" type="button" data-claim="${esc(c.id)}" data-status="confirmed">${icon('i-check', 'lead')}Approve</button><button class="btn btn-line btn-sm" type="button" data-claim="${esc(c.id)}" data-status="rejected">${icon('i-x')}Reject</button></div>
     </div>
   </article>`;
 }
