@@ -1843,89 +1843,181 @@ body { font-family: var(--font); font-feature-settings: "cv11", "ss01"; }
 .order-sum span b { font-weight: 600; }
 .order-sum small { color: var(--muted); font-size: 13px; }
 .order-price { flex: none; font: 600 24px/1 var(--display); letter-spacing: -0.03em; }
-.pay-sheet.panel-box { border-style: solid; padding: var(--s6); gap: var(--s4); }
+/* The checkout: two columns like a ticket shop's, the ways to pay on the left and the order on
+   the right, in light cards on the dark page. The form's side panel steps aside meanwhile. */
+.host.is-paying { grid-template-columns: minmax(0, 1fr); }
+.host.is-paying .host-side { display: none; }
+.pay-sheet {
+  --c-bg: #fff; --c-bg-2: #f7f5f2; --c-line: #e6e1da; --c-line-2: #cdc6bc;
+  --c-text: #0e0e0e; --c-muted: #6b6560; --c-soft: #fff3ec;
+  --pad-x: var(--s6); --pad-y: var(--s6);
+}
+.pay-sheet.panel-box { border-style: solid; padding: var(--pad-y) var(--pad-x); gap: var(--s5); }
 .pay-sheet .pay-row p { color: var(--text); font-size: 15px; line-height: 1.55; }
 .pay-sheet .pay-state { font: 500 clamp(26px, 3.4vw, 38px)/1.1 var(--font); letter-spacing: -0.02em; }
 .pay-sheet .pay-state + p { color: var(--text); font-size: 15px; line-height: 1.55; }
 .pay-sheet .eyebrow .mono { letter-spacing: 0; text-transform: none; }
 .pay-test { padding: 10px 12px; border-radius: var(--r-sm); border: 1px dashed var(--line-2); }
-/* the checkout: the order, the clock, Midtrans' form (white, as Midtrans draws it) */
+.co-stepper { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0; padding: 0; list-style: none; font-size: 13px; color: var(--muted); }
+.co-stepper li { display: flex; align-items: center; gap: 10px; }
+.co-stepper li + li::before { content: ""; width: 28px; height: 1px; background: var(--line-2); }
+.co-stepper li > * { display: inline-flex; align-items: center; gap: 8px; }
+.co-stepper .link { font: inherit; letter-spacing: 0; text-transform: none; color: inherit; }
+.co-stepper .link:hover { color: var(--text); }
+.co-stepper svg { box-sizing: content-box; width: 12px; height: 12px; padding: 5px; border-radius: 50%; background: rgba(232, 72, 15, 0.18); color: var(--coral-2); }
+.co-stepper i { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--coral); color: #fff; font: 700 12px/1 var(--font); font-style: normal; }
+.co-stepper .is-on { color: var(--text); font-weight: 600; }
+.co-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 360px); gap: var(--s6); align-items: start; }
+.co-main { display: flex; flex-direction: column; gap: var(--s4); min-width: 0; }
+.co-mini, .co-main-notes { display: none; }
 .co-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); flex-wrap: wrap; }
 .co-clock { display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px; border-radius: 999px; background: var(--panel-3); font-size: 13px; color: var(--text); }
 .co-clock svg { width: 14px; height: 14px; color: var(--muted); }
 .co-clock b { font-weight: 600; color: var(--coral-2); }
 .co-clock.is-low { background: var(--coral); }
 .co-clock.is-low b, .co-clock.is-low svg { color: #fff; }
-.co-order { background: var(--panel); }
+.co-safe { display: flex; gap: 8px; align-items: flex-start; }
+.co-safe svg { flex: none; width: 14px; height: 14px; margin-top: 2px; color: var(--ok); }
+.pay-sheet .co-status { color: var(--text); }
+.pay-sheet .co-error { padding: 12px 16px; border-radius: var(--r-sm); background: rgba(236, 84, 70, 0.12); border: 1px solid rgba(236, 84, 70, 0.45); color: var(--text); }
+.pay-sheet .co-alt { flex: none; gap: 6px; background: transparent; color: var(--text); border-color: var(--line-2); }
+.pay-sheet .co-alt:hover { border-color: rgba(255, 255, 255, 0.5); background: transparent; }
+.unlock-mail { display: flex; gap: 10px; align-items: flex-start; padding: 12px 16px; border-radius: var(--r-sm); background: var(--panel-2); font-size: 14px; line-height: 1.5; }
+.unlock-mail svg { flex: none; width: 16px; height: 16px; margin-top: 2px; color: var(--coral); }
+
+/* The logos, from Midtrans' logo kit, on small white plates as the banks and wallets draw
+   their marks. A logo keeps its own shape (contain): a wide one gets shorter, never squeezed. */
+.pm-logo { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: 76px; height: 40px; padding: 7px 9px; border-radius: 10px; background: #fff; border: 1px solid var(--c-line); }
+.pm-logo img, .pm-mini img { display: block; width: auto; height: auto; max-width: 100%; max-height: 100%; object-fit: contain; }
+.pm-logo.is-many { width: auto; padding-inline: 10px; }
+.pm-logo.is-many img { height: 18px; max-width: none; max-height: none; }
+.pm-logo.is-many .lg-visa { height: 11px; }
+
+/* The ways to pay: a folding card for each group, a radio for each way. */
+.pm-groups { display: flex; flex-direction: column; gap: 12px; }
+.pm-group { border-radius: 18px; background: var(--c-bg); color: var(--c-text); border: 1px solid var(--c-line); overflow: hidden; }
+.pm-group summary { display: flex; align-items: center; gap: 14px; padding: 16px 18px; cursor: pointer; list-style: none; }
+.pm-group summary::-webkit-details-marker { display: none; }
+.pm-group summary:focus-visible { outline: 2px solid var(--coral); outline-offset: -2px; border-radius: 18px; }
+.pm-group summary > svg { flex: none; width: 20px; height: 20px; }
+.pm-group summary > svg:first-child { color: var(--coral); }
+.pm-group summary > svg:last-child { color: var(--c-muted); transition: transform .2s; }
+.pm-group[open] summary > svg:last-child { transform: rotate(180deg); }
+.pm-gt { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pm-gt b { font-weight: 600; font-size: 15px; }
+.pm-gt small { color: var(--c-muted); font-size: 13px; }
+.pm-mini { display: flex; gap: 6px; align-items: center; }
+.pm-mini img { box-sizing: content-box; height: 16px; max-width: 50px; max-height: 16px; padding: 4px 6px; border-radius: 6px; background: #fff; border: 1px solid var(--c-line); }
+.pm-group[open] .pm-gt small, .pm-group[open] .pm-mini { display: none; }
+.pm-list { display: flex; flex-direction: column; gap: 2px; padding: 8px; border-top: 1px solid var(--c-line); }
+.pm { display: flex; align-items: center; gap: 14px; padding: 10px 12px; border-radius: 12px; border: 1px solid transparent; cursor: pointer; transition: background .15s, border-color .15s; }
+.pm input { flex: none; appearance: none; -webkit-appearance: none; width: 20px; height: 20px; margin: 0; border-radius: 50%; border: 2px solid var(--c-line-2); background: #fff; cursor: pointer; transition: border-width .15s, border-color .15s; }
+.pm input:checked { border: 6px solid var(--coral); }
+.pm input:focus-visible { outline: 2px solid var(--coral); outline-offset: 2px; }
+.pm input:disabled { cursor: progress; }
+.pm.is-on { border-color: var(--coral); background: var(--c-soft); }
+@media (hover: hover) {
+  .pm:not(.is-on):hover { background: var(--c-bg-2); }
+}
+.pm-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pm-text b { font-weight: 600; font-size: 15px; }
+.pm-text small { color: var(--c-muted); font-size: 13px; line-height: 1.35; }
+
+/* The order: what is bought, the total, the way to pay, and on the first screen Pay. */
+.co-sum { position: sticky; top: 24px; display: flex; flex-direction: column; gap: 14px; padding: 22px; border-radius: 20px; background: var(--c-bg); color: var(--c-text); border: 1px solid var(--c-line); }
+.co-sum-ev { display: flex; gap: 14px; align-items: flex-start; padding-bottom: 16px; border-bottom: 1px solid var(--c-line); }
+.co-poster { flex: none; display: block; width: 64px; aspect-ratio: 5 / 7; object-fit: cover; border-radius: 8px; background: var(--c-bg-2); }
+.co-sum-ev > span, .co-mini > span { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.co-sum-ev b { font-size: 17px; font-weight: 600; line-height: 1.25; }
+.co-sum small, .co-mini small { color: var(--c-muted); font-size: 13px; line-height: 1.4; }
+.pay-sheet .co-sum-to { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; line-height: 1.45; color: var(--c-muted); overflow-wrap: anywhere; }
+.co-sum-to svg { flex: none; width: 15px; height: 15px; margin-top: 1px; color: var(--coral); }
+.co-sum-to b { color: var(--c-text); font-weight: 600; }
+.co-sum-lines { display: flex; flex-direction: column; margin: 0; }
+.co-sum-lines div { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 4px 0; color: var(--c-muted); font-size: 14px; }
+.co-sum-lines dd { margin: 0; color: var(--c-text); }
+.co-sum-lines .co-total { margin-top: 8px; padding-top: 14px; border-top: 1px solid var(--c-line); color: var(--c-text); font-weight: 600; font-size: 15px; }
+.co-total dd { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; }
+.co-sum-way { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 10px 12px; border-radius: 12px; background: var(--c-bg-2); border: 1px solid var(--c-line); font-size: 14px; color: var(--c-muted); }
+.co-sum-way b { color: var(--c-text); font-weight: 600; }
+.co-sum-way .pm-logo { width: 54px; height: 30px; padding: 5px 7px; border-radius: 8px; }
+.co-sum-way .pm-logo.is-many { width: auto; gap: 4px; padding-inline: 7px; }
+.co-sum-way .pm-logo.is-many img { height: 12px; }
+.co-sum-way .pm-logo.is-many .lg-visa { height: 7px; }
+.pay-sheet .co-sum .co-error { margin: 0; color: var(--c-text); background: #fdeee8; border-color: #f2b7a3; font-size: 14px; }
+.pay-sheet .co-sum .fine { color: var(--c-muted); }
+.co-sum .pay-test { border-color: var(--c-line-2); }
+.co-sum-notes { display: flex; flex-direction: column; gap: 10px; }
+.co-go-total, .co-go-narrow { display: none; }
+/* Pay, and a wallet's Open button: orange on the light cards, with dark text to read well. */
+.pay-sheet .co-go, .co-pay .btn-coral { position: relative; background: var(--coral); border-color: var(--coral); color: var(--ink); }
+.pay-sheet .co-go:hover, .co-pay .btn-coral:hover { background: #f25c1e; border-color: #f25c1e; }
+.pay-sheet .co-go svg, .co-pay .btn-coral svg { width: 18px; height: 18px; padding: 0; margin: 0; background: none; color: var(--ink); }
+.co-go[aria-disabled="true"] { opacity: 0.5; }
+.co-go.is-busy { pointer-events: none; }
+.co-go.is-busy svg { visibility: hidden; }
+.co-go.is-busy::after { content: ""; position: absolute; right: 22px; top: 50%; width: 18px; height: 18px; margin-top: -9px; border: 2px solid rgba(14, 14, 14, 0.25); border-top-color: var(--ink); border-radius: 50%; animation: spin .8s linear infinite; }
+
+/* What to pay with: the number, the code or the QR code, on a light card. */
+.co-pay { display: flex; flex-direction: column; gap: var(--s4); padding: var(--s5); border-radius: 18px; background: var(--c-bg); color: var(--c-text); border: 1px solid var(--c-line); }
+.co-way { display: flex; align-items: center; gap: 14px; }
+.co-way > span:last-child { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.co-way b { font-weight: 600; }
+.co-way small { color: var(--c-muted); font-size: 13px; }
+.co-fields { display: flex; flex-direction: column; gap: 8px; }
+.co-field { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); padding: 12px 14px 12px 18px; border-radius: 14px; background: var(--c-bg-2); border: 1px solid var(--c-line); }
+.co-field > span { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.co-field small { color: var(--c-muted); font-size: 12px; }
+.co-field b { font-size: 17px; font-weight: 600; overflow-wrap: anywhere; }
+.co-field.is-big b { font-size: clamp(22px, 2.6vw, 28px); letter-spacing: 0.02em; color: var(--c-text); }
+.co-field .btn { flex: none; gap: 6px; background: #fff; color: var(--c-text); border-color: var(--c-line-2); }
+.co-field .btn:hover { background: #fff; border-color: var(--c-text); }
+.co-field .btn svg { width: 15px; height: 15px; color: var(--coral); }
+.co-qr { display: grid; place-items: center; width: fit-content; min-width: 260px; min-height: 260px; margin: 0 auto; padding: 14px; border-radius: 18px; background: #fff; border: 1px solid var(--c-line); }
+.co-qr img { display: block; width: 232px; height: 232px; }
+.pay-sheet .co-qr-off { max-width: 220px; color: var(--c-muted); text-align: center; }
+.co-steps { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: var(--s4) 0 0 20px; border-top: 1px solid var(--c-line); color: #2b2724; font-size: 14px; line-height: 1.5; }
+.co-steps li::marker { color: var(--coral); font-weight: 700; }
 .co-form { width: 100%; height: 640px; border-radius: var(--r-sm); background: #fff; overflow: hidden; }
 .co-loading, .co-fallback { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--s3); height: 100%; padding: var(--s5); text-align: center; color: var(--ink-muted); font-size: 14px; }
 .co-fallback p:first-child { color: var(--ink); font-size: 16px; }
 .pay-sheet .co-fallback .fine { color: var(--ink-muted); }
-.co-safe { display: flex; gap: 8px; align-items: flex-start; }
-.co-safe svg { flex: none; width: 14px; height: 14px; margin-top: 2px; color: var(--ok); }
-.pay-sheet .co-status { color: var(--text); }
-.unlock-mail { display: flex; gap: 10px; align-items: flex-start; padding: 12px 16px; border-radius: var(--r-sm); background: var(--panel-2); font-size: 14px; line-height: 1.5; }
-.unlock-mail svg { flex: none; width: 16px; height: 16px; margin-top: 2px; color: var(--coral); }
-.co-back { display: inline-flex; align-items: center; gap: 6px; }
-.co-back svg { width: 14px; height: 14px; }
-.pay-sheet .co-error { padding: 12px 16px; border-radius: var(--r-sm); background: rgba(236, 84, 70, 0.12); border: 1px solid rgba(236, 84, 70, 0.45); color: var(--text); }
-/* the ways to pay: Midtrans' logo kit on small white plates, as the banks and wallets draw
-   their marks; rows for wallets and the card, tiles for banks and stores */
-.pm-group { display: flex; flex-direction: column; gap: 10px; margin-top: var(--s2); }
-.pm-h { font: 600 11px/1.2 var(--font); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
-.pm-list { display: flex; flex-direction: column; gap: 8px; }
-.pm { position: relative; display: flex; align-items: center; gap: 14px; width: 100%; padding: 10px 16px 10px 10px; border-radius: 16px; background: var(--panel); border: 1px solid var(--line); text-align: left; cursor: pointer; transition: border-color .2s, background .2s; }
-.pm:disabled { cursor: progress; opacity: 0.5; }
-.pm.is-busy { opacity: 1; border-color: var(--coral); }
-.pm > svg { margin-left: auto; width: 18px; height: 18px; color: var(--dim); transition: transform .2s, color .2s; }
-@media (hover: hover) {
-  .pm:hover { border-color: rgba(255, 125, 107, 0.55); background: #241f1e; }
-  .pm:hover > svg { color: var(--coral-2); transform: translateX(3px); }
-  }
-.pm.is-busy > svg { visibility: hidden; }
-.pm.is-busy::after { content: ""; position: absolute; right: 16px; top: 50%; width: 16px; height: 16px; margin-top: -8px; border: 2px solid var(--line-2); border-top-color: var(--coral-2); border-radius: 50%; animation: spin .8s linear infinite; }
-.pm-logo { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 96px; height: 48px; padding: 9px 11px; border-radius: 11px; background: #fff; }
-.pm-logo img { display: block; max-width: 100%; max-height: 100%; width: auto; height: auto; }
-.pm-logo.is-many { width: auto; padding-inline: 12px; }
-.pm-logo.is-many img { height: 22px; max-width: 46px; }
-.pm-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.pm-text b { font-weight: 600; font-size: 15px; }
-.pm-text small { color: var(--muted); font-size: 13px; line-height: 1.35; }
-.pm-va, .pm-store { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.pm-va .pm, .pm-store .pm { flex-direction: column; align-items: stretch; gap: 8px; padding: 8px 8px 10px; text-align: center; }
-.pm-va .pm-logo, .pm-store .pm-logo { width: 100%; height: 50px; }
-.pm-va .pm-text small, .pm-store .pm-text small, .pm-va .pm > svg, .pm-store .pm > svg { display: none; }
-.pm-va .pm-text b, .pm-store .pm-text b { font-size: 13px; font-weight: 500; color: var(--muted); }
-.pm-va .pm.is-busy::after, .pm-store .pm.is-busy::after { top: auto; bottom: 10px; right: 10px; margin: 0; }
-/* what to pay with, on the site's own dark checkout */
-.co-pay { display: flex; flex-direction: column; gap: var(--s4); padding: var(--s5); border-radius: 18px; background: var(--panel); border: 1px solid var(--line); }
-.co-way { display: flex; align-items: center; gap: 14px; }
-.co-way > span:last-child { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.co-way b { font-weight: 600; }
-.co-way small { color: var(--muted); font-size: 13px; }
-.co-fields { display: flex; flex-direction: column; gap: 8px; }
-.co-field { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); padding: 12px 14px 12px 18px; border-radius: 14px; background: var(--frame); border: 1px solid var(--line); }
-.co-field > span { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.co-field small { color: var(--muted); font-size: 12px; }
-.co-field b { font-size: 17px; font-weight: 600; overflow-wrap: anywhere; }
-.co-field.is-big b { font-size: clamp(22px, 2.6vw, 28px); font-weight: 600; letter-spacing: 0.02em; color: #fff; }
-.co-field .btn, .pay-sheet .co-alt { flex: none; gap: 6px; background: transparent; color: var(--text); border-color: var(--line-2); }
-.co-field .btn:hover, .pay-sheet .co-alt:hover { border-color: rgba(255, 255, 255, 0.5); background: transparent; }
-.co-field .btn svg { width: 15px; height: 15px; color: var(--coral-2); }
-.co-qr { display: grid; place-items: center; width: fit-content; min-width: 260px; min-height: 260px; margin: 0 auto; padding: 14px; border-radius: 18px; background: #fff; }
-.co-qr img { display: block; width: 232px; height: 232px; }
-.pay-sheet .co-qr-off { max-width: 220px; color: var(--ink-muted); text-align: center; }
-.co-steps { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: var(--s4) 0 0 20px; border-top: 1px solid var(--line); color: rgba(244, 240, 238, 0.86); font-size: 14px; line-height: 1.5; }
-.co-steps li::marker { color: var(--coral-2); font-weight: 700; }
+
+/* A phone or a tablet: one column, the order in a line on top, Pay pinned to the bottom. */
+@media (max-width: 900px) {
+  .co-cols { grid-template-columns: minmax(0, 1fr); gap: var(--s5); }
+  .co-sum { position: static; }
+  .co-mini { display: flex; align-items: center; gap: 12px; padding: 10px 14px 10px 10px; border-radius: 16px; background: var(--c-bg); color: var(--c-text); border: 1px solid var(--c-line); }
+  .co-mini .co-poster { width: 40px; border-radius: 6px; }
+  .co-mini > span { flex: 1; }
+  .co-mini b { font-weight: 600; }
+  .co-mini .co-mini-fee { flex: none; font-size: 17px; }
+  .co-main-notes { display: flex; flex-direction: column; gap: 10px; }
+  .co-sum.is-go { position: sticky; bottom: 0; z-index: 5; gap: 10px; margin: 0 calc(-1 * var(--pad-x)) calc(-1 * var(--pad-y)); padding: 12px var(--pad-x) calc(12px + env(safe-area-inset-bottom, 0px)); border-width: 1px 0 0; border-radius: 0 0 var(--r) var(--r); box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.35); }
+  .co-sum.is-go > :not(.co-go-row):not(.co-error) { display: none; }
+  .co-go-row { display: flex; align-items: center; gap: 16px; }
+  .co-go-total { display: flex; flex-direction: column; gap: 1px; }
+  .co-go-total small { font-size: 12px; }
+  .co-go-total b { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; white-space: nowrap; }
+  .co-go-row .co-go { flex: 1; width: auto; min-width: 0; }
+  .co-go .co-go-wide { display: none; }
+  .co-go .co-go-narrow { display: inline; overflow: hidden; text-overflow: ellipsis; }
+}
 @media (max-width: 560px) {
-  .pay-sheet.panel-box { padding: var(--s5) var(--s4); }
+  .pay-sheet { --pad-x: var(--s4); --pad-y: var(--s5); }
+  .co-stepper { gap: 6px; font-size: 12px; }
+  .co-stepper li { gap: 6px; }
+  .co-stepper li + li::before { width: 12px; }
   .co-bleed { margin-inline: calc(-1 * var(--s4)); }
   .co-form { height: 600px; border-radius: 0; }
-  .co-order { flex-direction: column; align-items: flex-start; gap: var(--s2); }
-  .pm-logo { width: 84px; height: 44px; padding: 8px 9px; }
-  .pm-logo.is-many { gap: 5px; padding-inline: 9px; }
-  .pm-logo.is-many img { height: 15px; max-width: 30px; }
-  .pm-va .pm-logo, .pm-store .pm-logo { height: 44px; padding: 8px; }
+  .pm-group summary { padding: 14px; gap: 12px; }
+  .pm-mini img:nth-child(n+3) { display: none; }
+  .pm-list { padding: 6px; }
+  .pm { gap: 12px; padding: 9px 10px; }
+  .pm-logo { width: 66px; height: 36px; padding: 6px 8px; }
+  .pm-logo.is-many { gap: 4px; padding-inline: 7px; }
+  .pm-logo.is-many img { height: 14px; }
+  .pm-logo.is-many .lg-visa { height: 9px; }
   .co-pay { padding: var(--s4); }
   /* The copy button beside the label, so a long number has the field's whole width. */
   .co-field { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; row-gap: 2px; padding: 10px 10px 12px 14px; }

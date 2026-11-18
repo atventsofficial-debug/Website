@@ -77,6 +77,12 @@ export function cardImg(e, alt) {
   return `<img class="cover-img cover-image" src="${src}-480.webp" srcset="${src}-480.webp 480w, ${src}.webp 800w" sizes="(max-width: 640px) 92vw, 360px" alt="${IMAGES[e.image].alt.replace(/"/g, '&quot;')}" loading="lazy" decoding="async">`;
 }
 
+// The poster, small, beside the order in the checkout. Empty for a concert without one.
+export function thumbImg(e) {
+  if (!e?.image || !Object.hasOwn(IMAGES, e.image)) return '';
+  return `<img class="co-poster" src="assets/events/card/${e.image}-480.webp" alt="" decoding="async">`;
+}
+
 // The artwork itself, sharp and uncropped, with its credit: on the event page.
 export function posterFig(e) {
   if (!e.image || !Object.hasOwn(IMAGES, e.image)) return '';
