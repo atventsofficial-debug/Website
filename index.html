@@ -14,6 +14,34 @@
 <meta name="theme-color" content="#0b0a0a">
 <link rel="stylesheet" href="css/styles.css">
 <link rel="stylesheet" href="css/mobile.css">
+<style>
+/* Opening animation (#atv-intro, js/intro.js). Inline so it paints with the first frame; about 2.6s. */
+.atv-intro{position:fixed;inset:0;z-index:2147483000;display:grid;place-items:center;pointer-events:none}
+.atv-intro::before{content:"";position:absolute;inset:0;background:#0b0a0a;animation:ai-out 0.65s cubic-bezier(.4,0,.2,1) 1.89s forwards}
+.atv-intro .lk{position:relative;width:min(56vw,300px);aspect-ratio:4635/818;--tx:0px;--ty:0px;--s:1;
+  animation:ai-home 0.715s cubic-bezier(.65,0,.25,1) 1.89s forwards,ai-out 0.156s linear 2.57s forwards}
+.atv-intro .mk{position:absolute;left:calc(26/4635*100%);top:calc(26/818*100%);width:calc(914.3/4635*100%);height:calc(767.2/818*100%);
+  transform:translateX(200.6%) scale(1.9);animation:ai-none 0.546s cubic-bezier(.65,0,.25,1) 1.07s forwards}
+.atv-intro .mk>svg,.atv-intro .ly{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.atv-intro .wmv{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.atv-intro .wm{fill:#f4f0ee}
+.atv-intro .wipe{transform:translateX(-4000px);animation:ai-none 0.585s cubic-bezier(.45,0,.2,1) 1.3s forwards}
+.atv-intro svg *{transform-box:view-box}
+@keyframes ai-none{to{opacity:1;transform:none}}
+@keyframes ai-home{to{transform:translate(var(--tx),var(--ty)) scale(var(--s))}}
+@keyframes ai-out{to{opacity:0;visibility:hidden}}
+.atv-intro .row{stroke-width:9px}
+.atv-intro .rv{stroke-dashoffset:1;animation:ai-sweep 0.806s cubic-bezier(.4,0,.3,1) 0.104s forwards}
+.atv-intro .dots .row{animation:ai-grow 0.416s cubic-bezier(.5,0,.3,1) calc(0.806s + var(--r)*0.0195s) forwards}
+.atv-intro .solid{opacity:0;animation:ai-none 0.286s ease 1.09s forwards}
+.atv-intro .st{opacity:0;transform-origin:500px 470px;transform:scale(.3);animation:ai-none 0.52s cubic-bezier(.22,1,.36,1) 0.91s forwards}
+@keyframes ai-sweep{to{stroke-dashoffset:0}}
+@keyframes ai-grow{to{stroke-width:26px}}
+html:not(.atv-seen) #nav .logo-img{animation:ai-show 0s 2.57s both}
+.atv-seen .atv-intro{display:none}
+@keyframes ai-show{from{opacity:0}}
+</style>
+<script src="js/intro.js"></script>
 <script type="importmap">
 { "imports": {
   "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js",
@@ -22,6 +50,14 @@
 </script>
 </head>
 <body data-view="home">
+<!-- Opening animation: the arena mark's tiers appear as rows of seats filling up, the seats
+     grow into the solid mark, the wordmark is uncovered and the logo glides into the nav logo's
+     place as the page shows. CSS in <head>; js/intro.js skips it on later loads in the same tab
+     and for reduced motion, and takes it out of the page after. -->
+<div class="atv-intro" id="atv-intro" aria-hidden="true"><div class="lk"><div class="mk"><svg viewBox="180 150 640 537" overflow="visible"><defs><linearGradient id="ai-g" x1="180" y1="150" x2="820" y2="696" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#f4b173"/><stop offset=".35" stop-color="#f37a2a"/><stop offset=".7" stop-color="#e8480f"/><stop offset="1" stop-color="#b81d08"/></linearGradient><mask id="ai-s" maskUnits="userSpaceOnUse" x="100" y="80" width="800" height="700"><circle class="rv" cx="500" cy="470" r="175" fill="none" stroke="#fff" stroke-width="370" pathLength="1" stroke-dasharray="1 1" transform="rotate(118 500 470)"/></mask><clipPath id="ai-c"><path d="M264.2 686.4A320 320 0 0 1 182.1 433.5L261.6 442.6A240 240 0 0 0 323.2 632.3ZM338.3 611.7A215 215 0 0 1 285.9 450.4L350.6 456.3A150 150 0 0 0 387.2 568.9ZM186.4 406.4A320 320 0 0 1 342.6 191.4L382 261A240 240 0 0 0 264.8 422.3ZM290.3 422.5A215 215 0 0 1 390 285.3L423.3 341.1A150 150 0 0 0 353.7 436.9ZM367.1 178.9A320 320 0 0 1 632.9 178.9L599.7 251.7A240 240 0 0 0 400.3 251.7ZM415.2 272.4A215 215 0 0 1 584.8 272.4L559.2 332.2A150 150 0 0 0 440.8 332.2ZM657.4 191.4A320 320 0 0 1 813.6 406.4L735.2 422.3A240 240 0 0 0 618 261ZM610 285.3A215 215 0 0 1 709.7 422.5L646.3 436.9A150 150 0 0 0 576.7 341.1ZM817.9 433.5A320 320 0 0 1 735.8 686.4L676.8 632.3A240 240 0 0 0 738.4 442.6ZM714.1 450.4A215 215 0 0 1 661.7 611.7L612.8 568.9A150 150 0 0 0 649.4 456.3Z"/></clipPath></defs>
+<g clip-path="url(#ai-c)"><g class="dots" mask="url(#ai-s)" fill="none" stroke="url(#ai-g)" stroke-linecap="round" stroke-dasharray="0 18"><path class="row" style="--r:0" d="M400.3 597.7A162 162 0 1 1 599.7 597.7"/><path class="row" style="--r:1" d="M387.3 614.2A183 183 0 1 1 612.7 614.2"/><path class="row" style="--r:2" d="M374.4 630.8A204 204 0 1 1 625.6 630.8"/><path class="row" style="--r:3" d="M344.9 668.6A252 252 0 1 1 655.1 668.6"/><path class="row" style="--r:4" d="M332.5 684.3A272 272 0 1 1 667.5 684.3"/><path class="row" style="--r:5" d="M320.2 700.1A292 292 0 1 1 679.8 700.1"/><path class="row" style="--r:6" d="M308.5 715.1A311 311 0 1 1 691.5 715.1"/></g>
+<path class="solid" d="M264.2 686.4A320 320 0 0 1 182.1 433.5L261.6 442.6A240 240 0 0 0 323.2 632.3ZM338.3 611.7A215 215 0 0 1 285.9 450.4L350.6 456.3A150 150 0 0 0 387.2 568.9ZM186.4 406.4A320 320 0 0 1 342.6 191.4L382 261A240 240 0 0 0 264.8 422.3ZM290.3 422.5A215 215 0 0 1 390 285.3L423.3 341.1A150 150 0 0 0 353.7 436.9ZM367.1 178.9A320 320 0 0 1 632.9 178.9L599.7 251.7A240 240 0 0 0 400.3 251.7ZM415.2 272.4A215 215 0 0 1 584.8 272.4L559.2 332.2A150 150 0 0 0 440.8 332.2ZM657.4 191.4A320 320 0 0 1 813.6 406.4L735.2 422.3A240 240 0 0 0 618 261ZM610 285.3A215 215 0 0 1 709.7 422.5L646.3 436.9A150 150 0 0 0 576.7 341.1ZM817.9 433.5A320 320 0 0 1 735.8 686.4L676.8 632.3A240 240 0 0 0 738.4 442.6ZM714.1 450.4A215 215 0 0 1 661.7 611.7L612.8 568.9A150 150 0 0 0 649.4 456.3Z" fill="url(#ai-g)"/></g>
+<path class="st" d="M500 375Q500 470 595 470Q500 470 500 565Q500 470 405 470Q500 470 500 375Z" fill="url(#ai-g)"/></svg></div><svg class="wmv" viewBox="-1180 -766 4635 818"><defs><linearGradient id="ai-w" x1="3450" x2="3950" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#000"/></linearGradient><mask id="ai-m" maskUnits="userSpaceOnUse" x="-1200" y="-800" width="4800" height="900"><rect class="wipe" x="-1400" y="-800" width="5400" height="900" fill="url(#ai-w)"/></mask></defs><g mask="url(#ai-m)"><path class="wm" d="M257 10Q190 10 137.5 -23.0Q85 -56 54.5 -113.0Q24 -170 24 -243Q24 -316 54.5 -373.0Q85 -430 137.5 -463.0Q190 -496 257 -496Q306 -496 345.5 -477.0Q385 -458 410.0 -424.5Q435 -391 438 -348V-138Q435 -95 410.5 -61.5Q386 -28 346.0 -9.0Q306 10 257 10ZM288 -128Q337 -128 367.0 -160.5Q397 -193 397 -243Q397 -277 383.5 -303.0Q370 -329 345.5 -343.5Q321 -358 289 -358Q257 -358 232.5 -343.5Q208 -329 193.5 -303.0Q179 -277 179 -243Q179 -210 193.0 -184.0Q207 -158 232.0 -143.0Q257 -128 288 -128ZM391 0V-131L414 -249L391 -367V-486H541V0ZM708 0V-687H861V0ZM598 -356V-486H971V-356ZM1181 0 975 -486H1140L1280 -81H1208L1348 -486H1510L1304 0ZM1795 11Q1716 11 1654.5 -21.5Q1593 -54 1558.0 -112.0Q1523 -170 1523 -243Q1523 -316 1557.5 -373.5Q1592 -431 1651.0 -464.0Q1710 -497 1784 -497Q1856 -497 1911.0 -466.0Q1966 -435 1997.5 -380.0Q2029 -325 2029 -254Q2029 -241 2027.5 -226.5Q2026 -212 2022 -193L1603 -192V-297L1957 -298L1891 -254Q1890 -296 1878.0 -323.5Q1866 -351 1842.5 -365.5Q1819 -380 1785 -380Q1749 -380 1722.5 -363.5Q1696 -347 1681.5 -317.0Q1667 -287 1667 -244Q1667 -201 1682.5 -170.5Q1698 -140 1726.5 -123.5Q1755 -107 1794 -107Q1830 -107 1859.0 -119.5Q1888 -132 1910 -157L1994 -73Q1958 -31 1907.0 -10.0Q1856 11 1795 11ZM2414 0V-277Q2414 -315 2390.5 -338.5Q2367 -362 2331 -362Q2306 -362 2287.0 -351.5Q2268 -341 2257.0 -321.5Q2246 -302 2246 -277L2187 -306Q2187 -363 2212.0 -406.0Q2237 -449 2281.5 -472.5Q2326 -496 2382 -496Q2436 -496 2477.5 -470.5Q2519 -445 2543.0 -403.0Q2567 -361 2567 -311V0ZM2093 0V-486H2246V0ZM2724 0V-687H2877V0ZM2614 -356V-486H2987V-356ZM3221 12Q3178 12 3136.5 1.0Q3095 -10 3059.5 -30.5Q3024 -51 2999 -78L3086 -166Q3110 -140 3143.0 -125.5Q3176 -111 3215 -111Q3242 -111 3256.5 -119.0Q3271 -127 3271 -141Q3271 -159 3253.5 -168.5Q3236 -178 3209.0 -185.5Q3182 -193 3152.0 -202.0Q3122 -211 3095.0 -227.0Q3068 -243 3051.0 -271.5Q3034 -300 3034 -344Q3034 -391 3058.0 -425.5Q3082 -460 3126.0 -480.0Q3170 -500 3229 -500Q3291 -500 3343.5 -478.5Q3396 -457 3429 -415L3342 -327Q3319 -354 3290.5 -365.0Q3262 -376 3235 -376Q3209 -376 3196.0 -368.5Q3183 -361 3183 -347Q3183 -332 3200.0 -323.0Q3217 -314 3244.0 -307.0Q3271 -300 3301.0 -290.0Q3331 -280 3358.0 -263.0Q3385 -246 3402.0 -217.5Q3419 -189 3419 -143Q3419 -72 3365.5 -30.0Q3312 12 3221 12Z"/></g></svg></div></div>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <symbol id="i-tix" viewBox="0 0 24 16"><path d="M0 0h24v5a3 3 0 0 0 0 6v5H0v-5a3 3 0 0 0 0-6V0Z" fill="currentColor"/></symbol>

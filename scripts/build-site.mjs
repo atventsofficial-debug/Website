@@ -51,6 +51,12 @@ try {
   fs.mkdirSync(path.join(out, 'css'));
   fs.writeFileSync(path.join(out, 'css', cssName), css.code);
   const swap = (from, to) => { if (!html.includes(from)) throw new Error(`index.html has no ${from}`); html = html.replace(from, to); };
+  // The opening animation's script (js/intro.js) runs in <head> before the page draws, so it
+  // stays out of the bundle: a small file of its own, hashed like the rest.
+  const intro = await esbuild.transform(fs.readFileSync(path.join(root, 'js/intro.js'), 'utf8'), { loader: 'js', minify: true, target: 'es2015' });
+  const introName = `intro-${crypto.createHash('sha256').update(intro.code).digest('hex').slice(0, 10)}.js`;
+  fs.writeFileSync(path.join(out, 'js', introName), intro.code);
+  swap('src="js/intro.js"', `src="js/${introName}"`);
   swap('src="js/app.js"', `src="js/${path.basename(entry)}"`);
   swap('href="css/styles.css"', `href="css/${cssName}"`);
   swap('<link rel="stylesheet" href="css/mobile.css">\n', '');
