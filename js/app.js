@@ -93,7 +93,7 @@ function parse(hash) {
   if (PARTNER_ANCHORS.has(h)) return { view: 'partners', anchor: h };
   if (PAGES.has(h)) return { view: h };
   if (h.startsWith('unlock-') && isConcert(h.slice(7))) return { view: 'unlock', id: h.slice(7) };
-  if (h.startsWith('paid-') && PAYMENT_ID.test(h.slice(5))) return { view: 'unlock', paid: h.slice(5) };
+  if (h.startsWith('paid-') && PAYMENT_ID.test(h.slice(5))) return { view: 'unlock', paid: h.slice(5), focus: 'pay-sheet' };
   if (h.startsWith('event-') && isConcert(h.slice(6))) return { view: 'event', id: h.slice(6) };
   if (h.startsWith('tour-')) {
     const p = passes.get(h.slice(5));
@@ -140,8 +140,10 @@ async function route() {
   // and the history before anything else happens.
   const link = location.hash.match(/^#pass-((?:P|PAY)-[A-Z0-9]{4,24})-([A-Za-z0-9_.-]{16,400})$/);
   if (link) {
-    history.replaceState(null, '', `${location.pathname}${location.search}#passes`);
-    try { await importPass(link[1], link[2]); toast('Pass added to this device.'); } catch { toast('That pass link did not work. Write to us with your payment reference.'); }
+    // A paid pass opens on its own page ("You're in"); an older pass goes to My 3D passes.
+    const to = hash => history.replaceState(null, '', `${location.pathname}${location.search}#${hash}`);
+    to(PAYMENT_ID.test(link[1]) ? `paid-${link[1]}` : 'passes');
+    try { await importPass(link[1], link[2]); toast('Pass added to this device.'); } catch { to('passes'); toast('That pass link did not work. Write to us with your payment reference.'); }
   }
   const r = parse(location.hash.slice(1));
   const prev = state.view;
@@ -178,8 +180,9 @@ async function route() {
   if (inApp) return;
   // The viewer's back button returns to the page it was opened from.
   state.page = location.hash || '#home';
-  const target = r.anchor && document.getElementById(r.anchor);
-  if (target) requestAnimationFrame(() => target.scrollIntoView());
+  // An anchor in the page, or the part the page is about (the checkout of #paid-<id>).
+  const target = document.getElementById(r.anchor || r.focus || '');
+  if (target && !target.hidden) requestAnimationFrame(() => target.scrollIntoView());
   else if (prev !== r.view || r.view !== 'concerts') window.scrollTo(0, 0);
 }
 

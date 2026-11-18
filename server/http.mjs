@@ -87,7 +87,7 @@ export function checkOrigin(req, publicUrl) {
   if (!ok) throw new HttpError(403, 'Cross-site request refused');
 }
 
-export function securityHeaders(root, isHttps) {
+export function securityHeaders(root, isHttps, { midtrans = false } = {}) {
   // Hash the inline import map so the CSP can stay free of 'unsafe-inline' for scripts, and
   // allow only the folders it maps to (three.js at its exact version), not the whole CDN.
   let mapHash = '', cdn = '';
@@ -99,15 +99,19 @@ export function securityHeaders(root, isHttps) {
       cdn = [...new Set(Object.values(JSON.parse(m[1]).imports).map(u => u.slice(0, u.lastIndexOf('/') + 1)))].join(' ');
     }
   } catch { /* no index.html */ }
-  // Buying happens on tiket.com, in its own tab: nothing here loads or frames a payment page.
+  // Concert tickets are bought from the official seller, in its own tab. The 3D pass is paid
+  // in Midtrans' form inside the page (js/snap.js), only on the static build, which pays
+  // through the Worker: then, and only then, Midtrans' two hosts may load that script and
+  // the frame it opens. snap.js fetches nothing itself.
+  const pay = midtrans ? 'https://app.midtrans.com https://app.sandbox.midtrans.com' : '';
   const csp = [
     "default-src 'self'",
-    `script-src 'self' ${mapHash} ${cdn}`,
+    `script-src 'self' ${mapHash} ${cdn}${pay ? ` ${pay}` : ''}`,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: blob:",
     "connect-src 'self'",
-    "frame-src 'none'",
+    `frame-src ${pay || "'none'"}`,
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",

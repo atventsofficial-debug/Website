@@ -2,10 +2,12 @@
 // the payment Worker (worker/) checks a buyer exactly the way the page does (rules.js),
 // without loading the venues.
 
-// The price of one 3D seat view, for one concert, and the id of an order.
+// The price of one 3D seat view, for one concert, the id of an order, and how long it waits.
 export const ACCESS_FEE = 25000;
 export const formatFee = (n = ACCESS_FEE) => `Rp${n.toLocaleString('id-ID')}`;
 export const PAYMENT_ID = /^PAY-[A-Z0-9]{6,24}$/;
+// How long the payment form stays open, as on a ticket shop's checkout.
+export const PAY_MINUTES = 60;
 
 export const EMAIL = /^[^\s@<>()"',;:]{1,64}@[^\s@<>()"',;:]{1,190}\.[a-z]{2,24}$/i;
 

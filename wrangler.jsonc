@@ -1,9 +1,10 @@
 // Cloudflare Workers deploy (`npx wrangler deploy`). The build (scripts/build-site.mjs) writes
 // site/ and worker/catalog.json. Cloudflare serves the files in site/ as they are, with the
 // security headers from site/_headers. The Worker (worker/index.mjs) answers only addresses
-// with no file behind them: the Midtrans payments for 3D passes. Its secret,
-// MIDTRANS_SERVER_KEY, is set in the Cloudflare dashboard as a Secret, never in this file.
-// The Node server in server/ is not part of the deploy.
+// with no file behind them: the Midtrans payments for 3D passes and the pass email. Its
+// secrets, MIDTRANS_SERVER_KEY and RESEND_API_KEY, are set in the Cloudflare dashboard as
+// Secrets, never in this file (README, Payments). The Node server in server/ is not part of
+// the deploy.
 {
   "name": "website",
   "main": "worker/index.mjs",
@@ -15,6 +16,9 @@
     { "name": "PAY_LIMIT", "namespace_id": "1001", "simple": { "limit": 10, "period": 60 } },
     { "name": "STATUS_LIMIT", "namespace_id": "1002", "simple": { "limit": 60, "period": 60 } }
   ],
+  // The order book (worker/orders.mjs). With no database_id, Cloudflare makes the database
+  // on the first deploy and keeps using it; its table is made on first use.
+  "d1_databases": [{ "binding": "DB", "database_name": "atvents-orders" }],
   // Variables set in the dashboard survive a deploy.
   "keep_vars": true,
   "observability": { "enabled": true }

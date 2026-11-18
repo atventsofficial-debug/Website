@@ -7,7 +7,7 @@ Atvents does not sell tickets or take payments. Every **Buy on tiket.com** butto
 ## The flow since November 2026
 
 - **One way into the seat view: payment.** On `#unlock` the fan picks the concert, category, section, row and seat, adds their name and email, and pays the access fee (`ACCESS_FEE` in `js/order.js`, Rp25.000). The pass opens as soon as the payment is marked paid. There is no more free unlock through our tiket.com links and no e-ticket upload.
-- **Payments go through Midtrans** (see [Payments](#payments-midtrans)): a small Worker in front of the static site makes the order and sends the fan to Midtrans' payment page. Until its server key is set, the site shows the preview sheet that charges nothing (`LocalStore.pay` / `payDemo`); with a Sandbox key, only devices that opened `#paytest` pay, in the Sandbox.
+- **Payments go through Midtrans** (see [Payments](#payments-midtrans)): a small Worker in front of the static site makes the order, Midtrans' form opens inside the page, and the pass email goes out once it is paid. Until its server key is set, the site shows the preview sheet that charges nothing (`LocalStore.pay` / `payDemo`); with a Sandbox key, only devices that opened `#paytest` pay, in the Sandbox.
 - **The Node server (`server/`) still has the old claim rules** (order ID, e-ticket) and is not deployed. On Cloudflare run the static front end and the payment Worker (`worker/`); clicks, sign-ups and partner requests still stay in the visitor's browser there.
 - **Concert updates** on the home page (`concertNews` in `js/pages.js`) are built from `js/events.js`: sales opening, shows coming up, sold-out categories.
 - **Footage** (`#footage`) is a coming-soon page with a waiting list (`kind: 'footage'` sign-ups). Nothing can be bought there yet.
@@ -71,22 +71,28 @@ In production the server refuses to start without an `ADMIN_TOKEN` of 24+ charac
 
 ## Payments (Midtrans)
 
-The 3D pass is paid on Midtrans' own page (Snap, redirect), so no card or wallet details touch the site, and the page's Content-Security-Policy needs no Midtrans scripts.
+The fan pays without leaving the site, the way a ticket shop's checkout works: Midtrans' payment form (Snap, embedded) opens inside the page, with QRIS, e-wallets, bank transfer and cards. Midtrans handles the payment itself, so no card, wallet or bank details touch the site.
 
-1. **Unlock.** The page sends the concert, seat, name and email to `POST /api/payments`. The Worker (`worker/index.mjs`) checks them like `checkClaim` does (seats from `worker/catalog.json`, written by the build), makes a Snap order at `ACCESS_FEE` (the browser cannot change the amount), and answers with the payment page and a signed pass key. The pass waits on the device as *Waiting for payment* and the browser goes to Midtrans.
-2. **Back.** Midtrans sends the fan to `/pay/done`, which forwards to `#paid-<order id>`. The page asks `GET /api/passes/<id>` (key in the `x-pass-token` header), which asks Midtrans' status API: settled opens the pass, pending keeps asking for two minutes (My 3D passes asks again on each visit), failed, expired or refunded closes it. An order nobody started paying closes after 25 hours.
-3. **No database.** Midtrans keeps the orders with the buyer's name and email; look them up in its dashboard by order id (`PAY-…`). The pass key carries the order id, concert, category and seat with an HMAC derived from the server key, so a new server key retires earlier keys (passes already open on a device stay open there).
+1. **Unlock.** The page sends the concert, seat, name and email to `POST /api/payments`. The Worker (`worker/index.mjs`) checks them like `checkClaim` does (seats from `worker/catalog.json`, written by the build), makes a Snap order at `ACCESS_FEE` (the browser cannot change the amount), open for `PAY_MINUTES` (60), saves it in the order book, and answers with the form's token, Midtrans' payment page and a signed pass key. The pass waits on the device as *Waiting for payment*.
+2. **Checkout** (`#paid-<order id>`). The order, a clock for the hour, and the form (`js/snap.js` loads Midtrans' `snap.js` and embeds it). The page asks `GET /api/passes/<id>` (key in the `x-pass-token` header), which asks Midtrans' status API: settled opens the pass at once ("You're in"), pending keeps asking (faster once the fan has a transfer number, and at once when they come back to the tab), failed, expired or refunded closes it. If the form cannot load, the fan pays on Midtrans' own page, which sends them back through `/pay/done`. A reload or another visit to `#paid-<id>` opens the same checkout again.
+3. **Notification.** Each Snap order tells Midtrans to report to `/api/midtrans/notify` (header `X-Append-Notification`, so nothing needs setting in the dashboard). The Worker checks Midtrans' SHA-512 signature, reads the status again from Midtrans, and updates the order book.
+4. **The email.** Once an order is paid, from the notification or from the page asking, whichever comes first, the Worker sends the pass email (`worker/mail.mjs`, through Resend): the concert, date, venue, seat, pass and amount, and a button that opens the pass on any phone or laptop (`#pass-<id>-<key>`). The order book takes each email once, so it is never sent twice; if Resend fails, the next notification or check tries again.
+5. **The order book** is D1 (`worker/orders.mjs`, binding `DB`, database `atvents-orders`): one row per order with the buyer's name and email, the seat, the status, and when it was paid and emailed. Cloudflare makes the database on the first deploy and the Worker makes the table on first use. Midtrans keeps the payment; look orders up in either by id (`PAY-…`). The pass key carries the order id, concert, category and seat with an HMAC derived from the server key, so a new server key retires earlier keys (passes already open on a device stay open there).
 
 Switching it on, in the Cloudflare dashboard (Workers, `website`, Settings, Variables and Secrets):
 
 | Name | Type | |
 |---|---|---|
 | `MIDTRANS_SERVER_KEY` | **Secret** | From Midtrans: Settings, Access keys. `SB-Mid-server-…` is the Sandbox, where nothing is charged; `Mid-server-…` is production. Set it as a Secret: a plain variable is visible in the dashboard. |
+| `MIDTRANS_CLIENT_KEY` | plain text | From the same page (`SB-Mid-client-…` or `Mid-client-…`), the same environment as the server key. It is public: the page needs it to open the form inside the site. Without it, the fan pays on Midtrans' page and comes back. |
+| `RESEND_API_KEY` | **Secret** | From resend.com (API Keys, sending access). Without it, no email goes out; the pass still opens on the device that paid. |
 | `MIDTRANS_ENV` | optional | `sandbox` or `production`, only if the key's prefix does not say which. |
+| `EMAIL_FROM`, `EMAIL_REPLY_TO` | optional | The sender (default `Atvents <pass@atvents.com>`) and the reply address (default `halo@atvents.com`). |
 
+- **Email domain.** In Resend, add `atvents.com` as a domain and put the DNS records it shows (DKIM and the `send` subdomain's SPF and MX) in Cloudflare DNS. They do not touch the existing mail for `halo@atvents.com`. Resend's free plan sends 3,000 emails a month, 100 a day.
 - **Sandbox.** With a Sandbox key, visitors still see the preview. Open `https://atvents.com/#paytest` on your own device to pay in the Sandbox (Midtrans' simulator pays the test orders); `#paytest-off` ends it.
-- **Production.** Once Midtrans approves the business, replace the key with the production one. Every visitor then pays for real.
-- In the Midtrans dashboard you may also set the Finish, Unfinish and Error redirect URLs to `https://atvents.com/pay/done`. No notification URL is needed: the status is always read from Midtrans.
+- **Production.** Once Midtrans approves the business, replace both keys with the production ones. Every visitor then pays for real.
+- In the Midtrans dashboard you may also set the Finish, Unfinish and Error redirect URLs to `https://atvents.com/pay/done`, used when the form cannot open inside the page. Its "Test notification URL" button sends an unsigned sample, which the Worker refuses (401): that is expected.
 
 Run it locally with `npm run dev` (`wrangler dev`, with the key in `.dev.vars`, which git ignores).
 
@@ -193,7 +199,8 @@ js/                     front end, plain ES modules
   passes.js             buy links and click ids, the pass wallet on this device
   store.js              LocalStore (demo, in the browser), PayStore (with Midtrans) and ApiStore (the server)
   rules.js              checks and formats shared by the browser and the server
-  order.js              the pass's price and order id, and the buyer check, shared with the Worker
+  order.js              the pass's price, order id and payment window, and the buyer check, shared with the Worker
+  snap.js               Midtrans' payment form inside the checkout
   content.js            questions, partner uses and plans
   events.js             concerts and demo venues: dates, categories, prices, branding
   layouts.js            venue templates: seat positions and categories
@@ -205,8 +212,10 @@ js/                     front end, plain ES modules
   config.js             brand, contact details, affiliate link for static hosting
 
 worker/                 the Cloudflare Worker: Midtrans payments for 3D passes (wrangler.jsonc)
-  index.mjs             routes: /api/config, /api/payments, /api/passes/<id>, /pay/done
-  midtrans.mjs          Snap and the status API, and what a status means for a pass
+  index.mjs             routes: /api/config, /api/payments, /api/passes/<id>, /api/midtrans/notify, /pay/done
+  midtrans.mjs          Snap, the status API, notification signatures, and what a status means for a pass
+  orders.mjs            the order book in D1: each order once, each pass email once
+  mail.mjs              the pass email, sent through Resend
   passkey.mjs           signed pass keys
   catalog.mjs           seat lookups in catalog.json (built by scripts/worker-catalog.mjs, not in git)
 
@@ -253,7 +262,7 @@ Past concerts drop off the lists a day after the show and stay in the catalogue,
 TEST_DATABASE_URL=postgres://seatsight:seatsight@localhost/seatsight_test npm test
 ```
 
-The test database's tables are wiped at the start. 50 tests:
+The test database's tables are wiped at the start. 58 tests:
 
 - Config: a malformed affiliate link is refused and a valid one reaches the page; production refuses a short admin token, http and no rate limits.
 - Clicks: stored once, without personal data; unknown concerts and demo venues refused.
@@ -264,7 +273,7 @@ The test database's tables are wiped at the start. 50 tests:
 - The demo store in the browser gives the same answers as the server.
 - Venues: unique seat ids and known categories everywhere, every concert linked to tiket.com with every category priced, demos for every layout, seat counts, the home hero's seat on each concert's centre line.
 - Time zones: the venue's clock read from Jakarta, Singapore and London, daylight saving, shows without times, times after midnight.
-- Payments (`pay.test.mjs`, Midtrans played by a stand-in, no database): off until the key is set; the Snap order at the fee whatever the browser sends; the same field errors as the page; concerts that are over; origin, JSON and size rules; rate limits; Snap errors logged without the key; settled, pending, challenged, failed and refunded payments; wrong amounts; unpaid orders closing; forged, swapped and old-key pass keys; the way back from Midtrans; the Worker's seat list equal to every venue's seats.
+- Payments (`pay.test.mjs`, Midtrans and Resend played by stand-ins, D1 by SQLite in memory): off until the key is set; the client key only with a server key of the same environment; the Snap order at the fee whatever the browser sends, open for an hour, with the notification address; the same field errors as the page; concerts that are over; origin, JSON and size rules; rate limits; Snap errors logged without the key; settled, pending, challenged, failed and refunded payments; wrong amounts; unpaid orders closing; forged, swapped and old-key pass keys; notifications refused without Midtrans' signature and checked again with Midtrans; the pass email sent once, from the notification or the page, with a link that opens that pass and the buyer's name escaped; a failed email tried again; payments working without the order book or the email key; the way back from Midtrans; the Worker's seat list equal to every venue's seats.
 
 ## Security
 
@@ -277,13 +286,14 @@ The test database's tables are wiped at the start. 50 tests:
 - Headers: Content-Security-Policy with no inline scripts (the import map is allowed by its hash) and scripts from elsewhere only from the three.js folders the import map names; `nosniff`, `frame-ancestors 'none'`, Referrer-Policy, Permissions-Policy, COOP and CORP same-origin, HSTS on https.
 - Only `index.html`, `css/`, `js/`, `assets/` and `favicon.ico` are served. Server code, `.env`, tests and `node_modules` are not.
 - Request logs hold method, path, status and time only. Bodies (emails, order IDs, phone numbers) are never logged.
-- Payments: the Midtrans server key is a Cloudflare Secret, sent only to Midtrans and never logged. The amount is set by the Worker. Pass keys are HMAC-signed and checked in constant time; the browser is sent only to Midtrans' own payment page. Orders and checks are rate-limited per address; orders must come from the site's own origin.
+- Payments: the Midtrans server key and the Resend key are Cloudflare Secrets, sent only to Midtrans and Resend and never logged. The amount is set by the Worker. Pass keys are HMAC-signed and checked in constant time; Midtrans' notifications count only with their SHA-512 signature, and the status is read again from Midtrans before anything changes. The static site's CSP allows scripts and frames from Midtrans' two hosts only (the Node server's allows none); the browser is sent only to Midtrans' own payment page. Orders and checks are rate-limited per address; orders must come from the site's own origin. The pass email escapes everything the buyer typed and goes only to the buyer, once.
 - `npm audit`: 0 vulnerabilities.
 
 ## Before going live
 
 - **Affiliate program.** Approval, then the deeplink (above) and each concert's own tiket.com page.
-- **Midtrans.** Business approval, then the production server key (see Payments). Until something sends email, the pass link reaches the fan only on the device they paid on (and in Copy pass link).
+- **Midtrans.** Business approval, then the production server and client keys (see Payments).
+- **Email.** A Resend account, `atvents.com` verified there, and `RESEND_API_KEY` (see Payments). Until then the pass opens only on the device that paid (and through Copy pass link).
 - **Brand and contacts** in `js/config.js`; the name also appears in `index.html` (title and meta).
 - **Legal pages.** Privacy policy, terms and affiliate disclosure are templates written for Indonesia's Personal Data Protection Law (UU 27/2022). Have a lawyer check them, with your company's name and address.
 - **Keeping data only as long as the policy says.** Once a concert is twelve months past, delete its records:

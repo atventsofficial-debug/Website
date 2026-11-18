@@ -1849,6 +1849,29 @@ body { font-family: var(--font); font-feature-settings: "cv11", "ss01"; }
 .pay-sheet .pay-state + p { color: var(--text); font-size: 15px; line-height: 1.55; }
 .pay-sheet .eyebrow .mono { letter-spacing: 0; text-transform: none; }
 .pay-test { padding: 10px 12px; border-radius: var(--r-sm); border: 1px dashed var(--line-2); }
+/* the checkout: the order, the clock, Midtrans' form (white, as Midtrans draws it) */
+.co-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); flex-wrap: wrap; }
+.co-clock { display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px; border-radius: 999px; background: var(--panel-3); font-size: 13px; color: var(--text); }
+.co-clock svg { width: 14px; height: 14px; color: var(--muted); }
+.co-clock b { font-weight: 600; color: var(--coral-2); }
+.co-clock.is-low { background: var(--coral); }
+.co-clock.is-low b, .co-clock.is-low svg { color: #fff; }
+.co-order { background: var(--panel); }
+.co-form { width: 100%; height: 640px; border-radius: var(--r-sm); background: #fff; overflow: hidden; }
+.co-loading, .co-fallback { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--s3); height: 100%; padding: var(--s5); text-align: center; color: var(--ink-muted); font-size: 14px; }
+.co-fallback p:first-child { color: var(--ink); font-size: 16px; }
+.pay-sheet .co-fallback .fine { color: var(--ink-muted); }
+.co-safe { display: flex; gap: 8px; align-items: flex-start; }
+.co-safe svg { flex: none; width: 14px; height: 14px; margin-top: 2px; color: var(--ok); }
+.pay-sheet .co-status { color: var(--text); }
+.unlock-mail { display: flex; gap: 10px; align-items: flex-start; padding: 12px 16px; border-radius: var(--r-sm); background: var(--panel-2); font-size: 14px; line-height: 1.5; }
+.unlock-mail svg { flex: none; width: 16px; height: 16px; margin-top: 2px; color: var(--coral); }
+@media (max-width: 560px) {
+  .pay-sheet.panel-box:has(.co-form) { padding: var(--s5) var(--s4); }
+  .co-bleed { margin-inline: calc(-1 * var(--s4)); }
+  .co-form { height: 600px; border-radius: 0; }
+  .co-order { flex-direction: column; align-items: flex-start; gap: var(--s2); }
+}
 .hs-perk .hs-seller { color: inherit; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
 .hs-perk .hs-seller svg { width: 12px; height: 12px; }
 

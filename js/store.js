@@ -159,9 +159,14 @@ export class LocalStore {
 // Everything else stays in this browser, as in LocalStore. `sandbox`: the Worker has a
 // Midtrans Sandbox key, so nothing is charged.
 export class PayStore extends LocalStore {
-  constructor({ sandbox = false } = {}) {
+  // From /api/config: Sandbox or not, the client key that opens Midtrans' form inside the
+  // page (without it, the fan goes to Midtrans' payment page), and whether the pass email
+  // is switched on.
+  constructor({ sandbox = false, clientKey = '', mail = false } = {}) {
     super();
     this.sandbox = !!sandbox;
+    this.clientKey = typeof clientKey === 'string' ? clientKey : '';
+    this.mail = !!mail;
   }
   get mode() { return 'pay'; }
   get live() { return true; }

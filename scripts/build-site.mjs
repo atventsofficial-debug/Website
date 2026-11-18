@@ -5,6 +5,9 @@
 // It also writes worker/catalog.json, the concerts and seats the payment Worker checks
 // orders against (scripts/worker-catalog.mjs).
 //
+// Its CSP lets Midtrans' payment form open inside the page (js/snap.js); the Node server's
+// does not, as it takes no payments.
+//
 // The scripts and the stylesheet are bundled and minified with esbuild, under names that
 // carry a hash of their contents, so browsers can keep them for a year and still get every
 // new release at once. The 3D code stays a file of its own, fetched only when a 3D view
@@ -60,7 +63,7 @@ fs.writeFileSync(path.join(out, 'index.html'), html);
 const block = (route, rules) => `${route}\n${Object.entries(rules).map(([k, v]) => `  ${k}: ${v}`).join('\n')}\n`;
 const code = bundled ? 'public, max-age=31536000, immutable' : 'public, max-age=300';
 fs.writeFileSync(path.join(out, '_headers'), [
-  block('/*', securityHeaders(root, true)),
+  block('/*', securityHeaders(root, true, { midtrans: true })),
   block('/js/*', { 'cache-control': code }),
   block('/css/*', { 'cache-control': code }),
   block('/assets/*', { 'cache-control': 'public, max-age=86400, stale-while-revalidate=604800' }),

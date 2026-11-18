@@ -1,5 +1,5 @@
-// The concerts as the payment Worker needs them: title, start, categories, and every seat,
-// packed small. Building a venue's seats takes the page about 100 ms, too long for a Worker
+// The concerts as the payment Worker needs them: title, start, the date and venue as the pass
+// email names them, categories, and every seat, packed small. Building a venue's seats takes the page about 100 ms, too long for a Worker
 // request, so the build does it once (scripts/build-site.mjs writes worker/catalog.json)
 // and the Worker only looks seats up.
 //
@@ -9,8 +9,8 @@
 // a catalog that refuses real seats. Concerts on the same layout share one seat map.
 import fs from 'node:fs';
 import path from 'node:path';
-import { EVENTS, isConcert, getEvent } from '../js/events.js';
-import { startOf } from '../js/when.js';
+import { EVENTS, isConcert, getEvent, placeOf } from '../js/events.js';
+import { startOf, whenOf } from '../js/when.js';
 
 export function workerCatalog() {
   const maps = [], mapIndex = new Map(), events = {};
@@ -35,7 +35,14 @@ export function workerCatalog() {
     }
     const key = JSON.stringify(secs);
     if (!mapIndex.has(key)) { mapIndex.set(key, maps.length); maps.push(secs); }
-    events[e.id] = { title: e.title, start: startOf(e), cats: Object.fromEntries(venue.categories.map(c => [c.id, c.name])), map: mapIndex.get(key) };
+    const w = whenOf(e), p = placeOf(e);
+    events[e.id] = {
+      title: e.title, start: startOf(e),
+      when: w.time ? `${w.date}, ${w.time}` : w.date,
+      venue: [p.name, p.city].filter(Boolean).join(', '),
+      cats: Object.fromEntries(venue.categories.map(c => [c.id, c.name])),
+      map: mapIndex.get(key),
+    };
   }
   return { events, maps };
 }

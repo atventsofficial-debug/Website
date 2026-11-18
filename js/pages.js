@@ -9,6 +9,8 @@ import { picker } from './picker.js';
 import { whenOf, startOf, venueClock, gapText } from './when.js';
 import { justBought, buyUrl, buyAttrs, buyLink, passes, activePass, claim, holdPass, refresh, passLink, clicksFor, STATUS } from './passes.js';
 import { checkClaim, formatFee } from './rules.js';
+import { PAY_MINUTES } from './order.js';
+import { loadSnap, embedSnap, hideSnap } from './snap.js';
 import { FAQ_FANS, faqHtml } from './content.js';
 import { $, $$, esc, icon, state, QUALITY, entranceTicket, share, copyText, bindSubscribe, toast } from './ui.js';
 
@@ -448,7 +450,7 @@ let unlockBound = false;
 // list, so a seat that does not exist cannot be sent), their name and email, then pays the
 // access fee. The pass opens as soon as the payment goes through. `eventId` comes from
 // #unlock-<id>; without it, the first concert on sale.
-const unlock = { payment: null, data: null };
+const unlock = { payment: null, data: null, again: null };
 
 export function renderUnlock(eventId) {
   const form = $('#unlock-form');
@@ -464,6 +466,8 @@ export function renderUnlock(eventId) {
   form.eventId.innerHTML = all.map(e => `<option value="${e.id}">${esc(e.title)} · ${esc(whenOf(e).date)}</option>`).join('');
   form.eventId.value = pick;
   fillCats(form);
+  if (unlock.again?.eventId === pick) prefill(form, unlock.again);
+  unlock.again = null;
   const note = $('#unlock-note');
   if (justBought.id && justBought.id === pick) {
     const e = eventMeta(pick);
@@ -537,6 +541,20 @@ function fillNums(form) {
   if (nums.some(([v]) => v === prev)) form.num.value = prev;
 }
 
+// The form filled in again from an order on this device: "Start again", "Change details".
+function prefill(form, p) {
+  const s = seatIn(p.eventId, p.seat);
+  if (s) {
+    form.cat.value = s.cat;
+    fillSecs(form);
+    form.sec.value = s.sec;
+    fillRows(form);
+    if (!s.standing) { form.row.value = s.row; fillNums(form); form.num.value = s.id; }
+  }
+  if (p.name) form.name.value = p.name;
+  if (p.email) form.email.value = p.email;
+}
+
 // The seat id the form points at: the seat chosen, or the middle of a standing area.
 function chosenSeat(form) {
   const venue = getEvent(form.eventId.value), list = seatsIn(venue, form.cat.value).filter(s => s.sec === form.sec.value);
@@ -548,8 +566,8 @@ function chosenSeat(form) {
   return form.num.value;
 }
 
-// The payment. With live payments (PayStore) the pass waits on this device and the browser
-// goes to Midtrans' payment page, which sends it back to #paid-<id>. In the preview, a
+// The payment. With live payments (PayStore) the pass waits on this device and the checkout
+// opens at #paid-<id>, with Midtrans' payment form inside the page. In the preview, a
 // stand-in sheet that charges nothing marks the order paid.
 function checkForm(form) {
   const err = $('#unlock-error');
@@ -566,22 +584,19 @@ function checkForm(form) {
   return data;
 }
 
-// Only Midtrans' own payment page, so a wrong answer cannot send the fan anywhere else.
-const PAY_PAGE = /^https:\/\/app\.(sandbox\.)?midtrans\.com\//;
-
 async function startPayment(form) {
   const data = checkForm(form);
   if (!data) return;
   const btn = $('#pay-start');
   btn.disabled = true;
-  let leaving = false;   // the button stays off while the payment page loads
+  let leaving = false;   // the button stays off while Midtrans' page loads
   try {
     const p = await state.store.pay({ eventId: data.eventId, cat: data.cat, seat: data.seat, name: data.name, email: data.email, consent: true });
     if (state.store.live) {
-      if (!PAY_PAGE.test(p.url || '')) throw new Error('The payment page could not open. Please try again.');
-      holdPass(p);
-      leaving = true;
-      location.assign(p.url);
+      const held = holdPass(p);
+      // Without the client key the form cannot open here: Midtrans' own page, then back.
+      if (!state.store.clientKey && held.url) { leaving = true; location.assign(held.url); return; }
+      location.hash = `#paid-${p.id}`;   // the checkout (renderPaid)
       return;
     }
     unlock.payment = p;
@@ -599,7 +614,7 @@ async function startPayment(form) {
           <p>3D seat view · ${esc(e.title)}<br>${esc(seatText(s))}<br>${esc(data.name)} · ${esc(data.email)}</p>
         </div>
       </div>
-      <p class="fine">Preview mode: no payment provider is connected yet, so nothing is charged. On the live site this step opens the payment page (QRIS, e-wallets, bank transfer, card) and your pass opens by itself once it is paid.</p>
+      <p class="fine">Preview mode: no payment provider is connected yet, so nothing is charged. On the live site this step opens the payment form (QRIS, e-wallets, bank transfer, card) right on this page, and your pass opens by itself once it is paid.</p>
       <div class="row-btns"><button class="btn btn-coral" type="button" id="pay-demo">Pay ${formatFee(p.amount)} (preview) ${icon('i-arrow')}</button><button class="btn btn-line" type="button" id="pay-cancel">Change details</button></div>`;
     sheet.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (e) {
@@ -608,32 +623,120 @@ async function startPayment(form) {
   } finally { if (!leaving) btn.disabled = false; }
 }
 
-// Back from the payment page (#paid-<id>): the pass is on this device, waiting. Ask how the
-// payment went, and keep asking every few seconds for two minutes while it is pending. A
-// bank transfer or a store payment can take longer; My 3D passes asks again on each visit.
-let paidTimer = 0;
-const PAID_WAIT = 120000, PAID_EVERY = 5000;
+// ---------------------------------------------------------------- the checkout (#paid-<id>)
+
+// One order on screen at a time, like a ticket shop's checkout: the order and a clock for
+// the hour it stays open, Midtrans' payment form below them, and the pass opening the moment
+// Midtrans says it is paid. The page asks the Worker how the payment is going: every 10 s
+// while the fan chooses, every 5 s once they have the details to pay with, every 3 s right
+// after Midtrans says it went through, and at once when they come back to the tab (from a
+// banking or e-wallet app). Back from Midtrans' own payment page, the same screen.
+const co = { run: 0, poll: 0, tick: 0, every: 10000, wake: null };
+const LATE = 15 * 6e4;    // after the order closes, how long the page still asks
+const expiryOf = p => (Date.parse(p.expiresAt) || Date.parse(p.createdAt) + PAY_MINUTES * 6e4 || 0);
+const clockText = ms => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+
+function stopCheckout() {
+  co.run++;
+  clearTimeout(co.poll);
+  clearInterval(co.tick);
+  co.wake = null;
+  hideSnap();
+}
+
+document.addEventListener('visibilitychange', () => { if (!document.hidden) co.wake?.(); });
 
 export function renderPaid(id) {
-  clearTimeout(paidTimer);
   const first = passes.get(id);
-  renderUnlock(first?.eventId);
+  renderUnlock(first?.eventId);   // the form behind the checkout, and no older checkout
+  const run = co.run, here = location.hash;
   const form = $('#unlock-form'), sheet = $('#pay-sheet');
   form.hidden = true;
   sheet.hidden = false;
   if (!first) { sheet.innerHTML = paidSheet(null, id); return; }
-  sheet.innerHTML = paidSheet(first, id);
-  const since = Date.now(), here = location.hash;
-  const check = async () => {
-    if (location.hash !== here) return;
-    await refresh(passes.get(id) || first);
-    const p = passes.get(id);
-    if (!p || location.hash !== here) return;
-    if (p.status === 'confirmed') { closePay(form); form.reset(); showUnlocked(p); return; }
-    sheet.innerHTML = paidSheet(p, id);
-    if (p.status === 'checking' && Date.now() - since < PAID_WAIT) paidTimer = setTimeout(check, PAID_EVERY);
+  const until = expiryOf(first);
+  const alive = () => co.run === run && location.hash === here;
+  let inForm = false;
+
+  // Paid: the pass opens. Closed: the sheet says so. Otherwise false, still waiting.
+  const settled = p => {
+    if (p.status === 'confirmed') { stopCheckout(); closePay(form); form.reset(); showUnlocked(p, { emailed: state.store.mail && !!p.email }); return true; }
+    if (p.status === 'rejected') { stopCheckout(); sheet.innerHTML = paidSheet(p, id); return true; }
+    return false;
   };
-  check();
+  if (settled(first)) return;
+
+  // One check at a time; each one sets the next.
+  let busy = false;
+  const check = async () => {
+    clearTimeout(co.poll);
+    if (!alive() || busy) return;
+    busy = true;
+    try {
+      if (!document.hidden) {
+        await refresh(passes.get(id) || first);
+        if (!alive()) return;
+        const p = passes.get(id);
+        if (!p || settled(p)) return;
+        if (!inForm) sheet.innerHTML = paidSheet(p, id);
+      }
+    } finally { busy = false; }
+    if (alive() && Date.now() < until + LATE) co.poll = setTimeout(check, co.every);
+  };
+  co.wake = check;
+  co.every = 10000;
+
+  if (state.store.clientKey && first.snap && Date.now() < until) {
+    inForm = true;
+    sheet.innerHTML = checkoutSheet(first, id);
+    const say = t => { const el = $('#co-status'); if (el) el.textContent = t; };
+    const to = first.email && state.store.mail ? ` and the link goes to ${first.email}` : '';
+    // The clock; at zero the form closes and the sheet says the time ran out.
+    const tick = () => {
+      if (!alive()) return clearInterval(co.tick);
+      const left = until - Date.now(), clock = $('#co-clock');
+      if (clock) { clock.querySelector('b').textContent = clockText(left); clock.classList.toggle('is-low', left < 5 * 6e4); }
+      if (left <= 0) { clearInterval(co.tick); hideSnap(); inForm = false; sheet.innerHTML = paidSheet(passes.get(id) || first, id); }
+    };
+    tick();
+    co.tick = setInterval(tick, 1000);
+    loadSnap(state.store).then(snap => {
+      if (!alive() || !inForm) return;
+      $('#snap-box').innerHTML = '';
+      embedSnap(snap, first.snap, 'snap-box', {
+        onSuccess: () => { say('Paid. Opening your pass…'); co.every = 3000; check(); },
+        onPending: () => { say(`Waiting for your payment. Pay with the details above: your pass opens here by itself${to}.`); co.every = 5000; check(); },
+        onError: () => { say('That did not go through. Try again, or choose another way to pay.'); check(); },
+      });
+    }).catch(() => {
+      if (!alive() || !inForm) return;
+      $('#snap-box').innerHTML = `<div class="co-fallback"><p>The payment form could not load on this page.</p>${first.url ? `<a class="btn btn-coral" href="${esc(first.url)}">Pay on Midtrans’ page ${icon('i-arrow')}</a><p class="fine">It brings you back here when you are done.</p>` : '<p class="fine">Please reload the page and try again.</p>'}</div>`;
+    });
+    co.poll = setTimeout(check, co.every);
+  } else {
+    sheet.innerHTML = paidSheet(first, id);
+    co.every = 5000;
+    check();
+  }
+}
+
+// The checkout: the order, the clock, and the box Midtrans' form opens in.
+function checkoutSheet(p, id) {
+  const e = eventMeta(p.eventId), s = seatIn(p.eventId, p.seat);
+  return `
+    <div class="co-head">
+      <p class="eyebrow">${icon('i-card')}Payment <span class="mono">${esc(id)}</span></p>
+      <p class="co-clock" id="co-clock">${icon('i-clock')}Pay within <b class="mono">${clockText(expiryOf(p) - Date.now())}</b></p>
+    </div>
+    <h2 class="pay-state">Choose how to pay</h2>
+    <div class="order-sum co-order">
+      <span><b>3D seat view</b><small>${esc(e?.title || '')}${e ? ` · ${esc(whenOf(e).date)}` : ''}</small>${s ? `<small>${esc(seatText(s))}</small>` : ''}${p.email ? `<small>${esc(p.name || '')} · ${esc(p.email)}</small>` : ''}</span>
+      <b class="order-price">${formatFee()}</b>
+    </div>
+    <div class="co-bleed"><div class="co-form" id="snap-box"><p class="co-loading">Loading the payment form…</p></div></div>
+    <p class="fine co-status" id="co-status" aria-live="polite">Your pass opens here as soon as it is paid${p.email && state.store.mail ? `, and the link goes to ${esc(p.email)}` : ''}.</p>
+    <p class="fine co-safe">${icon('i-lock')}<span>Secured by Midtrans: your card, wallet and bank details go to Midtrans, never to us.${p.url ? ` Trouble with the form? <a class="u" href="${esc(p.url)}">Pay on Midtrans’ page</a>.` : ''}</span></p>
+    <div class="row-btns"><button class="btn btn-line" type="button" id="pay-change" data-id="${esc(id)}">Change details</button></div>`;
 }
 
 function paidSheet(p, id) {
@@ -641,7 +744,7 @@ function paidSheet(p, id) {
   if (!p) {
     return `<p class="eyebrow">${icon('i-card')}Payment ${ref}</p>
       <h2 class="pay-state">This payment is not on this device</h2>
-      <p>Open My 3D passes on the phone or laptop you paid on. Paid, and the pass does not open? Write to us with the reference above.</p>
+      <p>Open the link in the email we sent you, or My 3D passes on the phone or laptop you paid on. Paid, and the pass does not open? Write to us with the reference above.</p>
       <div class="row-btns"><a class="btn btn-coral" href="#passes">My 3D passes ${icon('i-arrow')}</a><a class="btn btn-line" href="#contact">Write to us</a></div>`;
   }
   const e = eventMeta(p.eventId), s = seatIn(p.eventId, p.seat);
@@ -651,18 +754,36 @@ function paidSheet(p, id) {
       <h2 class="pay-state">The payment did not go through</h2>
       ${what}
       <p class="fine">It was cancelled or it ran out of time, so this pass did not open. You can start again with the same seat.</p>
-      <div class="row-btns"><a class="btn btn-coral" href="#unlock-${esc(p.eventId)}">Try again ${icon('i-arrow')}</a><a class="btn btn-line" href="#contact">Write to us</a></div>`;
+      <div class="row-btns"><button class="btn btn-coral" type="button" data-again="${esc(id)}">Try again ${icon('i-arrow')}</button><a class="btn btn-line" href="#contact">Write to us</a></div>`;
+  }
+  if (Date.now() > expiryOf(p)) {
+    return `<p class="eyebrow">${icon('i-card')}Payment ${ref}</p>
+      <h2 class="pay-state">The time to pay ran out</h2>
+      ${what}
+      <p class="fine">This order was open for ${PAY_MINUTES} minutes and closed unpaid. Paid just now? It opens here in a moment. Otherwise, start again with the same seat.</p>
+      <div class="row-btns"><button class="btn btn-coral" type="button" data-again="${esc(id)}">Start again ${icon('i-arrow')}</button><button class="btn btn-line" type="button" id="pay-check" data-id="${esc(id)}">Check again</button></div>`;
   }
   return `<p class="eyebrow">${icon('i-card')}Payment ${ref}</p>
     <h2 class="pay-state">Waiting for your payment</h2>
     ${what}
-    <p class="fine">Paying by bank transfer, QRIS or at a store? Midtrans can take a few minutes to confirm it. This page checks by itself, and My 3D passes checks again each time you open it.</p>
-    <div class="row-btns"><button class="btn btn-coral" type="button" id="pay-check" data-id="${esc(id)}">Check again</button><a class="btn btn-line" href="#passes">My 3D passes</a></div>`;
+    <p class="fine">Paying by bank transfer, QRIS or at a store? Midtrans can take a few minutes to confirm it. This page checks by itself${state.store.mail && p.email ? `, the link goes to ${esc(p.email)} once it is paid,` : ''} and My 3D passes checks again each time you open it.</p>
+    <div class="row-btns"><button class="btn btn-coral" type="button" id="pay-check" data-id="${esc(id)}">Check again</button>${p.url ? `<a class="btn btn-line" href="${esc(p.url)}">Pay on Midtrans’ page</a>` : `<a class="btn btn-line" href="#passes">My 3D passes</a>`}</div>`;
 }
 
 function closePay(form) {
+  stopCheckout();
   $('#pay-sheet').hidden = true;
   form.hidden = false;
+}
+
+// Back to the form, filled in from the order. "Change details" lets the order go on this
+// device; if it is paid after all, the pass link still comes by email.
+function backToForm(id, { drop = false } = {}) {
+  const p = passes.get(id);
+  stopCheckout();
+  if (drop && p?.status === 'checking') passes.remove(id);
+  unlock.again = p || null;
+  location.hash = p ? `#unlock-${p.eventId}` : '#unlock';
 }
 
 async function paid(form) {
@@ -690,14 +811,18 @@ function bindUnlock(form) {
   $('#pay-sheet').addEventListener('click', ev => {
     if (ev.target.closest('#pay-cancel')) { unlock.payment = null; closePay(form); }
     if (ev.target.closest('#pay-demo')) paid(form);
-    const again = ev.target.closest('#pay-check');
-    if (again) renderPaid(again.dataset.id);
+    const change = ev.target.closest('#pay-change');
+    if (change) backToForm(change.dataset.id, { drop: true });
+    const again = ev.target.closest('[data-again]');
+    if (again) backToForm(again.dataset.again);
+    const check = ev.target.closest('#pay-check');
+    if (check) { check.disabled = true; co.wake ? co.wake() : renderPaid(check.dataset.id); }
   });
   form.addEventListener('submit', ev => { ev.preventDefault(); startPayment(form); });
   form.addEventListener('change', () => { $('#unlock-error').hidden = true; });
 }
 
-function showUnlocked(p) {
+function showUnlocked(p, { emailed = false } = {}) {
   const e = eventMeta(p.eventId);
   $('#unlock-body').hidden = true;
   $('#unlock-body').insertAdjacentHTML('beforebegin', `
@@ -707,6 +832,7 @@ function showUnlocked(p) {
         <h2 class="big"><span class="fade">You’re</span> <span class="ol">in</span></h2>
         <p class="lede">Paid. Your seat view for ${esc(e.title)} is open. Take the tour to your seat.</p>
         <div class="row-btns"><a class="btn btn-coral" href="#tour-${esc(p.id)}">Start my seat tour ${icon('i-arrow')}</a><a class="btn btn-line" href="#passes">My 3D passes</a></div>
+        ${emailed ? `<p class="unlock-mail">${icon('i-mail')}<span>The pass link is on its way to <b>${esc(p.email)}</b>. Open it on any phone or laptop to see your seat there too.</span></p>` : ''}
         ${p.token ? `<p class="fine">On another phone or laptop? <button class="link" type="button" data-copy-pass="${esc(p.id)}">Copy the pass link</button> and open it there. Keep it to yourself: the link opens your pass.</p>` : ''}
       </div>
       ${passCard(p, { actions: false })}

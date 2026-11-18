@@ -127,9 +127,15 @@ export async function claim({ eventId, name, email, cat, seat, payment }) {
 }
 
 // A live order (PayStore): the pass waits on this device for its payment, as 'checking',
-// with the key that asks the Worker how the payment went.
+// with the key that asks the Worker how the payment went, and what the checkout needs to
+// open again after a reload: the payment form's token, Midtrans' payment page, the email
+// the pass goes to, and when the order closes.
+const PAY_PAGE = /^https:\/\/app\.(sandbox\.)?midtrans\.com\//;
 export function holdPass(r) {
-  const pass = { id: r.id, token: r.token, eventId: r.eventId, cat: r.cat, qty: 1, seat: r.seat, name: r.name, route: 'paid', status: r.status, ref: maskRef(r.id), createdAt: r.createdAt, seats: [r.seat] };
+  const pass = {
+    id: r.id, token: r.token, eventId: r.eventId, cat: r.cat, qty: 1, seat: r.seat, name: r.name, route: 'paid', status: r.status, ref: maskRef(r.id), createdAt: r.createdAt, seats: [r.seat],
+    snap: typeof r.snap === 'string' ? r.snap : '', url: PAY_PAGE.test(r.url || '') ? r.url : '', email: r.email || '', expiresAt: r.expiresAt || '',
+  };
   passes.save(pass);
   return pass;
 }
