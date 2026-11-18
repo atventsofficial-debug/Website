@@ -626,19 +626,19 @@ export class Crowd {
 // `stage`: the deck's top (y), its front edge (front) and the band risers (riserY, riserZ).
 const STAGE_WEAR = ['#0c0c0e', '#121215', '#e8e4dc', '#1c1d22', '#3a1216', '#20252f', '#2b2b2e', '#5a4a3a', '#0f1a2e'];
 export class Band {
-  constructor(scene, material, lineup, { y = 1.8, front = -34, riserY = 2.4, riserZ = -44, risers = false, rnd = Math.random } = {}) {
+  constructor(scene, material, lineup, { y = 1.8, front = -34, riserY = 2.4, riserZ = -44, risers = false, spread = 1, rnd = Math.random } = {}) {
     this.scene = scene;
     this.material = material;
     this.group = new THREE.Group();
     scene.add(this.group);
-    const spots = this._place(lineup, { y, front, riserY, riserZ });
+    const spots = this._place(lineup, { y, front, riserY, riserZ, spread });
     this.spots = spots;
     // A stage without band risers of its own gets them under the drums and keys.
     if (risers) {
       const mat = new THREE.MeshLambertMaterial({ color: '#08080a' });
       for (const [x, w] of [[0, 6], [-8, 5], [8, 5]]) {
-        const r = new THREE.Mesh(new THREE.BoxGeometry(w, riserY - y, 3), mat);
-        r.position.set(x, (riserY + y) / 2, riserZ);
+        const r = new THREE.Mesh(new THREE.BoxGeometry(w * spread, riserY - y, 3), mat);
+        r.position.set(x * spread, (riserY + y) / 2, riserZ);
         this.group.add(r);
       }
     }
@@ -674,8 +674,9 @@ export class Band {
   }
 
   // Where each member stands: singers and dancers along the front, guitars and bass at the
-  // sides, drums on the middle riser, keys on a side riser.
-  _place(lineup, { y, front, riserY, riserZ }) {
+  // sides, drums on the middle riser, keys on a side riser. `spread` narrows the band to a
+  // stage smaller than the 36 m one these are set out for.
+  _place(lineup, { y, front, riserY, riserZ, spread = 1 }) {
     const out = [];
     const frontLine = lineup.filter(m => ['vocals', 'vocals-guitar', 'dancer'].includes(m.role));
     const dancers = frontLine.every(m => m.role === 'dancer') && frontLine.length > 4;
@@ -685,13 +686,13 @@ export class Band {
       row.forEach((m, i) => out.push({ ...m, x: (i - (row.length - 1) / 2) * gapX + (r ? gapX / 2 : 0), y: y + STAND_LIFT_LOCAL, z: front - 3.2 - r * 1.9, turn: 0 }));
     });
     const strings = lineup.filter(m => m.role === 'guitar' || m.role === 'bass');
-    const sideX = [-6.4, 6.4, -9.6, 9.6];
-    strings.forEach((m, i) => out.push({ ...m, x: sideX[i % 4], y: y + STAND_LIFT_LOCAL, z: front - 4.6, turn: (sideX[i % 4] < 0 ? 0.25 : -0.25) }));
+    const sideX = [-6.4, 6.4, -9.6, 9.6].map(x => x * Math.max(spread, 0.7));
+    strings.forEach((m, i) => out.push({ ...m, x: sideX[i % 4], y: y + STAND_LIFT_LOCAL, z: front - 4.6 * Math.max(spread, 0.85), turn: (sideX[i % 4] < 0 ? 0.25 : -0.25) }));
     lineup.filter(m => m.role === 'keys').forEach((m, i) => {
-      const x = i % 2 ? 8 : -8;
+      const x = (i % 2 ? 8 : -8) * spread;
       out.push({ ...m, x, y: riserY + STAND_LIFT_LOCAL, z: riserZ - 0.2, turn: x < 0 ? 0.35 : -0.35 });
     });
-    lineup.filter(m => m.role === 'drums').forEach((m, i) => out.push({ ...m, seated: true, x: i ? 4 : 0, y: riserY + 0.55 - 0.48, z: riserZ - 0.75, turn: 0 }));
+    lineup.filter(m => m.role === 'drums').forEach((m, i) => out.push({ ...m, seated: true, x: i ? 4 * spread : 0, y: riserY + 0.55 - 0.48, z: riserZ - 0.75, turn: 0 }));
     return out;
   }
 

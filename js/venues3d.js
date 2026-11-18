@@ -368,6 +368,58 @@ function curtain(width, height, folds = 14) {
 
 // ------------------------------------------------------------------ concert
 
+// The concert stage in metres: Indonesia Arena's 36 m deck by default, or the hall's own.
+// `k` scales the screens, trusses and lights drawn for the 36 m stage; the band's risers
+// stand `riserZ` back from the front edge as they do there.
+export function concertStage(venue) {
+  const st = venue.hall?.stage;
+  const w = st?.w ?? 36, k = w / 36;
+  const front = st?.front ?? -34, d = st?.d ?? 13 * k, h = st?.h ?? 1.8;
+  return { w, d, h, front, k, riserZ: front - d * 10 / 13 };
+}
+
+// A hall's stands (realvenues.js): under each tier's rows a raked concrete slab, closed at its
+// two ends, a front wall with a glass balustrade, and between two tiers a concourse.
+function hallStands(scene, hall, frontMat) {
+  const slab = mats.darkConcrete();
+  slab.side = THREE.DoubleSide;
+  const at = (t, r, T, y) => {
+    const [x, z] = superPoint(t, T.rx0 + r * T.gap, T.rz0 + r * T.gap, hall.p);
+    return [hall.cx + x, y, hall.cz + z];
+  };
+  for (const [from, to] of hall.segments) {
+    hall.tiers.forEach((T, ti) => {
+      const last = T.rows - 1, below = 0.14 + T.rise / 2;
+      const yF = T.baseY - below, yB = T.baseY + last * T.rise - below;
+      // The rake: from half a row in front of the first row to half a row behind the last.
+      const a = { rx: T.rx0 - T.gap / 2, rz: T.rz0 - T.gap / 2, p: hall.p, y: yF - T.rise / 2, from, to };
+      const b = { rx: T.rx0 + (last + 0.5) * T.gap, rz: T.rz0 + (last + 0.5) * T.gap, p: hall.p, y: yB + T.rise / 2, from, to };
+      scene.add(new THREE.Mesh(loft(a, b), slab));
+      // Its back wall down to the floor, and the two ends.
+      scene.add(new THREE.Mesh(ribbon({ cx: hall.cx, cz: hall.cz, p: hall.p, from, to, rx: b.rx, rz: b.rz, y0: 0, y1: b.y }), slab));
+      for (const t of [from, to]) {
+        const p0 = at(t, -0.5, T, 0), p1 = at(t, -0.5, T, a.y), p2 = at(t, last + 0.5, T, b.y), p3 = at(t, last + 0.5, T, 0);
+        const g = new THREE.BufferGeometry();
+        g.setAttribute('position', new THREE.Float32BufferAttribute([...p0, ...p1, ...p2, ...p0, ...p2, ...p3], 3));
+        g.computeVertexNormals();
+        scene.add(new THREE.Mesh(g, slab));
+      }
+      // Front wall and balustrade.
+      const fr = { cx: hall.cx, cz: hall.cz, p: hall.p, from, to, rx: T.rx0 - 0.6, rz: T.rz0 - 0.6 };
+      scene.add(new THREE.Mesh(ribbon({ ...fr, y0: ti ? T.baseY - 3 : 0, y1: T.baseY + 0.1 }), frontMat));
+      scene.add(new THREE.Mesh(ribbon({ ...fr, y0: T.baseY + 0.1, y1: T.baseY + 1.0 }), mats.glass()));
+      // A walkway from the tier below to this tier's front wall.
+      const prev = hall.tiers[ti - 1];
+      if (prev) {
+        const y = prev.baseY + (prev.rows - 1) * prev.rise + 0.02;
+        scene.add(new THREE.Mesh(loft(
+          { rx: prev.rx0 + (prev.rows - 0.5) * prev.gap, rz: prev.rz0 + (prev.rows - 0.5) * prev.gap, p: hall.p, y, from, to },
+          { rx: T.rx0 - 0.6, rz: T.rz0 - 0.6, p: hall.p, y, from, to }), slab));
+      }
+    });
+  }
+}
+
 export function buildConcert(ctx, venue) {
   const brand = { wall: 'NADA SENJA', sub: 'LIVE · ARENA TOUR 2026', band: ['NADA SENJA LIVE', 'ARENA TOUR 2026', 'NUSANTARA ARENA', 'ENJOY THE SHOW'], ...venue.branding };
   const { scene } = ctx, theme = themeOf(venue);
@@ -379,8 +431,10 @@ export function buildConcert(ctx, venue) {
   const key = ctx.addKeyLight({ pos: [18, 44, 26], target: [0, 0, -6], half: 60, house: 2.2, live: 0.05 });
   key.color.set('#fff6ea');
 
-  // Hall shell: dark acoustic walls, concrete floor.
-  const W = 108, D = 120, H = 44, CZ = -4;
+  // Hall shell: dark acoustic walls, concrete floor. Indonesia Arena's by default; GBK's
+  // smaller halls (realvenues.js) bring their own room, stands and stage.
+  const HALL = venue.hall, R = HALL?.room;
+  const W = R?.W ?? 108, D = R?.D ?? 120, H = R?.H ?? 44, CZ = R?.CZ ?? -4;
   const wallMat = new THREE.MeshStandardMaterial({ color: '#2b2c30', roughness: 0.95, side: THREE.BackSide });
   const room = new THREE.Mesh(new THREE.BoxGeometry(W, H, D), wallMat);
   room.position.set(0, H / 2 - 0.02, CZ);
@@ -394,7 +448,7 @@ export function buildConcert(ctx, venue) {
     floor.material.normalMap = concreteNormalMap().clone();
     floor.material.normalMap.repeat.set(30, 30);
     floor.material.normalScale.set(0.35, 0.35);
-    new THREE.TextureLoader().load(`assets/venues/${venue.aoKey || venue.key}-floor-ao.jpg`, t => {
+    if (!HALL) new THREE.TextureLoader().load(`assets/venues/${venue.aoKey || venue.key}-floor-ao.jpg`, t => {
       t.flipY = false;
       floor.material.aoMap = t;
       floor.material.aoMapIntensity = 1;
@@ -409,7 +463,8 @@ export function buildConcert(ctx, venue) {
   // Roof grid of trusses and house lights.
   const steel = mats.steel();
   const roofTruss = trussGeometry(D * 0.94, 0.9);
-  for (let i = -3; i <= 3; i++) {
+  const nx = Math.floor((W / 2 - 4) / 14), nz = Math.round((D - 20) / 12.5) + 1;
+  for (let i = -nx; i <= nx; i++) {
     const t = new THREE.Mesh(roofTruss, mats.blackMetal());
     t.rotation.y = Math.PI / 2;
     t.position.set(i * 14, H - 3, CZ);
@@ -420,42 +475,49 @@ export function buildConcert(ctx, venue) {
   const lampMat = new THREE.MeshStandardMaterial({ color: '#202124', emissive: '#fff1d6', emissiveIntensity: 1 });
   ctx.mood(lampMat, 'emissiveIntensity', 2.2, 0.05);
   const lampPts = [];
-  for (let i = -3; i <= 3; i++) for (let j = 0; j < 9; j++) lampPts.push([i * 14, H - 3.8, CZ - D / 2 + 10 + j * 12.5]);
+  for (let i = -nx; i <= nx; i++) for (let j = 0; j < nz; j++) lampPts.push([i * 14, H - 3.8, CZ - D / 2 + 10 + j * 12.5]);
   const lamps = instanceAlong(lampGeo, lampMat, lampPts);
   scene.add(lamps);
   ctx.cutaway(lamps);
 
-  // Stage.
-  const deck = new THREE.Mesh(new THREE.BoxGeometry(36, 1.8, 13), new THREE.MeshStandardMaterial({ color: '#0c0c0e', roughness: 0.3 }));
-  deck.position.set(0, 0.9, -40.5);
+  // Stage: the deck, its risers and any catwalk in metres (performers stand on them); the
+  // screens, trusses and lights in a rig drawn for Indonesia Arena's 36 m stage and scaled to
+  // this one (S.k), standing on its deck.
+  const S = concertStage(venue);
+  const rig = new THREE.Group();
+  rig.scale.setScalar(S.k);
+  rig.position.set(0, S.h - 1.8 * S.k, S.front + 34 * S.k);
+  scene.add(rig);
+  const deck = new THREE.Mesh(new THREE.BoxGeometry(S.w, S.h, S.d), new THREE.MeshStandardMaterial({ color: '#0c0c0e', roughness: 0.3 }));
+  deck.position.set(0, S.h / 2, S.front - S.d / 2);
   deck.receiveShadow = deck.castShadow = true;
   scene.add(deck);
-  const skirt = new THREE.Mesh(new THREE.PlaneGeometry(36, 1.8), new THREE.MeshStandardMaterial({ color: '#111113', roughness: 0.9 }));
-  skirt.position.set(0, 0.9, -33.99);
+  const skirt = new THREE.Mesh(new THREE.PlaneGeometry(S.w, S.h), new THREE.MeshStandardMaterial({ color: '#111113', roughness: 0.9 }));
+  skirt.position.set(0, S.h / 2, S.front + 0.01);
   scene.add(skirt);
-  const lip = new THREE.Mesh(new THREE.BoxGeometry(36, 0.04, 0.06), new THREE.MeshBasicMaterial({ color: '#ffffff', toneMapped: false }));
-  lip.position.set(0, 1.82, -34);
+  const lip = new THREE.Mesh(new THREE.BoxGeometry(S.w, 0.04, 0.06), new THREE.MeshBasicMaterial({ color: '#ffffff', toneMapped: false }));
+  lip.position.set(0, S.h + 0.02, S.front);
   scene.add(lip);
   // A catwalk from the middle of the stage into the floor, where the show's plan has one.
   const walk = venue.stage?.catwalk;
   if (walk) {
-    const cw = new THREE.Mesh(new THREE.BoxGeometry(walk.w, 1.8, walk.len), deck.material);
-    cw.position.set(0, 0.9, -34 + walk.len / 2);
+    const cw = new THREE.Mesh(new THREE.BoxGeometry(walk.w, S.h, walk.len), deck.material);
+    cw.position.set(0, S.h / 2, S.front + walk.len / 2);
     cw.receiveShadow = cw.castShadow = true;
     scene.add(cw);
     for (const sx of [-1, 1]) {
       const edge = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.04, walk.len), lip.material);
-      edge.position.set(sx * walk.w / 2, 1.82, -34 + walk.len / 2);
+      edge.position.set(sx * walk.w / 2, S.h + 0.02, S.front + walk.len / 2);
       scene.add(edge);
     }
     const tip = new THREE.Mesh(new THREE.BoxGeometry(walk.w, 0.04, 0.06), lip.material);
-    tip.position.set(0, 1.82, -34 + walk.len);
+    tip.position.set(0, S.h + 0.02, S.front + walk.len);
     scene.add(tip);
   }
   // Risers for the band.
   for (const [x, w] of [[-8, 5], [0, 6], [8, 5]]) {
-    const r = new THREE.Mesh(new THREE.BoxGeometry(w, 0.6, 3), mats.matteBlack());
-    r.position.set(x, 2.1, -44);
+    const r = new THREE.Mesh(new THREE.BoxGeometry(w * S.k, 0.6, 3), mats.matteBlack());
+    r.position.set(x * S.k, S.h + 0.3, S.riserZ);
     r.castShadow = r.receiveShadow = true;
     scene.add(r);
   }
@@ -469,11 +531,11 @@ export function buildConcert(ctx, venue) {
     d.position.set(x, i ? 0.9 : 0.5, i ? -0.3 : 0);
     kit.add(d);
   });
-  kit.position.set(0, 2.4, -44);
+  kit.position.set(0, S.h + 0.6, S.riserZ);
   scene.add(kit);
   for (const x of venue.lineup?.length ? [] : [-6, 0, 6]) {
     const m = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.6, 6), mats.blackMetal());
-    m.position.set(x, 2.6, -36.5);
+    m.position.set(x * S.k, S.h + 0.8, S.front - 2.5);
     scene.add(m);
   }
 
@@ -483,43 +545,43 @@ export function buildConcert(ctx, venue) {
   ctx.mood(wallMatLed.uniforms.uLevel, 'value', 0.7, 1.05);
   const wall = new THREE.Mesh(new THREE.PlaneGeometry(30, 13), wallMatLed);
   wall.position.set(0, 9.2, -46.6);
-  scene.add(wall);
+  rig.add(wall);
   const frame = new THREE.Mesh(new THREE.BoxGeometry(30.6, 13.6, 0.5), mats.matteBlack());
   frame.position.set(0, 9.2, -46.9);
-  scene.add(frame);
+  rig.add(frame);
   for (const sx of [-1, 1]) {
     const imag = new THREE.Mesh(new THREE.PlaneGeometry(9, 5.06), screenMaterial({ ...theme.screen, tex: art(9 / 5.06), pixel: 60 }));
     ctx.mood(imag.material.uniforms.uLevel, 'value', 0.7, 1.35);
     imag.position.set(sx * 24, 11, -38);
     imag.rotation.y = -sx * 0.32;
-    scene.add(imag);
+    rig.add(imag);
     ctx.onTick(t => { imag.material.uniforms.uTime.value = t; });
     const back = new THREE.Mesh(new THREE.BoxGeometry(9.4, 5.4, 0.3), mats.matteBlack());
     back.position.copy(imag.position).add(new THREE.Vector3(sx * 0.05, 0, -0.17));
     back.rotation.y = imag.rotation.y;
-    scene.add(back);
+    rig.add(back);
     // Line arrays: twelve cabinets curving down, flown left and right of the stage.
     for (let k = 0; k < 12; k++) {
       const cab = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.42, 0.9), mats.matteBlack());
       cab.position.set(sx * 19.2, 16.5 - k * 0.44, -35.6 + Math.pow(k / 11, 2) * 0.6);
       cab.rotation.x = Math.pow(k / 11, 2) * 0.5;
       cab.castShadow = true;
-      scene.add(cab);
+      rig.add(cab);
     }
   }
 
   // Ground-supported truss towers and the lighting rig.
   const span = new THREE.Mesh(trussGeometry(38, 0.5), steel);
   span.position.set(0, 17.6, -36);
-  scene.add(span);
+  rig.add(span);
   const back = new THREE.Mesh(trussGeometry(38, 0.5), steel);
   back.position.set(0, 19, -45.5);
-  scene.add(back);
+  rig.add(back);
   for (const sx of [-1, 1]) for (const z of [-36, -45.5]) {
     const tower = new THREE.Mesh(trussGeometry(z === -36 ? 17.6 : 19, 0.5), steel);
     tower.rotation.z = Math.PI / 2;
     tower.position.set(sx * 18.8, (z === -36 ? 17.6 : 19) / 2, z);
-    scene.add(tower);
+    rig.add(tower);
   }
   const beamColors = theme.beams;
   const beams = [];
@@ -528,34 +590,35 @@ export function buildConcert(ctx, venue) {
     const x = -16.5 + i * 3;
     const head = new THREE.Mesh(headGeo, mats.matteBlack());
     head.position.set(x, 17.0, -36);
-    scene.add(head);
+    rig.add(head);
     const b = beam(beamColors[i % beamColors.length], 34, 2.6);
     b.position.set(x, 16.7, -36);
-    scene.add(b);
+    rig.add(b);
     ctx.mood(b.material.uniforms.uOpacity, 'value', 0.0, 0.32);
     beams.push(b);
   }
-  // Real stage lighting.
-  const wash = new THREE.SpotLight(theme.wash, 1, 70, 0.55, 0.6, 1.2);
+  // Real stage lighting, in the rig: a smaller rig's lights sit closer, so they shine less
+  // (k to the power of each light's decay keeps the light on the deck as it is at full size).
+  const wash = new THREE.SpotLight(theme.wash, 1, 70 * S.k, 0.55, 0.6, 1.2);
   wash.position.set(0, 24, -20);
   wash.target.position.set(0, 2, -42);
-  ctx.mood(wash, 'intensity', 0, 2600);
-  scene.add(wash, wash.target);
-  const back1 = new THREE.PointLight(theme.glow, 1, 40, 1.5);
+  ctx.mood(wash, 'intensity', 0, 2600 * S.k ** 1.2);
+  rig.add(wash, wash.target);
+  const back1 = new THREE.PointLight(theme.glow, 1, 40 * S.k, 1.5);
   back1.position.set(0, 14, -44);
-  ctx.mood(back1, 'intensity', 0, 260);
-  scene.add(back1);
+  ctx.mood(back1, 'intensity', 0, 260 * S.k ** 1.5);
+  rig.add(back1);
   const audience = new THREE.HemisphereLight('#3a3f5c', '#000000', 1);
   ctx.mood(audience, 'intensity', 0, 0.35);
   scene.add(audience);
   // Light spilling off the stage onto the crowd, pulsing gently with the music: the backs of
   // heads stay dark, shoulders and the tiers facing the stage catch it.
-  const spill = new THREE.SpotLight('#ffcf9e', 1, 120, 1.05, 0.9, 1.4);
+  const spill = new THREE.SpotLight('#ffcf9e', 1, 120 * S.k, 1.05, 0.9, 1.4);
   spill.position.set(0, 15, -33);
   spill.target.position.set(0, 3, 12);
   const spillRig = { base: 0 };
-  ctx.mood(spillRig, 'base', 0, 1300);
-  scene.add(spill, spill.target);
+  ctx.mood(spillRig, 'base', 0, 1300 * S.k ** 1.4);
+  rig.add(spill, spill.target);
   ctx.onTick(t => { spill.intensity = spillRig.base * (0.85 + 0.15 * Math.max(0, Math.sin(t * 118 / 60 * Math.PI * 2))); });
 
   // Barricade and front-of-house mix position.
@@ -565,18 +628,18 @@ export function buildConcert(ctx, venue) {
     const gap = walk.w / 2 + 1.2, side = (barrierLen / 2 - gap);
     for (const sx of [-1, 1]) {
       const front = new THREE.Mesh(crowdBarrier(side), mats.steel());
-      front.position.set(sx * (gap + side / 2), 0, -31.4);
+      front.position.set(sx * (gap + side / 2), 0, S.front + 2.6);
       const along = new THREE.Mesh(crowdBarrier(walk.len - 1.4), mats.steel());
       along.rotation.y = Math.PI / 2;
-      along.position.set(sx * gap, 0, -31.4 + (walk.len - 1.4) / 2);
+      along.position.set(sx * gap, 0, S.front + 2.6 + (walk.len - 1.4) / 2);
       scene.add(front, along);
     }
     const end = new THREE.Mesh(crowdBarrier(gap * 2), mats.steel());
-    end.position.set(0, 0, -34 + walk.len + 1.2);
+    end.position.set(0, 0, S.front + walk.len + 1.2);
     scene.add(end);
   } else {
     const barrier = new THREE.Mesh(crowdBarrier(barrierLen), mats.steel());
-    barrier.position.set(0, 0, -31.4);
+    barrier.position.set(0, 0, S.front + 2.6);
     scene.add(barrier);
   }
   const foh = new THREE.Group();
@@ -592,22 +655,26 @@ export function buildConcert(ctx, venue) {
   scene.add(foh);
 
   // Tier front walls with glass balustrade and a ribbon board on the upper tier.
-  const opts = { cx: 0, cz: -10, p: 0.62, from: -38 * Math.PI / 180, to: 218 * Math.PI / 180 };
   const front = new THREE.MeshStandardMaterial({ color: '#3b3c40', map: grime(), roughness: 0.9, side: THREE.DoubleSide });
-  scene.add(new THREE.Mesh(ribbon({ ...opts, rx: 23.4, rz: 29.4, y0: 0, y1: 1.7 }), front));
-  scene.add(new THREE.Mesh(ribbon({ ...opts, rx: 23.4, rz: 29.4, y0: 1.7, y1: 2.7 }), mats.glass()));
-  scene.add(new THREE.Mesh(ribbon({ ...opts, rx: 36.8, rz: 42.8, y0: 6.9, y1: 9.9 }), front));
-  scene.add(new THREE.Mesh(ribbon({ ...opts, rx: 36.8, rz: 42.8, y0: 9.9, y1: 10.9 }), mats.glass()));
-  const bandTex = bandTexture(brand.band, { fg: '#f4f1ea', accent: '#d9b48a' });
-  bandTex.repeat.set(6, 1);
-  const band = new THREE.Mesh(ribbon({ ...opts, rx: 36.75, rz: 42.75, y0: 8.6, y1: 9.5, uRepeat: 1 }), new THREE.MeshBasicMaterial({ map: bandTex, toneMapped: false, side: THREE.DoubleSide }));
-  scene.add(band);
+  let bandTex = null;
+  if (HALL) hallStands(scene, HALL, front);
+  else {
+    const opts = { cx: 0, cz: -10, p: 0.62, from: -38 * Math.PI / 180, to: 218 * Math.PI / 180 };
+    scene.add(new THREE.Mesh(ribbon({ ...opts, rx: 23.4, rz: 29.4, y0: 0, y1: 1.7 }), front));
+    scene.add(new THREE.Mesh(ribbon({ ...opts, rx: 23.4, rz: 29.4, y0: 1.7, y1: 2.7 }), mats.glass()));
+    scene.add(new THREE.Mesh(ribbon({ ...opts, rx: 36.8, rz: 42.8, y0: 6.9, y1: 9.9 }), front));
+    scene.add(new THREE.Mesh(ribbon({ ...opts, rx: 36.8, rz: 42.8, y0: 9.9, y1: 10.9 }), mats.glass()));
+    bandTex = bandTexture(brand.band, { fg: '#f4f1ea', accent: '#d9b48a' });
+    bandTex.repeat.set(6, 1);
+    const band = new THREE.Mesh(ribbon({ ...opts, rx: 36.75, rz: 42.75, y0: 8.6, y1: 9.5, uRepeat: 1 }), new THREE.MeshBasicMaterial({ map: bandTex, toneMapped: false, side: THREE.DoubleSide }));
+    scene.add(band);
+  }
 
   if (ctx.realistic) buildArenaDetail(ctx, venue);
 
   ctx.onTick((t, dt) => {
     wallMatLed.uniforms.uTime.value = t;
-    bandTex.offset.x = (bandTex.offset.x + dt * 0.01) % 1;
+    if (bandTex) bandTex.offset.x = (bandTex.offset.x + dt * 0.01) % 1;
     beams.forEach((b, i) => {
       b.rotation.z = Math.sin(t * 0.45 + i * 0.7) * 0.42;
       b.rotation.x = 0.42 + Math.sin(t * 0.33 + i * 1.3) * 0.22;
@@ -1743,20 +1810,21 @@ function stadiumShow(ctx, venue, brand) {
     g.rotation.y = Math.PI / 2;
     g.position.set(stageX, 0, 0);
     scene.add(g);
-    const barrier = new THREE.Mesh(crowdBarrier(56), mats.steel());
+    const barrier = new THREE.Mesh(crowdBarrier(venue.stage?.barrier || 56), mats.steel());
     barrier.rotation.y = Math.PI / 2;
     barrier.position.set(stageX + 1.6, 0, 0);
     scene.add(barrier);
-    // Delay towers halfway down the field, either side of the crowd, and the sound desk.
+    // Delay towers down the field, where the show's plan has them (d out from the stage's
+    // front edge, z across), else halfway down either side of the crowd; and the sound desk.
     if (venue.arch) {
-      for (const sz of [-1, 1]) {
+      for (const [d, z] of venue.towers || [[52, -31.5], [52, 31.5]]) {
         const tower = new THREE.Mesh(trussGeometry(16, 0.5), steel);
         tower.rotation.z = Math.PI / 2;
-        tower.position.set(stageX + 52, 8, sz * 31.5);
+        tower.position.set(stageX + d, 8, z);
         scene.add(tower);
         for (let k = 0; k < 8; k++) {
           const cab = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.42, 0.9), mats.matteBlack());
-          cab.position.set(stageX + 51.2, 15 - k * 0.44, sz * 31.5);
+          cab.position.set(stageX + d - 0.8, 15 - k * 0.44, z);
           cab.rotation.y = Math.PI / 2;
           scene.add(cab);
         }

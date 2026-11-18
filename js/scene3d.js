@@ -11,7 +11,7 @@ import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer
 import { Crowd, Band } from './crowd3d.js';
 import { LensPass, GradePass, depthTarget } from './post.js';
 import { treadShading, concreteNormalMap } from './arena-detail.js';
-import { buildConcert, buildCinema, buildCombat, buildStadium, prepareVenue, preparePoster, posterArt, seatGeometry, crowdGeometries, mats, SEAT_HINGE } from './venues3d.js';
+import { buildConcert, buildCinema, buildCombat, buildStadium, prepareVenue, preparePoster, posterArt, seatGeometry, crowdGeometries, mats, SEAT_HINGE, concertStage } from './venues3d.js';
 
 const SEATED_EYE = 1.2;
 const STANDING_EYE = 1.72;
@@ -595,12 +595,12 @@ export class SeatScene {
     // The act on stage, as many as the show's line-up, on the concert stage's deck and risers.
     this.band?.dispose();
     const bandRnd = () => ((seed2 = (seed2 * 16807) % 2147483647) / 2147483647);
-    const stadium = venue.kind === 'stadium';
+    const stadium = venue.kind === 'stadium', S = !stadium && concertStage(venue);
     this.band = venue.lineup?.length && (!stadium || venue.show === 'end')
       ? new Band(this.scene, this.people.material, venue.lineup, stadium
         // A stadium's end stage is built facing +z at its front edge, then turned to the field.
         ? { y: 2.2, front: 0, riserY: 2.8, riserZ: -9, risers: true, rnd: bandRnd }
-        : { rnd: bandRnd })
+        : { y: S.h, front: S.front, riserY: S.h + 0.6, riserZ: S.riserZ, spread: S.k, rnd: bandRnd })
       : null;
     if (this.band && stadium) {
       this.band.group.rotation.y = Math.PI / 2;

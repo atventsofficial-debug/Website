@@ -8,7 +8,7 @@
 // from the block's left end as its row faces the stage or the field. The promoters give the
 // seat numbers only near the show, so rows and numbers inside a block are our estimate: the
 // pass lets the fan turn the numbering round (js/seatflip.js).
-import { gridRows, bowl, pushSeat, superPoint, deg } from './seatgeo.js';
+import { gridRows, bowl, arcRows, pushSeat, superPoint, evenCuts, deg } from './seatgeo.js';
 
 const pad = n => String(n).padStart(2, '0');
 
@@ -108,17 +108,24 @@ const tierName = { lower: 'Lower', middle: 'Middle', upper: 'Upper' };
 // The angle (radians, 0 at the far end) where a tier's front row reaches the cut.
 export const jisEnd = t => Math.PI - Math.acos((JIS.cut / t.rx0) ** (1 / JIS.p));
 
-// The bowl, open behind the stage. `zone({ tier, block, blocks })` gives each block its
-// category: `tier` 1 to 3, `block` its place from the right side's stage end (0 up), so the
-// far end's middle is at blocks / 2.
+// The bowl, open behind the stage. `zone({ tier, block, blocks, x, z })` gives each block its
+// category, or null where the show's plan sells none: `tier` 1 to 3, `block` its place from
+// the right side's stage end (0 up), so the far end's middle is at blocks / 2, and (x, z)
+// the middle of its front row (x out from the stage end, z across, Left +z).
 function jisBowl(seats, zone) {
   for (const [key, first, tier] of JIS_TIERS) {
     const T = JIS[key], end = jisEnd(T);
+    const cuts = evenCuts(T.rx0, T.rz0, JIS.p, -end, end, T.blocks);
+    const cat = s => {
+      const [x, z] = superPoint((cuts[s] + cuts[s + 1]) / 2, T.rx0, T.rz0, JIS.p);
+      return zone({ tier, block: s, blocks: T.blocks, x, z });
+    };
+    const skip = [...Array(T.blocks).keys()].filter(s => !cat(s));
     bowl(seats, { ...T, p: JIS.p, cx: 0, cz: 0, from: -end, to: end, sections: T.blocks, even: true, aisle: 1.1,
-      spacing: 0.6, tier, reverse: true,
+      spacing: 0.6, tier, reverse: true, skip,
       name: s => {
         const n = first + T.blocks - s;   // numbered from the left side's stage end
-        return { code: `${n}`, label: `${tierName[key]} ${n}`, cat: zone({ tier, block: s, blocks: T.blocks }) };
+        return { code: `${n}`, label: `${tierName[key]} ${n}`, cat: cat(s) };
       } });
   }
 }
@@ -240,7 +247,7 @@ function inaFloor(seats, zones, step = 0.66) {
 }
 // One show's plan on the bowl: `lower(block, row)` and `upper(block, row)` give each seat's
 // category id (block 0..9), `floor(x, z)` each standing spot's pen.
-function inaArena({ key, label, lower, upper, floor, stage, categories, occupancy }) {
+function inaArena({ key, label, lower, upper, floor, stage, categories, occupancy, fohZ = INA.fohZ }) {
   const seats = [];
   const common = { cx: INA.cx, cz: INA.cz, p: INA.p, from: INA.from, to: INA.to, sections: INA.sections, spacing: INA.spacing };
   inaFloor(seats, floor);
@@ -261,7 +268,7 @@ function inaArena({ key, label, lower, upper, floor, stage, categories, occupanc
     overview: { pos: [0, 46, 60], target: [0, 0, -10], min: 25, max: 130 },
     hero: { along: 29, look: [0, 6, -40], fov: 56 },
     stage,
-    fohZ: INA.fohZ,
+    fohZ,
     seatStyle: 'flipup',
     seatColor: '#8a8e94',
     zoneColors: true,
@@ -359,6 +366,54 @@ function inaB2m() {
   });
 }
 
+// The Script, Man in the Arena Tour 2027, 3 Apr 2027, after Color Asia Live's seat plan
+// (thescriptjkt.com; prices from ANTARA, 20 Aug 2026): a catwalk from the stage into the
+// floor, Golden Festival standing round it, its Priority tickets (early entry, no barrier
+// between them) at the front; Festival behind, round the sound desk. In the first tier
+// Diamond VIP in the front rows along the sides and across the far end, Platinum behind it,
+// Gold in the two corners; the upper tier Silver, with Bronze in the corners. Red, the end
+// blocks beside the stage in both tiers, is sold as restricted view.
+const SCRIPT_WALK = { halfW: 2, len: 16 };
+const SCRIPT_FOH = 3;
+function inaScript() {
+  const half = x => (x < 0 ? 'L' : 'R'), name = x => (x < 0 ? 'Left' : 'Right');
+  return inaArena({
+    key: 'ina-script',
+    label: 'Indonesia Arena, The Script',
+    floor: (x, z) => {
+      if (Math.abs(x) < SCRIPT_WALK.halfW + 3 && z < INA.stageFront + SCRIPT_WALK.len + 2) return null;
+      if (Math.abs(x) < 4.6 && Math.abs(z - SCRIPT_FOH) < 3.4) return null;
+      if (z < -3.5) return { sec: `GF-${half(x)}`, secName: `Golden Festival ${name(x)}`, cat: z < INA.stageFront + 9 ? 'gfp' : 'gf' };
+      return { sec: `FES-${half(x)}`, secName: `Festival ${name(x)}`, cat: 'festival' };
+    },
+    lower: (b, row) => {
+      const { pos } = inaBlock(b);
+      if (pos === 'end') return 'red';
+      if (b === 3 || b === 6) return 'gold';
+      return row < (pos === 'back' ? 4 : 6) ? 'dvip' : 'platinum';
+    },
+    upper: b => {
+      const { pos } = inaBlock(b);
+      if (pos === 'end') return 'red';
+      return b === 3 || b === 6 ? 'bronze' : 'silver';
+    },
+    stage: { w: 36, d: 13, barrier: 40, catwalk: { w: SCRIPT_WALK.halfW * 2, len: SCRIPT_WALK.len } },
+    fohZ: SCRIPT_FOH,
+    occupancy: { gfp: 0.97, gf: 0.95, festival: 0.93, dvip: 0.88, platinum: 0.88, gold: 0.86, silver: 0.86, bronze: 0.84, red: 0.82 },
+    categories: [
+      { id: 'dvip', name: 'Diamond VIP', price: 2950000, color: '#e33fc8', note: 'Front rows of the first tier; snack and drink included' },
+      { id: 'platinum', name: 'Platinum', price: 2100000, color: '#7cc6ec' },
+      { id: 'gfp', name: 'Golden Festival Priority', code: 'GF Priority', price: 1850000, color: '#e2671c', note: 'Standing, early entry to the front of Golden Festival' },
+      { id: 'gold', name: 'Gold', price: 1650000, color: '#f2d43c', note: 'Wheelchair spaces are in Gold' },
+      { id: 'gf', name: 'Golden Festival', price: 1300000, color: '#f08c3c', note: 'Standing round the catwalk' },
+      { id: 'silver', name: 'Silver', price: 1250000, color: '#8f9196' },
+      { id: 'bronze', name: 'Bronze', price: 1050000, color: '#8a4b27' },
+      { id: 'festival', name: 'Festival', price: 950000, color: '#2433c4', note: 'Standing' },
+      { id: 'red', name: 'Red', price: 750000, color: '#d23a2c', note: 'Restricted view, beside the stage' },
+    ],
+  });
+}
+
 
 // ------------------------------------------------------------------ JIS: other shows
 
@@ -367,13 +422,13 @@ function inaB2m() {
 // of priority, each { sec, secName, cat, standing, step, at(d, z) } where d is the distance
 // out from the stage's front edge and z across the field (Left +z); the first pen whose `at`
 // holds takes the spot. `clear(d, z)` keeps a spot empty.
-function jisPitch(seats, pens, clear) {
+function jisPitch(seats, pens, clear, { dMax = 96, zMax = 33 } = {}) {
   for (const pen of pens) {
     const sx = pen.standing ? (pen.step || 0.8) : 0.55, sz = pen.standing ? (pen.step || 0.8) : 0.9;
     let row = -1;
-    for (let d = 2.4; d < 96; d += sz) {
+    for (let d = 2.4; d < dMax; d += sz) {
       let num = 0, started = false;
-      for (let z = 33; z > -33; z -= sx) {
+      for (let z = zMax; z > -zMax; z -= sx) {
         if (clear(d, z)) continue;
         const owner = pens.find(p => p.at(d, z));
         if (owner !== pen) continue;
@@ -392,10 +447,10 @@ const segDist = (d, z, [d0, z0, d1, z1]) => {
 // The stage's walkways in its own frame (x across = -z on the field, z out = d).
 const toThrust = ([d0, z0, d1, z1], w) => ({ x0: -z0, z0: d0, x1: -z1, z1: d1, w });
 
-function jisShow({ key, label, zone, pens, clear, stage, foh, categories, occupancy }) {
+function jisShow({ key, label, zone, pens, clear, pitch, stage, foh, towers, hero = 46, categories, occupancy }) {
   const seats = [];
   jisBowl(seats, zone);
-  jisPitch(seats, pens, clear);
+  jisPitch(seats, pens, clear, pitch);
   return {
     key,
     kind: 'stadium',
@@ -403,13 +458,14 @@ function jisShow({ key, label, zone, pens, clear, stage, foh, categories, occupa
     show: 'end',
     stageX: JIS_STAGE,
     foh: [JIS_STAGE + foh, 0],
+    ...(towers ? { towers } : {}),
     tiers: JIS,
     stage,
     label,
     event: { title: 'Stadium concert', venue: 'Jakarta International Stadium' },
     focus: [JIS_STAGE - 10, 7, 0],
     overview: { pos: [100, 130, 160], target: [-6, 0, 0], min: 50, max: 320 },
-    hero: { along: 46, look: [JIS_STAGE - 10, 10, 0], fov: 54 },
+    hero: { along: hero, look: [JIS_STAGE - 10, 10, 0], fov: 54 },
     seatStyle: 'shell',
     seatColor: '#c8202f',
     zoneColors: true,
@@ -499,6 +555,7 @@ function jisMaroon5() {
       || (Math.abs(d - M5_FOH) < 4.2 && Math.abs(z) < 5) || (Math.abs(d - (M5_FOH - 2)) < 1.6 && Math.abs(Math.abs(z) - 14) < 1.6) || Math.abs(z) < 0.8 && d > M5_B.d + 6,
     stage: { thrust: [toThrust(M5_RUNWAY, 3)], bstage: [{ x: 0, z: M5_B.d, w: M5_B.half * 2, d: M5_B.half * 2 }] },
     foh: M5_FOH,
+    towers: [[M5_FOH - 2, 14], [M5_FOH - 2, -14]],
     occupancy: { festival: 0.94, cat1: 0.9, cat2: 0.9, cat3: 0.9, cat4a: 0.85, cat4b: 0.85, cat5: 0.88, cat6a: 0.85, cat6b: 0.85, cat7a: 0.85, cat7b: 0.85 },
     categories: [
       { id: 'festival', name: 'Festival', price: 2750000, color: '#dfe3e6', note: 'Free standing; the Early Entry Package (Rp 4.9M) is a Festival ticket with early entry' },
@@ -516,4 +573,288 @@ function jisMaroon5() {
   });
 }
 
-export const REAL_BUILDERS = { 'madya-end': madyaEnd, 'jis-mcr': jisMcr, 'ina-5sos': ina5sos, 'ina-b2m': inaB2m, 'jis-bigbang': jisBigbang, 'jis-maroon5': jisMaroon5 };
+// ENHYPEN World Tour 'BLOOD SAGA' in Jakarta, 23 Jan 2027, after PK Entertainment's official
+// seat map (instagram.com/p/DafTw5SGYtT): a runway from the stage to a crossbar walkway right
+// across the floor, VIP A (left) and VIP B (right) standing either side of the runway in
+// front of it; CAT 1 numbered chairs on the floor behind the crossbar, back past the delay
+// towers; the sound desk at the back of the floor with CAT 2 C chairs in the two corners
+// beside it. In the first tier CAT 2 A (left) and B (right) along the sides from the stage,
+// CAT 3 round the far end; the middle tier all CAT 4. The upper tier is sold only from
+// midfield back: CAT 7 A/B, then CAT 6 A/B along the sides, CAT 5 round the far end.
+// The plan is a sketch; the floor's pens are laid out to its proportions on the real pitch.
+const EN_RUNWAY = [0, 0, 28, 0];
+const EN_BAR = [34, 31, 34, -31];
+const EN_HUB = { d: 37, halfW: 8, halfD: 5.5 };
+const EN_FOH = 92;
+const EN_TOWERS = [[58, 34], [58, -34], [97, 16.5], [97, -16.5]];
+function jisEnhypen() {
+  const side = z => (z > 0 ? 'a' : 'b');
+  return jisShow({
+    key: 'jis-enhypen',
+    label: 'Jakarta International Stadium, ENHYPEN',
+    zone: ({ tier, x, z }) => {
+      if (tier === 1) return x < 34 ? `cat2${side(z)}` : 'cat3';
+      if (tier === 2) return 'cat4';
+      if (x < 6) return null;   // the upper tier's stage half: not on sale
+      return x < 28 ? `cat7${side(z)}` : x < 62 ? `cat6${side(z)}` : 'cat5';
+    },
+    pens: [
+      { sec: 'VIP-A', secName: 'VIP A', cat: 'vipa', standing: true, step: 0.75, at: (d, z) => z > 0 && d < 31 && z < 38 },
+      { sec: 'VIP-B', secName: 'VIP B', cat: 'vipb', standing: true, step: 0.75, at: (d, z) => z < 0 && d < 31 && z > -38 },
+      { sec: 'CAT1-L', secName: 'CAT 1 Left', cat: 'cat1', at: (d, z) => z >= 0 && d >= 38 && d < 87 && z < 38 },
+      { sec: 'CAT1-R', secName: 'CAT 1 Right', cat: 'cat1', at: (d, z) => z < 0 && d >= 38 && d < 87 && z > -38 },
+      { sec: 'CAT2C-L', secName: 'CAT 2 C Left', cat: 'cat2c', at: (d, z) => d >= 88.5 && d < 100 && z >= 21 && z < 36 },
+      { sec: 'CAT2C-R', secName: 'CAT 2 C Right', cat: 'cat2c', at: (d, z) => d >= 88.5 && d < 100 && z <= -21 && z > -36 },
+    ],
+    clear: (d, z) => segDist(d, z, EN_RUNWAY) < 3.1 || segDist(d, z, EN_BAR) < 3.4
+      || (Math.abs(d - EN_HUB.d) < EN_HUB.halfD + 1.6 && Math.abs(z) < EN_HUB.halfW + 1.6)
+      || (Math.abs(d - EN_FOH) < 6.2 && Math.abs(z) < 7.4)
+      || EN_TOWERS.some(([td, tz]) => Math.abs(d - td) < 2.6 && Math.abs(z - tz) < 2.6)
+      || (Math.abs(z) > 28 && d > 51 && d < 65)        // beside the front delay towers, as on the plan
+      || (Math.abs(d - 67.5) < 1.3 && Math.abs(z) < 27) // the cross aisle through CAT 1
+      || (Math.abs(z) < 0.8 && d > 38),
+    pitch: { dMax: 100, zMax: 38 },
+    stage: { thrust: [toThrust(EN_RUNWAY, 3.2), toThrust(EN_BAR, 3.6)], bstage: [{ x: 0, z: EN_HUB.d, w: EN_HUB.halfW * 2, d: EN_HUB.halfD * 2 }], barrier: 78 },
+    foh: EN_FOH,
+    towers: EN_TOWERS,
+    hero: 57,   // the first rows of CAT 1, just behind the walkway's hub
+    occupancy: { vipa: 0.97, vipb: 0.97, cat1: 0.92, cat2a: 0.9, cat2b: 0.9, cat2c: 0.9, cat3: 0.9, cat4: 0.88, cat5: 0.86, cat6a: 0.85, cat6b: 0.85, cat7a: 0.85, cat7b: 0.85 },
+    categories: [
+      { id: 'vipa', name: 'VIP A', price: 3650000, color: '#e8432f', note: 'Standing, left of the runway; soundcheck and VIP gift' },
+      { id: 'vipb', name: 'VIP B', price: 3650000, color: '#e8432f', note: 'Standing, right of the runway; soundcheck and VIP gift' },
+      { id: 'cat1', name: 'CAT 1', price: 3450000, color: '#e83ccf', note: 'Numbered chairs on the floor, behind the crossbar' },
+      { id: 'cat2a', name: 'CAT 2 A', price: 3250000, color: '#efa53a' },
+      { id: 'cat2b', name: 'CAT 2 B', price: 3250000, color: '#efa53a' },
+      { id: 'cat2c', name: 'CAT 2 C', price: 3250000, color: '#efa53a', note: 'Numbered chairs on the floor, beside the sound desk' },
+      { id: 'cat3', name: 'CAT 3', price: 2950000, color: '#2a49e6' },
+      { id: 'cat4', name: 'CAT 4', price: 2750000, color: '#f5ea4a' },
+      { id: 'cat5', name: 'CAT 5', price: 2250000, color: '#5fd24a' },
+      { id: 'cat6a', name: 'CAT 6 A', price: 1850000, color: '#7a1fd6' },
+      { id: 'cat6b', name: 'CAT 6 B', price: 1850000, color: '#7a1fd6' },
+      { id: 'cat7a', name: 'CAT 7 A', price: 1450000, color: '#8ec5f2' },
+      { id: 'cat7b', name: 'CAT 7 B', price: 1450000, color: '#8ec5f2' },
+    ],
+  });
+}
+
+
+// ------------------------------------------------------------------ GBK's smaller halls
+
+// Istora, Tennis Indoor and Basket Hall: rectangular halls whose stands run straight along
+// the floor and round its corners, modelled as a squared-off bowl (a superellipse, p small)
+// in the concert template's frame: the stage at -z facing +z, x across, the audience's Left
+// at -x (the plans' "A" side). `hall.tiers` are the stands' tiers, `hall.segments` the angle
+// ranges that have seats (0 is the right side, 90 the back), and buildConcert draws the
+// room, the stage and the tier fronts from them. The promoters sell by category; blocks,
+// rows and numbers inside a category are our estimate (row A at the front of each block,
+// seat 1 at its left end as the row faces the floor).
+
+// One stand: the tier's rows between angles t0 and t1, cut into `blocks` blocks of equal
+// length, each block's rows split from the front back into `parts` (a category each, its
+// own rows A up): { code, name, cat, rows }.
+function hallStand(seats, hall, tier, t0, t1, blocks, parts) {
+  const T = hall.tiers[tier];
+  const cuts = evenCuts(T.rx0, T.rz0, hall.p, t0, t1, blocks);
+  for (let b = 0; b < blocks; b++) {
+    // Blocks number from the audience's left as they face the floor, so from the t1 end.
+    const n = blocks - b;
+    let i = 0;
+    for (const part of parts) {
+      arcRows(seats, { cx: hall.cx, cz: hall.cz, p: hall.p, t0: cuts[b], t1: cuts[b + 1], trim: 1.1, reverse: true,
+        rx0: T.rx0 + i * T.gap, rz0: T.rz0 + i * T.gap, gap: T.gap, rows: part.rows, rise: T.rise, baseY: T.baseY + i * T.rise,
+        spacing: 0.52, tier: tier + 1, sec: `${part.code}${blocks > 1 ? `-${n}` : ''}`, secName: `${part.name}${blocks > 1 ? `, block ${n}` : ''}`, cat: part.cat });
+      i += part.rows;
+    }
+  }
+}
+// The floor between the stage's barrier and `back`, inside the first row less an aisle:
+// `zones(x, z)` names each spot's pen ({ sec, secName, cat, standing }) or null to keep it
+// clear. Standing spots 0.66 m apart; chairs 0.52 m across, rows 0.9 m apart.
+function hallFloor(seats, hall, back, zones) {
+  const T = hall.tiers[0], e = 2 / hall.p, front = hall.stage.front + 3.2;
+  const inside = (x, z) => (Math.abs(x - hall.cx) / (T.rx0 - 2)) ** e + (Math.abs(z - hall.cz) / (T.rz0 - 2)) ** e < 1;
+  const rows = new Map();
+  for (const standing of [true, false]) {
+    const sx = standing ? 0.66 : 0.52, sz = standing ? 0.66 : 0.9;
+    for (let z = front; z < back; z += sz) {
+      for (const dir of [-1, 1]) {
+        for (let x = dir * sx / 2; inside(x, z) && Math.abs(x) < T.rx0; x += dir * sx) {
+          const pen = zones(x, z);
+          if (!pen || !!pen.standing !== standing) continue;
+          const r = rows.get(pen.sec) || { z: null, row: -1, num: 0 };
+          if (r.z !== z) { r.z = z; r.row++; r.num = 0; }
+          rows.set(pen.sec, r);
+          const dx = 0 - x, dz = hall.stage.front - 6 - z, l = Math.hypot(dx, dz);
+          pushSeat(seats, { ...pen, sx, sz }, r.row, ++r.num, x, 0, z, dx / l, dz / l);
+        }
+      }
+    }
+  }
+  // Number each row from its left end: the loop above went out from the middle.
+  const bySecRow = new Map();
+  for (const s of seats) if (!s.tier) {
+    const k = `${s.sec}|${s.row}`;
+    if (!bySecRow.has(k)) bySecRow.set(k, []);
+    bySecRow.get(k).push(s);
+  }
+  for (const list of bySecRow.values()) {
+    list.sort((a, b) => a.x - b.x);
+    list.forEach((s, i) => { s.num = i + 1; s.id = `${s.sec}-${s.row}${s.num}`; });
+  }
+}
+function hallShow({ key, label, venueName, hall, fohZ, categories, occupancy, seats, view }) {
+  return {
+    key,
+    kind: 'concert',
+    arch: 'hall',
+    hall,
+    label,
+    event: { title: 'Hall concert', venue: venueName },
+    focus: [0, 4, hall.stage.front - 6],
+    overview: view.overview,
+    hero: view.hero,
+    stage: hall.stage,
+    fohZ,
+    seatStyle: 'flipup',
+    seatColor: '#8a8e94',
+    zoneColors: true,
+    occupancy,
+    categories,
+    seats,
+  };
+}
+
+// N.Flying LIVE '&CON5: into REM', 10 Jan 2027, after the seat plan by Karalas Live and FNC
+// (tickets on Loket.com): Cockpit A and B standing at the front of the floor, Runway A and
+// B behind with no barrier between them, a barrier down the middle and the sound desk at
+// the back. Stands along the two sides only, each in three bands from the floor up:
+// Cloud 9, Skyline, Horizon (A on the left, B on the right). Basket Hall seats 2,920 for
+// basketball (Petra Christian University's survey of the hall).
+const BASKET = {
+  cx: 0, cz: 0, p: 0.22,
+  tiers: [{ rx0: 13, rz0: 21, rows: 19, gap: 0.85, rise: 0.44, baseY: 1.1 }],
+  stage: { w: 22, front: -14, h: 1.5, barrier: 22 },
+  room: { W: 66, D: 62, H: 20, CZ: 3 },
+};
+BASKET.segments = [[deg(-8), deg(42)], [deg(138), deg(188)]];
+function basketNflying() {
+  const hall = BASKET, seats = [];
+  for (const [t0, t1, side] of [[...hall.segments[1], 'A'], [...hall.segments[0], 'B']]) {
+    hallStand(seats, hall, 0, t0, t1, 3, [
+      { code: `C9${side}`, name: `Cloud 9 ${side}`, cat: `cloud9${side.toLowerCase()}`, rows: 6 },
+      { code: `SKY${side}`, name: `Skyline ${side}`, cat: `skyline${side.toLowerCase()}`, rows: 6 },
+      { code: `HOR${side}`, name: `Horizon ${side}`, cat: `horizon${side.toLowerCase()}`, rows: 7 },
+    ]);
+  }
+  const FOH = { z: 15.6, halfW: 3.2, halfD: 2.6 };
+  hallFloor(seats, hall, 19.5, (x, z) => {
+    if (Math.abs(x) < 0.6) return null;   // the barrier down the middle
+    if (Math.abs(x) < FOH.halfW + 1 && Math.abs(z - FOH.z) < FOH.halfD + 1) return null;
+    const side = x < 0 ? 'A' : 'B', cockpit = z < -1.2;
+    return { sec: `${cockpit ? 'CP' : 'RW'}-${side}`, secName: `${cockpit ? 'Cockpit' : 'Runway'} ${side}`, cat: `${cockpit ? 'cockpit' : 'runway'}${side.toLowerCase()}`, standing: true };
+  });
+  return hallShow({
+    key: 'basket-nflying', label: 'Basket Hall GBK, N.Flying', venueName: 'Basket Hall GBK', hall, fohZ: FOH.z, seats,
+    view: { overview: { pos: [0, 34, 40], target: [0, 0, -2], min: 15, max: 90 }, hero: { along: 16, look: [0, 4, -18], fov: 58 } },
+    occupancy: { cockpita: 0.97, cockpitb: 0.97, runwaya: 0.95, runwayb: 0.95, cloud9a: 0.9, cloud9b: 0.9, skylinea: 0.88, skylineb: 0.88, horizona: 0.86, horizonb: 0.86 },
+    categories: [
+      { id: 'cockpita', name: 'Cockpit A', price: 3400000, color: '#4aa6e6', note: 'Standing at the front, left of the barrier' },
+      { id: 'cockpitb', name: 'Cockpit B', price: 3400000, color: '#4aa6e6', note: 'Standing at the front, right of the barrier' },
+      { id: 'cloud9a', name: 'Cloud 9 A', price: 3400000, color: '#4fbf3a' },
+      { id: 'cloud9b', name: 'Cloud 9 B', price: 3400000, color: '#4fbf3a' },
+      { id: 'runwaya', name: 'Runway A', price: 3000000, color: '#ef7a3a', note: 'Standing behind Cockpit A, no barrier between them' },
+      { id: 'runwayb', name: 'Runway B', price: 3000000, color: '#ef7a3a', note: 'Standing behind Cockpit B, no barrier between them' },
+      { id: 'skylinea', name: 'Skyline A', price: 2500000, color: '#f2cf3a' },
+      { id: 'skylineb', name: 'Skyline B', price: 2500000, color: '#f2cf3a' },
+      { id: 'horizona', name: 'Horizon A', price: 1400000, color: '#c9cbd0' },
+      { id: 'horizonb', name: 'Horizon B', price: 1400000, color: '#c9cbd0' },
+    ],
+  });
+}
+
+// M2M Two Tour, 10 Apr 2027, after Akselerasi Entertainment's plan: CAT 1 and CAT 2 free
+// standing on the floor, CAT 1 at the front, the sound desk at the back of CAT 2; CAT 3
+// numbered seats in the stand facing the stage, round its corners; CAT 4 A (left) and 4 B
+// (right) numbered seats along the sides. Tennis Indoor seats 3,954 after its 2018 rebuild
+// (Ministry of Public Works, via setkab.go.id); the stand behind the stage is closed.
+const TENNIS = {
+  cx: 0, cz: 0, p: 0.22,
+  tiers: [{ rx0: 14, rz0: 22, rows: 16, gap: 0.85, rise: 0.45, baseY: 1.1 }],
+  stage: { w: 20, front: -12, h: 1.5, barrier: 24 },
+  room: { W: 60, D: 64, H: 22, CZ: 5 },
+};
+TENNIS.segments = [[deg(-10), deg(30)], [deg(30), deg(150)], [deg(150), deg(190)]];
+function tennisM2m() {
+  const hall = TENNIS, seats = [];
+  hallStand(seats, hall, 0, ...hall.segments[2], 3, [{ code: '4A', name: 'CAT 4 A', cat: 'cat4a', rows: 16 }]);
+  hallStand(seats, hall, 0, ...hall.segments[1], 5, [{ code: '3', name: 'CAT 3', cat: 'cat3', rows: 16 }]);
+  hallStand(seats, hall, 0, ...hall.segments[0], 3, [{ code: '4B', name: 'CAT 4 B', cat: 'cat4b', rows: 16 }]);
+  const FOH = { z: 16.5, halfW: 3, halfD: 2.4 };
+  hallFloor(seats, hall, 20.5, (x, z) => {
+    if (Math.abs(x) < FOH.halfW + 1 && Math.abs(z - FOH.z) < FOH.halfD + 1) return null;
+    const half = x < 0 ? 'L' : 'R', name = x < 0 ? 'Left' : 'Right', front = z < 0.5;
+    return { sec: `${front ? 'C1' : 'C2'}-${half}`, secName: `CAT ${front ? 1 : 2} ${name}`, cat: front ? 'cat1' : 'cat2', standing: true };
+  });
+  return hallShow({
+    key: 'tennis-m2m', label: 'Tennis Indoor GBK, M2M', venueName: 'Tennis Indoor GBK', hall, fohZ: FOH.z, seats,
+    view: { overview: { pos: [0, 36, 46], target: [0, 0, 2], min: 15, max: 100 }, hero: { along: 18, look: [0, 4, -16], fov: 58 } },
+    occupancy: { cat1: 0.97, cat2: 0.94, cat3: 0.9, cat4a: 0.88, cat4b: 0.88 },
+    categories: [
+      { id: 'cat3', name: 'CAT 3', price: 2250000, color: '#ef9a4a', note: 'Numbered seats facing the stage' },
+      { id: 'cat1', name: 'CAT 1', price: 1850000, color: '#5a2c8c', note: 'Free standing at the front' },
+      { id: 'cat4a', name: 'CAT 4 A', price: 1650000, color: '#d9472f' },
+      { id: 'cat4b', name: 'CAT 4 B', price: 1650000, color: '#d9472f' },
+      { id: 'cat2', name: 'CAT 2', price: 1250000, color: '#de3f97', note: 'Free standing, round the sound desk' },
+    ],
+  });
+}
+
+// Nancy Ajram Live in Jakarta, 30 Jan 2027, after the promoter's plan (prices as published on
+// indonesia.travel): Festival standing from the stage back to the sound desk, VIP numbered
+// chairs on the floor behind it, Diamond the stand facing the stage, Platinum the first tier
+// and Gold the second along both sides. Istora seats 7,166 since its 2018 renovation;
+// the stand behind the stage is closed.
+const ISTORA_HALL = {
+  cx: 0, cz: 0, p: 0.22,
+  tiers: [
+    { rx0: 17, rz0: 26, rows: 11, gap: 0.85, rise: 0.42, baseY: 1.2 },
+    { rx0: 27.8, rz0: 36.8, rows: 9, gap: 0.88, rise: 0.56, baseY: 7.2 },
+  ],
+  stage: { w: 24, front: -14, h: 1.6, barrier: 26 },
+  room: { W: 80, D: 84, H: 26, CZ: 7 },
+};
+ISTORA_HALL.segments = [[deg(-12), deg(66)], [deg(66), deg(114)], [deg(114), deg(192)]];
+function istoraNancy() {
+  const hall = ISTORA_HALL, seats = [];
+  const [right, back, left] = hall.segments;
+  const [lo, up] = hall.tiers;
+  hallStand(seats, hall, 0, ...left, 4, [{ code: 'PL-L', name: 'Platinum Left', cat: 'platinum', rows: lo.rows }]);
+  hallStand(seats, hall, 1, ...left, 4, [{ code: 'GD-L', name: 'Gold Left', cat: 'gold', rows: up.rows }]);
+  hallStand(seats, hall, 0, ...back, 2, [{ code: 'DM-1', name: 'Diamond Lower', cat: 'diamond', rows: lo.rows }]);
+  hallStand(seats, hall, 1, ...back, 2, [{ code: 'DM-2', name: 'Diamond Upper', cat: 'diamond', rows: up.rows }]);
+  hallStand(seats, hall, 0, ...right, 4, [{ code: 'PL-R', name: 'Platinum Right', cat: 'platinum', rows: lo.rows }]);
+  hallStand(seats, hall, 1, ...right, 4, [{ code: 'GD-R', name: 'Gold Right', cat: 'gold', rows: up.rows }]);
+  const FOH = { z: 9.5, halfW: 3.4, halfD: 2.6 };
+  hallFloor(seats, hall, 24, (x, z) => {
+    if (Math.abs(x) < FOH.halfW + 1 && Math.abs(z - FOH.z) < FOH.halfD + 1) return null;
+    const half = x < 0 ? 'L' : 'R', name = x < 0 ? 'Left' : 'Right';
+    if (z < 12.6) return { sec: `FES-${half}`, secName: `Festival ${name}`, cat: 'festival', standing: true };
+    if (z < 13.8 || Math.abs(x) < 0.7) return null;   // the cross aisle, and the aisle down the middle
+    return { sec: `VIP-${half}`, secName: `VIP ${name}`, cat: 'vip' };
+  });
+  return hallShow({
+    key: 'istora-nancy', label: 'Istora Senayan, Nancy Ajram', venueName: 'Istora Senayan', hall, fohZ: FOH.z, seats,
+    view: { overview: { pos: [0, 44, 58], target: [0, 0, 4], min: 18, max: 120 }, hero: { along: 22, look: [0, 5, -20], fov: 58 } },
+    occupancy: { vip: 0.9, diamond: 0.88, festival: 0.95, platinum: 0.88, gold: 0.86 },
+    categories: [
+      { id: 'vip', name: 'VIP', price: 5000000, color: '#2d4fc4', note: 'Numbered chairs on the floor, behind the sound desk' },
+      { id: 'diamond', name: 'Diamond', price: 3250000, color: '#c9302c', note: 'Numbered seats in the stand facing the stage' },
+      { id: 'festival', name: 'Festival', price: 1500000, color: '#2f9e8f', note: 'Standing' },
+      { id: 'platinum', name: 'Platinum', price: 1250000, color: '#8e5bc4', note: 'Numbered seats, first tier along the sides' },
+      { id: 'gold', name: 'Gold', price: 1000000, color: '#e8762c', note: 'Numbered seats, second tier along the sides' },
+    ],
+  });
+}
+
+export const REAL_BUILDERS = { 'madya-end': madyaEnd, 'jis-mcr': jisMcr, 'ina-5sos': ina5sos, 'ina-b2m': inaB2m, 'jis-bigbang': jisBigbang, 'jis-maroon5': jisMaroon5, 'jis-enhypen': jisEnhypen, 'ina-script': inaScript,
+  'basket-nflying': basketNflying, 'tennis-m2m': tennisM2m, 'istora-nancy': istoraNancy };
