@@ -3,7 +3,7 @@
 // viewer in viewer.js.
 import { formatRpShort, crowdSeats, REAL_KEYS } from './layouts.js';
 import { loadScene3d } from './viewer.js';
-import { EVENTS, PLACES, CITY, LISTED, getEvent, eventMeta, placeOf, timeKnown, minPrice, soldOut, allSoldOut, isConcert, demoFor, onTiket, sellerOf, saleInfo } from './events.js';
+import { EVENTS, PLACES, CITY, LISTED, getEvent, eventMeta, placeOf, timeKnown, minPrice, soldOut, allSoldOut, isConcert, demoFor, onTiket, sellerOf, saleInfo, EVENT_TYPES, typeOf } from './events.js';
 import { cardImg, eventImg, placeCover, posterFig, thumbImg } from './media.js';
 import { picker } from './picker.js';
 import { whenOf, startOf, venueClock, gapText } from './when.js';
@@ -268,23 +268,32 @@ function bindFootageForm() {
 
 // ---------------------------------------------------------------- concert list
 
-const listQuery = { q: '', sort: 'date' };
+const listQuery = { q: '', sort: 'date', type: 'all' };
 const SORTS = [{ value: 'date', label: 'Soonest' }, { value: 'price', label: 'Lowest price' }];
 let sortPicker = null;
 
 export function renderConcerts() {
   if (!sortPicker) {
     $('#concerts-q').addEventListener('input', e => { listQuery.q = e.target.value; renderConcerts(); });
+    $('#concerts-types').addEventListener('click', e => {
+      const b = e.target.closest('[data-type]');
+      if (b) { listQuery.type = b.dataset.type; renderConcerts(); }
+    });
     sortPicker = picker($('#concerts-sort'), { name: 'Sort', label: 'Sort', onPick: v => { listQuery.sort = v; renderConcerts(); } });
   }
   sortPicker.set(SORTS, listQuery.sort);
   const q = listQuery.q.trim().toLowerCase();
-  const match = e => !q || [e.title, e.subtitle, e.host, placeOf(e).name, placeOf(e).city].join(' ').toLowerCase().includes(q);
+  const match = e => !q || [EVENT_TYPES[typeOf(e)], e.title, e.subtitle, e.host, placeOf(e).name, placeOf(e).city].join(' ').toLowerCase().includes(q);
   const all = onSale();
-  const list = all.filter(match).sort(listQuery.sort === 'price' ? (a, b) => (minPrice(a.id) ?? Infinity) - (minPrice(b.id) ?? Infinity) || byDate(a, b) : byDate);
-  $('#concerts-count').textContent = `${plural(all.length, 'concert')} on sale, as listed in ${LISTED}. Prices as announced; tiket.com has the live price.`;
+  // The filter offers only the kinds of event on sale now, with a count each.
+  const kinds = Object.keys(EVENT_TYPES).map(t => [t, all.filter(e => typeOf(e) === t).length]).filter(([, n]) => n);
+  if (listQuery.type !== 'all' && !kinds.some(([t]) => t === listQuery.type)) listQuery.type = 'all';
+  $('#concerts-types').innerHTML = [['all', all.length], ...kinds].map(([t, n]) =>
+    `<button type="button" class="type-chip" data-type="${t}" aria-pressed="${listQuery.type === t}">${t === 'all' ? 'All events' : esc(EVENT_TYPES[t])}<small>${n}</small></button>`).join('');
+  const list = all.filter(e => listQuery.type === 'all' || typeOf(e) === listQuery.type).filter(match).sort(listQuery.sort === 'price' ? (a, b) => (minPrice(a.id) ?? Infinity) - (minPrice(b.id) ?? Infinity) || byDate(a, b) : byDate);
+  $('#concerts-count').textContent = `${plural(all.length, 'event')} on sale, as listed in ${LISTED}. Prices as announced; tiket.com has the live price.`;
   $('#concerts-grid').innerHTML = list.length ? list.map(e => ticketCard(e)).join('')
-    : `<div class="empty-state"><h3>Nothing matches.</h3><p>${q ? `No concert matches “${esc(listQuery.q.trim())}”.` : 'No concerts on sale right now.'} New shows are added as they go on sale: get the concert alerts on the home page to hear first.</p>${q ? '<button class="btn btn-line" type="button" id="concerts-clear">Clear the search</button>' : ''}</div>`;
+    : `<div class="empty-state"><h3>Nothing matches.</h3><p>${q ? `No event matches “${esc(listQuery.q.trim())}”.` : 'No concerts on sale right now.'} New shows are added as they go on sale: get the concert alerts on the home page to hear first.</p>${q ? '<button class="btn btn-line" type="button" id="concerts-clear">Clear the search</button>' : ''}</div>`;
   $('#concerts-clear')?.addEventListener('click', () => { listQuery.q = ''; $('#concerts-q').value = ''; renderConcerts(); });
 }
 

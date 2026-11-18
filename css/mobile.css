@@ -10,6 +10,26 @@
 
 .tabbar, .nav-back, .m-find { display: none; }
 
+/* The 3D view, at every size (js/viewer.js, #t-min): one button at the top right hides the
+   panels over the venue (the concert card, categories, the side panel and the seat card,
+   the tools and hints), leaving the back button, this button and the venue itself. */
+.app-top .sq-min { grid-column: 3; justify-self: end; }
+.stage .event-card, .stage .sections, .stage .app-side, .stage .tools, .stage .seatcard, .stage .pov-hint, .stage .zoom, .app-chip { transition: opacity .3s, transform .3s, visibility 0s; }
+.stage.is-min :is(.event-card, .sections, .app-side, .tools, .seatcard, .pov-hint, .zoom, .app-chip) { opacity: 0 !important; visibility: hidden; pointer-events: none !important; transition: opacity .3s, transform .3s, visibility 0s .3s; }
+.stage.is-min .sq-min { background: var(--coral); border-color: var(--coral); color: #fff; }
+/* The event list's filter (js/pages.js, renderConcerts): one chip per kind of event on sale. */
+.type-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 26px; }
+.type-chip { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 16px; border: 1px solid var(--line-2); border-radius: 999px; background: transparent; color: var(--text); font: 600 14px/1 var(--font); cursor: pointer; transition: background-color .15s, color .15s, border-color .15s; }
+.type-chip small { font-size: 12px; font-weight: 500; color: var(--muted); }
+.type-chip:hover { border-color: rgba(255, 255, 255, 0.4); }
+.type-chip[aria-pressed="true"] { background: var(--text); border-color: var(--text); color: var(--ink); }
+.type-chip[aria-pressed="true"] small { color: var(--ink-muted); }
+
+@media (max-width: 960px) {
+  .app-top { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .app-top .app-chip { grid-column: 2; }
+}
+
 @media (max-width: 760px) {
   :root { --bar-h: 58px; --tab-h: 62px; --gut: 16px; }
   html { scroll-padding-top: 72px; }
@@ -114,6 +134,9 @@
 
   /* ---------- concert list: the search stays under the top bar ---------- */
   #view-concerts .sec-side { display: none; }
+  .type-chips { flex-wrap: nowrap; overflow-x: auto; margin: -4px calc(-1 * var(--gut)) 14px; padding: 0 var(--gut); scrollbar-width: none; }
+  .type-chips::-webkit-scrollbar { display: none; }
+  .type-chip { flex: none; height: 36px; padding: 0 14px; font-size: 13.5px; }
   .ev-tools { position: sticky; top: var(--bar-h); z-index: 12; margin: 0 calc(-1 * var(--gut)) 12px; padding: 8px var(--gut); background: var(--frame); }
 
   /* ---------- concert page: facts, 3D, categories; the buy bar sits at the bottom ---------- */

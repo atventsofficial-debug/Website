@@ -56,6 +56,8 @@
   <symbol id="i-card" viewBox="0 0 24 24"><path d="M3 6h18v12H3zM3 10h18M7 15h4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol><symbol id="i-wallet" viewBox="0 0 24 24"><path d="M4 7h15a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1zM4 7l11-3v3M16 13h1.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol><symbol id="i-bank" viewBox="0 0 24 24"><path d="M3.5 9.5 12 5l8.5 4.5M5.5 10v7M10 10v7M14 10v7M18.5 10v7M3.5 19.5h17" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol><symbol id="i-store" viewBox="0 0 24 24"><path d="M4.5 9.5 6 5h12l1.5 4.5M5 9.5V19h14V9.5M4.5 9.5h15M10 19v-4.5h4V19" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
   <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V20h-5.5v-5.5h-5V20H4z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
   <symbol id="i-more" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  <symbol id="i-expand" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-collapse" viewBox="0 0 24 24"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="i-mail" viewBox="0 0 24 24"><path d="M3 6h18v12H3zM3.5 7l8.5 6 8.5-6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
   <symbol id="i-copy" viewBox="0 0 24 24"><path d="M8 8h12v12H8zM16 8V4H4v12h4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
   <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8.5 5.5v13M15.5 5.5v13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
@@ -234,13 +236,14 @@
 <main id="view-concerts" class="view" data-view-id="concerts" hidden>
   <section class="sec page-top">
     <header class="sec-head">
-      <h1 class="big big-xl"><span class="fade">Concerts</span> <span class="ol">on sale</span></h1>
+      <h1 class="big big-xl"><span class="fade">Events</span> <span class="ol">on sale</span></h1>
       <div class="sec-side"><p id="concerts-count"></p></div>
     </header>
     <div class="ev-tools">
-      <label class="search"><svg><use href="#i-search"/></svg><input id="concerts-q" type="search" placeholder="Artist or venue" aria-label="Search concerts"></label>
+      <label class="search"><svg><use href="#i-search"/></svg><input id="concerts-q" type="search" placeholder="Artist, team or venue" aria-label="Search events"></label>
       <div class="dd-bar" id="concerts-sort"></div>
     </div>
+    <div class="type-chips" id="concerts-types" role="group" aria-label="Type of event"></div>
     <div class="ev-grid tkt-grid" id="concerts-grid"></div>
   </section>
 </main>
@@ -709,6 +712,7 @@
     <header class="app-top">
       <a class="sq" id="seats-back" href="#concerts" aria-label="Back"><svg><use href="#i-back"/></svg></a>
       <span class="app-chip" id="app-chip"></span>
+      <button class="sq sq-min" id="t-min" type="button" aria-pressed="false" aria-label="Hide the panels" title="Hide the panels"><svg><use href="#i-expand"/></svg></button>
     </header>
 
     <section class="event-card panel" id="event-card">

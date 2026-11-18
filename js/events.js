@@ -459,6 +459,10 @@ export const demoFor = key => DEMOS.find(d => d.venue === key);
 
 // `venue` is the seat-layout template; `place` the real (or demo) venue.
 export const placeOf = e => e.place;
+// What kind of event it is, for the list's filter. Every show so far is a concert; a match or
+// a fight night sets `type` on its entry ('football', 'combat', ...).
+export const EVENT_TYPES = { concert: 'Concerts', football: 'Football', combat: 'UFC & fights', sport: 'Sports', theatre: 'Theatre', cinema: 'Cinema' };
+export const typeOf = e => (e.type && EVENT_TYPES[e.type] ? e.type : 'concert');
 export const timeKnown = e => e.time !== 'TBA';
 
 // A venue object for one event: the template's seats with this event's prices, title and

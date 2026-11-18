@@ -310,6 +310,16 @@ export function bindViewer() {
   });
   toggle($('#t-crowd'), 'crowd', on => state.scene?.setCrowd(on));
   toggle($('#t-labels'), 'labels', on => state.scene?.setLabels(on));
+  // Hides every panel over the venue, so the view fills the screen; the same button brings
+  // them back. It stays that way for the visit, from one venue or seat to the next.
+  $('#t-min').addEventListener('click', e => {
+    const btn = e.currentTarget, on = !$('#stage').classList.contains('is-min');
+    $('#stage').classList.toggle('is-min', on);
+    btn.setAttribute('aria-pressed', on);
+    btn.setAttribute('aria-label', on ? 'Show the panels' : 'Hide the panels');
+    btn.title = btn.getAttribute('aria-label');
+    btn.querySelector('use').setAttribute('href', on ? '#i-collapse' : '#i-expand');
+  });
   $('#t-reset').addEventListener('click', () => { closePeek(); if (state.tour) startTour(); else state.scene?.resetView(); });
   $('#app-side').addEventListener('click', e => {
     const act = e.target.closest('[data-tour]')?.dataset.tour;
