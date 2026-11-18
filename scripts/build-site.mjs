@@ -27,19 +27,22 @@ fs.cpSync(path.join(root, 'assets'), path.join(out, 'assets'), { recursive: true
 for (const name of ['favicon.ico', 'site.webmanifest']) fs.cpSync(path.join(root, name), path.join(out, name));
 
 let html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+// /auth: where Google and Microsoft send the fan back after signing in (js/sso.js).
+let auth = fs.readFileSync(path.join(root, 'auth.html'), 'utf8');
 let bundled = false;
 try {
   const esbuild = await import('esbuild');
   const js = await esbuild.build({
-    entryPoints: [path.join(root, 'js/app.js')],
+    entryPoints: [path.join(root, 'js/app.js'), path.join(root, 'js/auth.js')],
     outdir: path.join(out, 'js'),
     bundle: true, splitting: true, format: 'esm', minify: true, target: 'es2020',
     external: ['three', 'three/addons/*'],
     entryNames: '[name]-[hash]', chunkNames: 'chunk-[hash]',
     metafile: true, logLevel: 'warning',
   });
-  const entry = Object.entries(js.metafile.outputs).find(([, o]) => o.entryPoint)?.[0];
-  if (!entry) throw new Error('no entry file');
+  const entryOf = name => Object.entries(js.metafile.outputs).find(([, o]) => o.entryPoint?.replace(/\\/g, '/').endsWith(`js/${name}`))?.[0];
+  const entry = entryOf('app.js'), authEntry = entryOf('auth.js');
+  if (!entry || !authEntry) throw new Error('no entry file');
   const css = await esbuild.transform(fs.readFileSync(path.join(root, 'css/styles.css'), 'utf8'), { loader: 'css', minify: true });
   const cssName = `styles-${crypto.createHash('sha256').update(css.code).digest('hex').slice(0, 10)}.css`;
   fs.mkdirSync(path.join(out, 'css'));
@@ -47,6 +50,8 @@ try {
   const swap = (from, to) => { if (!html.includes(from)) throw new Error(`index.html has no ${from}`); html = html.replace(from, to); };
   swap('src="js/app.js"', `src="js/${path.basename(entry)}"`);
   swap('href="css/styles.css"', `href="css/${cssName}"`);
+  if (!auth.includes('src="js/auth.js"')) throw new Error('auth.html has no src="js/auth.js"');
+  auth = auth.replace('src="js/auth.js"', `src="js/${path.basename(authEntry)}"`);
   bundled = true;
 } catch (err) {
   console.warn(`Not bundled (${err.message}); copying the source files instead.`);
@@ -55,8 +60,10 @@ try {
     fs.cpSync(path.join(root, dir), path.join(out, dir), { recursive: true });
   }
   html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+  auth = fs.readFileSync(path.join(root, 'auth.html'), 'utf8');
 }
 fs.writeFileSync(path.join(out, 'index.html'), html);
+fs.writeFileSync(path.join(out, 'auth.html'), auth);
 
 // Hashed files never change, so they are kept for a year. Pictures keep their names when one
 // is replaced, so they are kept for a day and refreshed in the background for a week.

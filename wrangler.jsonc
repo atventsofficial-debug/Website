@@ -19,7 +19,8 @@
   // The order book (worker/orders.mjs). With no database_id, Cloudflare makes the database
   // on the first deploy and keeps using it; its table is made on first use.
   "d1_databases": [{ "binding": "DB", "database_name": "atvents-orders" }],
-  // Variables set in the dashboard survive a deploy.
+  // Variables set in the dashboard survive a deploy: the secrets above, and the public
+  // MIDTRANS_CLIENT_KEY, GOOGLE_CLIENT_ID and MICROSOFT_CLIENT_ID (README, Payments).
   "keep_vars": true,
   "observability": { "enabled": true }
 }

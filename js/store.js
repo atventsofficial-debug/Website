@@ -2,6 +2,7 @@
 // and the admin's view of them. LocalStore keeps it all in this browser (demo, static
 // hosting), with the same rules as the server. PayStore is LocalStore with real payments,
 // through the site's Worker (worker/) and Midtrans. ApiStore talks to server/server.mjs.
+import { clientsOf } from './sso.js';
 import { checkClick, checkClaim, checkSubscription, checkLead, checkConversions, passStatus, PASS_STATUSES, TAKEN, ACCESS_FEE, PAYMENT_ID } from './rules.js';
 
 const DB = 'atvents:demo-db';
@@ -161,13 +162,15 @@ export class LocalStore {
 export class PayStore extends LocalStore {
   // From /api/config: Sandbox or not, the client key that opens Midtrans' card form inside
   // the page (without it, a card payment goes to Midtrans' payment page), whether the pass
-  // email is switched on, and the ways to pay switched on (js/paymethods.js).
-  constructor({ sandbox = false, clientKey = '', mail = false, methods = null } = {}) {
+  // email is switched on, the ways to pay switched on (js/paymethods.js), and the client ids
+  // for "Continue with Google / Microsoft" (js/sso.js).
+  constructor({ sandbox = false, clientKey = '', mail = false, methods = null, sso = null } = {}) {
     super();
     this.sandbox = !!sandbox;
     this.clientKey = typeof clientKey === 'string' ? clientKey : '';
     this.mail = !!mail;
     this.methods = Array.isArray(methods) ? methods.filter(m => typeof m === 'string') : null;
+    this.sso = clientsOf(sso);
   }
   get mode() { return 'pay'; }
   get live() { return true; }

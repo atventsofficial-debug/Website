@@ -137,12 +137,13 @@ const MIME = {
   '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json',
 };
 // Only these paths are public. Server code, data, .env and node_modules never are.
-const PUBLIC = [/^\/index\.html$/, /^\/css\/[\w.-]+\.css$/, /^\/js\/[\w.-]+\.js$/, /^\/assets\/[\w/.-]+\.(png|jpe?g|webp|svg)$/, /^\/favicon\.ico$/, /^\/site\.webmanifest$/];
+const PUBLIC = [/^\/index\.html$/, /^\/auth\.html$/, /^\/css\/[\w.-]+\.css$/, /^\/js\/[\w.-]+\.js$/, /^\/assets\/[\w/.-]+\.(png|jpe?g|webp|svg)$/, /^\/favicon\.ico$/, /^\/site\.webmanifest$/];
 
 export function serveStatic(root, req, res, headers) {
   let rel;
   try { rel = decodeURIComponent(new URL(req.url, 'http://x').pathname); } catch { return send(res, 400, { error: 'Bad path' }, headers); }
   if (rel === '/') rel = '/index.html';
+  if (rel === '/auth') rel = '/auth.html';   // the sign-in return page (js/sso.js), as Cloudflare serves it
   if (rel.includes('..') || rel.includes('\0') || !PUBLIC.some(re => re.test(rel))) return send(res, 404, { error: 'Not found' }, headers);
   const file = path.join(root, rel);
   fs.readFile(file, (err, buf) => {

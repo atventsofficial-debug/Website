@@ -1238,8 +1238,6 @@ input, select, textarea { border-radius: 0; }
 .pay-sheet p:not(.eyebrow) { font-size: 14px; color: var(--muted); }
 .pay-done { display: flex; align-items: center; gap: 10px; color: var(--ok); }
 .pay-done svg { color: var(--ok); }
-.f-row-3 { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr); }
-.f-row-3 [hidden] { display: none !important; }
 .form select:disabled { opacity: 0.5; }
 .drop { position: relative; display: block; border-radius: var(--r-sm); border: 1.5px dashed var(--line-2); padding: var(--s5); cursor: pointer; transition: border-color .15s; }
 .drop:hover { border-color: rgba(255, 255, 255, 0.5); }
@@ -1294,8 +1292,6 @@ input, select, textarea { border-radius: 0; }
 
 @media (max-width: 760px) {
   .route-switch { grid-template-columns: minmax(0, 1fr); }
-  .f-row-3 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-  .f-row-3 > label:first-child { grid-column: 1 / -1; }
   .review { grid-template-columns: 96px minmax(0, 1fr); }
   .story-card { grid-template-columns: minmax(0, 1fr); gap: var(--s4); padding: var(--s4); overflow-y: auto; }
   .story-frame { width: min(540px, calc((100vh - 300px) * 0.5625), calc(100vw - 64px)); width: min(540px, calc((100svh - 300px) * 0.5625), calc(100vw - 64px)); justify-self: center; }
@@ -1837,12 +1833,61 @@ body { font-family: var(--font); font-feature-settings: "cv11", "ss01"; }
 /* The giant wordmark at the foot of the page, in the brand's lower case. */
 .footer .wordmark { text-transform: lowercase; font-family: var(--display); font-weight: 700; letter-spacing: -0.06em; }
 
-/* ---------------------------------------------------------------- unlock: one way in, by payment */
-.order-sum { display: flex; align-items: center; justify-content: space-between; gap: var(--s4); padding: 16px 20px; border-radius: 16px; background: var(--panel-2); border: 1px solid var(--line); }
-.order-sum span { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.order-sum span b { font-weight: 600; }
-.order-sum small { color: var(--muted); font-size: 13px; }
-.order-price { flex: none; font: 600 24px/1 var(--display); letter-spacing: -0.03em; }
+/* ---------------------------------------------------------------- unlock: one way in, by payment
+   The form: one card, the seat on top and where the pass goes below, each field a box with
+   its label inside. The name and email come from Google or Microsoft (js/sso.js) or are
+   typed. Continue greys out until every field is filled; what is still missing when the fan
+   presses it is marked in red. */
+.unlock-form { display: flex; flex-direction: column; gap: var(--s5); }
+.uf-card { display: flex; flex-direction: column; gap: 16px; padding: 28px; border-radius: 22px; background: #121110; border: 1px solid rgba(255, 255, 255, 0.1); }
+.uf-head { display: flex; align-items: baseline; justify-content: space-between; gap: 6px 12px; flex-wrap: wrap; }
+.uf-head h2 { font: 600 18px/1.2 var(--display); letter-spacing: -0.015em; color: var(--text); }
+.uf-head small { font-size: 13px; color: var(--dimtext); }
+.uf-head-pass { margin-top: 10px; padding-top: 26px; border-top: 1px solid rgba(255, 255, 255, 0.1); }
+.uf-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; }
+.uf-field { grid-column: span 2; display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 10px 14px 4px; border-radius: 14px; border: 1px solid rgba(255, 255, 255, 0.14); background: rgba(255, 255, 255, 0.035); font-size: 12px; font-weight: 500; color: #a9a9a9; cursor: pointer; transition: border-color .2s, opacity .2s; }
+.uf-field.uf-wide { grid-column: span 4; }
+.uf-field.uf-half { grid-column: span 3; cursor: text; }
+.uf-grid:has(#row-field[hidden]) > .uf-field:nth-child(3) { grid-column: span 6; }
+.uf-field:focus-within { border-color: var(--coral); }
+.uf-field:has(select:disabled) { opacity: 0.5; cursor: default; }
+.uf-field select, .uf-field input { width: 100%; height: 32px; padding: 0; border: 0; border-radius: 0; background-color: transparent; color: var(--text); font: 500 15.5px/1 var(--font); outline: none; }
+.uf-field select { appearance: none; -webkit-appearance: none; padding-right: 24px; text-overflow: ellipsis; cursor: pointer; background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none' stroke='%23bdbdbd' stroke-width='1.6'%3E%3Cpath d='M1 1.5l5 5 5-5'/%3E%3C/svg%3E") no-repeat right 0 center; }
+.uf-field select:disabled { cursor: default; }
+.uf-field select option { background: #141414; color: #fff; }
+.uf-field input::placeholder { color: var(--dim); }
+.uf-field.is-missing, .uf-sso.is-missing .sso-btn { border-color: #ec5446; }
+.unlock-form .check.is-missing { color: #ffb3a8; }
+.unlock-form .check.is-missing input { outline: 2px solid #ec5446; outline-offset: 2px; }
+.uf-sso { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+/* The sign-in buttons as Google and Microsoft draw theirs on a dark page: their own logo,
+   their own words. */
+.sso-btn { display: flex; align-items: center; justify-content: center; gap: 12px; height: 52px; padding: 0 20px; border-radius: 999px; background: #131314; border: 1px solid #8e918f; color: #e3e3e3; font: 500 15px/1 var(--font); cursor: pointer; transition: background .2s, border-color .2s, opacity .2s; }
+.sso-btn:hover { background: #1f1f20; }
+.sso-btn:focus-visible { outline: 2px solid var(--coral); outline-offset: 2px; }
+.sso-btn.is-busy { opacity: 0.6; cursor: progress; }
+.sso-logo { flex: none; width: 20px; height: 20px; }
+.uf-or { margin: 0; text-align: center; font-size: 13.5px; color: var(--dimtext); }
+.uf-or .link, .uf-who .uf-change { font: 500 13.5px/1.4 var(--font); text-transform: none; letter-spacing: 0; color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
+.uf-who { display: flex; align-items: center; gap: 14px; padding: 12px 16px 12px 12px; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.14); background: rgba(255, 255, 255, 0.035); }
+.uf-av { flex: none; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; background: var(--coral); color: #fff; font: 600 18px/1 var(--font); }
+.uf-who-text { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.uf-who-text b { font-size: 15.5px; font-weight: 600; color: var(--text); }
+.uf-who-text small { font-size: 13.5px; color: #a9a9a9; overflow-wrap: anywhere; }
+.uf-ok { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; margin-top: 5px; padding: 4px 10px 4px 7px; border-radius: 999px; background: rgba(52, 168, 83, 0.16); color: #7fd99a; font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+.uf-ok svg { width: 14px; height: 14px; }
+.uf-who .uf-change { flex: none; }
+.unlock-form #pay-start { height: 56px; }
+.unlock-form #pay-start[aria-disabled="true"] { opacity: 0.45; cursor: not-allowed; }
+@media (max-width: 700px) {
+  .uf-card { padding: 20px 16px; border-radius: 18px; }
+  .uf-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .uf-field, .uf-field.uf-wide, .uf-field.uf-half { grid-column: span 2; }
+  .uf-grid > #row-field, .uf-grid > #num-field { grid-column: span 1; }
+  .uf-grid:has(#row-field[hidden]) > .uf-field:nth-child(3) { grid-column: span 2; }
+  .uf-who { gap: 12px; padding: 12px; }
+  .uf-av { width: 36px; height: 36px; font-size: 16px; }
+}
 /* The checkout: two columns like a ticket shop's, the ways to pay on the left and the order on
    the right, in light cards on the dark page. The form's side panel steps aside meanwhile. */
 .host.is-paying { grid-template-columns: minmax(0, 1fr); }
@@ -1855,7 +1900,7 @@ body { font-family: var(--font); font-feature-settings: "cv11", "ss01"; }
 .pay-sheet.panel-box { border-style: solid; padding: var(--pad-y) var(--pad-x); gap: var(--s5); }
 .pay-sheet .pay-row p { color: var(--text); font-size: 15px; line-height: 1.55; }
 .pay-sheet .pay-state { font: 500 clamp(26px, 3.4vw, 38px)/1.1 var(--font); letter-spacing: -0.02em; }
-.pay-sheet .pay-state + p { color: var(--text); font-size: 15px; line-height: 1.55; }
+.pay-sheet .pay-state + p, .pay-sheet .co-main > p:first-child { color: var(--text); font-size: 15px; line-height: 1.55; }
 .pay-sheet .eyebrow .mono { letter-spacing: 0; text-transform: none; }
 .pay-test { padding: 10px 12px; border-radius: var(--r-sm); border: 1px dashed var(--line-2); }
 .co-stepper { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0; padding: 0; list-style: none; font-size: 13px; color: var(--muted); }
@@ -1868,6 +1913,9 @@ body { font-family: var(--font); font-feature-settings: "cv11", "ss01"; }
 .co-stepper i { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--coral); color: #fff; font: 700 12px/1 var(--font); font-style: normal; }
 .co-stepper .is-on { color: var(--text); font-weight: 600; }
 .co-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 360px); gap: var(--s6); align-items: start; }
+/* The title over both columns, as close to the cards below as the cards are to each other. */
+.co-top { display: flex; flex-direction: column; gap: var(--s4); }
+.co-top + .co-cols { margin-top: calc(var(--s4) - var(--s5)); }
 .co-main { display: flex; flex-direction: column; gap: var(--s4); min-width: 0; }
 .co-mini, .co-main-notes { display: none; }
 .co-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); flex-wrap: wrap; }
@@ -1949,14 +1997,14 @@ body { font-family: var(--font); font-feature-settings: "cv11", "ss01"; }
 .co-sum .pay-test { border-color: var(--c-line-2); }
 .co-sum-notes { display: flex; flex-direction: column; gap: 10px; }
 .co-go-total, .co-go-narrow { display: none; }
-/* Pay, and a wallet's Open button: orange on the light cards, with dark text to read well. */
-.pay-sheet .co-go, .co-pay .btn-coral { position: relative; background: var(--coral); border-color: var(--coral); color: var(--ink); }
+/* Pay, and a wallet's Open button: orange with white bold text. */
+.pay-sheet .co-go, .co-pay .btn-coral { position: relative; background: var(--coral); border-color: var(--coral); color: #fff; font-weight: 700; }
 .pay-sheet .co-go:hover, .co-pay .btn-coral:hover { background: #f25c1e; border-color: #f25c1e; }
-.pay-sheet .co-go svg, .co-pay .btn-coral svg { width: 18px; height: 18px; padding: 0; margin: 0; background: none; color: var(--ink); }
+.pay-sheet .co-go svg, .co-pay .btn-coral svg { width: 18px; height: 18px; padding: 0; margin: 0; background: none; color: #fff; }
 .co-go[aria-disabled="true"] { opacity: 0.5; }
 .co-go.is-busy { pointer-events: none; }
 .co-go.is-busy svg { visibility: hidden; }
-.co-go.is-busy::after { content: ""; position: absolute; right: 22px; top: 50%; width: 18px; height: 18px; margin-top: -9px; border: 2px solid rgba(14, 14, 14, 0.25); border-top-color: var(--ink); border-radius: 50%; animation: spin .8s linear infinite; }
+.co-go.is-busy::after { content: ""; position: absolute; right: 22px; top: 50%; width: 18px; height: 18px; margin-top: -9px; border: 2px solid rgba(255, 255, 255, 0.35); border-top-color: #fff; border-radius: 50%; animation: spin .8s linear infinite; }
 
 /* What to pay with: the number, the code or the QR code, on a light card. */
 .co-pay { display: flex; flex-direction: column; gap: var(--s4); padding: var(--s5); border-radius: 18px; background: var(--c-bg); color: var(--c-text); border: 1px solid var(--c-line); }

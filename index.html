@@ -51,6 +51,8 @@
   <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3.1-3.1a4 4 0 0 0-5.7-5.7L11.6 6.7M14 10a4 4 0 0 0-5.7 0l-3.1 3.1a4 4 0 0 0 5.7 5.7l1.5-1.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
   <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
   <symbol id="i-code" viewBox="0 0 24 24"><path d="m8 8-4 4 4 4M16 8l4 4-4 4M13.5 5l-3 14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-google" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></symbol>
+  <symbol id="i-microsoft" viewBox="0 0 21 21"><path fill="#F25022" d="M1 1h9v9H1z"/><path fill="#7FBA00" d="M11 1h9v9h-9z"/><path fill="#00A4EF" d="M1 11h9v9H1z"/><path fill="#FFB900" d="M11 11h9v9h-9z"/></symbol>
   <symbol id="i-card" viewBox="0 0 24 24"><path d="M3 6h18v12H3zM3 10h18M7 15h4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol><symbol id="i-wallet" viewBox="0 0 24 24"><path d="M4 7h15a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1zM4 7l11-3v3M16 13h1.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol><symbol id="i-bank" viewBox="0 0 24 24"><path d="M3.5 9.5 12 5l8.5 4.5M5.5 10v7M10 10v7M14 10v7M18.5 10v7M3.5 19.5h17" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol><symbol id="i-store" viewBox="0 0 24 24"><path d="M4.5 9.5 6 5h12l1.5 4.5M5 9.5V19h14V9.5M4.5 9.5h15M10 19v-4.5h4V19" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
   <symbol id="i-mail" viewBox="0 0 24 24"><path d="M3 6h18v12H3zM3.5 7l8.5 6 8.5-6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
   <symbol id="i-copy" viewBox="0 0 24 24"><path d="M8 8h12v12H8zM16 8V4H4v12h4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
@@ -284,35 +286,33 @@
     <div class="host" id="unlock-body">
       <div class="unlock-main">
         <p class="unlock-note" id="unlock-note" hidden></p>
-        <form class="form panel-box" id="unlock-form" novalidate>
-          <fieldset>
-            <legend><i>01 /</i> Your concert</legend>
-            <div class="f-row">
-              <label>Concert<select name="eventId" required></select></label>
-              <label>Category<select name="cat" required></select></label>
+        <form class="unlock-form" id="unlock-form" novalidate>
+          <div class="uf-card">
+            <div class="uf-head"><h2>Your seat</h2><small>As printed on your ticket</small></div>
+            <div class="uf-grid">
+              <label class="uf-field uf-wide">Concert<select name="eventId" required></select></label>
+              <label class="uf-field">Category<select name="cat" required></select></label>
+              <label class="uf-field">Section<select name="sec" required></select></label>
+              <label class="uf-field" id="row-field">Row<select name="row" required></select></label>
+              <label class="uf-field" id="num-field">Seat<select name="num" required></select></label>
             </div>
-          </fieldset>
-          <fieldset id="seat-set">
-            <legend><i>02 /</i> Your seat</legend>
-            <div class="f-row f-row-3">
-              <label>Section<select name="sec" required></select></label>
-              <label id="row-field">Row<select name="row" required></select></label>
-              <label id="num-field">Seat<select name="num" required></select></label>
+            <p class="fine" id="seat-note" hidden></p>
+            <div class="uf-head uf-head-pass"><h2>Where your pass goes</h2><small>We send the pass link to this email</small></div>
+            <div class="uf-sso" id="uf-sso" hidden>
+              <button class="sso-btn" type="button" data-sso="google" hidden><svg class="sso-logo"><use href="#i-google"/></svg><span>Continue with Google</span></button>
+              <button class="sso-btn" type="button" data-sso="microsoft" hidden><svg class="sso-logo"><use href="#i-microsoft"/></svg><span>Continue with Microsoft</span></button>
             </div>
-            <p class="fine" id="seat-note">As printed on your ticket. Only seats that exist in this venue are listed.</p>
-          </fieldset>
-          <fieldset>
-            <legend><i>03 /</i> Your details</legend>
-            <div class="f-row">
-              <label>Full name<input name="name" required autocomplete="name" maxlength="80" placeholder="As on your ticket"></label>
-              <label>Email<input name="email" type="email" required autocomplete="email" maxlength="160" placeholder="you@example.com"><small>Your pass and receipt go here.</small></label>
+            <p class="uf-or" id="uf-or" hidden>or <button class="link" type="button" id="uf-type">type your name and email</button></p>
+            <div class="uf-who" id="uf-who" hidden></div>
+            <div class="uf-grid" id="uf-details">
+              <label class="uf-field uf-half">Full name<input name="name" required autocomplete="name" maxlength="80" placeholder="As on your ticket"></label>
+              <label class="uf-field uf-half">Email<input name="email" type="email" required autocomplete="email" maxlength="160" placeholder="you@example.com"></label>
             </div>
-          </fieldset>
-          <div class="order-sum" id="order-sum" aria-live="polite"></div>
+          </div>
           <label class="check"><input type="checkbox" name="consent" required><span>I agree to the <a class="u" href="#terms">terms</a> and the <a class="u" href="#privacy">privacy policy</a>.</span></label>
           <p class="form-error" id="unlock-error" role="alert" hidden></p>
           <p class="fine pay-test" id="pay-test" hidden>Test mode: this payment goes to the Midtrans Sandbox, and nothing is charged.</p>
-          <button class="btn btn-coral btn-block" type="submit" id="pay-start">Continue to payment <svg><use href="#i-arrow"/></svg></button>
+          <button class="btn btn-coral btn-block" type="submit" id="pay-start" aria-disabled="true">Continue to payment · <span data-fee>Rp25.000</span> <svg><use href="#i-arrow"/></svg></button>
           <p class="fine">No ticket yet? Each concert page links to its official seller. The 3D view does not include a concert ticket.</p>
         </form>
         <section class="pay-sheet panel-box" id="pay-sheet" hidden></section>
@@ -569,7 +569,7 @@
   <section class="sec page-top">
     <header class="sec-head">
       <h1 class="big big-xl"><span class="fade">Privacy</span> <span class="ol">policy</span></h1>
-      <div class="sec-side"><p>Last updated 30 October 2026.</p></div>
+      <div class="sec-side"><p>Last updated 18 November 2026.</p></div>
     </header>
     <div class="prose panel-box">
       <p>This policy explains what <span data-brand>Atvents</span> (“we”) collects when you use this site, why, and what you can ask us to do with it. We follow Indonesia’s Personal Data Protection Law (Law No. 27 of 2022). Write to us at <span data-contact="email"></span> with any question.</p>
@@ -577,7 +577,7 @@
       <h3>When you click a link to a ticket seller</h3>
       <p>For tiket.com links: a random click code, the concert, the time, and the campaign that brought you here if the link had one. No name and no email. The click code travels to tiket.com in the link and comes back to us in the affiliate report when a sale is made.</p>
       <h3>When you unlock a 3D view</h3>
-      <p>Your name, your email, the concert, the category and seat you choose, and the reference of your payment. We use them to open your pass, send you its link and receipt, and answer you if something goes wrong.</p>
+      <p>Your name, your email, the concert, the category and seat you choose, and the reference of your payment. We use them to open your pass, send you its link and receipt, and answer you if something goes wrong. If you choose <i>Continue with Google</i> or <i>Continue with Microsoft</i>, we take only your name and email address from that account, as if you had typed them. We get no password, contacts or anything else from it, and keep nothing from the sign-in itself.</p>
       <h3>When you pay for a 3D view</h3>
       <p>The payment provider handles the Rp25.000 payment and tells us only that it was paid, with its reference. We never see your card, wallet or bank details.</p>
       <h3>When you ask about working with us</h3>
@@ -587,7 +587,7 @@
       <h3>On your device</h3>
       <p>Your 3D passes, your click codes and the campaign you came from are kept in your browser’s storage, so the site remembers them. You can clear them in your browser at any time. We use no advertising cookies and no third-party trackers.</p>
       <h2>Who else sees it</h2>
-      <p>tiket.com and its affiliate network see the click code in the link you follow, along with what they collect under their own privacy policies when you buy. They do not get your name or email from us. The payment provider, Midtrans, gets your name and email with your order and processes your payment under its own policy. The company that hosts our server stores our data for us, and our email service, Resend, sends you your pass link. The site’s fonts load from Google Fonts and the 3D viewer from jsDelivr, so those services see your IP address. We do not sell personal data.</p>
+      <p>tiket.com and its affiliate network see the click code in the link you follow, along with what they collect under their own privacy policies when you buy. They do not get your name or email from us. The payment provider, Midtrans, gets your name and email with your order and processes your payment under its own policy. The company that hosts our server stores our data for us, and our email service, Resend, sends you your pass link. The site’s fonts load from Google Fonts and the 3D viewer from jsDelivr, so those services see your IP address. If you continue with Google or Microsoft, that company sees that you signed in to us, under its own privacy policy. We do not sell personal data.</p>
       <h2>How long we keep it</h2>
       <p>E-tickets you send: until the concert has taken place. Click records and 3D pass details: until twelve months after the concert. Partner requests: two years after our last contact. Alerts: until you leave the list.</p>
       <h2>Your rights</h2>

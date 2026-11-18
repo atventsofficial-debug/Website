@@ -9,7 +9,8 @@ import { picker } from './picker.js';
 import { whenOf, startOf, venueClock, gapText } from './when.js';
 import { justBought, buyUrl, buyAttrs, buyLink, passes, activePass, claim, holdPass, refresh, passLink, clicksFor, STATUS } from './passes.js';
 import { checkClaim, formatFee } from './rules.js';
-import { ACCESS_FEE, PAY_MINUTES } from './order.js';
+import { ACCESS_FEE, PAY_MINUTES, line, email as cleanEmail, isEmail } from './order.js';
+import { signIn, PROVIDERS } from './sso.js';
 import { PAY_GROUPS, PAY_METHODS, payMethod, payDetails, wayName } from './paymethods.js';
 import { loadSnap, embedSnap, hideSnap } from './snap.js';
 import { FAQ_FANS, faqHtml } from './content.js';
@@ -450,8 +451,10 @@ let unlockBound = false;
 // One way in: the fan fills in the concert, the seat (picked from the venue's own seat
 // list, so a seat that does not exist cannot be sent), their name and email, then pays the
 // access fee. The pass opens as soon as the payment goes through. `eventId` comes from
-// #unlock-<id>; without it, the first concert on sale.
-const unlock = { payment: null, data: null, again: null, method: '' };
+// #unlock-<id>; without it, the first concert on sale. The name and email come from Google
+// or Microsoft (js/sso.js), or are typed: `who` is who signed in, `typing` that the fan
+// chose to type them. Continue stays greyed out until every field is filled.
+const unlock = { payment: null, data: null, again: null, method: '', who: null, typing: false };
 
 export function renderUnlock(eventId) {
   const form = $('#unlock-form');
@@ -470,6 +473,7 @@ export function renderUnlock(eventId) {
   const again = unlock.again?.eventId === pick ? unlock.again : null;
   unlock.again = null;
   if (again) prefill(form, again);
+  if (!unlock.who && (form.name.value || form.email.value)) unlock.typing = true;
   const note = $('#unlock-note');
   if (justBought.id && justBought.id === pick) {
     const e = eventMeta(pick);
@@ -477,7 +481,8 @@ export function renderUnlock(eventId) {
     note.hidden = false;
     justBought.id = '';
   } else note.hidden = true;
-  summary(form);
+  paintWho(form);
+  ready(form);
   // Another way to pay for the same order: straight back to the ways, the details kept.
   if (again?.ways) {
     form.consent.checked = true;
@@ -490,14 +495,62 @@ export function renderUnlock(eventId) {
 const seatText = s => (s.standing ? `${s.secName}, standing` : `${s.secName} · Row ${s.row} · Seat ${s.num}`);
 const seatIn = (eventId, seatId) => { const venue = getEvent(eventId), i = venue?.seatById.get(seatId); return i === undefined ? null : venue.seats[i]; };
 
-// The line above the pay button: what the fan is buying.
-function summary(form) {
-  const e = eventMeta(form.eventId.value);
-  if (!e) return;
-  const venue = getEvent(e.id), c = venue.catById[form.cat.value];
-  const seatId = chosenSeat(form), s = seatId ? seatIn(e.id, seatId) : null;
-  const where = s ? seatText(s) : (c ? c.name : 'Choose your seat');
-  $('#order-sum').innerHTML = `<span><b>3D seat view</b><small>${esc(e.title)} · ${esc(whenOf(e).date)}</small><small>${esc(where)}</small></span><b class="order-price">${formatFee()}</b>`;
+// Where the pass goes: the buttons for Google and Microsoft (each only with its client id
+// from /api/config), or the two fields typed. Signed in, the fields are filled and hidden
+// behind who it is, with a way to change it.
+function paintWho(form) {
+  const clients = state.store.sso || {}, any = Object.keys(clients).length > 0, who = unlock.who;
+  $$('#uf-sso [data-sso]').forEach(b => { b.hidden = !clients[b.dataset.sso]; });
+  $('#uf-sso').hidden = !any || !!who;
+  $('#uf-or').hidden = !any || !!who || unlock.typing;
+  $('#uf-details').hidden = !!who || (any && !unlock.typing);
+  const box = $('#uf-who'), p = who && PROVIDERS[who.provider];
+  box.hidden = !who;
+  box.innerHTML = who ? `<span class="uf-av" aria-hidden="true">${esc((who.name || who.email).trim().charAt(0).toUpperCase())}</span>
+    <span class="uf-who-text"><b>${esc(who.name)}</b><small>${esc(who.email)}</small><span class="uf-ok"><svg><use href="#i-${who.provider}"/></svg>Verified by ${esc(p.name)}</span></span>
+    <button class="link uf-change" type="button" id="uf-change">Change</button>` : '';
+}
+
+// What is still to fill in, in the form's order. A row or seat counts once its section is
+// chosen (they are greyed out before), and the name and email as one when they sit behind
+// the sign-in buttons.
+function missing(form) {
+  const left = [];
+  if (!form.cat.value) left.push('cat');
+  if (!form.sec.value) left.push('sec');
+  else if (!chosenSeat(form)) left.push(form.row.value ? 'num' : 'row');
+  const name = line(form.name.value).length >= 2, mail = isEmail(cleanEmail(form.email.value));
+  if (!$('#uf-details').hidden) {
+    if (!name) left.push('name');
+    if (!mail) left.push('email');
+  } else if (!unlock.who && (!name || !mail)) left.push('who');
+  if (!form.consent.checked) left.push('consent');
+  return left;
+}
+
+const MISSING = {
+  cat: ['the category', 'Choose the category on your ticket.'],
+  sec: ['the section', 'Choose the section on your ticket.'],
+  row: ['the row', 'Choose your row.'],
+  num: ['the seat', 'Choose your seat number.'],
+  name: ['your name', 'Please enter your name.'],
+  email: ['your email', 'Please enter a valid email. Your pass and receipt go there.'],
+  who: ['your email', 'Continue with Google or Microsoft, or type your name and email, so your pass has somewhere to go.'],
+  consent: ['the terms', 'Please accept the terms and the privacy policy.'],
+};
+// The box a missing field is marked on.
+const boxOf = (form, k) => (k === 'who' ? $('#uf-sso') : k === 'consent' ? form.consent.closest('.check') : form[k].closest('.uf-field'));
+
+// Continue greys out until nothing is missing; a field marked as missing loses the mark
+// once it is filled, and the "still to fill in" line goes once nothing is.
+function ready(form) {
+  const left = missing(form);
+  $('#pay-start').setAttribute('aria-disabled', left.length ? 'true' : 'false');
+  for (const k of Object.keys(MISSING)) {
+    if (!left.includes(k)) boxOf(form, k)?.classList.remove('is-missing');
+  }
+  if (!left.length) $('#unlock-error').hidden = true;
+  return left;
 }
 
 // The seat pickers, from the venue's seats: section, then row, then seat number. A standing
@@ -526,7 +579,8 @@ function fillSecs(form) {
   $('#row-field').hidden = standing;
   $('#num-field').hidden = standing;
   form.row.required = form.num.required = !standing;
-  $('#seat-note').textContent = standing ? 'A standing area: no row or seat number. Choose the area on your ticket; your tour stands you in the middle of it.' : 'As printed on your ticket. Only seats that exist in this venue are listed.';
+  $('#seat-note').textContent = standing ? 'A standing area: no row or seat number. Choose the area on your ticket; your tour stands you in the middle of it.' : '';
+  $('#seat-note').hidden = !standing;
   fillRows(form);
 }
 
@@ -581,10 +635,15 @@ function chosenSeat(form) {
 function checkForm(form) {
   const err = $('#unlock-error');
   const say = (msg, field) => { err.textContent = msg; err.hidden = false; if (field && form[field]) form[field].focus(); return null; };
-  if (!form.cat.value) return say('Choose the category on your ticket.', 'cat');
-  if (!form.sec.value) return say('Choose the section on your ticket.', 'sec');
+  // Everything still missing is marked at once, and named.
+  const left = ready(form);
+  if (left.length) {
+    left.forEach(k => boxOf(form, k)?.classList.add('is-missing'));
+    const names = left.map(k => MISSING[k][0]);
+    const msg = left.length === 1 ? MISSING[left[0]][1] : `Still to fill in: ${names.slice(0, -1).join(', ')} and ${names.at(-1)}.`;
+    return say(msg, left[0] === 'who' ? null : left[0]);
+  }
   const seat = chosenSeat(form);
-  if (!seat) return say(form.row.value ? 'Choose your seat number.' : 'Choose your row.', form.row.value ? 'num' : 'row');
   const { claim: data, field, error } = checkClaim({
     eventId: form.eventId.value, cat: form.cat.value, seat, name: form.name.value, email: form.email.value, consent: form.consent.checked, requirePayment: false,
   });
@@ -662,10 +721,12 @@ function showWays(form) {
   if (!ways.some(m => m.id === unlock.method)) unlock.method = '';
   openSheet(form);
   sheet.innerHTML = `${stepper(true)}
+    <div class="co-top">
+      ${miniOrder(data)}
+      <h2 class="pay-state">Choose how to pay</h2>
+    </div>
     <div class="co-cols">
       <div class="co-main">
-        ${miniOrder(data)}
-        <h2 class="pay-state">Choose how to pay</h2>
         <div class="pm-groups">${PAY_GROUPS.map(g => wayGroup(g, ways.filter(m => m.group === g.id))).join('')}</div>
         ${payNotes('co-main-notes')}
       </div>
@@ -756,13 +817,16 @@ const WHAT = { va: 'the virtual account number to transfer to', bill: 'the bill 
 function previewSheet(p, data, way) {
   $('#pay-sheet').innerHTML = frame(`
       <p class="eyebrow">${icon('i-card')}Payment</p>
-      <h2 class="pay-state">Pay ${formatFee(p.amount)}${way ? ` with ${esc(wayName(way))}` : ''}</h2>
+      <h2 class="pay-state">Pay ${formatFee(p.amount)}${way ? ` with ${esc(wayName(way))}` : ''}</h2>`, `
       <p class="fine">Preview mode: no payment provider is connected yet, so nothing is charged. On the live site, ${way ? `${esc(wayName(way))} shows ${WHAT[way.kind]}` : 'the way you chose opens'} right on this page, and your pass opens by itself once it is paid.</p>
       <div class="row-btns"><button class="btn btn-coral" type="button" id="pay-demo">Pay ${formatFee(p.amount)} (preview) ${icon('i-arrow')}</button><button class="btn btn-line co-alt" type="button" id="pay-ways">Choose another way</button></div>`, data, way, true);
 }
 
-// A checkout screen: the steps, what to do on the left, the order on the right.
-const frame = (main, p, way, back = false) => `${stepper(back)}
+// A checkout screen: the steps, the title, then what to do on the left and the order on the
+// right. The title spans both columns, so the order's card starts level with the first card
+// on the left.
+const frame = (top, main, p, way, back = false) => `${stepper(back)}
+    <div class="co-top">${top}</div>
     <div class="co-cols">
       <div class="co-main">${main}</div>
       ${orderCard(p, way)}
@@ -929,7 +993,7 @@ function payingSheet(p, id, way) {
   }
   const by = new Date(expiryOf(p)).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
   return frame(`${head(p, id)}
-      <h2 class="pay-state">${esc(title)}</h2>
+      <h2 class="pay-state">${esc(title)}</h2>`, `
       <div class="co-pay is-${way.kind}">
         <div class="co-way">${logos(way)}<span><b>${esc(wayName(way))}</b><small>Open until ${esc(by)}</small></span></div>
         <div class="co-fields">${body}</div>
@@ -944,7 +1008,7 @@ function payingSheet(p, id, way) {
 function cardSheet(p, id) {
   const way = payMethod('card');
   return frame(`${head(p, id)}
-      <h2 class="pay-state">Pay by card</h2>
+      <h2 class="pay-state">Pay by card</h2>`, `
       <div class="co-pay is-card">
         <div class="co-way">${logos(way)}<span><b>Credit or debit card</b><small>${esc(way.note)}</small></span></div>
         <div class="co-bleed"><div class="co-form" id="snap-box"><p class="co-loading">Loading the card form…</p></div></div>
@@ -965,18 +1029,18 @@ function paidSheet(p, id) {
   const way = payMethod(p.method), eyebrow = `<p class="eyebrow">${icon('i-card')}Payment ${ref}</p>`;
   if (p.status === 'rejected') {
     return frame(`${eyebrow}
-      <h2 class="pay-state">The payment did not go through</h2>
+      <h2 class="pay-state">The payment did not go through</h2>`, `
       <p class="fine">It was cancelled or it ran out of time, so this pass did not open. You can start again with the same seat.</p>
       <div class="row-btns"><button class="btn btn-coral" type="button" data-again="${esc(id)}">Try again ${icon('i-arrow')}</button><a class="btn btn-line co-alt" href="#contact">Write to us</a></div>`, p, way);
   }
   if (Date.now() > expiryOf(p)) {
     return frame(`${eyebrow}
-      <h2 class="pay-state">The time to pay ran out</h2>
+      <h2 class="pay-state">The time to pay ran out</h2>`, `
       <p class="fine">This order was open for ${PAY_MINUTES} minutes and closed unpaid. Paid just now? It opens here in a moment. Otherwise, start again with the same seat.</p>
       <div class="row-btns"><button class="btn btn-coral" type="button" data-again="${esc(id)}">Start again ${icon('i-arrow')}</button><button class="btn btn-line co-alt" type="button" id="pay-check" data-id="${esc(id)}">Check again</button></div>`, p, way);
   }
   return frame(`${eyebrow}
-      <h2 class="pay-state">Waiting for your payment</h2>
+      <h2 class="pay-state">Waiting for your payment</h2>`, `
       <p class="fine">Paying by bank transfer, QRIS or at a store? Midtrans can take a few minutes to confirm it. This page checks by itself${state.store.mail && p.email ? `, the link goes to ${esc(p.email)} once it is paid,` : ''} and My 3D passes checks again each time you open it.</p>
       <div class="row-btns"><button class="btn btn-coral" type="button" id="pay-check" data-id="${esc(id)}">Check again</button>${p.url ? `<a class="btn btn-line co-alt" href="${esc(p.url)}">Pay on Midtrans’ page</a>` : `<a class="btn btn-line co-alt" href="#passes">My 3D passes</a>`}</div>`, p, way);
 }
@@ -1043,11 +1107,17 @@ async function paid(form) {
 }
 
 function bindUnlock(form) {
-  form.eventId.addEventListener('change', () => { fillCats(form); summary(form); });
-  form.cat.addEventListener('change', () => { fillSecs(form); summary(form); });
-  form.sec.addEventListener('change', () => { fillRows(form); summary(form); });
-  form.row.addEventListener('change', () => { fillNums(form); summary(form); });
-  form.num.addEventListener('change', () => summary(form));
+  form.eventId.addEventListener('change', () => fillCats(form));
+  form.cat.addEventListener('change', () => fillSecs(form));
+  form.sec.addEventListener('change', () => fillRows(form));
+  form.row.addEventListener('change', () => fillNums(form));
+  form.addEventListener('input', () => ready(form));
+  form.addEventListener('click', ev => {
+    const sso = ev.target.closest('[data-sso]');
+    if (sso) { signInWith(form, sso); return; }
+    if (ev.target.closest('#uf-type')) { unlock.typing = true; paintWho(form); ready(form); form.name.focus(); return; }
+    if (ev.target.closest('#uf-change')) { unlock.who = null; form.name.value = ''; form.email.value = ''; paintWho(form); ready(form); }
+  });
   $('#pay-sheet').addEventListener('click', ev => {
     const t = ev.target;
     if (t.closest('[data-back]')) { unlock.payment = null; closePay(form); return; }
@@ -1066,7 +1136,34 @@ function bindUnlock(form) {
   });
   $('#pay-sheet').addEventListener('change', ev => { if (ev.target.name === 'pm') pickWay(ev.target.value); });
   form.addEventListener('submit', ev => { ev.preventDefault(); startPayment(form); });
-  form.addEventListener('change', () => { $('#unlock-error').hidden = true; });
+  form.addEventListener('change', () => { $('#unlock-error').hidden = true; ready(form); });
+}
+
+// "Continue with Google / Microsoft": their window opens; once the fan has signed in, the
+// name and email fill in. Without a name (some Microsoft accounts), the fields open with the
+// email in, to type the name. A window closed without signing in changes nothing.
+async function signInWith(form, btn) {
+  const provider = btn.dataset.sso, id = state.store.sso?.[provider], err = $('#unlock-error');
+  if (!id) return;
+  err.hidden = true;
+  btn.classList.add('is-busy');
+  const idle = () => btn.classList.remove('is-busy');
+  window.addEventListener('focus', () => setTimeout(idle, 1500), { once: true });
+  try {
+    const who = await signIn(provider, id);
+    form.email.value = who.email;
+    if (who.name) { form.name.value = who.name; unlock.who = who; } else { unlock.who = null; unlock.typing = true; }
+    paintWho(form);
+    ready(form);
+    if (!who.name) form.name.focus();
+  } catch (e) {
+    err.textContent = e?.reason === 'blocked'
+      ? 'Your browser blocked the sign-in window. Allow pop-ups for atvents.com, or type your name and email.'
+      : `Signing in with ${PROVIDERS[provider].name} did not work. Please try again, or type your name and email.`;
+    err.hidden = false;
+  } finally {
+    idle();
+  }
 }
 
 function showUnlocked(p, { emailed = false } = {}) {

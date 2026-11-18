@@ -2,7 +2,7 @@
 // Midtrans, and the email that sends the pass. Cloudflare serves every file in site/ itself;
 // only addresses with no file behind them reach this code.
 //
-//   GET  /api/config            { mode: 'pay', sandbox, fee, clientKey, mail, methods } once MIDTRANS_SERVER_KEY is set, else 404
+//   GET  /api/config            { mode: 'pay', sandbox, fee, clientKey, mail, methods, sso } once MIDTRANS_SERVER_KEY is set, else 404
 //   POST /api/payments          an order and the way to pay it: what to pay with, and the key to the pass
 //   GET  /api/passes/<id>       how that payment is going (header x-pass-token: the key)
 //   POST /api/passes/<id>/cancel  the fan picks another way to pay: Midtrans closes this one
@@ -19,6 +19,7 @@ import { ACCESS_FEE, PAY_MINUTES, PAYMENT_ID, line, checkBuyer } from '../js/ord
 import { concert, onSale, seatOf } from './catalog.mjs';
 import { paymentsOf, midtrans, MidtransError, PaymentRefused, chargeOf, payDetailsOf, passStateOf, signedByMidtrans, jakartaTime } from './midtrans.mjs';
 import { payMethod, methodsOn } from '../js/paymethods.js';
+import { clientsOf } from '../js/sso.js';
 import { signPass, readPass } from './passkey.mjs';
 import { hasOrders, saveOrder, setStatus, takeEmail, returnEmail } from './orders.mjs';
 import { mailerOf, passEmail } from './mail.mjs';
@@ -74,6 +75,9 @@ function config(env) {
     ...(pay.clientKey ? { clientKey: pay.clientKey } : {}),
     mail: !!mailerOf(env) && hasOrders(env),   // the pass email goes out once paid
     methods: methodsOn(env.MIDTRANS_METHODS),
+    // "Continue with Google / Microsoft" on the form (js/sso.js): the apps' client ids, which
+    // are public. A button shows only with its id.
+    sso: clientsOf({ google: env.GOOGLE_CLIENT_ID, microsoft: env.MICROSOFT_CLIENT_ID }),
   });
 }
 

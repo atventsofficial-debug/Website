@@ -113,12 +113,20 @@ test('payments stay off until the server key is set', async () => {
   assert.equal((await req('/api/config', { env: env({ MIDTRANS_SERVER_KEY: '' }) })).status, 404);
   assert.equal((await post(order(), { env: env({ MIDTRANS_SERVER_KEY: undefined }) })).status, 503);
   const c = await (await req('/api/config')).json();
-  assert.deepEqual(c, { mode: 'pay', provider: 'midtrans', sandbox: true, fee: 25000, mail: false, methods: PAY_METHODS.map(m => m.id) });
+  assert.deepEqual(c, { mode: 'pay', provider: 'midtrans', sandbox: true, fee: 25000, mail: false, methods: PAY_METHODS.map(m => m.id), sso: {} });
   assert.equal((await (await req('/api/config', { env: env({ MIDTRANS_SERVER_KEY: 'Mid-server-LIVEKEY0123456789' }) })).json()).sandbox, false);
   assert.equal((await (await req('/api/config', { env: env({ MIDTRANS_ENV: 'production' }) })).json()).sandbox, false);
   const tilde = 'SB-Mid-server-abcdEFGH1234ijkl~mnopQRST';
   assert.equal((await req('/api/config', { env: env({ MIDTRANS_SERVER_KEY: tilde }) })).status, 200, 'a key from the newer Access keys page');
   assert.equal((await req('/api/config', { env: env({ MIDTRANS_SERVER_KEY: 'SB-Mid-server-has a space' }) })).status, 404);
+});
+
+test('the sign-in buttons get their client ids from the dashboard, and only ids that look right', async () => {
+  const sso = async more => (await (await req('/api/config', { env: env(more) })).json()).sso;
+  const google = '123456789012-abcdefghijklmnopqrstuvwxyz012345.apps.googleusercontent.com', microsoft = '0b1c2d3e-4f50-6172-8394-a5b6c7d8e9f0';
+  assert.deepEqual(await sso({ GOOGLE_CLIENT_ID: google, MICROSOFT_CLIENT_ID: microsoft }), { google, microsoft });
+  assert.deepEqual(await sso({ GOOGLE_CLIENT_ID: google }), { google });
+  assert.deepEqual(await sso({ GOOGLE_CLIENT_ID: 'GOCSPX-a-client-secret' }), {}, 'a secret pasted by mistake is never sent');
 });
 
 test('MIDTRANS_METHODS narrows the ways to pay, and a list with none the checkout knows means all', async () => {
