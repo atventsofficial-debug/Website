@@ -10,6 +10,10 @@
 // MIDTRANS_CLIENT_KEY (Mid-client-…, from the same page, not a secret) lets Midtrans' card
 // form open inside the site's own page (Snap embed). Without it a card payment goes to
 // Midtrans' payment page and comes back.
+//
+// MIDTRANS_SIGNATURE_KEY (a Secret, also from Access keys) is what Midtrans signs its
+// notifications with once a server key has been made on the newer Access keys page; until
+// then it is the server key itself, and a notification signed with either one counts.
 import { payDetails } from '../js/paymethods.js';
 
 const HOSTS = {
@@ -17,17 +21,24 @@ const HOSTS = {
   production: { snap: 'https://app.midtrans.com', api: 'https://api.midtrans.com' },
 };
 
+// What a Midtrans key may be made of. Keys from the newer Access keys page carry a '~'
+// between their two halves; the older ones are letters, digits, '-' and '_'.
+const KEY_CHARS = /^[A-Za-z0-9_:~.+/=-]{10,300}$/;
+
 // The key and the environment it belongs to, or null when payments are not switched on.
 export function paymentsOf(env) {
   const key = String(env?.MIDTRANS_SERVER_KEY ?? '').trim();
-  if (!/^[A-Za-z0-9_:-]{10,200}$/.test(key)) return null;
+  if (!KEY_CHARS.test(key)) return null;
   const mode = String(env?.MIDTRANS_ENV ?? '').trim().toLowerCase();
   const sandbox = mode ? mode !== 'production' : key.startsWith('SB-');
-  // A client key from the other environment would open a form that cannot pay: left out.
+  // A Sandbox client key with a production server key would open a form that cannot pay:
+  // left out. Newer Sandbox accounts have client keys without the 'SB-', so a key without
+  // it says nothing about its environment.
   const client = String(env?.MIDTRANS_CLIENT_KEY ?? '').trim();
-  const classic = /^(SB-)?Mid-client-/.exec(client);
-  const clientKey = /^[A-Za-z0-9_:-]{10,200}$/.test(client) && (!classic || !!classic[1] === sandbox) ? client : '';
-  return { key, sandbox, clientKey };
+  const clientKey = KEY_CHARS.test(client) && (sandbox || !client.startsWith('SB-')) ? client : '';
+  const signature = String(env?.MIDTRANS_SIGNATURE_KEY ?? '').trim();
+  const signKeys = KEY_CHARS.test(signature) && signature !== key ? [signature, key] : [key];
+  return { key, sandbox, clientKey, signKeys };
 }
 
 // Snap's expiry.start_time: "2026-11-18 09:30:00 +0700", in Jakarta time.
@@ -154,15 +165,20 @@ export function passStateOf(t, { id, amount }) {
 }
 
 // A notification is Midtrans' own when its signature_key is
-// SHA-512(order_id + status_code + gross_amount + server key), as hex.
-export async function signedByMidtrans(n, key) {
+// SHA-512(order_id + status_code + gross_amount + key), as hex, with one of the keys given
+// (the signature key, then the server key).
+export async function signedByMidtrans(n, keys) {
   const parts = [n?.order_id, n?.status_code, n?.gross_amount];
   if (!parts.every(p => typeof p === 'string' && p.length > 0 && p.length <= 64)) return false;
   const sig = String(n.signature_key ?? '').toLowerCase();
   if (!/^[0-9a-f]{128}$/.test(sig)) return false;
-  const digest = new Uint8Array(await crypto.subtle.digest('SHA-512', new TextEncoder().encode(parts.join('') + key)));
-  const want = [...digest].map(b => b.toString(16).padStart(2, '0')).join('');
-  let diff = 0;
-  for (let i = 0; i < 128; i++) diff |= want.charCodeAt(i) ^ sig.charCodeAt(i);
-  return diff === 0;
+  let ok = false;
+  for (const key of [].concat(keys)) {
+    const digest = new Uint8Array(await crypto.subtle.digest('SHA-512', new TextEncoder().encode(parts.join('') + key)));
+    const want = [...digest].map(b => b.toString(16).padStart(2, '0')).join('');
+    let diff = 0;
+    for (let i = 0; i < 128; i++) diff |= want.charCodeAt(i) ^ sig.charCodeAt(i);
+    ok ||= diff === 0;
+  }
+  return ok;
 }

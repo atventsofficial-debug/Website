@@ -227,7 +227,7 @@ async function notified(request, env) {
   if (!pay) return fail(503, 'Payments are not switched on yet.');
   const n = await readJson(request, NOTIFY_BODY);
   if (n instanceof Response) return n;
-  if (!(await signedByMidtrans(n, pay.key))) return fail(401, 'Bad signature');
+  if (!(await signedByMidtrans(n, pay.signKeys))) return fail(401, 'Bad signature');
   const id = n.order_id;
   if (!PAYMENT_ID.test(id)) return json(200, { ok: true });   // not an order of this site
   const status = passStateOf(await midtrans(pay).status(id), { id, amount: ACCESS_FEE });

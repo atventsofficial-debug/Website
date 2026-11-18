@@ -116,6 +116,9 @@ test('payments stay off until the server key is set', async () => {
   assert.deepEqual(c, { mode: 'pay', provider: 'midtrans', sandbox: true, fee: 25000, mail: false, methods: PAY_METHODS.map(m => m.id) });
   assert.equal((await (await req('/api/config', { env: env({ MIDTRANS_SERVER_KEY: 'Mid-server-LIVEKEY0123456789' }) })).json()).sandbox, false);
   assert.equal((await (await req('/api/config', { env: env({ MIDTRANS_ENV: 'production' }) })).json()).sandbox, false);
+  const tilde = 'SB-Mid-server-abcdEFGH1234ijkl~mnopQRST';
+  assert.equal((await req('/api/config', { env: env({ MIDTRANS_SERVER_KEY: tilde }) })).status, 200, 'a key from the newer Access keys page');
+  assert.equal((await req('/api/config', { env: env({ MIDTRANS_SERVER_KEY: 'SB-Mid-server-has a space' }) })).status, 404);
 });
 
 test('MIDTRANS_METHODS narrows the ways to pay, and a list with none the checkout knows means all', async () => {
@@ -162,11 +165,13 @@ test('a card order makes a Snap payment at the access fee and gives back a waiti
   assert.ok(!JSON.stringify(p).includes(KEY));
 });
 
-test('the payment form opens inside the page only with a client key of the same environment', async () => {
+test('the payment form opens inside the page with a client key, never a Sandbox one in production', async () => {
   const cfg = async more => (await (await req('/api/config', { env: env(more) })).json()).clientKey;
   assert.equal(await cfg({}), undefined);
   assert.equal(await cfg({ MIDTRANS_CLIENT_KEY: 'SB-Mid-client-abcdEFGH1234' }), 'SB-Mid-client-abcdEFGH1234');
-  assert.equal(await cfg({ MIDTRANS_CLIENT_KEY: 'Mid-client-abcdEFGH1234' }), undefined, 'a production key with a Sandbox server key');
+  assert.equal(await cfg({ MIDTRANS_CLIENT_KEY: 'Mid-client-abcdEFGH1234' }), 'Mid-client-abcdEFGH1234', 'newer Sandbox accounts have no SB- on the client key');
+  assert.equal(await cfg({ MIDTRANS_SERVER_KEY: 'Mid-server-LIVEKEY0123456789', MIDTRANS_CLIENT_KEY: 'SB-Mid-client-abcdEFGH1234' }), undefined, 'a Sandbox client key with a production server key');
+  assert.equal(await cfg({ MIDTRANS_SERVER_KEY: 'Mid-server-LIVEKEY0123456789', MIDTRANS_CLIENT_KEY: 'Mid-client-abcdEFGH1234' }), 'Mid-client-abcdEFGH1234');
   assert.equal(await cfg({ MIDTRANS_CLIENT_KEY: '<script>' }), undefined);
 });
 
@@ -514,6 +519,19 @@ test('a notification counts only with Midtrans’ signature, and the status is r
   assert.equal(mails.length, 0);
   assert.equal((await req('/api/midtrans/notify', { method: 'POST', headers: { 'content-type': 'text/plain' }, body: '{}', env: e })).status, 415);
   assert.equal((await req('/api/midtrans/notify', { env: e })).status, 405);
+});
+
+test('with a signature key set, a notification signed with it counts, and one signed with the server key still does', async () => {
+  const SIG = 'SB-Mid-signature-abcd1234~efgh5678';
+  const { e, p } = await mailedOrder({ MIDTRANS_SIGNATURE_KEY: SIG });
+  paid[p.id] = { transaction_status: 'settlement' };
+  const n = { order_id: p.id, status_code: '200', gross_amount: '25000.00' };
+  assert.equal((await notify({ ...n, signature_key: sign(n, 'SB-Mid-signature-OTHER') }, { env: e })).status, 401);
+  assert.equal((await notify({ ...n, signature_key: sign(n, SIG) }, { env: e })).status, 200);
+  assert.equal((await notify({ ...n, signature_key: sign(n, KEY) }, { env: e })).status, 200);
+  assert.equal(mails.length, 1, 'one email, however many notifications');
+  const c = await (await req('/api/config', { env: e })).text();
+  assert.ok(!c.includes(SIG) && !c.includes(KEY), 'neither key reaches the browser');
 });
 
 test('a notification for an order that is not in the book is answered and sends nothing', async () => {
