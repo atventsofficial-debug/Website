@@ -1,10 +1,10 @@
 // Fan pages: home, the concert list, a concert, unlocking a 3D pass, My 3D passes and the
 // questions. The partner page lives in partners.js, the admin in admin.js and the 3D
 // viewer in viewer.js.
-import { formatRpShort, crowdSeats } from './layouts.js';
+import { formatRpShort, crowdSeats, REAL_KEYS } from './layouts.js';
 import { loadScene3d } from './viewer.js';
 import { EVENTS, PLACES, CITY, LISTED, getEvent, eventMeta, placeOf, timeKnown, minPrice, soldOut, allSoldOut, isConcert, demoFor, onTiket, sellerOf, saleInfo } from './events.js';
-import { cardImg, coverImg, eventImg, posterFig, thumbImg } from './media.js';
+import { cardImg, eventImg, placeCover, posterFig, thumbImg } from './media.js';
 import { picker } from './picker.js';
 import { whenOf, startOf, venueClock, gapText } from './when.js';
 import { justBought, buyUrl, buyAttrs, buyLink, passes, activePass, claim, holdPass, refresh, passLink, clicksFor, STATUS } from './passes.js';
@@ -196,11 +196,11 @@ export function renderHome() {
     const shows = p.events.filter(upcoming), first = shows[0] || p.events[0];
     const from = Math.min(...shows.map(e => minPrice(e.id) ?? Infinity));
     return `<a class="venue" href="#seats-${first.id}">
-      <div class="venue-cover">${coverImg(first.photo, first.venue, `${p.name}, ${p.city}`)}</div>
+      <div class="venue-cover">${placeCover(p, first, `${p.name}, ${p.city}`)}</div>
       <div class="venue-body">
         <span class="venue-n">0${i + 1} · ${esc(p.city)}</span>
         <h3>${esc(p.name)}</h3>
-        <p>${esc(demoFor(first.venue)?.title || 'Venue')} · ${plural(getEvent(first.id).seats.length, 'seat')} modelled</p>
+        <p>${esc(demoFor(first.venue)?.title || (REAL_KEYS.includes(first.venue) ? 'From the promoter’s plan' : 'Venue'))} · ${plural(getEvent(first.id).seats.length, 'seat')} modelled</p>
         <div class="venue-foot"><span>${shows.length ? plural(shows.length, 'concert') : 'No concerts on sale yet'}${from < Infinity ? ` · from <b>${formatRpShort(from)}</b>` : ''}</span><span class="go">${icon('i-arrow')}</span></div>
       </div></a>`;
   }).join('');

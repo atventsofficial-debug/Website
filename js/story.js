@@ -7,6 +7,7 @@
 import { getEvent } from './events.js';
 import { crowdSeats } from './layouts.js';
 import { whenOf } from './when.js';
+import { placeSeat, numberingOf } from './seatflip.js';
 import { loadScene3d } from './viewer.js';
 import { $, esc, icon, toast, state } from './ui.js';
 
@@ -25,7 +26,9 @@ export async function makeStory(pass) {
   const venue = getEvent(pass.eventId), i = venue?.seatById.get(pass.seat);
   if (i === undefined) return;
   busy = true;
-  const seat = venue.seats[i], cat = venue.catById[pass.cat], e = venue.meta;
+  // The ticket's seat is what the captions say; `at` is where it is in the model when the
+  // fan set the venue's numbering the other way (seatflip.js).
+  const seat = venue.seats[i], at = placeSeat(venue, seat, numberingOf(venue, pass)), cat = venue.catById[pass.cat], e = venue.meta;
   const sheet = openSheet();
   let scene = null, rec = null;
   try {
@@ -34,7 +37,7 @@ export async function makeStory(pass) {
     scene.renderer.setPixelRatio(W / sheet.stage.clientWidth);
     scene.resize();
     const crowd = crowdSeats(venue);
-    crowd.delete(seat.id);
+    crowd.delete(at.id);
     if (!(await scene.load(venue, crowd))) throw new Error('load');
     scene.setCrowd(true);
     scene.setLabels(false);
@@ -61,14 +64,14 @@ export async function makeStory(pass) {
     Object.assign(cap, { step: 2, title: cat.name, sub: venue.place.name });
     sheet.progress(0.35, cat.name);
     scene.setFilter(cat.id);
-    scene.setMine([seat.id]);
-    scene.frameCategory(cat.id, { seat, dur: 2.4 });
+    scene.setMine([at.id]);
+    scene.frameCategory(cat.id, { seat: at, dur: 2.4 });
     await scene.settled();
     await wait(1100);
     // 3. Into the seat, then a few seconds of the view.
     Object.assign(cap, { step: 3, title: seat.standing ? `${seat.secName}` : `Row ${seat.row} · Seat ${seat.num}`, sub: seat.standing ? `${cat.name} · standing` : `${seat.secName} · ${cat.name}` });
     sheet.progress(0.6, 'Your seat');
-    scene.flyToSeat(seat);
+    scene.flyToSeat(at);
     await scene.settled();
     await wait(2600);
     cap.end = performance.now();

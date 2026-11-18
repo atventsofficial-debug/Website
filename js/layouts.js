@@ -2,136 +2,21 @@
 // No browser or three.js dependency, so the Node server imports the same file
 // to check event ids and categories.
 
-const rowLabel = i =>
-  i < 26 ? String.fromCharCode(65 + i) : String.fromCharCode(64 + Math.floor(i / 26)) + String.fromCharCode(65 + (i % 26));
+import { superPoint, gridRows, bowl, deg, norm } from './seatgeo.js';
+import { REAL_BUILDERS } from './realvenues.js';
 
-// Superellipse: p = 1 is an ellipse, p < 1 squares the corners off like a stadium bowl.
-export function superPoint(t, rx, rz, p) {
-  const c = Math.cos(t), s = Math.sin(t);
-  return [rx * Math.sign(c) * Math.abs(c) ** p, rz * Math.sign(s) * Math.abs(s) ** p];
-}
-
-// `ri` is the row index from the front of the section; `standing` marks a spot on a
-// standing floor rather than a seat.
-function pushSeat(out, o, row, num, x, y, z, fx, fz) {
-  const label = rowLabel(row);
-  out.push({
-    id: `${o.sec}-${label}${num}`,
-    sec: o.sec,
-    secName: o.secName || o.sec,
-    cat: o.catAt ? o.catAt(row) : o.cat,
-    row: label,
-    ri: row,
-    num,
-    ...(o.standing ? { standing: true } : {}),
-    x: +x.toFixed(3), y: +y.toFixed(3), z: +z.toFixed(3),
-    yaw: +Math.atan2(-fx, -fz).toFixed(4),
-    tier: o.tier || 0,
-    rowDepth: o.sz || o.gap || 0.9,
-    width: o.sx || o.spacing || 0.56,
-  });
-}
-
-// Straight (optionally bowed) rows. dir is the direction the audience faces.
-function gridRows(out, o) {
-  const { x0, z0, rows, cols, sx = 0.56, sz = 0.92, dir = [0, -1], baseY = 0, rise = 0, riseFrom = 0,
-    curve = 0, focus, rowStart = 0, numStart = 1, reverse = false } = o;
-  const [fx, fz] = dir, rx = -fz, rz = fx;
-  for (let i = 0; i < rows; i++) {
-    for (let c = 0; c < cols; c++) {
-      const u = (c - (cols - 1) / 2) * sx;
-      const bow = curve * u * u;
-      const x = x0 + rx * u - fx * i * sz + fx * bow;
-      const z = z0 + rz * u - fz * i * sz + fz * bow;
-      const y = baseY + Math.max(0, i - riseFrom) * rise;
-      let dx = fx, dz = fz;
-      if (focus) { dx = focus[0] - x; dz = focus[1] - z; const l = Math.hypot(dx, dz); dx /= l; dz /= l; }
-      pushSeat(out, o, rowStart + i, numStart + (reverse ? cols - 1 - c : c), x, y, z, dx, dz);
-    }
-  }
-}
-
-// Rows that follow a superellipse arc between angles t0 and t1 around (cx, cz). `trim`
-// keeps at least that many metres clear at the two ends of every row (an aisle).
-function arcRows(out, o) {
-  const { cx = 0, cz = 0, rx0, rz0 = rx0, p = 1, rows, gap = 0.9, t0, t1, spacing = 0.56,
-    baseY = 0, rise = 0, rowStart = 0, trim = 0 } = o;
-  const N = 240;
-  for (let i = 0; i < rows; i++) {
-    const rx = rx0 + i * gap, rz = rz0 + i * gap;
-    const pts = [], cum = [0];
-    for (let k = 0; k <= N; k++) {
-      const [x, z] = superPoint(t0 + (t1 - t0) * k / N, rx, rz, p);
-      pts.push([cx + x, cz + z]);
-      if (k) cum.push(cum[k - 1] + Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1]));
-    }
-    const L = cum[N];
-    const n = Math.floor((L - trim) / spacing);
-    const start = (L - n * spacing) / 2;
-    let seg = 0;
-    for (let s = 0; s < n; s++) {
-      const d = start + (s + 0.5) * spacing;
-      while (seg < N - 1 && cum[seg + 1] < d) seg++;
-      const a = pts[seg], b = pts[seg + 1];
-      const f = (d - cum[seg]) / (cum[seg + 1] - cum[seg] || 1);
-      const x = a[0] + (b[0] - a[0]) * f, z = a[1] + (b[1] - a[1]) * f;
-      let tx = b[0] - a[0], tz = b[1] - a[1];
-      const tl = Math.hypot(tx, tz) || 1; tx /= tl; tz /= tl;
-      let nx = -tz, nz = tx;
-      if (nx * (cx - x) + nz * (cz - z) < 0) { nx = -nx; nz = -nz; }
-      pushSeat(out, o, rowStart + i, s + 1, x, baseY + i * rise, z, nx, nz);
-    }
-  }
-}
-
-// Splits a bowl into sections with aisles between them. catOf(midAngle, row) picks the
-// category, or name() gives each section its own `cat`; `skip` leaves out sections (behind
-// an end stage). Sections span equal angles, so on a squared-off bowl the ones mid-stand
-// come out longer than those in the corners; with `even` they are equal in length along
-// the front row, and `aisle` is in metres instead of radians.
-function bowl(out, o) {
-  const { from, to, sections, aisle = 0.022, name, catOf, skip, even } = o;
-  const cuts = even && evenCuts(o.rx0, o.rz0 ?? o.rx0, o.p ?? 1, from, to, sections);
-  const span = (to - from) / sections;
-  for (let s = 0; s < sections; s++) {
-    if (skip?.includes(s)) continue;
-    const t0 = even ? cuts[s] : from + s * span + aisle / 2, t1 = even ? cuts[s + 1] : from + (s + 1) * span - aisle / 2;
-    const mid = (t0 + t1) / 2;
-    const sec = name(s, mid);
-    arcRows(out, { ...o, t0, t1, trim: even ? aisle : 0, sec: sec.code, secName: sec.label, cat: sec.cat || o.cat,
-      catAt: catOf ? row => catOf(mid, row) : null });
-  }
-}
-
-// Angles that cut a superellipse arc from `from` to `to` into n stretches of equal length.
-function evenCuts(rx, rz, p, from, to, n) {
-  const N = 720, cum = [0];
-  let [px, pz] = superPoint(from, rx, rz, p);
-  for (let k = 1; k <= N; k++) {
-    const [x, z] = superPoint(from + (to - from) * k / N, rx, rz, p);
-    cum.push(cum[k - 1] + Math.hypot(x - px, z - pz));
-    px = x; pz = z;
-  }
-  const cuts = [from];
-  for (let s = 1, k = 0; s < n; s++) {
-    const d = cum[N] * s / n;
-    while (cum[k + 1] < d) k++;
-    cuts.push(from + (to - from) * (k + (d - cum[k]) / (cum[k + 1] - cum[k])) / N);
-  }
-  return [...cuts, to];
-}
-
-const deg = d => d * Math.PI / 180;
-const norm = a => ((a % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+export { superPoint };
 
 function concert() {
   const seats = [];
-  const vip = { cat: 'vip', rows: 8, cols: 16, sx: 0.58, sz: 0.95 };
-  gridRows(seats, { ...vip, sec: 'VIP-L', secName: 'VIP Left', x0: -5.45, z0: -29 });
-  gridRows(seats, { ...vip, sec: 'VIP-R', secName: 'VIP Right', x0: 5.45, z0: -29 });
-  const fl = { cat: 'floor', rows: 12, cols: 16, sx: 0.58, sz: 0.95 };
-  gridRows(seats, { ...fl, sec: 'FA-L', secName: 'Floor A Left', x0: -5.45, z0: -19.6 });
-  gridRows(seats, { ...fl, sec: 'FA-R', secName: 'Floor A Right', x0: 5.45, z0: -19.6 });
+  // A standing floor wall to wall but for an aisle down the middle and one along each side:
+  // VIP at the front, Floor A from behind it to the back, the sound desk behind that.
+  const vip = { cat: 'vip', standing: true, rows: 9, cols: 17, sx: 0.75, sz: 0.75 };
+  gridRows(seats, { ...vip, sec: 'VIP-L', secName: 'VIP Left', x0: -7.1, z0: -29 });
+  gridRows(seats, { ...vip, sec: 'VIP-R', secName: 'VIP Right', x0: 7.1, z0: -29 });
+  const fl = { cat: 'floor', standing: true, rows: 44, cols: 17, sx: 0.75, sz: 0.75 };
+  gridRows(seats, { ...fl, sec: 'FA-L', secName: 'Floor A Left', x0: -7.1, z0: -20.5 });
+  gridRows(seats, { ...fl, sec: 'FA-R', secName: 'Floor A Right', x0: 7.1, z0: -20.5 });
   const common = { cx: 0, cz: -10, p: 0.62, from: deg(-38), to: deg(218), sections: 10, spacing: 0.56 };
   bowl(seats, { ...common, rx0: 24, rz0: 30, rows: 12, gap: 0.9, rise: 0.42, baseY: 1.6, cat: 'lower', tier: 1,
     name: s => ({ code: `T1${String(s + 1).padStart(2, '0')}`, label: `Section ${101 + s}` }) });
@@ -150,7 +35,7 @@ function concert() {
     hero: { along: 29, look: [0, 6, -40], fov: 56 },
     seatStyle: 'theater',
     seatColor: '#8e1626',
-    occupancy: { vip: 0.55, floor: 0.6, lower: 0.45, upper: 0.35 },
+    occupancy: { vip: 0.92, floor: 0.88, lower: 0.45, upper: 0.35 },
     categories: [
       { id: 'vip', name: 'VIP Floor', price: 3500000, color: '#f5c451' },
       { id: 'floor', name: 'Floor A', price: 1750000, color: '#ff7a6b' },
@@ -318,6 +203,9 @@ function upperTiers(seats, uppers, catOf) {
   }
 }
 
+// The sound desk halfway down the field, 48 m from the stage front (x = -40).
+const STADIUM_END_FOH = [8, 0];
+
 // Stadium concert, end stage (as at Jakarta International Stadium): stage at the west
 // goal end, a standing festival floor in front of it, seated stands split into Center
 // (facing the stage) and Left/Right. The three sections behind the stage are closed.
@@ -333,14 +221,19 @@ function stadiumEnd() {
     name: (s, mid) => ({ code: `${s + 1}`.padStart(2, '0'), label: `${side(mid)} ${s + 1}` }) });
   const uppers = [[-30, 30, 'Center', 3], [36, 140, 'Left', 5], [220, 324, 'Right', 5]];
   upperTiers(seats, uppers, t => band(t, 3));
-  const fes = { cat: 'festival', standing: true, rows: 48, cols: 34, sx: 0.75, sz: 0.75, dir: [-1, 0] };
+  // The festival floor fills the field from the stage to the far goal, round the sound desk.
+  const fes = { cat: 'festival', standing: true, rows: 116, cols: 34, sx: 0.75, sz: 0.75, dir: [-1, 0] };
+  const from = seats.length;
   gridRows(seats, { ...fes, sec: 'FES-L', secName: 'Festival Left', x0: -37, z0: 14.1 });
   gridRows(seats, { ...fes, sec: 'FES-R', secName: 'Festival Right', x0: -37, z0: -14.1 });
+  const [fohX] = STADIUM_END_FOH;
+  for (let i = seats.length - 1; i >= from; i--) if (Math.abs(seats[i].z) < 4.2 && Math.abs(seats[i].x - fohX) < 3.2) seats.splice(i, 1);
   return {
     key: 'stadium-end',
     kind: 'stadium',
     show: 'end',
     uppers,
+    foh: STADIUM_END_FOH,
     label: 'Stadium concert',
     event: { title: 'Stadium concert', venue: 'Stadium' },
     focus: [-50, 6, 0],
@@ -348,7 +241,7 @@ function stadiumEnd() {
     hero: { along: 42, look: [-50, 9, 0], fov: 54 },
     seatStyle: 'shell',
     seatColor: '#b8162b',
-    occupancy: { festival: 0.55, cat1c: 0.6, cat1s: 0.5, cat2c: 0.55, cat2s: 0.45, cat3c: 0.5, cat3s: 0.4 },
+    occupancy: { festival: 0.92, cat1c: 0.6, cat1s: 0.5, cat2c: 0.55, cat2s: 0.45, cat3c: 0.5, cat3s: 0.4 },
     categories: [
       { id: 'festival', name: 'Festival', price: 3099000, color: '#f5c451' },
       { id: 'cat1c', name: 'CAT 1 Center', code: 'CAT 1 C', price: 3299000, color: '#ff7a6b' },
@@ -368,8 +261,9 @@ function stadiumRound() {
   const seats = [];
   const floor = { rows: 0, cols: 19, sx: 0.56, sz: 0.95, focus: [0, 0], catAt: row => (row < 6 ? 'vip' : 'plat') };
   for (const [sec, name, dir, rows, along] of [
-    ['FW', 'Floor West', [1, 0], 30, 'z'], ['FE', 'Floor East', [-1, 0], 30, 'z'],
-    ['FN', 'Floor North', [0, 1], 20, 'x'], ['FS', 'Floor South', [0, -1], 20, 'x'],
+    // Each block runs back from the stage to the edge of the field.
+    ['FW', 'Floor West', [1, 0], 40, 'z'], ['FE', 'Floor East', [-1, 0], 40, 'z'],
+    ['FN', 'Floor North', [0, 1], 22, 'x'], ['FS', 'Floor South', [0, -1], 22, 'x'],
   ]) {
     for (const [half, off] of [['A', -5.8], ['B', 5.8]]) {
       const x0 = along === 'z' ? -dir[0] * 12 : off, z0 = along === 'z' ? off : -dir[1] * 12;
@@ -392,7 +286,7 @@ function stadiumRound() {
     hero: { along: 49, look: [0, 13, 0], fov: 62 },
     seatStyle: 'shell',
     seatColor: '#b8162b',
-    occupancy: { vip: 0.7, plat: 0.6, cat1: 0.55, cat2: 0.5, cat3: 0.45 },
+    occupancy: { vip: 0.92, plat: 0.85, cat1: 0.55, cat2: 0.5, cat3: 0.45 },
     categories: [
       { id: 'vip', name: 'VIP Package', price: 4500000, color: '#f5c451' },
       { id: 'plat', name: 'Platinum', price: 3650000, color: '#ff7a6b' },
@@ -461,8 +355,10 @@ function stadiumTottenham() {
   };
 }
 
-const builders = { concert, cinema, combat, 'combat-studio': combatStudio, stadium, 'stadium-end': stadiumEnd, 'stadium-round': stadiumRound, 'stadium-tottenham': stadiumTottenham };
+const builders = { concert, cinema, combat, 'combat-studio': combatStudio, stadium, 'stadium-end': stadiumEnd, 'stadium-round': stadiumRound, 'stadium-tottenham': stadiumTottenham, ...REAL_BUILDERS };
 export const VENUE_KEYS = Object.keys(builders);
+// The real venues, each laid out for one show; the rest are the generic layouts the demos use.
+export const REAL_KEYS = Object.keys(REAL_BUILDERS);
 const cache = {};
 
 export function getVenue(key) {

@@ -10,6 +10,8 @@ import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometr
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { superPoint } from './layouts.js';
 import { IMAGES } from './media.js';
+import { themeOf } from './themes.js';
+import { MADYA, jisEnd } from './realvenues.js';
 
 // ------------------------------------------------------------------ helpers
 
@@ -85,6 +87,10 @@ export const mats = {
   matteBlack: () => new THREE.MeshStandardMaterial({ color: '#0d0d0f', roughness: 0.8 }),
   glass: () => new THREE.MeshStandardMaterial({ color: '#c9d4dc', transparent: true, opacity: 0.18, roughness: 0.05, metalness: 0.2, depthWrite: false }),
 };
+
+// Ground layers a few millimetres apart (grass, track, lines, the deck over the pitch) fight
+// over the same pixels from afar. Pushed back by k steps, the lower layer always loses.
+const below = (mat, k) => Object.assign(mat, { polygonOffset: true, polygonOffsetFactor: k, polygonOffsetUnits: k });
 
 // A vertical strip that follows a superellipse.
 export function ribbon({ rx, rz, p, y0, y1, from = 0, to = Math.PI * 2, segs = 180, cx = 0, cz = 0, uRepeat = 24 }) {
@@ -363,7 +369,7 @@ function curtain(width, height, folds = 14) {
 
 export function buildConcert(ctx, venue) {
   const brand = { wall: 'NADA SENJA', sub: 'LIVE · ARENA TOUR 2026', band: ['NADA SENJA LIVE', 'ARENA TOUR 2026', 'NUSANTARA ARENA', 'ENJOY THE SHOW'], ...venue.branding };
-  const { scene } = ctx;
+  const { scene } = ctx, theme = themeOf(venue);
   ctx.setAtmosphere({ house: '#3a3b40', live: '#050608', fogNear: [90, 50], fogFar: [220, 150], exposure: [1.0, 1.05] });
 
   const hemi = new THREE.HemisphereLight('#f3f1ec', '#3c3b38', 1);
@@ -441,7 +447,7 @@ export function buildConcert(ctx, venue) {
 
   // Video wall and IMAG screens with the show's poster, or the tour name.
   const art = screenArt(brand, venue);
-  const wallMatLed = screenMaterial({ a: '#0e1018', b: '#7a4a35', c: '#ffd9b0', tex: art(30 / 13), pixel: 120 });
+  const wallMatLed = screenMaterial({ ...theme.screen, tex: art(30 / 13), pixel: 120 });
   ctx.mood(wallMatLed.uniforms.uLevel, 'value', 0.7, 1.35);
   const wall = new THREE.Mesh(new THREE.PlaneGeometry(30, 13), wallMatLed);
   wall.position.set(0, 9.2, -46.6);
@@ -450,7 +456,7 @@ export function buildConcert(ctx, venue) {
   frame.position.set(0, 9.2, -46.9);
   scene.add(frame);
   for (const sx of [-1, 1]) {
-    const imag = new THREE.Mesh(new THREE.PlaneGeometry(9, 5.06), screenMaterial({ a: '#0e1018', b: '#7a4a35', c: '#ffd9b0', tex: art(9 / 5.06), pixel: 60 }));
+    const imag = new THREE.Mesh(new THREE.PlaneGeometry(9, 5.06), screenMaterial({ ...theme.screen, tex: art(9 / 5.06), pixel: 60 }));
     ctx.mood(imag.material.uniforms.uLevel, 'value', 0.7, 1.35);
     imag.position.set(sx * 24, 11, -38);
     imag.rotation.y = -sx * 0.32;
@@ -483,7 +489,7 @@ export function buildConcert(ctx, venue) {
     tower.position.set(sx * 18.8, (z === -36 ? 17.6 : 19) / 2, z);
     scene.add(tower);
   }
-  const beamColors = ['#fff4e0', '#ffd7a8', '#e8eeff'];
+  const beamColors = theme.beams;
   const beams = [];
   const headGeo = merge([box(0.45, 0.35, 0.45, 0, 0.15, 0), new THREE.CylinderGeometry(0.2, 0.24, 0.45, 12).translate(0, -0.2, 0)]);
   for (let i = 0; i < 12; i++) {
@@ -491,19 +497,19 @@ export function buildConcert(ctx, venue) {
     const head = new THREE.Mesh(headGeo, mats.matteBlack());
     head.position.set(x, 17.0, -36);
     scene.add(head);
-    const b = beam(beamColors[i % 3], 34, 2.6);
+    const b = beam(beamColors[i % beamColors.length], 34, 2.6);
     b.position.set(x, 16.7, -36);
     scene.add(b);
     ctx.mood(b.material.uniforms.uOpacity, 'value', 0.0, 0.32);
     beams.push(b);
   }
   // Real stage lighting.
-  const wash = new THREE.SpotLight('#ffe0bf', 1, 70, 0.55, 0.6, 1.2);
+  const wash = new THREE.SpotLight(theme.wash, 1, 70, 0.55, 0.6, 1.2);
   wash.position.set(0, 24, -20);
   wash.target.position.set(0, 2, -42);
   ctx.mood(wash, 'intensity', 0, 2600);
   scene.add(wash, wash.target);
-  const back1 = new THREE.PointLight('#ff9d5c', 1, 40, 1.5);
+  const back1 = new THREE.PointLight(theme.glow, 1, 40, 1.5);
   back1.position.set(0, 14, -44);
   ctx.mood(back1, 'intensity', 0, 260);
   scene.add(back1);
@@ -523,7 +529,7 @@ export function buildConcert(ctx, venue) {
   for (const [x, z] of [[-3.4, -1.9], [3.4, -1.9], [-3.4, 1.9], [3.4, 1.9]]) {
     const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 3.2, 6), mats.steel()); leg.position.set(x, 1.8, z); foh.add(leg);
   }
-  foh.position.set(0, 0, -4.5);
+  foh.position.set(0, 0, 15);   // behind the last floor row (layouts.js)
   foh.traverse(o => { o.castShadow = o.receiveShadow = true; });
   scene.add(foh);
 
@@ -861,19 +867,23 @@ export function buildStadium(ctx, venue) {
     scene.add(fill);
   }
 
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(1400, 1400), new THREE.MeshStandardMaterial({ color: show ? '#3a3a3c' : '#6c6b66', map: grime(), roughness: 1 }));
+  // The ground outside: well under the grass, track and deck, and behind them in depth too.
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(1400, 1400), below(new THREE.MeshStandardMaterial({ color: show ? '#3a3a3c' : '#6c6b66', map: grime(), roughness: 1 }), 8));
   ground.material.map = grime().clone(); ground.material.map.repeat.set(80, 80); ground.material.map.needsUpdate = true;
   ground.rotation.x = -Math.PI / 2;
-  ground.position.y = -0.03;
+  ground.position.y = -0.2;
   ground.receiveShadow = true;
   scene.add(ground);
-  const apron = new THREE.Mesh(new THREE.PlaneGeometry(122, 86), new THREE.MeshStandardMaterial({ color: show ? '#2c2d30' : '#3f7a3e', roughness: 1 }));
-  apron.rotation.x = -Math.PI / 2;
-  apron.receiveShadow = true;
-  scene.add(apron);
+  if (!venue.arch) {
+    const apron = new THREE.Mesh(new THREE.PlaneGeometry(122, 86), new THREE.MeshStandardMaterial({ color: show ? '#2c2d30' : '#3f7a3e', roughness: 1 }));
+    apron.rotation.x = -Math.PI / 2;
+    apron.receiveShadow = true;
+    scene.add(apron);
+  }
 
   const tick = show ? stadiumShow(ctx, venue, brand) : football(ctx, brand);
-  (venue.tiers ? threeTierBowl : standsAndRoof)(ctx, venue, brand, show);
+  const arch = { madya: madyaStadium, jis: jisStadium }[venue.arch] || (venue.tiers ? threeTierBowl : standsAndRoof);
+  arch(ctx, venue, brand, show);
   ctx.onTick(tick);
 }
 
@@ -997,11 +1007,15 @@ function football(ctx, brand) {
 // The stadium's name for its LED boards: the real venue's, or the demo ground's.
 const groundName = venue => (venue.place?.name || 'Gelora Samudra').toUpperCase();
 
-// LED boards round the pitch. Returns their texture, which the caller scrolls.
-function pitchBoards(scene, words, accent) {
+// LED boards round the pitch, or along the part of it `range` gives (from, to in radians).
+// They face the pitch; from the nearest stand one sees their plain black backs, not the
+// words the wrong way round. Returns their texture, which the caller scrolls.
+function pitchBoards(scene, words, accent, range = {}) {
   const tex = bandTexture(words, { bg: '#0a0a0c', fg: '#ffffff', accent });
   tex.repeat.set(10, 1);
-  scene.add(new THREE.Mesh(ribbon({ rx: 57.5, rz: 39.5, p: 0.42, y0: 0, y1: 0.95, uRepeat: 1 }), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false, side: THREE.DoubleSide })));
+  const geo = ribbon({ rx: 57.5, rz: 39.5, p: 0.42, y0: 0, y1: 0.95, uRepeat: 1, ...range });
+  scene.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: tex, toneMapped: false })));
+  scene.add(new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: '#0d0d0f', roughness: 0.8, side: THREE.BackSide })));
   return tex;
 }
 
@@ -1100,6 +1114,318 @@ function standsAndRoof(ctx, venue, brand, show) {
   ctx.onTick((t, dt) => {
     adTex.offset.x = (adTex.offset.x + dt * 0.02) % 1;
     fasciaTex.offset.x = (fasciaTex.offset.x - dt * 0.006) % 1;
+  });
+}
+
+// ------------------------------------------------------------------ Stadion Madya GBK
+
+// A running track's outline at radius r (two straights and two bends), as points (x, z)
+// going round once.
+function trackLoop(half, r, segs) {
+  const pts = [];
+  for (let i = 0; i <= segs; i++) { const a = -Math.PI / 2 + (Math.PI * i) / segs; pts.push([half + r * Math.cos(a), r * Math.sin(a)]); }
+  for (let i = 0; i <= segs; i++) { const a = Math.PI / 2 + (Math.PI * i) / segs; pts.push([-half + r * Math.cos(a), r * Math.sin(a)]); }
+  return pts;
+}
+// The flat band between two track outlines, facing up.
+function trackRing(half, r0, r1, segs = 48) {
+  const a = trackLoop(half, r0, segs), b = trackLoop(half, r1, segs), n = a.length, pos = [], idx = [];
+  for (let i = 0; i < n; i++) pos.push(a[i][0], 0, a[i][1], b[i][0], 0, b[i][1]);
+  for (let i = 0; i < n; i++) { const k = i * 2, l = ((i + 1) % n) * 2; idx.push(k, l, k + 1, k + 1, l, l + 1); }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return g;
+}
+// The ground inside a track outline, facing up.
+function trackDisc(half, r, segs = 48) {
+  const g = new THREE.ShapeGeometry(new THREE.Shape(trackLoop(half, r, segs).map(([x, z]) => new THREE.Vector2(x, -z))));
+  g.rotateX(-Math.PI / 2);
+  return g;
+}
+
+// A solid of constant section along x, from x0 to x1: `pts` are [z, y] corners in order.
+function prismX(pts, x0, x1) {
+  const shape = new THREE.Shape(pts.map(([z, y]) => new THREE.Vector2(-z, y)));
+  const g = new THREE.ExtrudeGeometry(shape, { depth: x1 - x0, bevelEnabled: false });
+  g.rotateY(Math.PI / 2);
+  g.translate(x0, 0, 0);
+  return g;
+}
+
+// A floodlight tower: a lattice mast and a head of lamps turned to the field.
+function floodTower(scene, x, z, h, look = [0, 0, 0]) {
+  const mast = new THREE.Mesh(trussGeometry(h, 1.1), mats.steel());
+  mast.rotation.z = Math.PI / 2;
+  mast.position.set(x, h / 2, z);
+  scene.add(mast);
+  const head = new THREE.Group();
+  head.add(new THREE.Mesh(new THREE.BoxGeometry(9, 6, 1), mats.blackMetal()));
+  const lamps = new THREE.Mesh(new THREE.PlaneGeometry(8.6, 5.6), new THREE.MeshBasicMaterial({ map: lampGridTexture(), toneMapped: false }));
+  lamps.position.z = 0.52;
+  head.add(lamps);
+  head.position.set(x, h + 2, z);
+  head.lookAt(...look);
+  scene.add(head);
+  return [mast, head];
+}
+
+// Stadion Madya: the red track and its lane lines round the field, the two grandstands on
+// the straights (a stepped concrete raker, a back wall, and a flat roof hung from a row of
+// raked steel masts), the covered walkway round the north bend that joins them, and four
+// floodlight towers. https://en.wikipedia.org/wiki/Gelora_Bung_Karno_Madya_Stadium
+function madyaStadium(ctx, venue, brand, show) {
+  const { scene } = ctx, M = MADYA, half = M.straight / 2;
+  const outer = M.bend + M.lanes * M.lane;
+  const add = (geo, mat) => { const m = new THREE.Mesh(geo, mat); scene.add(m); return m; };
+
+  // Track, lane lines, the infield and the apron round it.
+  add(trackRing(half, outer, outer + 6.5), below(new THREE.MeshStandardMaterial({ color: show ? '#4a4b4f' : '#8d8c86', map: grime(), roughness: 1 }), 4));
+  add(trackRing(half, M.bend, outer), below(new THREE.MeshStandardMaterial({ color: '#b04a35', roughness: 0.92 }), 3)).position.y = 0.01;
+  const lines = [];
+  for (let k = 0; k <= M.lanes; k++) {
+    const r = M.bend + k * M.lane;
+    lines.push(trackRing(half, r - 0.03, r + 0.03, 32));
+  }
+  add(mergeGeometries(lines), below(new THREE.MeshStandardMaterial({ color: '#f1efe9', roughness: 0.9 }), 2)).position.y = 0.02;
+  add(trackDisc(half, M.bend), below(new THREE.MeshStandardMaterial({ color: '#4d7f3a', roughness: 1 }), 4)).position.y = 0.005;
+
+  // The grandstands. Rows run from the front row back; the raker sits just under the seats.
+  const concrete = new THREE.MeshStandardMaterial({ color: '#b3b2ac', map: grime(), roughness: 0.95 });
+  const white = new THREE.MeshStandardMaterial({ color: '#e8e9eb', roughness: 0.55, metalness: 0.15, side: THREE.DoubleSide });
+  const under = new THREE.MeshStandardMaterial({ color: '#5d6066', roughness: 0.8, side: THREE.DoubleSide });
+  const len = M.blocks * (M.blockSeats * M.spacing + M.aisle) + 3, x0 = -len / 2, x1 = len / 2;
+  const front = M.standFront - M.rowDepth / 2, back = M.standFront + (M.rows - 0.5) * M.rowDepth;
+  const top = M.baseY + (M.rows - 1) * M.rise;
+  const roofs = [];
+  for (const sz of [1, -1]) {
+    const z = v => sz * v;
+    const raker = [[front - 0.3, 0], [front - 0.3, 1.25], [front, M.baseY - 0.42], [back, top - 0.42], [back + 0.6, top + 1.1], [back + 0.6, 0]];
+    // Solid, and casting its shadow: the seats' own shadows would show through it.
+    add(prismX(sz > 0 ? raker : raker.map(([a, b]) => [-a, b]).reverse(), x0, x1), concrete).castShadow = true;
+    // Back wall with its windows, and the concourse block under the stand.
+    add(box(len, 3.2, 0.4, 0, top + 2.6, z(back + 0.8)), white);
+    add(box(len, top - 0.4, 6, 0, (top - 0.4) / 2, z(back + 3.6)), under).castShadow = true;
+    // The roof: a flat plate from behind the back wall to just past the front row, hung
+    // from raked masts along the back.
+    const roofBack = back + 4, roofFront = front - 2.5, yBack = top + 9.5, yFront = top + 8.2;
+    const plate = new THREE.Mesh(new THREE.BoxGeometry(len + 4, 0.35, roofBack - roofFront), white);
+    plate.position.set(0, (yBack + yFront) / 2, z((roofBack + roofFront) / 2));
+    plate.rotation.x = sz * Math.atan2(yBack - yFront, roofBack - roofFront);
+    plate.castShadow = true;
+    scene.add(plate);
+    const masts = [], ties = [];
+    for (let i = 0; i <= 15; i++) {
+      const x = x0 - 1 + i * (len + 2) / 15;
+      masts.push(box(0.5, yBack + 6, 0.5, x, (yBack + 6) / 2, z(roofBack - 0.6)));
+      // A tie from the mast head down to the roof's front edge.
+      const a = new THREE.Vector3(x, yBack + 6, z(roofBack - 0.6)), b = new THREE.Vector3(x, yFront + 0.3, z(roofFront + 0.6));
+      const g = new THREE.BoxGeometry(0.22, 0.22, a.distanceTo(b));
+      const o = new THREE.Object3D();
+      o.position.copy(a).add(b).multiplyScalar(0.5);
+      o.lookAt(b);
+      o.updateMatrix();
+      g.applyMatrix4(o.matrix);
+      ties.push(g);
+    }
+    const steel = add(mergeGeometries([...masts, ...ties]), mats.steel());
+    roofs.push(plate, steel);
+  }
+
+  // The covered walkway round the north bend, joining the two stands.
+  const walkR = outer + 9, bend = { from: -Math.PI / 2, to: Math.PI / 2 };
+  const arcGeo = (r, h, y) => {
+    const g = new THREE.CylinderGeometry(r, r, h, 48, 1, true, Math.PI / 2 + bend.from, bend.to - bend.from);
+    g.translate(half, y, 0);
+    return g;
+  };
+  add(arcGeo(walkR + 4, 4.2, 2.1), white);
+  add(arcGeo(walkR, 1.1, 0.55), concrete);
+  const walkRoof = new THREE.RingGeometry(walkR - 0.5, walkR + 4.4, 48, 1, bend.from, bend.to - bend.from);
+  walkRoof.rotateX(-Math.PI / 2);
+  walkRoof.translate(half, 4.3, 0);
+  roofs.push(add(walkRoof, white));
+
+  // Floodlight towers by the four corners.
+  for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+    roofs.push(...floodTower(scene, sx * (half + 26), sz * (back + 9), 44, [sx * 12, 0, sz * 6]));
+  }
+
+  // LED boards on the fronts of the stands: the show's name, or the stadium's.
+  const words = show ? brand.band : [groundName(venue), 'GELORA BUNG KARNO', 'JAKARTA'];
+  const tex = bandTexture(words, { bg: '#0a0a0c', fg: '#ffffff', accent: themeOf(venue).band });
+  tex.repeat.set(5, 1);
+  for (const sz of [1, -1]) {
+    const board = add(new THREE.PlaneGeometry(len - 4, 0.9), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }));
+    board.position.set(0, 0.75, sz * (front - 0.33));
+    board.rotation.y = sz > 0 ? Math.PI : 0;   // facing the field
+  }
+  roofs.forEach(m => ctx.cutaway(m));
+  ctx.onTick((t, dt) => { tex.offset.x = (tex.offset.x + dt * 0.02) % 1; });
+}
+
+// ------------------------------------------------------------------ Jakarta International Stadium
+
+// A flat superellipse with rz = rx - 18, laid on the ground.
+function superDisc(rx, p, segs = 180) {
+  const pts = [];
+  for (let i = 0; i < segs; i++) {
+    const [x, z] = superPoint((i / segs) * Math.PI * 2, rx, rx - 18, p);
+    pts.push(new THREE.Vector2(x, -z));
+  }
+  const g = new THREE.ShapeGeometry(new THREE.Shape(pts));
+  g.rotateX(-Math.PI / 2);
+  return g;
+}
+
+// A round bar from a to b.
+function rod(a, b, r) {
+  const g = new THREE.CylinderGeometry(r, r, a.distanceTo(b), 6, 1, true);
+  g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize()));
+  g.translate((a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2);
+  return g;
+}
+
+// The height of JIS's roof trusses along x: an arch from the two ends up to the middle.
+const archY = (x, span, yEnd, yMid) => yEnd + (yMid - yEnd) * (1 - (x / span) ** 2);
+
+// One long roof truss, arched along x at z: two planes of chords, posts and diagonals,
+// tied across.
+function roofTruss(z, span, yEnd, yMid, depth = 5, width = 3.2) {
+  const parts = [], n = 26;
+  const node = (i, up, side) => {
+    const x = -span + (2 * span * i) / n;
+    return new THREE.Vector3(x, archY(x, span, yEnd, yMid) + (up ? depth : 0), z + side * width / 2);
+  };
+  for (const side of [-1, 1]) {
+    for (let i = 0; i < n; i++) {
+      parts.push(rod(node(i, 0, side), node(i + 1, 0, side), 0.55), rod(node(i, 1, side), node(i + 1, 1, side), 0.55));
+      parts.push(rod(node(i, 0, side), node(i, 1, side), 0.22));
+      parts.push(i % 2 ? rod(node(i, 1, side), node(i + 1, 0, side), 0.2) : rod(node(i, 0, side), node(i + 1, 1, side), 0.2));
+    }
+    parts.push(rod(node(n, 0, side), node(n, 1, side), 0.22));
+  }
+  for (let i = 0; i <= n; i += 2) parts.push(rod(node(i, 0, -1), node(i, 0, 1), 0.18), rod(node(i, 1, -1), node(i, 1, 1), 0.18));
+  return merge(parts);
+}
+
+// The skin: white fins over dark glass, with an orange line round the stadium.
+function finTexture() {
+  return canvasTex(256, 256, (g, w, h) => {
+    g.fillStyle = '#1a1f26'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 8; i++) { g.fillStyle = i % 2 ? '#e2e5e8' : '#f0f1f3'; g.fillRect(i * 32 + 5, 0, 22, h); }
+    g.fillStyle = '#ef6a2a'; g.fillRect(0, Math.round(h * 0.6), w, 5);
+  }, { repeat: [1, 1] });
+}
+
+// Jakarta International Stadium: three tiers all round a football pitch, the concourses and
+// the glass boxes between them, a white skin of fins, and a roof over every seat round an
+// opening the size of the pitch. Two long arched trusses span the opening from end to end:
+// the roof that closes it slides along them, and stands open here, parked over the ends.
+// At a concert the stands behind the stage are closed under black covers. `venue.tiers` is
+// JIS (realvenues.js), the same numbers the seats are laid out with.
+function jisStadium(ctx, venue, brand, show) {
+  const { scene } = ctx, T = venue.tiers, p = T.p, theme = themeOf(venue);
+  const tiers = [T.lower, T.middle, T.upper], [lower, middle, upper] = tiers;
+  const front = t => t.rx0 - t.gap / 2, back = t => t.rx0 + (t.rows - 0.5) * t.gap, top = t => t.baseY + (t.rows - 1) * t.rise;
+  const add = (geo, mat) => { const m = new THREE.Mesh(geo, mat); scene.add(m); return m; };
+  const ring = r => ({ rx: r, rz: r - 18, p });
+  const band = (r, y0, y1, range, mat, uRepeat) => add(ribbon({ ...ring(r), y0, y1, ...range, ...(uRepeat ? { uRepeat } : {}) }), mat);
+  const slab = (r0, y0, r1, y1, range, mat) => add(loft({ ...ring(r0), y: y0, ...range }, { ...ring(r1), y: y1 }), mat);
+
+  const concrete = new THREE.MeshStandardMaterial({ color: '#aaa9a4', map: grime(), roughness: 0.95, side: THREE.DoubleSide });
+  const white = new THREE.MeshStandardMaterial({ color: '#eceef0', roughness: 0.5, metalness: 0.15, side: THREE.DoubleSide });
+  const cover = new THREE.MeshStandardMaterial({ color: '#121315', roughness: 0.92, side: THREE.DoubleSide });
+  const boxGlass = new THREE.MeshStandardMaterial({ color: '#1d242d', metalness: 0.4, roughness: 0.12, transparent: true, opacity: 0.88, depthWrite: false, side: THREE.DoubleSide });
+
+  // Grass round the pitch, the pitch wall and the LED boards (not behind an end stage).
+  add(superDisc(front(lower) - 0.2, p), below(new THREE.MeshStandardMaterial({ color: show ? '#2e4a2b' : '#3f7a3e', roughness: 1 }), 4)).position.y = 0.004;
+  band(front(lower) - 0.2, 0, lower.baseY - 0.1, {}, concrete);
+  const words = show ? brand.band : [groundName(venue), 'JAKARTA', 'WELCOME'];
+  const adTex = pitchBoards(scene, words, theme.band, show === 'end' ? { from: -Math.PI * 5 / 6, to: Math.PI * 5 / 6 } : {});
+
+  // Each tier: the raker its treads stand on, and behind it a wall down to the floor below.
+  const under = [0, top(lower), top(middle)];
+  tiers.forEach((t, i) => {
+    // Casting its shadow, so the seats' own shadows do not show through it.
+    slab(front(t), t.baseY - 0.9, back(t), top(t) - 0.9, {}, concrete).castShadow = true;
+    if (i < 2) band(back(t) + 0.05, under[i], top(t) + 1.1, {}, concrete).castShadow = true;
+  });
+  // The concourse between the lower and middle tiers, and the middle tier's front.
+  slab(back(lower), top(lower), front(middle), top(lower), {}, concrete);
+  band(front(middle) - 0.05, top(lower), middle.baseY + 0.95, {}, white);
+  // The boxes between the middle and upper tiers, and the upper tier's front.
+  const glassR = front(upper) - 0.35;
+  slab(back(middle), top(middle), glassR, top(middle), {}, concrete);
+  band(glassR, top(middle), upper.baseY - 1.4, {}, boxGlass);
+  band(glassR, upper.baseY - 1.4, upper.baseY + 0.95, {}, white);
+  // LED ribbons along the two tier fronts.
+  const ribbonTex = bandTexture(words, { bg: '#0b0b0d', fg: '#ffffff', accent: theme.band });
+  ribbonTex.repeat.set(9, 1);
+  const led = new THREE.MeshBasicMaterial({ map: ribbonTex, toneMapped: false });   // facing the pitch
+  band(front(middle) - 0.12, middle.baseY + 0.15, middle.baseY + 0.9, {}, led, 1);
+  band(glassR - 0.07, upper.baseY + 0.12, upper.baseY + 0.88, {}, led, 1);
+
+  // Behind an end stage the stands are closed: black covers over the rows nobody sells.
+  if (show === 'end') {
+    for (const t of tiers) {
+      const e = jisEnd(t);
+      slab(front(t), t.baseY + 0.05, back(t), top(t) + 0.05, { from: e, to: Math.PI * 2 - e }, cover);
+    }
+  }
+
+  // Back wall, skin and roof: hidden on the map so the top rows stay in view.
+  const eaves = 33.5, inner = 62, innerY = 42, outer = back(upper) + 5;
+  const skin = new THREE.MeshStandardMaterial({ map: finTexture(), roughness: 0.6, metalness: 0.1, side: THREE.DoubleSide });
+  const roofMat = new THREE.MeshStandardMaterial({ color: '#f2f3f5', roughness: 0.5, metalness: 0.2, side: THREE.DoubleSide });
+  const cut = [
+    band(back(upper) + 0.1, top(upper) - 0.9, eaves, {}, concrete),
+    band(outer, 0, eaves, {}, skin, 150),
+    slab(inner, innerY, outer + 0.6, eaves, {}, roofMat),
+  ];
+  cut[0].castShadow = cut[2].castShadow = true;
+  // Floodlights along the roof's inner edge, turned to the pitch.
+  const lampPts = [];
+  for (let i = 0; i < 64; i++) {
+    const [x, z] = superPoint((i / 64) * Math.PI * 2, inner + 0.6, inner - 17.4, p);
+    lampPts.push([x, innerY - 0.6, z]);
+  }
+  const lamps = instanceAlong(new THREE.PlaneGeometry(4.2, 1.5), new THREE.MeshBasicMaterial({ map: lampGridTexture(), toneMapped: false, side: THREE.DoubleSide }), lampPts, { look: new THREE.Vector3(0, 0, 0) });
+  scene.add(lamps);
+  // The two long trusses over the opening, and the roof that closes it, open: its panels
+  // (translucent ETFE) parked over the two ends.
+  const span = outer + 2, yEnd = eaves + 2, yMid = innerY + 10, tz = inner - 18;
+  const trusses = add(mergeGeometries([roofTruss(tz, span, yEnd, yMid), roofTruss(-tz, span, yEnd, yMid)]), new THREE.MeshStandardMaterial({ color: '#f4f5f7', roughness: 0.45, metalness: 0.35 }));
+  trusses.castShadow = true;
+  const etfe = new THREE.MeshStandardMaterial({ color: '#eef3f7', roughness: 0.3, transparent: true, opacity: 0.42, depthWrite: false, side: THREE.DoubleSide });
+  const panels = [];
+  for (const sx of [-1, 1]) {
+    const x0 = inner - 4, x1 = span - 4;
+    const g = new THREE.PlaneGeometry(x1 - x0, tz * 2 - 3, 12, 1);
+    g.rotateX(-Math.PI / 2);
+    g.translate(sx * (x0 + x1) / 2, 0, 0);
+    const pos = g.attributes.position;
+    for (let k = 0; k < pos.count; k++) pos.setY(k, archY(pos.getX(k), span, yEnd, yMid) + 0.4);
+    g.computeVertexNormals();
+    panels.push(add(g, etfe));
+  }
+  [...cut, lamps, trusses, ...panels].forEach(m => ctx.cutaway(m));
+
+  // A screen over the back of the far end, under the roof: the show's poster, or the score.
+  const art = show ? screenArt(brand, venue)(22 / 6.2) : scoreTexture(brand);
+  const sm = screenMaterial({ ...(show ? theme.screen : { a: '#06080d', b: '#14213d', c: '#8fb3ff' }), tex: art, pixel: 80 });
+  const scr = add(new THREE.PlaneGeometry(22, 6.2), sm);
+  scr.position.set(back(upper) - 0.2, top(upper) + 4, 0);
+  scr.rotation.y = -Math.PI / 2;
+  const scrBack = add(box(22.4, 6.6, 0.5, 0, 0, 0), mats.matteBlack());
+  scrBack.position.set(back(upper) + 0.1, top(upper) + 4, 0);
+  scrBack.rotation.y = -Math.PI / 2;
+
+  ctx.onTick((t, dt) => {
+    sm.uniforms.uTime.value = t;
+    adTex.offset.x = (adTex.offset.x + dt * 0.02) % 1;
+    ribbonTex.offset.x = (ribbonTex.offset.x - dt * 0.01) % 1;
   });
 }
 
@@ -1220,25 +1546,51 @@ function seamWall(t, r0, r1, h, p) {
 
 // Covered pitch and the stage for a stadium concert. Returns the per-frame animation.
 function stadiumShow(ctx, venue, brand) {
-  const { scene } = ctx;
+  const { scene } = ctx, theme = themeOf(venue), stageX = venue.stageX ?? -40;
   const deckMat = new THREE.MeshStandardMaterial({ color: '#3b3c40', map: grime(), roughness: 0.75 });
   deckMat.map = grime().clone(); deckMat.map.repeat.set(20, 14); deckMat.map.needsUpdate = true;
-  const cover = new THREE.Mesh(new THREE.PlaneGeometry(105, 68), deckMat);
+  // The deck over the grass: the pitch, or at a real venue the standing floor and 2 m round it.
+  let [cx0, cx1, cz] = [-52.5, 52.5, 34];
+  const floor = venue.arch && venue.seats.filter(s => s.standing);
+  if (floor?.length) {
+    cx0 = Math.min(...floor.map(s => s.x)) - 2; cx1 = Math.max(...floor.map(s => s.x)) + 2;
+    cz = Math.max(...floor.map(s => Math.abs(s.z))) + 2;
+  }
+  const cover = new THREE.Mesh(new THREE.PlaneGeometry(cx1 - cx0, cz * 2), deckMat);
   cover.rotation.x = -Math.PI / 2;
-  cover.position.y = 0.02;
+  cover.position.set((cx0 + cx1) / 2, 0.02, 0);
   cover.receiveShadow = true;
   scene.add(cover);
+  // On the map, each standing floor in its category's colour, like the stands (zoneColors).
+  // From a seat the scene hides them: on the night the floor is the plain deck (scene3d.js).
+  if (venue.zoneColors && floor?.length) {
+    const box = new Map();
+    for (const s of floor) {
+      const b = box.get(s.sec) || { cat: s.cat, x0: Infinity, x1: -Infinity, z0: Infinity, z1: -Infinity };
+      b.x0 = Math.min(b.x0, s.x); b.x1 = Math.max(b.x1, s.x); b.z0 = Math.min(b.z0, s.z); b.z1 = Math.max(b.z1, s.z);
+      box.set(s.sec, b);
+    }
+    ctx.zoneFloors = [...box.values()].map(b => {
+      const mat = below(new THREE.MeshStandardMaterial({ color: venue.catById[b.cat]?.color || '#888888', roughness: 0.85, transparent: true, opacity: 0.5, depthWrite: false }), -2);
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(b.x1 - b.x0 + 0.8, b.z1 - b.z0 + 0.8), mat);
+      m.rotation.x = -Math.PI / 2;
+      m.position.set((b.x0 + b.x1) / 2, 0.04, (b.z0 + b.z1) / 2);
+      m.userData.cat = b.cat;
+      scene.add(m);
+      return m;
+    });
+  }
   const art = screenArt(brand, venue);
   const screens = [];
   const screen = (w, h, pixel) => {
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), screenMaterial({ a: '#0e1018', b: '#7a4a35', c: '#ffd9b0', tex: art(w / h), pixel }));
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), screenMaterial({ ...theme.screen, tex: art(w / h), pixel }));
     ctx.mood(m.material.uniforms.uLevel, 'value', 0.7, 1.35);
     screens.push(m.material);
     return m;
   };
   const beams = [];
   const beamAt = (parent, x, y, z, i) => {
-    const b = beam(['#fff4e0', '#ffd7a8', '#e8eeff'][i % 3], 46, 3.2);
+    const b = beam(theme.beams[i % theme.beams.length], 46, 3.2);
     b.position.set(x, y, z);
     ctx.mood(b.material.uniforms.uOpacity, 'value', 0.0, 0.3);
     parent.add(b);
@@ -1296,22 +1648,54 @@ function stadiumShow(ctx, venue, brand) {
       g.add(span);
     }
     for (let i = 0; i < 16; i++) beamAt(g, -22.5 + i * 3, 25, -1, i);
-    const wash = new THREE.SpotLight('#ffe0bf', 1, 90, 0.6, 0.6, 1.2);
+    const wash = new THREE.SpotLight(theme.wash, 1, 90, 0.6, 0.6, 1.2);
     wash.position.set(0, 30, 22);
     wash.target.position.set(0, 2, -8);
     ctx.mood(wash, 'intensity', 0, 4200);
     g.add(wash, wash.target);
-    const backLight = new THREE.PointLight('#ff9d5c', 1, 60, 1.5);
+    const backLight = new THREE.PointLight(theme.glow, 1, 60, 1.5);
     backLight.position.set(0, 16, -12);
     ctx.mood(backLight, 'intensity', 0, 420);
     g.add(backLight);
     g.rotation.y = Math.PI / 2;
-    g.position.set(-40, 0, 0);
+    g.position.set(stageX, 0, 0);
     scene.add(g);
     const barrier = new THREE.Mesh(crowdBarrier(56), mats.steel());
     barrier.rotation.y = Math.PI / 2;
-    barrier.position.set(-38.4, 0, 0);
+    barrier.position.set(stageX + 1.6, 0, 0);
     scene.add(barrier);
+    // Delay towers halfway down the field, either side of the crowd, and the sound desk.
+    if (venue.arch) {
+      for (const sz of [-1, 1]) {
+        const tower = new THREE.Mesh(trussGeometry(16, 0.5), steel);
+        tower.rotation.z = Math.PI / 2;
+        tower.position.set(stageX + 52, 8, sz * 31.5);
+        scene.add(tower);
+        for (let k = 0; k < 8; k++) {
+          const cab = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.42, 0.9), mats.matteBlack());
+          cab.position.set(stageX + 51.2, 15 - k * 0.44, sz * 31.5);
+          cab.rotation.y = Math.PI / 2;
+          scene.add(cab);
+        }
+      }
+    }
+    // A pen in front of the stage (VVIP), railed off on its other three sides.
+    if (venue.pen) {
+      const { x, halfW, halfD } = venue.pen;
+      const rail = (len, px, pz, ry) => { const b = new THREE.Mesh(crowdBarrier(len), steel); b.position.set(px, 0, pz); b.rotation.y = ry; scene.add(b); };
+      rail(halfW * 2, x + halfD, 0, Math.PI / 2);
+      for (const sz of [-1, 1]) rail(halfD * 2, x, sz * halfW, 0);
+    }
+    if (venue.foh) {
+      const [fx, fz] = venue.foh;
+      const desk = new THREE.Group();
+      desk.add(new THREE.Mesh(box(5.2, 1.0, 7.2, 0, 0.5, 0), mats.darkConcrete()));
+      desk.add(new THREE.Mesh(box(5.6, 0.12, 7.6, 0, 3.6, 0), mats.matteBlack()));
+      for (const [cx, cz] of [[-2.6, -3.6], [2.6, -3.6], [-2.6, 3.6], [2.6, 3.6]]) desk.add(new THREE.Mesh(box(0.12, 2.6, 0.12, cx, 2.3, cz), steel));
+      desk.add(new THREE.Mesh(box(1.4, 0.5, 6, 0.6, 1.25, 0), mats.blackMetal()));
+      desk.position.set(fx, 0, fz);
+      scene.add(desk);
+    }
   } else {
     // 360-degree centre stage: round deck, a four-sided screen cube and a ring of lights above.
     const deck = new THREE.Mesh(new THREE.CylinderGeometry(9.5, 9.8, 2, 48), new THREE.MeshStandardMaterial({ color: '#0c0c0e', roughness: 0.3 }));
@@ -1357,12 +1741,12 @@ function stadiumShow(ctx, venue, brand) {
       barrier.position.set(x, 0, z);
       scene.add(barrier);
     }
-    const wash = new THREE.SpotLight('#ffe0bf', 1, 90, 0.5, 0.6, 1.2);
+    const wash = new THREE.SpotLight(theme.wash, 1, 90, 0.5, 0.6, 1.2);
     wash.position.set(0, 46, 0);
     wash.target.position.set(0, 2, 0);
     ctx.mood(wash, 'intensity', 0, 4200);
     scene.add(wash, wash.target);
-    const glow = new THREE.PointLight('#ff9d5c', 1, 50, 1.5);
+    const glow = new THREE.PointLight(theme.glow, 1, 50, 1.5);
     glow.position.set(0, 18, 0);
     ctx.mood(glow, 'intensity', 0, 380);
     scene.add(glow);

@@ -35,6 +35,31 @@ const easeOut = t => 1 - (1 - t) ** 3;
 const wrapAngle = a => Math.atan2(Math.sin(a), Math.cos(a));
 const BUILDERS = { concert: buildConcert, cinema: buildCinema, combat: buildCombat, stadium: buildStadium };
 
+// The colour of a venue's seats as they are on the night. `seatColor` is one colour, or
+// { bands, mix, speckle }: `bands` runs from the lowest rows to the highest, dithered where two
+// meet, and a band given as a list is a mosaic of its colours; `mix` scatters its colours at
+// random; `speckle` = [colour, share] dots another colour through either.
+function seatLook(venue, rnd) {
+  const spec = venue.seatColor;
+  if (typeof spec === 'string' || !spec) {
+    const one = new THREE.Color(spec || '#8e1626');
+    return () => one;
+  }
+  const pick = list => list[Math.floor(rnd() * list.length)];
+  const cols = list => [].concat(list).map(x => new THREE.Color(x));
+  const bands = (spec.bands || []).map(cols), mix = cols(spec.mix || []);
+  const [dot, share = 0] = spec.speckle || [], dotCol = dot ? new THREE.Color(dot) : null;
+  let y0 = Infinity, y1 = -Infinity;
+  for (const s of venue.seats) if (!s.standing) { y0 = Math.min(y0, s.y); y1 = Math.max(y1, s.y); }
+  const span = Math.max(1e-3, y1 - y0);
+  return s => {
+    if (dotCol && rnd() < share) return dotCol;
+    if (!bands.length) return pick(mix);
+    const t = ((s.y - y0) / span) * bands.length + (rnd() - 0.5) * 0.5;
+    return pick(bands[Math.min(bands.length - 1, Math.max(0, Math.floor(t)))]);
+  };
+}
+
 export class SeatScene {
   // maxLevel and fps keep a decorative scene (the home page hero) cheap: it never asks for
   // more than that quality level or frame rate, whatever the device could do. `drift`: how
@@ -173,6 +198,7 @@ export class SeatScene {
     this.moodValue = 0;
     this.moodTarget = 0;
     this.realColors = false;
+    this.zoneFloors = null;
     this._savedCrowd = null;
     // A venue drawn from a seller's plan shows each free seat in its category's colour there.
     this.zones = venue.zoneColors ? Object.fromEntries(venue.categories.map(c => [c.id, new THREE.Color(c.color)])) : null;
@@ -478,9 +504,9 @@ export class SeatScene {
     this.crowd.forEach(mesh => { this.scene.add(mesh); mesh.visible = this.showCrowd && !mesh.userData.liveOnly; });
 
     this.realBase = new Float32Array(n * 3);
-    const base = new THREE.Color(venue.seatColor);
+    const colourOf = seatLook(venue, rnd);
     for (let i = 0; i < n; i++) {
-      c.copy(base).offsetHSL(0, 0, (rnd() - 0.5) * 0.03);
+      c.copy(colourOf(seats[i])).offsetHSL(0, 0, (rnd() - 0.5) * 0.03);
       this.realBase.set([c.r, c.g, c.b], i * 3);
     }
     this.refreshColors();
@@ -522,6 +548,12 @@ export class SeatScene {
   }
 
   refreshColors() {
+    // Standing floors drawn in their category's colour: hidden from a seat, faded when the
+    // map shows another category.
+    this.zoneFloors?.forEach(m => {
+      m.visible = !this.realColors;
+      m.material.opacity = this.filterCat && this.filterCat !== m.userData.cat ? 0.1 : 0.5;
+    });
     if (!this.seatMesh) return;
     const c = new THREE.Color();
     for (let i = 0; i < this.venue.seats.length; i++) this.seatMesh.setColorAt(i, this.seatColor(i, c));
@@ -837,10 +869,11 @@ export class SeatScene {
 
   // The middle step of a fan's seat tour: the camera moves from the overview to look down on
   // one category, from the side of the venue the category is on, close enough to tell its
-  // rows apart. `seat`, when given, keeps that seat in the middle of the picture.
-  frameCategory(cat, { seat = null, dur = 1.8 } = {}) {
+  // rows apart. `seat`, when given, keeps that seat in the middle of the picture; `sec`
+  // frames only that block of it, for a fan pointing at their own seat.
+  frameCategory(cat, { seat = null, sec = null, dur = 1.8 } = {}) {
     if (!this.scene) return;
-    const list = this.venue.seats.filter(s => s.cat === cat);
+    const list = this.venue.seats.filter(s => s.cat === cat && (!sec || s.sec === sec));
     if (!list.length) return;
     if (this.mode !== 'overview') return;
     const c = new THREE.Vector3();
@@ -848,7 +881,10 @@ export class SeatScene {
     c.divideScalar(list.length);
     let spread = 0;
     for (const s of list) spread = Math.max(spread, Math.hypot(s.x - c.x, s.z - c.z));
-    const target = (seat ? new THREE.Vector3(seat.x, seat.y, seat.z).lerp(c, 0.35) : c.clone()).lerp(new THREE.Vector3(this.focus.x, c.y, this.focus.z), 0.12);
+    // A whole category leans towards the stage; one block sits in the middle, so a tap in the
+    // middle of the picture lands on it.
+    const target = sec ? c.clone()
+      : (seat ? new THREE.Vector3(seat.x, seat.y, seat.z).lerp(c, 0.35) : c.clone()).lerp(new THREE.Vector3(this.focus.x, c.y, this.focus.z), 0.12);
     // From the stage's side of the category, outward and up, so the camera looks across it
     // towards the stage the way its seats face.
     const out = new THREE.Vector3(c.x - this.focus.x, 0, c.z - this.focus.z);
@@ -856,7 +892,8 @@ export class SeatScene {
     out.normalize();
     const aspect = this.camera.aspect || 1;
     const dist = THREE.MathUtils.clamp(spread * (aspect < 1 ? 2.3 : 1.6) + 18, 26, 150);
-    const end = target.clone().addScaledVector(out, dist * 0.7).add(new THREE.Vector3(0, dist * 0.62, 0));
+    // A block is seen from higher up, nearly over it, so its rows and seats are easy to tell apart.
+    const end = target.clone().addScaledVector(out, dist * (sec ? 0.4 : 0.7)).add(new THREE.Vector3(0, dist * (sec ? 0.85 : 0.62), 0));
     const start = this.camera.position.clone(), t0 = this.controls.target.clone(), fov0 = this.camera.fov;
     this.controls.enabled = false;
     this.anim = {

@@ -41,6 +41,9 @@ const RENDERS = {
   'stadium-end': ['assets/covers/stadium-end-1.webp', 'assets/covers/stadium-end-2.webp'],
   'stadium-round': ['assets/covers/stadium-round-1.webp', 'assets/covers/stadium-round-2.webp'],
   'combat-studio': ['assets/covers/combat-studio-1.webp', 'assets/covers/combat-studio-2.webp'],
+  // Venues drawn from the promoter's plan (realvenues.js), in their categories' colours.
+  'madya-end': ['assets/covers/madya-end-1.webp', 'assets/covers/madya-end-2.webp'],
+  'jis-mcr': ['assets/covers/jis-mcr-1.webp', 'assets/covers/jis-mcr-2.webp'],
 };
 
 // key: an IMAGES key, or a render: 'venue-<layout>' or 'event-<set>-<n>'. An event render
@@ -64,6 +67,19 @@ export function coverImg(key, venueKey, alt, { eager = false } = {}) {
   const srcset = small ? ` srcset="${srcsetOf(c)}" sizes="(max-width: 640px) 50vw, 320px"` : '';
   const pos = c.pos ? ` style="--pos:${c.pos}"` : '';
   return `<img class="cover-img cover-${c.kind}" src="${small || c.src}"${srcset}${pos} alt="${(c.alt || alt).replace(/"/g, '&quot;')}" ${eager ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async">${c.kind === 'render' ? `<span class="cover-credit">${c.credit}</span>` : ''}`;
+}
+
+// A venue's card on the home page: its picture (`art` on the place in events.js), an
+// illustration of the venue at a concert made for Atvents, with the venue's 3D map inset in
+// the corner, since the picture shows the mood and the map what a pass opens. A venue
+// without a picture shows the map alone.
+const PLACE_ART = 'assets/covers/place';
+export function placeCover(place, e, alt) {
+  if (!place.art) return coverImg(e.photo, e.venue, alt);
+  const map = cover(e.photo, e.venue), q = s => String(s).replace(/"/g, '&quot;');
+  const art = `${PLACE_ART}/${q(place.art)}`;
+  return `<img class="cover-img" src="${art}-640.webp" srcset="${art}-640.webp 640w, ${art}.webp 1020w" sizes="(max-width: 640px) 100vw, 400px" alt="${q(alt)}, at a concert (illustration)" loading="lazy" decoding="async">
+    <span class="venue-3d"><img src="${smallOf(map)}" alt="" loading="lazy" decoding="async"><b>3D view</b></span>`;
 }
 
 // An event's cover: its own artwork when it has some, else the render of its venue.

@@ -3,7 +3,7 @@
 //   node --test test/venues.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { getVenue, heroSeat, VENUE_KEYS } from '../js/layouts.js';
+import { getVenue, heroSeat, VENUE_KEYS, REAL_KEYS } from '../js/layouts.js';
 import { getEvent, EVENTS, DEMOS, isConcert, demoFor } from '../js/events.js';
 
 const range = (a, b) => Array.from({ length: b - a + 1 }, (_, i) => `${a + i}`);
@@ -64,7 +64,8 @@ test('concerts link to their seller and price every category; demos cover every 
     else assert.ok(v.categories.every(c => c.price > 0), `${e.id}: every category has its announced price`);
     for (const c of e.soldOut || []) assert.ok(v.catById[c], `${e.id}: sold-out category ${c} exists`);
   }
-  assert.deepEqual(DEMOS.map(d => d.venue).sort(), [...VENUE_KEYS].sort());
+  // A demo for every generic layout; the real venues are only seen with their show.
+  assert.deepEqual(DEMOS.map(d => d.venue).sort(), VENUE_KEYS.filter(k => !REAL_KEYS.includes(k)).sort());
   for (const d of DEMOS) {
     assert.equal(d.id, `demo-${d.venue}`);
     assert.equal(isConcert(d.id), false, `${d.id} is open to all, never claimed`);
@@ -87,5 +88,67 @@ test('the home page hero sits on each concert’s centre line, as far from the s
     // stage is at a goal end.
     assert.ok(Math.abs(v.show === 'end' ? s.z : s.x) < 2.5, `${e.id}: ${s.id} is off the centre line`);
     assert.ok(Math.abs(Math.hypot(s.x - fx, s.z - fz) - v.hero.along) < 3, `${e.id}: ${s.id} is not ${v.hero.along} m from the stage`);
+  }
+});
+
+test('Stadion Madya for Guns N’ Roses has the promoter’s plan', () => {
+  const v = getVenue('madya-end');
+  const mean = (f, key) => { const l = v.seats.filter(f); return l.reduce((a, s) => a + s[key], 0) / l.length; };
+  // Grandstands: VIP by the stage, then Tribune A, then Tribune B; Left is +z, as the
+  // audience faces the stage at -x.
+  for (const side of ['L', 'R']) {
+    assert.ok(v.seats.filter(s => s.sec === `${side}01`).every(s => s.cat === 'vip'), side);
+    assert.ok(v.seats.filter(s => s.sec === `${side}02` || s.sec === `${side}03`).every(s => s.cat === 'triba'), side);
+    assert.ok(v.seats.filter(s => /^[LR](0[4-9]|10)$/.test(s.sec) && s.sec[0] === side).every(s => s.cat === 'tribb'), side);
+  }
+  assert.ok(mean(s => s.sec.startsWith('L'), 'z') > 40 && mean(s => s.sec.startsWith('R') && !s.standing, 'z') < -40);
+  // The floor, front to back: Festival A, B, C.
+  const xa = mean(s => s.cat === 'fesa', 'x'), xb = mean(s => s.cat === 'fesb', 'x'), xc = mean(s => s.cat === 'fesc', 'x');
+  assert.ok(v.stageX < xa && xa < xb && xb < xc, `${xa} ${xb} ${xc}`);
+  // Nobody stands on the sound desk.
+  const [fx] = v.foh;
+  assert.ok(!v.seats.some(s => s.standing && Math.abs(s.z) < 3.5 && Math.abs(s.x - fx) < 2.5));
+});
+
+test('Jakarta International Stadium for My Chemical Romance has the promoter’s plan', () => {
+  const v = getVenue('jis-mcr');
+  const block = n => v.seats.filter(s => s.sec === `${n}`);
+  const mean = (l, key) => l.reduce((a, s) => a + s[key], 0) / l.length;
+  // Each tier is one CAT, split Center (across the far end) and Left & Right (the sides).
+  for (const s of v.seats.filter(x => !x.standing)) {
+    assert.equal(s.cat.slice(0, 4), `cat${s.tier}`, s.id);
+    const far = s.x > 45 && Math.abs(s.z) < 60;
+    if (s.cat.endsWith('c')) assert.ok(far, `${s.id} is Center but not across the far end`);
+  }
+  // Blocks number from the left side's stage end: 101 left (+z) by the stage, the last one right.
+  assert.ok(mean(block(101), 'z') > 30 && mean(block(101), 'x') < -20);
+  assert.ok(mean(block(118), 'z') < -30 && mean(block(118), 'x') < -20);
+  // Behind the stage the stands are closed: no seat beyond the stage's back.
+  assert.ok(v.seats.every(s => s.x > v.stageX - 16), 'a seat behind the stage');
+  // The VVIP pen in front of the stage; Festival round it and back past the sound desk,
+  // never inside the pen or on the desk.
+  const { pen } = v, [fx] = v.foh;
+  const inPen = s => Math.abs(s.z) < pen.halfW && Math.abs(s.x - pen.x) < pen.halfD;
+  assert.ok(v.seats.filter(s => s.cat === 'vvip').every(inPen));
+  assert.ok(!v.seats.some(s => s.cat === 'festival' && inPen(s)));
+  assert.ok(!v.seats.some(s => s.standing && Math.abs(s.z) < 3.5 && Math.abs(s.x - fx) < 2.5));
+  assert.ok(mean(v.seats.filter(s => s.cat === 'festival'), 'x') > pen.x);
+});
+
+test('every show has its own look, and no two shows in one hall share a seat colour', async () => {
+  const { THEMES } = await import('../js/themes.js');
+  const byHall = new Map();
+  for (const e of EVENTS) {
+    assert.ok(THEMES[e.theme], `${e.id} has no theme`);
+    const v = getEvent(e.id), key = JSON.stringify(v.seatColor);
+    assert.ok(v.seatColor, `${e.id} has no seat colour`);
+    // Halls whose seats we know keep them for every show; the rest take the show's colour.
+    if (!e.place.seatColor) {
+      const seen = byHall.get(e.place.name) || new Map();
+      const other = seen.get(key);
+      assert.ok(!other || THEMES[other] === THEMES[e.theme], `${e.id} shares its seats' colour with ${other}`);
+      seen.set(key, e.theme);
+      byHall.set(e.place.name, seen);
+    }
   }
 });

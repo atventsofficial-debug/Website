@@ -16,7 +16,7 @@ export function renderPartners() {
   // Figures from the models themselves, so the page never claims more than is built.
   const sizes = VENUE_KEYS.map(k => ({ key: k, seats: getVenue(k).seats.length }));
   const largest = sizes.reduce((a, b) => (b.seats > a.seats ? b : a));
-  const largestName = DEMOS.find(d => d.venue === largest.key)?.place.name || 'Stadium';
+  const largestName = DEMOS.find(d => d.venue === largest.key)?.place.name || getVenue(largest.key).event.venue;
   $('#partner-stats').innerHTML = [
     ['Venue layouts', n(VENUE_KEYS.length), 'Arenas, stadiums, halls, cinemas'],
     ['Seats modelled', n(sizes.reduce((a, s) => a + s.seats, 0)), 'Every one a viewpoint'],

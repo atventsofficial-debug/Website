@@ -10,9 +10,10 @@
 // that seat. Then back to the home page, or a story video of the same three steps.
 import { formatFee } from './rules.js';
 import { getEvent } from './events.js';
-import { crowdSeats, formatRpShort } from './layouts.js';
+import { crowdSeats, formatRpShort, REAL_KEYS } from './layouts.js';
 import { whenOf } from './when.js';
 import { buyLink, activePass, openPass, passes, canView, toggleSeat, STATUS } from './passes.js';
+import { placeSeat, cleanNumbering, isDefault, numberingOf, numberingSource } from './seatflip.js';
 import { $, esc, icon, state, QUALITY, spotStats, share, toast } from './ui.js';
 
 const FOCUS_NAME = { concert: 'stage', cinema: 'screen', combat: 'octagon', stadium: 'centre spot' };
@@ -26,11 +27,15 @@ export const loadScene3d = () => (scene3d ||= import('./scene3d.js').catch(err =
 const seatOf = id => { const v = state.venue, i = v?.seatById.get(id); return i === undefined ? null : v.seats[i]; };
 const pass = () => (state.venue && !state.venue.meta.demo ? activePass(state.venue.eventId) : null);
 const tourPass = () => (state.tour ? passes.get(state.tour.id) : null);
-const tourSeat = () => seatOf(tourPass()?.seat);
+// The seat on the e-ticket, and where it is in the model when the venue numbers its rows or
+// seats another way, or the fan pointed at it themselves (seatflip.js): the tour shows the
+// second and names the first.
+const ticketSeat = () => seatOf(tourPass()?.seat);
+const tourSeat = () => placeSeat(state.venue, ticketSeat(), numberingOf(state.venue, tourPass()));
 // Seats drawn in coral: the fan's own seat once the tour shows their category, and a seat a
 // friend sent.
 const markedIds = () => [
-  ...(state.tour ? (state.tour.step >= 2 && tourPass()?.seat ? [tourPass().seat] : []) : pass()?.status === 'confirmed' ? pass()?.seats || [] : []),
+  ...(state.tour ? (state.tour.step >= 2 && tourSeat() ? [tourSeat().id] : []) : pass()?.status === 'confirmed' ? pass()?.seats || [] : []),
   ...(state.shared ? [state.shared] : []),
 ];
 const seatText = s => (s.standing ? `${s.secName}, standing` : `${s.secName} · Row ${s.row} · Seat ${s.num}`);
@@ -169,8 +174,13 @@ function renderCats() {
 function setMode(mode, seat) {
   if (state.tour) {
     if (mode === 'turning' || mode === 'seat') state.scene?.setCrowd(state.crowd);
-    if (mode === 'seat') { state.tour.step = 3; paintTour(); }
-    if (mode === 'overview' && state.tour.step === 3) { state.tour.step = 2; state.scene?.setCrowd(false); paintTour(); }
+    if (mode === 'seat') { state.tour.step = 3; state.tour.picking = false; paintTour(); }
+    if (mode === 'overview' && state.tour.step === 3) {
+      state.tour.step = 2;
+      state.scene?.setCrowd(false);
+      if (state.tour.picking) frameBlock();
+      paintTour();
+    }
   }
   const inSeat = mode !== 'overview';
   if (inSeat) closePeek();
@@ -246,9 +256,10 @@ function showTooltip(seat, ev) {
   const cat = state.venue.catById[seat.cat];
   const tp = tourPass();
   const note = !state.tour ? (canView(state.venue) ? '' : ' · seat view locked')
+    : state.tour.picking ? (seat.sec === ticketSeat()?.sec && !seat.standing ? ' · tap to put your seat here' : ' · not your block')
     : seat.cat !== tp.cat ? ' · not your category'
       : state.tour.step === 1 ? ' · your category, tap to open'
-        : seat.id === tp.seat ? ' · your seat, tap to sit' : ' · not your seat';
+        : seat.id === tourSeat()?.id ? ' · your seat, tap to sit' : ' · not your seat';
   tt.innerHTML = `<b>${esc(seat.secName)} · ${esc(seat.row)}${esc(String(seat.num))}</b> <span>${esc(cat.name)}${state.tour ? '' : ` · ${esc(priceText(cat))}`}${note}</span>`;
   const r = $('#stage').getBoundingClientRect();
   tt.style.left = `${Math.min(ev.clientX - r.left, r.width - 280)}px`;
@@ -278,6 +289,11 @@ export function bindViewer() {
     if (act === 'seat') { const s = tourSeat(); if (s) tourPick(s); }
     if (act === 'again') startTour();
     if (act === 'story') import('./story.js').then(m => m.makeStory(tourPass())).catch(() => toast('The story video could not start. Please try again.'));
+    if (act === 'pickseat') startPicking();
+    if (act === 'pickcancel') { state.tour.picking = false; paintTour(); }
+    if (act === 'unpick') setNumbering('pick', '');
+    const num = e.target.closest('[data-num]')?.dataset.num;
+    if (num) setNumbering(...num.split(':'));
     if (act === 'back') state.scene?.backToOverview();
   });
   $('#sc-close').addEventListener('click', closePeek);
@@ -359,16 +375,93 @@ function tourPick(seat) {
     else toast(`That is ${v.catById[seat.cat].name}. Your ticket is ${v.catById[p.cat].name}.`);
     return;
   }
+  if (state.tour.step === 2 && state.tour.picking) {
+    const t = ticketSeat();
+    if (seat.sec !== t.sec || seat.standing) { toast(`Your ticket is for ${t.secName}. Tap a seat in that block.`); return; }
+    state.tour.picking = false;
+    setNumbering('pick', seat.id);
+    toast(`Your seat is now where you tapped. Your ticket still reads ${seatText(t)}.`);
+    state.scene.flyToSeat(tourSeat());
+    return;
+  }
   if (state.tour.step === 2) {
     if (seat.id === mine.id) { state.scene.flyToSeat(mine); return; }
-    toast(`Not your seat. Yours is marked in coral: ${seatText(mine)}.`);
+    toast(`Not your seat. Yours is marked in coral: ${seatText(ticketSeat())}.`);
     return;
   }
   toast('This is your seat. Drag to look round.');
 }
 
+// The venue numbers another way: the fan's seat moves to where their ticket's row and number
+// are counted the venue's way, and the view follows it. Setting a rule lets go of a seat the
+// fan pointed at; an empty `pick` lets go of it too.
+function setNumbering(key, value) {
+  const p = tourPass();
+  if (!p || !['seats', 'rows', 'letters', 'pick'].includes(key)) return;
+  const { pick, ...rule } = numberingOf(state.venue, p);
+  passes.save({ ...p, numbering: cleanNumbering(key === 'pick' ? { ...rule, pick: value } : { ...rule, [key]: value }) });
+  const s = tourSeat();
+  if (state.tour.step === 3 && s && !(key === 'pick' && value)) state.scene?.flyToSeat(s, { quick: true });
+  paintViewer();
+}
+
+// Point at the seat: back to the ticket's block from above, where a tap on one of its seats
+// makes that the fan's seat (tourPick).
+function startPicking() {
+  const s = ticketSeat();
+  if (!s || s.standing || !state.scene) return;
+  state.tour.picking = true;
+  if (state.scene.mode === 'seat') state.scene.backToOverview();   // setMode frames the block once there
+  else { state.tour.step = 2; frameBlock(); paintTour(); }
+}
+function frameBlock() {
+  const s = ticketSeat();
+  if (s) state.scene?.frameCategory(s.cat, { seat: tourSeat(), sec: s.sec });
+}
+
+// How the venue counts: where seat 1 is (an end, or odd and even from the middle out), where
+// row A is, and whether the rows skip I and O. Last, the fan can point at the seat. Not for
+// standing tickets, which have no row or number.
+function numberingControls(p, s) {
+  if (s.standing) return '';
+  const v = state.venue, n = numberingOf(v, p), from = numberingSource(v, p);
+  if (from === 'pick') {
+    return `<div class="numbering is-pick">
+      <p class="fine">You put your seat where you know it is. Your ticket still reads ${esc(seatText(s))}.</p>
+      <button class="link" type="button" data-tour="unpick">Go back to the seat numbers</button>
+    </div>`;
+  }
+  const opt = (key, value, label, hint = '') => `<button type="button" class="num-opt" data-num="${key}:${value}" aria-pressed="${n[key] === value}"${hint ? ` title="${hint}"` : ''}>${label}</button>`;
+  const summary = from === 'fan' && !isDefault(n) ? 'Numbering set your way'
+    : from === 'event' ? `Numbered the way ${esc(v.place.name)} counts. Different on your ticket?`
+      : 'Seat numbers run another way at the venue?';
+  // Folded away until wanted, so on a phone the panel leaves the view clear; open while the
+  // fan has set it their way.
+  return `<details class="numbering"${from === 'fan' && !isDefault(n) ? ' open' : ''}>
+      <summary>${summary}</summary>
+      <div class="num-row" role="group" aria-label="Where seat 1 is"><span>Seat 1</span>${opt('seats', 'left', 'Left end')}${opt('seats', 'right', 'Right end')}</div>
+      <div class="num-row" role="group" aria-label="Odd and even numbers from the middle of the row"><span>Odd, even</span>${opt('seats', 'odd-left', 'Odd left', '1, 3, 5 to the left of the middle; 2, 4, 6 to the right')}${opt('seats', 'odd-right', 'Odd right', '1, 3, 5 to the right of the middle; 2, 4, 6 to the left')}</div>
+      <div class="num-row" role="group" aria-label="Where row A is"><span>Row A</span>${opt('rows', 'front', 'Front')}${opt('rows', 'back', 'Back')}</div>
+      <div class="num-row" role="group" aria-label="Row letters"><span>Letters</span>${opt('letters', 'all', 'A to Z')}${opt('letters', 'no-io', 'No I or O', 'The rows go H, J and N, P')}</div>
+      <p class="num-pick">Still not right? <button class="link" type="button" data-tour="pickseat">Tap your seat yourself</button></p>
+    </details>`;
+}
+
+// What the view from the seat rests on: the block is the promoter's, the row and number
+// inside it are counted the way the venue confirmed, the fan set, or our estimate.
+function seatNote(p, s) {
+  const v = state.venue, how = numberingSource(v, p);
+  if (s.standing || how === 'pick') return '';
+  // A show whose plan we have not modelled sits in a stand-in hall: its block is ours too.
+  const block = REAL_KEYS.includes(v.key) ? 'Your block is from the promoter’s plan.' : 'This hall is a stand-in until we model the promoter’s plan, so your block is our estimate too.';
+  const text = how === 'event' ? `Rows and seats are counted the way ${v.place.name} numbers them.`
+    : how === 'fan' ? `${block} The row and seat follow the numbering you set.`
+      : `${block} The row and seat inside it are our estimate.`;
+  return `<p class="fine seat-note">${esc(text)}</p>`;
+}
+
 function paintTour() {
-  const p = tourPass(), v = state.venue, s = tourSeat();
+  const p = tourPass(), v = state.venue, s = ticketSeat();
   if (!p || !s) return;
   const cat = v.catById[p.cat], step = state.tour.step, e = v.meta;
   const bar = `<ol class="tour-steps">${STEPS.map((t, i) => `<li class="${i + 1 < step ? 'is-done' : i + 1 === step ? 'is-on' : ''}"><b>${i + 1}</b><span>${t}</span></li>`).join('')}</ol>`;
@@ -376,13 +469,20 @@ function paintTour() {
       <h2>${esc(v.place.name)}</h2>
       <p>This is the whole venue for ${esc(e.title)}. Your ticket is <b>${esc(cat.name)}</b>: tap it below, or tap one of its seats.</p>
       <div class="row-btns"><button class="btn btn-coral btn-sm" type="button" data-tour="cat"><i class="cat-dot" style="background:${esc(cat.color)}"></i>${esc(cat.name)} ${icon('i-arrow')}</button></div>`
+    : step === 2 && state.tour.picking ? `
+      <h2>Tap your seat</h2>
+      <p class="fine">Tap the seat you know is yours, in <b>${esc(s.secName)}</b>. Pinch or scroll to zoom in.</p>
+      <div class="row-btns"><button class="btn btn-line btn-sm" type="button" data-tour="pickcancel">Cancel</button></div>`
     : step === 2 ? `
       <h2>${esc(cat.name)}</h2>
       <p>Your seat is marked in coral: <b>${esc(seatText(s))}</b>. Tap it to sit down.</p>
-      <div class="row-btns"><button class="btn btn-coral btn-sm" type="button" data-tour="seat">Sit in my seat ${icon('i-arrow')}</button><button class="btn btn-line btn-sm" type="button" data-tour="again">${icon('i-back')}Whole venue</button></div>`
+      <div class="row-btns"><button class="btn btn-coral btn-sm" type="button" data-tour="seat">Sit in my seat ${icon('i-arrow')}</button><button class="btn btn-line btn-sm" type="button" data-tour="again">${icon('i-back')}Whole venue</button></div>
+      ${numberingControls(p, s)}`
       : `
       <h2>Your view</h2>
-      <p><b>${esc(seatText(s))}</b>, ${esc(cat.name)}. This is what you will see on the night. Drag to look round.</p>
+      <p><b>${esc(seatText(s))}</b>, ${esc(cat.name)}. Drag to look round.</p>
+      ${seatNote(p, s)}
+      ${numberingControls(p, s)}
       <div class="tour-end">
         <button class="btn btn-coral" type="button" data-tour="story">${icon('i-share')}Upload to story</button>
         <a class="btn btn-line" href="#home">${icon('i-back')}Back to home</a>

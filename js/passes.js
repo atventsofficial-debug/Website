@@ -154,6 +154,9 @@ export async function refresh(p) {
 export async function importPass(id, token) {
   const r = await state.store.claimStatus(id, token);
   const p = { id: r.id, token, eventId: r.eventId, cat: r.cat, qty: r.qty, seat: r.seat || '', route: r.route || 'affiliate', status: r.status, ref: passes.get(r.id)?.ref || '', createdAt: r.createdAt, seats: r.seat ? [r.seat] : passes.get(r.id)?.seats || [] };
+  // How the fan set the venue's numbering stays with the pass on this device (seatflip.js).
+  const numbering = passes.get(r.id)?.numbering;
+  if (numbering) p.numbering = numbering;
   passes.save(p);
   return p;
 }

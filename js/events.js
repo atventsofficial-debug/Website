@@ -1,8 +1,11 @@
 // Concert catalogue and demo venues. Each runs on one venue template (seat layout) and
 // carries its own copy, prices and stage branding. `image` is its own artwork and `photo`
-// the venue render shown without one (media.js). Pure data: the Node server imports it
-// too, so event ids and categories are checked on both sides.
-import { getVenue } from './layouts.js';
+// the venue render shown without one (media.js). `numbering`, set once the promoter or the
+// venue confirms how its seats are numbered, is how every pass's seat tour counts rows and
+// seats (seatflip.js: { seats, rows, letters }); a fan can still set their own. Pure data:
+// the Node server imports it too, so event ids and categories are checked on both sides.
+import { getVenue, REAL_KEYS } from './layouts.js';
+import { THEMES } from './themes.js';
 
 // Country, time zone and the airport-style code printed on tickets. Times are the clock at
 // the venue; fans abroad read them in their own zone (when.js).
@@ -22,15 +25,20 @@ export const LISTED = 'November 2026';
 const PRICES = 'Prices as announced by the promoter, before tiket.com’s fees and tax. tiket.com has the live price and stock.';
 const MODEL = 'The 3D venue is our illustration of the venue and the category layout, not the official seating plan. Use it to compare views; your ticket decides your seat.';
 
-const JIEXPO = { name: 'JIExpo Kemayoran', city: 'Jakarta', address: 'Jl. Benyamin Sueb, Kemayoran, Jakarta Pusat', transit: 'KRL to Kemayoran station, then a short ride', capacity: '' };
-const GBK = { name: 'Gelora Bung Karno Main Stadium', city: 'Jakarta', address: 'Jl. Pintu Satu Senayan, Gelora, Tanah Abang, Jakarta Pusat', transit: 'MRT Istora Mandiri station', capacity: '' };
-const JIS = { name: 'Jakarta International Stadium', city: 'Jakarta', address: 'Jl. R.E. Martadinata, Papanggo, Tanjung Priok, Jakarta Utara', transit: '', capacity: '' };
+// `art`: the venue's picture on its home page card (assets/covers/place, media.js).
+// `seatColor`: the building's own seats, where a source says what they look like: GBK red,
+// white and grey, laid out like a wrapped flag (Medcom); JIS orange, with grey mixed in up top
+// (StadiumDB); Madya white (Football Tribe); Istora three greys (Wikipedia). Elsewhere the
+// seats take the show's theme colour (themes.js).
+const JIEXPO = { name: 'JIExpo Kemayoran', art: 'jiexpo', city: 'Jakarta', address: 'Jl. Benyamin Sueb, Kemayoran, Jakarta Pusat', transit: 'KRL to Kemayoran station, then a short ride', capacity: '' };
+const GBK = { name: 'Gelora Bung Karno Main Stadium', art: 'gbk', seatColor: { bands: ['#eceef0', '#c8102e'], speckle: ['#8e9297', 0.12] }, city: 'Jakarta', address: 'Jl. Pintu Satu Senayan, Gelora, Tanah Abang, Jakarta Pusat', transit: 'MRT Istora Mandiri station', capacity: '' };
+const JIS = { name: 'Jakarta International Stadium', art: 'jis', seatColor: { bands: ['#e2701f', '#e2701f', ['#e2701f', '#e2701f', '#9da2a8']] }, city: 'Jakarta', address: 'Jl. R.E. Martadinata, Papanggo, Tanjung Priok, Jakarta Utara', transit: '', capacity: '' };
 
-const MADYA = { name: 'Stadion Madya GBK', city: 'Jakarta', address: 'Kompleks Gelora Bung Karno, Senayan, Jakarta Pusat', transit: 'MRT Istora Mandiri station', capacity: '' };
-const ISTORA = { name: 'Istora Senayan GBK', city: 'Jakarta', address: 'Kompleks Gelora Bung Karno, Senayan, Jakarta Pusat', transit: 'MRT Istora Mandiri station', capacity: '' };
-const BASKET = { name: 'Basket Hall GBK', city: 'Jakarta', address: 'Kompleks Gelora Bung Karno, Senayan, Jakarta Pusat', transit: 'MRT Istora Mandiri station', capacity: '' };
-const TENNIS = { name: 'Tennis Indoor GBK', city: 'Jakarta', address: 'Kompleks Gelora Bung Karno, Senayan, Jakarta Pusat', transit: 'MRT Istora Mandiri station', capacity: '' };
-const INA_ARENA = { name: 'Indonesia Arena', city: 'Jakarta', address: 'Kompleks Gelora Bung Karno, Senayan, Jakarta Pusat', transit: 'MRT Istora Mandiri station', capacity: '' };
+const MADYA = { name: 'Stadion Madya GBK', art: 'madya', seatColor: '#e8eaed', city: 'Jakarta', address: 'Kompleks Gelora Bung Karno, Senayan, Jakarta Pusat', transit: 'MRT Istora Mandiri station', capacity: '' };
+const ISTORA = { name: 'Istora Senayan GBK', art: 'istora', seatColor: { mix: ['#6c7075', '#979ba0', '#c0c3c7'] }, city: 'Jakarta', address: 'Kompleks Gelora Bung Karno, Senayan, Jakarta Pusat', transit: 'MRT Istora Mandiri station', capacity: '' };
+const BASKET = { name: 'Basket Hall GBK', art: 'basket-hall', city: 'Jakarta', address: 'Kompleks Gelora Bung Karno, Senayan, Jakarta Pusat', transit: 'MRT Istora Mandiri station', capacity: '' };
+const TENNIS = { name: 'Tennis Indoor GBK', art: 'tennis-indoor', city: 'Jakarta', address: 'Kompleks Gelora Bung Karno, Senayan, Jakarta Pusat', transit: 'MRT Istora Mandiri station', capacity: '' };
+const INA_ARENA = { name: 'Indonesia Arena', art: 'indonesia-arena', city: 'Jakarta', address: 'Kompleks Gelora Bung Karno, Senayan, Jakarta Pusat', transit: 'MRT Istora Mandiri station', capacity: '' };
 
 // Shows announced for the next six months whose seating plan we have not modelled yet.
 // They run on a stand-in layout: the My Chemical Romance stadium plan (stadium-end) for
@@ -60,7 +68,7 @@ export function saleInfo(e, now = Date.now()) {
   return { ms, soon, date, line: soon ? `Ticket sale opens ${date} on ${sellerOf(e)}.` : `Ticket sale opened ${date} on ${sellerOf(e)}.` };
 }
 const STANDIN = 'The seating plan for this show has not been published, so the 3D venue uses a stand-in layout. Use it for a feel of the venue, not to pick a seat.';
-const SHOW = ({ id, image, title, subtitle, dateISO, place, venue, host = 'TBA', hostNote = 'Promoter', from = null, range = '', soldOutAll = false, blurb, extra = [], sale = {} }) => {
+const SHOW = ({ id, image, theme, title, subtitle, dateISO, place, venue, host = 'TBA', hostNote = 'Promoter', from = null, range = '', soldOutAll = false, blurb, extra = [], sale = {} }) => {
   const cats = getVenue(venue).categories.map(c => ({ ...c, price: null }));
   const official = SELLERS[sale.seller] || { name: 'tiket.com', url: TIKET(title) };
   return {
@@ -76,16 +84,19 @@ const SHOW = ({ id, image, title, subtitle, dateISO, place, venue, host = 'TBA',
     ],
     runs: [],
     branding: { wall: title.toUpperCase(), sub: subtitle.toUpperCase(), band: [title.toUpperCase(), subtitle.toUpperCase(), place.name.toUpperCase(), place.city.toUpperCase()] },
+    theme,
     place,
     official,
-    // The one render with no other show's name on its screens.
-    photo: 'event-stadium-end-1', image,
+    // Its venue's render: the templates' renders come from the demos, so no other show's name
+    // is on their screens. A venue from a promoter's plan is drawn for its own show, so a
+    // stand-in show there takes the end-stage stadium instead.
+    photo: REAL_KEYS.includes(venue) ? 'event-stadium-end-1' : `event-${venue}-1`, image,
     ...(soldOutAll ? { soldOut: cats.map(c => c.id) } : {}),
   };
 };
 
 const BTS_DAY = (n, dateISO, more = {}) => ({
-  id: `evt-bts-arirang-${n}`, venue: 'stadium-round',
+  id: `evt-bts-arirang-${n}`, venue: 'stadium-round', theme: 'bts',
   title: 'BTS', subtitle: `World Tour ARIRANG · Day ${n}`,
   dateISO, time: 'TBA', doors: 'TBA', ends: '', age: '',
   host: 'iME Indonesia', hostNote: 'Promoter, with Live Nation',
@@ -106,7 +117,7 @@ const BTS_DAY = (n, dateISO, more = {}) => ({
 
 export const EVENTS = [
   {
-    id: 'evt-bocelli-jakarta', venue: 'concert', featured: true,
+    id: 'evt-bocelli-jakarta', venue: 'concert', featured: true, theme: 'bocelli',
     title: 'Andrea Bocelli', subtitle: 'Romanza 30th Anniversary World Tour',
     dateISO: '2026-11-03T00:00', time: 'TBA', doors: 'TBA', ends: '', age: '',
     host: 'Shoemaker Live', hostNote: 'Promoter · presented by Bank SMBC Indonesia and BNI',
@@ -130,66 +141,86 @@ export const EVENTS = [
     zone: s => (s.sec.startsWith('VIP') ? (s.ri < 4 ? 'diamond' : 'platinum')
       : s.sec.startsWith('FA') ? (s.ri < 6 ? 'emerald' : 'gold')
         : s.tier === 1 ? (s.ri < 6 ? 'silver' : 'bronze') : 'pearl'),
-    occupancy: { diamond: 0.7, platinum: 0.65, emerald: 0.6, gold: 0.55, silver: 0.5, bronze: 0.45, pearl: 0.55 },
+    occupancy: { diamond: 0.92, platinum: 0.9, emerald: 0.9, gold: 0.88, silver: 0.5, bronze: 0.45, pearl: 0.55 },
     branding: { wall: 'ANDREA BOCELLI', sub: 'ROMANZA · 30TH ANNIVERSARY', band: ['ANDREA BOCELLI', 'ROMANZA 30TH ANNIVERSARY', 'JIEXPO KEMAYORAN', 'JAKARTA'] },
     place: JIEXPO,
     official: { name: 'tiket.com', url: TIKET('Andrea Bocelli') },
     photo: 'event-concert-1', image: 'bocelli-romanza',
   },
   {
-    id: 'evt-mcr-jakarta', venue: 'stadium-end',
+    id: 'evt-mcr-jakarta', venue: 'jis-mcr',
     title: 'My Chemical Romance', subtitle: 'Live in Jakarta 2026',
     dateISO: '2026-11-22T00:00', time: 'TBA', doors: 'TBA', ends: '', age: '',
     host: 'Ravel Entertainment', hostNote: 'Promoter',
-    blurb: 'My Chemical Romance headline Jakarta International Stadium. A standing festival floor in front of the stage, seated stands split Center and Left/Right.',
+    blurb: 'My Chemical Romance headline Jakarta International Stadium. A standing festival floor in front of the stage; the three tiers are CAT 1, CAT 2 and CAT 3, each split into Center, facing the stage, and Left and Right.',
     about: [
-      'VVIP and VVIP Upgrade sold out soon after sales opened in February; Festival, CAT 2 Center and CAT 3 Center were close behind.',
-      'Festival is standing. CAT 1 to CAT 3 are seats in the stands, from Rp 1.06M to Rp 3.3M.',
+      'VVIP and VVIP Upgrade, the pen in front of the stage, sold out soon after sales opened in February; Festival, CAT 2 Center and CAT 3 Center were close behind.',
+      'Festival is standing, round the VVIP pen and back past the sound desk. CAT 1 is the lower tier, CAT 2 the middle tier and CAT 3 the upper tier, numbered seats from Rp 1.06M to Rp 3.3M. The MCR boxes sit between CAT 2 and CAT 3 in the Center stand. The stands behind the stage are closed.',
       PRICES,
       MODEL,
     ],
     runs: [],
     branding: { wall: 'MY CHEMICAL ROMANCE', sub: 'LIVE IN JAKARTA 2026', band: ['MY CHEMICAL ROMANCE', 'LIVE IN JAKARTA', 'JAKARTA INTERNATIONAL STADIUM', '2026'] },
+    theme: 'mcr',
+    soldOut: ['vvip'],
     place: JIS,
     sale: { opens: '2026-02-07T10:00', tiket: true },
     official: { name: 'tiket.com', url: TIKET('My Chemical Romance') },
-    photo: 'event-stadium-end-1', image: 'mcr-jakarta',
+    photo: 'event-jis-mcr-1', image: 'mcr-jakarta',
   },
   BTS_DAY(1, '2026-12-26T00:00'),
   BTS_DAY(2, '2026-12-27T00:00'),
   BTS_DAY(3, '2026-12-29T00:00', { soldOut: ['vip', 'plat', 'cat1', 'cat2', 'cat3'] }),
-  SHOW({ id: 'evt-gnr-jakarta', sale: { opens: '2026-07-30T10:00' }, image: 'gnr-jakarta', title: "Guns N' Roses", subtitle: 'World Tour 2026', dateISO: '2026-11-21T00:00', place: MADYA, venue: 'stadium-end',
-    from: 1750000, range: 'Rp 1.75M to Rp 3.75M', blurb: "Guns N' Roses bring their 2026 world tour to Stadion Madya at Gelora Bung Karno." }),
-  SHOW({ id: 'evt-5sos-jakarta', sale: { opens: '2026-06-21T12:00' }, image: '5sos-jakarta', title: '5 Seconds of Summer', subtitle: 'Live in Jakarta', dateISO: '2026-12-06T00:00', place: INA_ARENA, venue: 'concert',
+  {
+    id: 'evt-gnr-jakarta', venue: 'madya-end',
+    title: "Guns N' Roses", subtitle: 'World Tour 2026',
+    dateISO: '2026-11-21T00:00', time: 'TBA', doors: 'TBA', ends: '', age: '',
+    host: 'Rajawali Indonesia', hostNote: 'Promoter, with HKE · presented by bale by BTN',
+    blurb: "Guns N' Roses bring their 2026 world tour to Stadion Madya at Gelora Bung Karno: an end stage in the south bend, three standing festival areas on the field and seats in both grandstands.",
+    about: [
+      'Festival A, B and C stand on the field, front to back. In both grandstands VIP is nearest the stage, then Tribune A, then Tribune B. General sale prices run from Rp 1.75M (Festival C) to Rp 7.5M (VIP).',
+      'Seat numbers come closer to the show. TipTip lists the gates open from 17:00 to 22:00 WIB. Delay towers and the front-of-house desk may block part of the view from some spots.',
+      `Prices as announced by the promoter, before the 10% tax and TipTip's fees. Sold on TipTip, not on tiket.com: TipTip has the live price and stock.`,
+      MODEL,
+    ],
+    runs: [],
+    branding: { wall: "GUNS N' ROSES", sub: 'WORLD TOUR 2026', band: ["GUNS N' ROSES", 'WORLD TOUR 2026', 'STADION MADYA GBK', 'JAKARTA'] },
+    theme: 'gnr',
+    place: MADYA,
+    sale: { opens: '2026-07-30T10:00', seller: 'tiptip', tiket: false },
+    official: { name: 'TipTip', url: 'https://tiptip.id/event/2e313def-fcca-4af8-ae16-2c243df736a8' },
+    photo: 'event-madya-end-1', image: 'gnr-jakarta',
+  },
+  SHOW({ id: 'evt-5sos-jakarta', theme: '5sos', sale: { opens: '2026-06-21T12:00' }, image: '5sos-jakarta', title: '5 Seconds of Summer', subtitle: 'Live in Jakarta', dateISO: '2026-12-06T00:00', place: INA_ARENA, venue: 'concert',
     from: 1630000, range: 'Rp 1.63M to Rp 5M', blurb: '5 Seconds of Summer play Indonesia Arena, their second Jakarta night after the 14 November show sold out.' }),
-  SHOW({ id: 'evt-boyz2men-dewa19', sale: { opens: '2026-09-26T10:00', seller: 'loket' }, image: 'boyz2men-dewa19', title: 'Boyz II Men with Dewa 19', subtitle: 'Live in Jakarta', dateISO: '2026-12-09T00:00', place: INA_ARENA, venue: 'concert',
+  SHOW({ id: 'evt-boyz2men-dewa19', theme: 'b2m', sale: { opens: '2026-09-26T10:00', seller: 'loket' }, image: 'boyz2men-dewa19', title: 'Boyz II Men with Dewa 19', subtitle: 'Live in Jakarta', dateISO: '2026-12-09T00:00', place: INA_ARENA, venue: 'concert',
     from: 1000000, range: 'Rp 1M to Rp 5M', blurb: 'Boyz II Men share the Indonesia Arena stage with Dewa 19.' }),
-  SHOW({ id: 'evt-nflying-jakarta', sale: {}, image: 'nflying-jakarta', title: 'N.Flying', subtitle: "LIVE '&CON5: into REM' in Indonesia", dateISO: '2027-01-10T00:00', place: BASKET, venue: 'concert',
+  SHOW({ id: 'evt-nflying-jakarta', theme: 'nflying', sale: {}, image: 'nflying-jakarta', title: 'N.Flying', subtitle: "LIVE '&CON5: into REM' in Indonesia", dateISO: '2027-01-10T00:00', place: BASKET, venue: 'concert',
     from: 1400000, range: 'Rp 1.4M to Rp 3.4M', blurb: 'N.Flying bring their &CON5 tour to Basket Hall at Gelora Bung Karno.' }),
-  SHOW({ id: 'evt-bigbang-1', sale: { opens: '2026-09-20T10:00', seller: 'loket' }, image: 'bigbang-cosmos', title: 'BIGBANG', subtitle: 'World Tour XX: COSMOS · Day 1', dateISO: '2027-01-16T00:00', place: JIS, venue: 'stadium-end',
+  SHOW({ id: 'evt-bigbang-1', theme: 'bigbang', sale: { opens: '2026-09-20T10:00', seller: 'loket' }, image: 'bigbang-cosmos', title: 'BIGBANG', subtitle: 'World Tour XX: COSMOS · Day 1', dateISO: '2027-01-16T00:00', place: JIS, venue: 'stadium-end',
     host: 'PK Entertainment', soldOutAll: true, blurb: 'BIGBANG celebrate 20 years with the XX: COSMOS world tour at Jakarta International Stadium.',
     extra: ['Day 1 sold out; a second night was added on 17 January.'] }),
-  SHOW({ id: 'evt-bigbang-2', sale: { opens: '2026-09-24T10:00', seller: 'loket' }, image: 'bigbang-cosmos', title: 'BIGBANG', subtitle: 'World Tour XX: COSMOS · Day 2', dateISO: '2027-01-17T00:00', place: JIS, venue: 'stadium-end',
+  SHOW({ id: 'evt-bigbang-2', theme: 'bigbang', sale: { opens: '2026-09-24T10:00', seller: 'loket' }, image: 'bigbang-cosmos', title: 'BIGBANG', subtitle: 'World Tour XX: COSMOS · Day 2', dateISO: '2027-01-17T00:00', place: JIS, venue: 'stadium-end',
     host: 'PK Entertainment', blurb: 'BIGBANG celebrate 20 years with the XX: COSMOS world tour at Jakarta International Stadium.',
     extra: ['The second night, added after Day 1 sold out.'] }),
-  SHOW({ id: 'evt-enhypen-jakarta', sale: { opens: '2026-07-13T15:00', seller: 'loket' }, image: 'enhypen-bloodsaga', title: 'ENHYPEN', subtitle: "World Tour 'Blood Saga'", dateISO: '2027-01-23T00:00', place: JIS, venue: 'stadium-end',
+  SHOW({ id: 'evt-enhypen-jakarta', theme: 'enhypen', sale: { opens: '2026-07-13T15:00', seller: 'loket' }, image: 'enhypen-bloodsaga', title: 'ENHYPEN', subtitle: "World Tour 'Blood Saga'", dateISO: '2027-01-23T00:00', place: JIS, venue: 'stadium-end',
     host: 'PK Entertainment', blurb: "ENHYPEN bring the 'Blood Saga' world tour to Jakarta International Stadium." }),
-  SHOW({ id: 'evt-westlife-jakarta', sale: { opens: '2026-05-23T10:00' }, image: 'westlife-25', title: 'Westlife', subtitle: '25: The Anniversary World Tour', dateISO: '2027-01-23T00:00', place: GBK, venue: 'stadium-end',
+  SHOW({ id: 'evt-westlife-jakarta', theme: 'westlife', sale: { opens: '2026-05-23T10:00' }, image: 'westlife-25', title: 'Westlife', subtitle: '25: The Anniversary World Tour', dateISO: '2027-01-23T00:00', place: GBK, venue: 'stadium-end',
     soldOutAll: true, blurb: 'Westlife mark 25 years at Gelora Bung Karno Main Stadium.' }),
-  SHOW({ id: 'evt-nancy-ajram', sale: { opens: '2026-03-16T10:00', seller: 'traveloka' }, image: 'nancy-ajram', title: 'Nancy Ajram', subtitle: 'Live in Jakarta', dateISO: '2027-01-30T00:00', place: ISTORA, venue: 'concert',
+  SHOW({ id: 'evt-nancy-ajram', theme: 'nancy', sale: { opens: '2026-03-16T10:00', seller: 'traveloka' }, image: 'nancy-ajram', title: 'Nancy Ajram', subtitle: 'Live in Jakarta', dateISO: '2027-01-30T00:00', place: ISTORA, venue: 'concert',
     from: 1150000, range: 'Rp 1.15M to Rp 5.75M', blurb: 'Nancy Ajram plays Istora Senayan.' }),
-  SHOW({ id: 'evt-maroon5-jakarta', sale: { opens: '2026-08-29T10:00' }, image: 'maroon5-asia', title: 'Maroon 5', subtitle: 'Asia 2027', dateISO: '2027-02-05T00:00', place: JIS, venue: 'stadium-end',
+  SHOW({ id: 'evt-maroon5-jakarta', theme: 'maroon5', sale: { opens: '2026-08-29T10:00' }, image: 'maroon5-asia', title: 'Maroon 5', subtitle: 'Asia 2027', dateISO: '2027-02-05T00:00', place: JIS, venue: 'stadium-end',
     host: 'TEM Presents', blurb: 'Maroon 5 bring their Asia 2027 tour to Jakarta International Stadium.' }),
-  SHOW({ id: 'evt-thescript-jakarta', sale: { opens: '2026-08-22T10:00', seller: 'tiptip' }, image: 'thescript-arena', title: 'The Script', subtitle: 'Man in the Arena Tour 2027', dateISO: '2027-04-03T00:00', place: ISTORA, venue: 'concert',
+  SHOW({ id: 'evt-thescript-jakarta', theme: 'script', sale: { opens: '2026-08-22T10:00', seller: 'tiptip' }, image: 'thescript-arena', title: 'The Script', subtitle: 'Man in the Arena Tour 2027', dateISO: '2027-04-03T00:00', place: ISTORA, venue: 'concert',
     from: 1300000, range: 'Rp 1.3M to Rp 4.2M', blurb: 'The Script bring the Man in the Arena tour to Istora Senayan.' }),
-  SHOW({ id: 'evt-m2m-jakarta', sale: { opens: '2026-10-26T11:00' }, image: 'm2m-two', title: 'M2M', subtitle: 'Two Tour', dateISO: '2027-04-10T00:00', place: TENNIS, venue: 'concert',
+  SHOW({ id: 'evt-m2m-jakarta', theme: 'm2m', sale: { opens: '2026-10-26T11:00' }, image: 'm2m-two', title: 'M2M', subtitle: 'Two Tour', dateISO: '2027-04-10T00:00', place: TENNIS, venue: 'concert',
     from: 1250000, range: 'Rp 1.25M to Rp 2.25M', blurb: 'M2M play Tennis Indoor at Gelora Bung Karno on their Two Tour.' }),
 ];
 
 // Demo venues: one per layout, fully open, for the partner page and anyone who wants to try
 // the seat view before buying. Fictional places, except the Tottenham model.
 const DEMO_PLACE = {
-  arena: { name: 'Nusantara Arena', city: 'Jakarta', address: 'Demo venue', capacity: '7,572 seats' },
+  arena: { name: 'Nusantara Arena', city: 'Jakarta', address: 'Demo venue', capacity: '8,734 seats' },
   stadium: { name: 'Gelora Samudra Stadium', city: 'Jakarta', address: 'Demo venue', capacity: '' },
   hall: { name: 'Satria Hall', city: 'Surabaya', address: 'Demo venue', capacity: '7,632 seats' },
   cinema: { name: 'Cakrawala Cinema', city: 'Bandung', address: 'Demo venue', capacity: '270 seats per studio' },
@@ -199,7 +230,7 @@ const DEMO = (venue, name, blurb, place, branding = {}) => ({
   id: `demo-${venue}`, venue, demo: true, title: name, subtitle: 'Demo venue', blurb, place, branding, photo: `venue-${venue}`,
 });
 export const DEMOS = [
-  DEMO('concert', 'Concert arena', 'End stage with an LED wall, VIP and Floor A blocks in front, two curved tiers behind.', DEMO_PLACE.arena,
+  DEMO('concert', 'Concert arena', 'End stage with an LED wall, a standing VIP and Floor A filling the floor, two curved tiers behind.', DEMO_PLACE.arena,
     { wall: 'YOUR SHOW', sub: 'LIVE IN 3D', band: ['YOUR SHOW HERE', 'LIVE IN 3D', 'NUSANTARA ARENA', 'SEE YOUR SEAT'] }),
   DEMO('stadium-round', 'Stadium, 360 stage', 'A stage in the middle of the field with seated floor blocks on four sides and the full bowl round it.', { ...DEMO_PLACE.stadium, name: 'Gelora Samudra Stadium, 360 stage' },
     { wall: 'YOUR SHOW', sub: 'STADIUM TOUR', band: ['YOUR SHOW HERE', 'STADIUM TOUR', 'GELORA SAMUDRA', 'SEE YOUR SEAT'] }),
@@ -243,6 +274,8 @@ export function getEvent(id) {
       eventId: e.id,
       meta: e,
       place: e.place,
+      // The building's own seats where we know them, else the show's colour, else the template's.
+      seatColor: e.place?.seatColor || THEMES[e.theme]?.seat || base.seatColor,
       branding: e.branding,
       categories,
       catById: Object.fromEntries(categories.map(c => [c.id, c])),
