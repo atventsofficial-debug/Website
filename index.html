@@ -289,8 +289,9 @@
         <form class="unlock-form" id="unlock-form" novalidate>
           <div class="uf-card">
             <div class="uf-head"><h2>Your seat</h2><small>As printed on your ticket</small></div>
+            <div class="uf-event" id="uf-event" hidden></div>
             <div class="uf-grid">
-              <label class="uf-field uf-wide">Concert<select name="eventId" required></select></label>
+              <label class="uf-field uf-wide" id="ev-field">Concert<select name="eventId" required></select></label>
               <label class="uf-field">Category<select name="cat" required></select></label>
               <label class="uf-field">Section<select name="sec" required></select></label>
               <label class="uf-field" id="row-field">Row<select name="row" required></select></label>

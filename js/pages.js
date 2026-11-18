@@ -453,8 +453,9 @@ let unlockBound = false;
 // access fee. The pass opens as soon as the payment goes through. `eventId` comes from
 // #unlock-<id>; without it, the first concert on sale. The name and email come from Google
 // or Microsoft (js/sso.js), or are typed: `who` is who signed in, `typing` that the fan
-// chose to type them. Continue stays greyed out until every field is filled.
-const unlock = { payment: null, data: null, again: null, method: '', who: null, typing: false };
+// chose to type them. Continue stays greyed out until every field is filled. `fixed`: the
+// concert was chosen on the page before, so it is shown, not asked again.
+const unlock = { payment: null, data: null, again: null, method: '', who: null, typing: false, fixed: false };
 
 export function renderUnlock(eventId) {
   const form = $('#unlock-form');
@@ -469,6 +470,8 @@ export function renderUnlock(eventId) {
   const pick = isConcert(eventId) ? eventId : (all.some(e => e.id === form.eventId.value) ? form.eventId.value : all[0]?.id);
   form.eventId.innerHTML = all.map(e => `<option value="${e.id}">${esc(e.title)} · ${esc(whenOf(e).date)}</option>`).join('');
   form.eventId.value = pick;
+  unlock.fixed = isConcert(eventId);
+  paintEvent(form);
   fillCats(form);
   const again = unlock.again?.eventId === pick ? unlock.again : null;
   unlock.again = null;
@@ -494,6 +497,16 @@ export function renderUnlock(eventId) {
 // A seat as a pass names it.
 const seatText = s => (s.standing ? `${s.secName}, standing` : `${s.secName} · Row ${s.row} · Seat ${s.num}`);
 const seatIn = (eventId, seatId) => { const venue = getEvent(eventId), i = venue?.seatById.get(seatId); return i === undefined ? null : venue.seats[i]; };
+
+// The concert. Chosen on the page before (#unlock-<id>), it is shown with its poster, date
+// and venue, and Change opens the list; from the menu's Unlock 3D, it is picked from the list.
+function paintEvent(form) {
+  const e = unlock.fixed ? eventMeta(form.eventId.value) : null, box = $('#uf-event');
+  $('#ev-field').hidden = !!e;
+  box.hidden = !e;
+  box.innerHTML = e ? `${thumbImg(e)}<span class="uf-event-text"><b>${esc(e.title)}</b><small>${esc(whenOf(e).date)} · ${esc(placeOf(e).name)}</small></span>
+    ${form.eventId.options.length > 1 ? '<button class="link uf-change" type="button" id="uf-event-change">Change</button>' : ''}` : '';
+}
 
 // Where the pass goes: the buttons for Google and Microsoft (each only with its client id
 // from /api/config), or the two fields typed. Signed in, the fields are filled and hidden
@@ -1115,6 +1128,7 @@ function bindUnlock(form) {
   form.addEventListener('click', ev => {
     const sso = ev.target.closest('[data-sso]');
     if (sso) { signInWith(form, sso); return; }
+    if (ev.target.closest('#uf-event-change')) { unlock.fixed = false; paintEvent(form); form.eventId.focus(); return; }
     if (ev.target.closest('#uf-type')) { unlock.typing = true; paintWho(form); ready(form); form.name.focus(); return; }
     if (ev.target.closest('#uf-change')) { unlock.who = null; form.name.value = ''; form.email.value = ''; paintWho(form); ready(form); }
   });
