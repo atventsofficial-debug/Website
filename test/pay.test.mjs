@@ -28,6 +28,7 @@ function fakeD1() {
     bind: (...a) => stmt(sql, a),
     run: async () => ({ meta: { changes: Number(db.prepare(sql).run(...args).changes) } }),
     first: async () => db.prepare(sql).get(...args) ?? null,
+    all: async () => ({ results: db.prepare(sql).all(...args) }),
   });
   return { prepare: sql => stmt(sql), rows: () => db.prepare('SELECT * FROM orders').all() };
 }
@@ -603,4 +604,78 @@ test('the Worker’s seat list is exactly the venues’ seats', () => {
     assert.equal(seatOf(c, s.cat, `${s.sec}-${s.row}0`), null);
     assert.equal(seatOf(c, s.cat, `${s.sec}-ZZZ1`), null);
   }
+});
+
+// ---------------------------------------------------------------- seat mates
+
+const WA = 'https://chat.whatsapp.com/AbCdEfGhIj123456';
+const mates = (p, { method = 'GET', body, env: e, headers = {} } = {}) => req(`/api/passes/${p.id}/fans`, {
+  method, env: e,
+  headers: { 'x-pass-token': p.token, origin: ORIGIN, ...(body ? { 'content-type': 'application/json' } : {}), ...headers },
+  body: body ? JSON.stringify(body) : undefined,
+});
+
+test('seat mates: only a paid pass gets in, and a fan shows only what they chose, after ticking the box', async () => {
+  const DB = fakeD1(), e = env({ DB, FANBASE_WA: WA });
+  const a = await (await post(order(), { env: e })).json();
+  const other = venue.seats.find(s => s.cat === seat.cat && s.id !== seat.id);
+  const b = await (await post(order({ seat: other.id, name: 'Dimas Arya', email: 'dimas@example.com' }), { env: e })).json();
+
+  // Not paid yet: nothing, not even the group link.
+  let r = await mates(a, { env: e });
+  assert.equal(r.status, 403);
+  assert.equal((await r.text()).includes('whatsapp'), false);
+  // A wrong key gets nothing either.
+  assert.equal((await mates({ id: a.id, token: b.token }, { env: e })).status, 404);
+
+  paid[a.id] = { transaction_status: 'settlement' };
+  paid[b.id] = { transaction_status: 'settlement' };
+  r = await mates(a, { env: e });
+  assert.equal(r.status, 200);
+  assert.deepEqual(await r.json(), { eventId: live.id, group: WA, me: null, fans: [] });
+  await settled();
+
+  // Without the box ticked, or with no Instagram, nothing is saved.
+  assert.equal((await mates(a, { env: e, method: 'PUT', body: { name: 'Rani', instagram: '@rani.p' } })).status, 400);
+  const bad = await mates(a, { env: e, method: 'PUT', body: { name: 'Rani', instagram: 'not a handle!', consent: true } });
+  assert.equal(bad.status, 400);
+  assert.equal((await bad.json()).field, 'instagram');
+  // Another site's page cannot set it.
+  assert.equal((await mates(a, { env: e, method: 'PUT', body: { name: 'Rani', instagram: '@rani.p', consent: true }, headers: { origin: 'https://evil.example' } })).status, 403);
+
+  r = await mates(a, { env: e, method: 'PUT', body: { name: 'Rani', instagram: 'https://www.instagram.com/Rani.P/', consent: true } });
+  assert.equal(r.status, 200);
+  assert.deepEqual((await r.json()).me, { name: 'Rani', instagram: 'rani.p' });
+
+  // The other fan sees Rani's seat, name and Instagram, and nothing else of her order.
+  const seen = await (await mates(b, { env: e })).json();
+  assert.deepEqual(seen.fans, [{ seat: seat.id, cat: seat.cat, name: 'Rani', instagram: 'rani.p' }]);
+  const text = JSON.stringify(seen);
+  for (const secret of [a.id, 'rani@example.com', 'Rani Putri']) assert.equal(text.includes(secret), false, secret);
+
+  // Taken down: gone for everyone.
+  r = await mates(a, { env: e, method: 'DELETE' });
+  assert.equal((await r.json()).me, null);
+  assert.deepEqual((await (await mates(b, { env: e })).json()).fans, []);
+});
+
+test('seat mates: the WhatsApp group can be set per concert, and only WhatsApp invites count', async () => {
+  const DB = fakeD1();
+  const group = async FANBASE_WA => {
+    const e = env({ DB, FANBASE_WA });
+    const p = await (await post(order(), { env: e })).json();
+    paid[p.id] = { transaction_status: 'settlement' };
+    return (await (await mates(p, { env: e })).json()).group;
+  };
+  assert.equal(await group(JSON.stringify({ [live.id]: WA, '*': 'https://chat.whatsapp.com/OtherOther0000' })), WA);
+  assert.equal(await group(JSON.stringify({ '*': WA })), WA);
+  assert.equal(await group('https://evil.example/join'), '');
+  assert.equal(await group(''), '');
+  await settled();
+});
+
+test('seat mates stay off without the order book', async () => {
+  const p = await newPass();
+  paid[p.id] = { transaction_status: 'settlement' };
+  assert.equal((await mates(p)).status, 503);
 });

@@ -3,6 +3,7 @@
 // hosting), with the same rules as the server. PayStore is LocalStore with real payments,
 // through the site's Worker (worker/) and Midtrans. ApiStore talks to server/server.mjs.
 import { clientsOf } from './sso.js';
+import { checkFan } from './fanrules.js';
 import { checkClick, checkClaim, checkSubscription, checkLead, checkConversions, passStatus, PASS_STATUSES, TAKEN, ACCESS_FEE, PAYMENT_ID } from './rules.js';
 
 const DB = 'atvents:demo-db';
@@ -83,6 +84,26 @@ export class LocalStore {
     return { id: c.id, eventId: c.eventId, cat: c.cat, qty: c.qty, seat: c.seat || '', name: c.name || '', route: c.route || 'affiliate', status: c.status, createdAt: c.createdAt };
   }
 
+  // Seat mates (js/fans.js), the same answers as GET/PUT/DELETE /api/passes/<id>/fans. In
+  // the demo they stay in this browser, so only this browser's own passes show up.
+  async fans(p, change) {
+    const own = this.db.claims.find(x => x.id === p.id);
+    if (p.status !== 'confirmed' && own?.status !== 'confirmed') throw fail(403, 'Seat mates open once your pass is paid.');
+    let list = (this.db.fans ||= []);
+    if (change === null) list = this.db.fans = list.filter(f => f.id !== p.id);
+    else if (change) {
+      const { fan, field, error } = checkFan(change);
+      if (error) throw Object.assign(fail(400, error), { field });
+      list = this.db.fans = [...list.filter(f => f.id !== p.id), { id: p.id, eventId: p.eventId, cat: p.cat, seat: p.seat, ...fan }];
+    }
+    if (change !== undefined) this.save();
+    const rows = list.filter(f => f.eventId === p.eventId), me = rows.find(f => f.id === p.id);
+    return {
+      eventId: p.eventId, group: '', me: me ? { name: me.name, instagram: me.instagram } : null,
+      fans: rows.map(f => ({ seat: f.seat, cat: f.cat, name: f.name, instagram: f.instagram, ...(f.id === p.id ? { mine: true } : {}) })),
+    };
+  }
+
   async subscribe(d) {
     const { subscription: s, error } = checkSubscription(d);
     if (error) throw fail(400, error);
@@ -150,7 +171,7 @@ export class LocalStore {
   async leads() { return this.db.leads.slice().reverse(); }
   async subscribers() { return this.db.subscribers.slice().reverse(); }
   async reset() {
-    this.db = { clicks: [], claims: [], conversions: {}, leads: [], subscribers: [], payments: [] };
+    this.db = { clicks: [], claims: [], conversions: {}, leads: [], subscribers: [], payments: [], fans: [] };
     try { localStorage.removeItem(DB); } catch { /* ignore */ }
   }
 }
@@ -177,6 +198,14 @@ export class PayStore extends LocalStore {
   pay(d) { return call('api/payments', { method: 'POST', body: d }); }
   // Another way to pay: the server has Midtrans close this order first.
   cancelPay(id, token) { return call(`api/passes/${encodeURIComponent(id)}/cancel`, { method: 'POST', headers: { 'x-pass-token': token } }); }
+  // Seat mates: undefined reads, a profile shows it, null takes it down. A pass from the
+  // preview, without a key, is still this browser's.
+  fans(p, change) {
+    if (!p.token) return super.fans(p, change);
+    const path = `api/passes/${encodeURIComponent(p.id)}/fans`, headers = { 'x-pass-token': p.token };
+    if (change === null) return call(path, { method: 'DELETE', headers });
+    return change ? call(path, { method: 'PUT', headers, body: change }) : call(path, { headers });
+  }
   // A pass from the preview, without a key, is still this browser's.
   claimStatus(id, token) {
     return token ? call(`api/passes/${encodeURIComponent(id)}`, { headers: { 'x-pass-token': token } }) : super.claimStatus(id);

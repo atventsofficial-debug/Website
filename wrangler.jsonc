@@ -20,7 +20,8 @@
   // on the first deploy and keeps using it; its table is made on first use.
   "d1_databases": [{ "binding": "DB", "database_name": "atvents-orders" }],
   // Variables set in the dashboard survive a deploy: the secrets above, and the public
-  // MIDTRANS_CLIENT_KEY, GOOGLE_CLIENT_ID and MICROSOFT_CLIENT_ID (README, Payments).
+  // MIDTRANS_CLIENT_KEY, GOOGLE_CLIENT_ID and MICROSOFT_CLIENT_ID (README, Payments), and
+  // FANBASE_WA, the WhatsApp fan group's invite link that paid passes see (README, Seat mates).
   "keep_vars": true,
   "observability": { "enabled": true }
 }

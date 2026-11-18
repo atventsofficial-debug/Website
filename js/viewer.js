@@ -15,6 +15,7 @@ import { whenOf } from './when.js';
 import { buyLink, activePass, openPass, passes, canView, toggleSeat, STATUS } from './passes.js';
 import { placeSeat, cleanNumbering, isDefault, numberingOf, numberingSource } from './seatflip.js';
 import { $, esc, icon, state, QUALITY, spotStats, share, toast } from './ui.js';
+import { loadMates, matesBlock, bindMates, mateTags, openInstagram, resetMates } from './fans.js';
 
 const FOCUS_NAME = { concert: 'stage', cinema: 'screen', combat: 'octagon', stadium: 'centre spot' };
 const out = icon('i-out');
@@ -38,6 +39,27 @@ const markedIds = () => [
   ...(state.tour ? (state.tour.step >= 2 && tourSeat() ? [tourSeat().id] : []) : pass()?.status === 'confirmed' ? pass()?.seats || [] : []),
   ...(state.shared ? [state.shared] : []),
 ];
+// The paid pass whose seat mates the view shows: the tour's, or the concert's open pass.
+const matesPass = () => {
+  const p = state.tour ? tourPass() : pass();
+  return p?.status === 'confirmed' ? p : null;
+};
+// The seat mates' tags over their seats, set again only when they change.
+let tagKey = '';
+function paintTags() {
+  const sc = state.scene, p = matesPass();
+  if (!sc?.scene || !sc.venue) return;
+  const list = p ? mateTags(state.tour ? tourSeat()?.id : p.seats?.[0] || p.seat) : [];
+  const key = `${state.venue?.eventId}|${list.map(f => `${f.seat}:${f.name}:${f.instagram}:${f.mine ? 1 : 0}`).join(',')}`;
+  if (key === tagKey) return;
+  tagKey = key;
+  sc.setFans(list);
+}
+function paintMates() {
+  const p = matesPass();
+  if (p) loadMates(p, paintViewer);
+  paintTags();
+}
 const seatText = s => (s.standing ? `${s.secName}, standing` : `${s.secName} · Row ${s.row} · Seat ${s.num}`);
 const priceText = c => (c.price == null ? c.note || 'On tiket.com' : formatRpShort(c.price));
 
@@ -77,6 +99,7 @@ export async function openViewer(id, { cat, seat, back, tour } = {}) {
       onHover: showTooltip,
       onSelect: pickSeat,
       onMode: setMode,
+      onFan: openInstagram,
       onArrive: (s, dist) => {
         $('#sc-dist').textContent = `${Math.round(dist)} m to the ${FOCUS_NAME[state.venue.show ? 'concert' : state.venue.kind]} · eye height ${(s.y + (s.standing ? 1.62 : 1.2)).toFixed(1)} m${s.standing ? ' · free standing: stand anywhere on the floor' : ''}`;
       },
@@ -88,6 +111,7 @@ export async function openViewer(id, { cat, seat, back, tour } = {}) {
   // The crowd is atmosphere, the same for every visitor. Nobody sits in the fan's own seats.
   const crowd = crowdSeats(venue);
   markedIds().forEach(s => crowd.delete(s));
+  tagKey = '';
   if (!(await state.scene.load(venue, crowd))) return;
   if (state.venue !== venue || state.view !== 'seats') return;
   state.scene.setCrowd(state.crowd);
@@ -104,6 +128,8 @@ export async function openViewer(id, { cat, seat, back, tour } = {}) {
 export function closeViewer() {
   state.tour = null;
   document.body.classList.remove('in-tour');
+  resetMates();
+  tagKey = '';
   if (!state.scene) return;
   state.scene.dispose();
   state.scene = null;
@@ -147,7 +173,8 @@ export function paintViewer() {
       <p class="eyebrow">Your 3D pass</p>
       <h2>Your seat is ready</h2>
       <p>Your pass is paid and open. Take the tour from the whole venue to your category, then to the view from your seat.</p>
-      <div class="row-btns"><a class="btn btn-coral btn-sm" href="#tour-${esc(p.id)}">Start my seat tour ${icon('i-arrow')}</a></div>`
+      <div class="row-btns"><a class="btn btn-coral btn-sm" href="#tour-${esc(p.id)}">Start my seat tour ${icon('i-arrow')}</a></div>
+      ${matesBlock(p, { cats: v.catById })}`
       : p?.status === 'checking' ? `
       <p class="eyebrow">${icon('i-clock')}Waiting for payment</p>
       <h2>Almost there</h2>
@@ -161,6 +188,7 @@ export function paintViewer() {
   renderCats();
   state.scene?.setMine(markedIds());
   if (state.viewing) fillSeatCard(state.viewing);
+  paintMates();
 }
 
 function renderCats() {
@@ -296,6 +324,7 @@ export function bindViewer() {
     if (num) setNumbering(...num.split(':'));
     if (act === 'back') state.scene?.backToOverview();
   });
+  bindMates($('#app-side'), { pass: matesPass, repaint: paintViewer });
   $('#sc-close').addEventListener('click', closePeek);
   $('#zoom').addEventListener('click', e => {
     const d = e.target.closest('[data-zoom]')?.dataset.zoom;
@@ -488,7 +517,10 @@ function paintTour() {
         <a class="btn btn-line" href="#home">${icon('i-back')}Back to home</a>
       </div>
       <p class="fine"><button class="link" type="button" data-tour="again">Take the tour again</button></p>`;
-  $('#app-side').innerHTML = `${bar}${body}`;
+  // Seat mates on every step but while the fan taps their seat.
+  const mates = step === 2 && state.tour.picking ? '' : matesBlock(p, { cats: v.catById });
+  $('#app-side').innerHTML = `${bar}${body}${mates}`;
   renderCats();
   state.scene?.setMine(markedIds());
+  paintMates();
 }

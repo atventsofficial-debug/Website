@@ -71,9 +71,9 @@ export class SeatScene {
   // maxLevel and fps keep a decorative scene (the home page hero) cheap: it never asks for
   // more than that quality level or frame rate, whatever the device could do. `drift`: how
   // far (radians) a seat view slowly looks round on its own, so a still shot feels alive.
-  constructor(container, { onHover, onSelect, onMode, onArrive, quality = 'auto', labels = true, interactive = true, maxLevel = 2, fps = 60, drift = 0 } = {}) {
+  constructor(container, { onHover, onSelect, onMode, onArrive, onFan, quality = 'auto', labels = true, interactive = true, maxLevel = 2, fps = 60, drift = 0 } = {}) {
     this.container = container;
-    this.cb = { onHover, onSelect, onMode, onArrive };
+    this.cb = { onHover, onSelect, onMode, onArrive, onFan };
     this.labelsOn = labels;
     this.labelsShown = true;
     this.interactive = interactive;
@@ -636,6 +636,37 @@ export class SeatScene {
     }
   }
 
+  // Seat mates (js/fans.js): a tag over each seat whose fan shows their Instagram, the
+  // fan's own one marked. `list`: { seat, name, instagram, mine } with seats in this venue.
+  // A tap on a tag is the page's (onFan), so the tag carries no link of its own.
+  setFans(list = []) {
+    this.fanTags?.forEach(o => { o.element.remove(); o.removeFromParent(); });
+    this.fanTags = [];
+    if (!this.scene || !this.venue) return;
+    const byId = this.venue.seatById;
+    for (const f of list) {
+      const i = byId.get(f.seat);
+      if (i === undefined) continue;
+      const s = this.venue.seats[i];
+      const el = document.createElement('button');
+      el.type = 'button';
+      el.className = `fan-tag${f.mine ? ' is-mine' : ''}`;
+      el.dataset.fan = f.seat;
+      const b = document.createElement('b'), span = document.createElement('span');
+      b.textContent = f.mine ? 'You' : f.name;
+      span.textContent = `@${f.instagram}`;
+      el.append(b, span);
+      el.addEventListener('pointerdown', e => e.stopPropagation());
+      el.addEventListener('click', e => { e.stopPropagation(); this.cb.onFan?.(f, s); });
+      const obj = new CSS2DObject(el);
+      obj.position.set(s.x, s.y + (s.standing ? 2.3 : 1.7), s.z);
+      obj.userData.fan = true;
+      this.scene.add(obj);
+      this.fanTags.push(obj);
+    }
+    if (this.tagView) this.tagView.ok = false;
+  }
+
   seatColor(i, out) {
     const s = this.venue.seats[i];
     if (this.realColors) {
@@ -687,9 +718,11 @@ export class SeatScene {
     this.crowd?.forEach(m => { m.visible = on && (!m.userData.liveOnly || this.moodValue > 0.5); });
   }
 
+  // Block numbers on or off. The seat mates' tags stay, so the layer itself stays shown.
   setLabels(on) {
     this.labelsShown = on;
-    this.labelRenderer.domElement.style.display = on ? '' : 'none';
+    this.labels?.forEach(l => { l.visible = on; });
+    if (this.tagView) this.tagView.ok = false;
   }
 
   // A tag that would cover a nearer one fades out, so a phone shows fewer, readable block
@@ -701,16 +734,16 @@ export class SeatScene {
     const { width, height } = this.labelRenderer.getSize();
     const v = TAG_POS, tags = [], shown = [];
     let measured = true;
-    for (const l of this.labels) {
+    for (const l of [...(this.fanTags || []), ...this.labels]) {
       if (!l.visible) continue;
       v.copy(l.position).project(cam);
       if (v.z < -1 || v.z > 1) continue;
       const el = l.element;
       l.userData.box ||= el.offsetWidth ? { w: el.offsetWidth / 2 + 2, h: el.offsetHeight / 2 + 1 } : null;
-      if (l.userData.box) tags.push({ el, x: (v.x + 1) * width / 2, y: (1 - v.y) * height / 2, z: v.z, ...l.userData.box });
+      if (l.userData.box) tags.push({ el, fan: l.userData.fan ? 1 : 0, x: (v.x + 1) * width / 2, y: (1 - v.y) * height / 2, z: v.z, ...l.userData.box });
       else measured = false;
     }
-    tags.sort((a, b) => a.z - b.z);
+    tags.sort((a, b) => b.fan - a.fan || a.z - b.z);   // seat mates before block numbers
     for (const t of tags) {
       const hit = shown.some(s => Math.abs(s.x - t.x) < s.w + t.w && Math.abs(s.y - t.y) < s.h + t.h);
       t.el.classList.toggle('sec-tag-off', hit);
@@ -1207,7 +1240,7 @@ export class SeatScene {
       this.renderer.render(this.scene, this.camera);
     }
     this.afterRender?.(this.renderer.domElement);
-    if (this.labels?.length && this.labelsShown) {
+    if ((this.labels?.length && this.labelsShown) || this.fanTags?.length) {
       this.labelRenderer.render(this.scene, this.camera);
       if (this.mode === 'overview') this._declutter();
     }

@@ -77,3 +77,10 @@ export async function returnEmail(env, id) {
   if (!d) return;
   await d.prepare('UPDATE orders SET emailed_at = NULL WHERE id = ?').bind(id).run();
 }
+
+// The order's state in the book: 'confirmed' once paid, or null when the book has no row.
+export async function statusOf(env, id) {
+  const d = await db(env);
+  if (!d) return null;
+  return (await d.prepare('SELECT status FROM orders WHERE id = ?').bind(id).first())?.status ?? null;
+}

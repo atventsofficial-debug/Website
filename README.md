@@ -37,6 +37,16 @@ Rules for a claim (`checkClaim` in `js/rules.js`, the same in the browser and on
 
 The 3D lock is a convenience, not a vault: the venue models are public files. What is protected is the data: passes, emails and order IDs.
 
+## Seat mates
+
+Fans with a paid 3D pass for the same concert can find each other before the show. In the 3D view and the seat tour, a **Seat mates** block shows:
+
+- **The WhatsApp fan group**, for paid passes only. Its invite link is `FANBASE_WA` in the Cloudflare dashboard (a variable, kept with `keep_vars`): one `https://chat.whatsapp.com/...` link for every concert, or JSON with a link per concert id and `"*"` for the rest, e.g. `{"evt-mcr-jakarta": "https://chat.whatsapp.com/AAA...", "*": "https://chat.whatsapp.com/BBB..."}`. Anything that is not a WhatsApp invite is ignored, and without it the button does not show.
+- **Fans who show their Instagram on their seat**, as a tag over the seat in 3D (a tap opens their Instagram) and a short list. Nobody is shown by default: the fan types a name and their Instagram and ticks the consent box. They can edit it or take it down at any time.
+- Other fans see only the seat, the category, the name typed and the Instagram username: never the email, the name on the order or the order id.
+
+The server side is `GET/PUT/DELETE /api/passes/<id>/fans` in `worker/index.mjs` (the pass key in `x-pass-token`; the order must be paid, by the order book or Midtrans) and the `fans` table in D1 (`worker/fans.mjs`, made on first use). The rules for a profile are `checkFan` in `js/fanrules.js`, the same in the browser and the Worker. A month after the show the concert's rows are deleted the next time anyone asks, as the privacy policy says. In demo mode (no Worker) the profiles stay in the browser.
+
 ## Run it
 
 ```bash

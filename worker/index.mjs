@@ -6,6 +6,8 @@
 //   POST /api/payments          an order and the way to pay it: what to pay with, and the key to the pass
 //   GET  /api/passes/<id>       how that payment is going (header x-pass-token: the key)
 //   POST /api/passes/<id>/cancel  the fan picks another way to pay: Midtrans closes this one
+//   GET/PUT/DELETE /api/passes/<id>/fans  seat mates: the concert's fans who show their
+//                               Instagram on their seat, and its WhatsApp group (fans.mjs)
 //   POST /api/midtrans/notify   Midtrans telling us a payment changed (signed with the server key)
 //   GET  /pay/done              where Midtrans sends the fan back, on to #paid-<id>
 //
@@ -21,7 +23,9 @@ import { paymentsOf, midtrans, MidtransError, PaymentRefused, chargeOf, payDetai
 import { payMethod, methodsOn } from '../js/paymethods.js';
 import { clientsOf } from '../js/sso.js';
 import { signPass, readPass } from './passkey.mjs';
-import { hasOrders, saveOrder, setStatus, takeEmail, returnEmail } from './orders.mjs';
+import { hasOrders, saveOrder, setStatus, statusOf, takeEmail, returnEmail } from './orders.mjs';
+import { hasFans, fansOf, saveFan, dropFan, dropConcert, KEEP_AFTER } from './fans.mjs';
+import { checkFan, waGroupFor } from '../js/fanrules.js';
 import { mailerOf, passEmail } from './mail.mjs';
 
 const MAX_BODY = 4096, NOTIFY_BODY = 16384;
@@ -52,6 +56,8 @@ export default {
       if (pass) return method === 'GET' ? await passStatus(request, env, ctx, pass[1]) : notAllowed('GET');
       const cancel = /^\/api\/passes\/([^/]{1,40})\/cancel$/.exec(path);
       if (cancel) return method === 'POST' ? await cancelPayment(request, env, ctx, url, cancel[1]) : notAllowed('POST');
+      const mates = /^\/api\/passes\/([^/]{1,40})\/fans$/.exec(path);
+      if (mates) return ['GET', 'PUT', 'DELETE'].includes(method) ? await seatMates(request, env, ctx, url, mates[1]) : notAllowed('GET, PUT, DELETE');
       if (path === '/api/midtrans/notify') return method === 'POST' ? await notified(request, env) : notAllowed('POST');
       if (path === '/pay/done') return backFromPayment(url);
       if (path.startsWith('/api/')) return fail(404, 'Not found');
@@ -269,6 +275,49 @@ async function sendPass(env, pay, id) {
     console.error(`pass email ${id} not sent: ${err?.message || err}`);
     return false;
   }
+}
+
+// Seat mates (fans.mjs). Only a paid pass gets in, with its key: the order book says so, or
+// else Midtrans does. GET: the concert's fans who show their Instagram, which of them is
+// this pass, and the WhatsApp group. PUT: show this pass's name and Instagram on its seat.
+// DELETE: take them down.
+async function seatMates(request, env, ctx, url, id) {
+  const pay = paymentsOf(env);
+  if (!pay || !hasFans(env)) return fail(503, 'Seat mates are not switched on yet.');
+  const m = request.method;
+  if (m !== 'GET') {
+    const origin = request.headers.get('origin');
+    if (origin && origin !== url.origin) return fail(403, 'Forbidden');
+  }
+  if (await tooMany(env, 'STATUS_LIMIT', request)) return fail(429, 'Too many tries. Please wait a minute.');
+  const p = await passOf(pay, request, id);
+  if (!p) return fail(404, 'Pass not found');
+  if ((await statusOf(env, id)) !== 'confirmed') {
+    const status = passStateOf(await midtrans(pay).status(id), { id, amount: ACCESS_FEE });
+    if (status !== 'confirmed') return fail(403, 'Seat mates open once your pass is paid.');
+    later(ctx, settle(env, pay, id, status));
+  }
+  const show = concert(p.eventId);
+  if (!show || show.start + KEEP_AFTER < Date.now()) {
+    await dropConcert(env, p.eventId);
+    return fail(410, 'Seat mates close a month after the show.');
+  }
+  if (m === 'PUT') {
+    const d = await readJson(request);
+    if (d instanceof Response) return d;
+    const { fan, field, error } = checkFan(d);
+    if (error) return fail(400, error, { field });
+    await saveFan(env, p, fan);
+  }
+  if (m === 'DELETE') await dropFan(env, id);
+  const rows = await fansOf(env, p.eventId);
+  const me = rows.find(r => r.order_id === id);
+  return json(200, {
+    eventId: p.eventId,
+    group: waGroupFor(env.FANBASE_WA, p.eventId),
+    me: me ? { name: me.name, instagram: me.instagram } : null,
+    fans: rows.map(r => ({ seat: r.seat, cat: r.cat, name: r.name, instagram: r.instagram, ...(r.order_id === id ? { mine: true } : {}) })),
+  });
 }
 
 // Midtrans adds ?order_id=… to the finish address. The page takes it from there.
