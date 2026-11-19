@@ -254,7 +254,7 @@
   .pass-note { font-size: 13px; }
   .pass-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; }
   .pass-facts dd { margin-top: 4px; font-size: 14px; }
-  .pass .row-btns { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .pass .row-btns { gap: 8px; }
   .pass .row-btns .btn { width: 100%; justify-content: center; }
 }
 
@@ -323,3 +323,10 @@
 .hs-back.is-on { z-index: 1; transition: opacity 0.5s ease; }
 /* Each layer keeps its own stacking: the backdrops always stay under the arena picture. */
 #hs-backs, #hero-canvas { isolation: isolate; }
+
+/* ---------- a pass's buttons, every size: the main one across, Story and Copy pass link side by side under it ---------- */
+.pass .row-btns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.pass .row-btns .btn-coral { grid-column: 1 / -1; }
+.pass .row-btns .btn-line { min-width: 0; justify-content: center; gap: 8px; padding: 0 12px; }
+/* A small button on its own (no Story, or no link) takes the whole row. */
+.pass .row-btns .btn-coral + .btn-line:last-child, .pass .row-btns .btn-line:only-child { grid-column: 1 / -1; }
