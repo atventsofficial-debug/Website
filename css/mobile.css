@@ -203,7 +203,12 @@
   #view-unlock .sec-side { display: none; }
   #view-unlock .host-side { display: none; }
   #view-unlock { padding-bottom: 24px; }
-  #pay-start { position: sticky; z-index: 5; bottom: calc(10px + env(safe-area-inset-bottom)); height: 54px; box-shadow: 0 10px 30px -8px rgba(0, 0, 0, 0.7); }
+  /* The pay button stays where it is in the form, under the consent box: no floating copy over
+     the fields ("Where your pass goes" was showing through it while it was still greyed out). */
+  #pay-start { position: static; height: 54px; }
+
+  /* "Getting there" on a concert page: the venue and its address get the full width. */
+  .venue-facts > :first-child { grid-column: 1 / -1; }
 
   /* ---------- footer: the legal lines only ---------- */
   .footer { margin-top: 40px; padding: 24px var(--gut) 20px; border-top: 1px solid var(--line); }
