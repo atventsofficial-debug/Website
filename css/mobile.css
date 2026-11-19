@@ -254,8 +254,6 @@
   .pass-note { font-size: 13px; }
   .pass-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; }
   .pass-facts dd { margin-top: 4px; font-size: 14px; }
-  .pass .row-btns { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
-  .pass .row-btns .btn { width: 100%; justify-content: center; }
 }
 
 /* ---------- concert page on a phone: the poster first, edge to edge, never cropped ---------- */
@@ -323,3 +321,10 @@
 .hs-back.is-on { z-index: 1; transition: opacity 0.5s ease; }
 /* Each layer keeps its own stacking: the backdrops always stay under the arena picture. */
 #hs-backs, #hero-canvas { isolation: isolate; }
+
+/* ---------- a pass's buttons, every size: the tour across, then Story and Copy pass link side by side ---------- */
+.pass .row-btns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.pass .row-btns .btn { width: 100%; min-width: 0; justify-content: center; gap: 8px; padding: 0 12px; white-space: nowrap; }
+.pass .row-btns .btn-coral { grid-column: 1 / -1; }
+/* A lone second button (no Story, or no link) takes the whole row. */
+.pass .row-btns .btn-line:nth-child(2):last-child, .pass .row-btns .btn-line:first-child:last-child { grid-column: 1 / -1; }
