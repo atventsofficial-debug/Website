@@ -103,14 +103,15 @@ const posterSrc = meta => IMAGES[meta?.image]?.src || '';
 // The part of the poster a wide screen keeps (`screen` in media.js), as fractions.
 const posterFocus = meta => (IMAGES[meta?.image]?.screen || '50% 50%').split(' ').map(v => parseFloat(v) / 100);
 const images = new Map();
-// Fetches a show's poster ahead, so its slide swaps at once when it comes.
-export const preloadPoster = meta => { const src = posterSrc(meta); if (src) loadImage(src); };
+// A show's poster, fetched and decoded: drawing it then costs nothing, so its slide swaps
+// at once. Resolves when it is ready (or could not be had).
+export const preloadPoster = meta => { const src = posterSrc(meta); return src ? loadImage(src) : Promise.resolve(null); };
 function loadImage(src) {
   if (!images.has(src)) {
     images.set(src, new Promise(resolve => {
       const img = new Image();
       img.decoding = 'async';
-      img.onload = () => resolve(img);
+      img.onload = () => (img.decode ? img.decode().catch(() => {}) : Promise.resolve()).then(() => resolve(img));
       img.onerror = () => { images.delete(src); resolve(null); };
       img.src = src;
     }));
@@ -372,7 +373,8 @@ export class FlatHeroPhoto {
     this.img = img;
     this.haze = haze;
     this.draw();
-    this.root.classList.add('is-ready');
+    // The arena shows only once it has a poster on its screens, never as an empty frame.
+    if (this.posters) this.root.classList.add('is-ready');
     return true;
   }
 
@@ -410,6 +412,7 @@ export class FlatHeroPhoto {
     else this.root.style.removeProperty('--hs-tint');
     this.posters = this.arena.screens.map(s => { const c = document.createElement('canvas'); drawPoster(c, img, s.aspect, focus); return c; });
     this.draw();
+    if (this.img) this.root.classList.add('is-ready');
     return true;
   }
 

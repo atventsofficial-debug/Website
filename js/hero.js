@@ -139,10 +139,19 @@ function go(i, dir) {
   if (next === hero.i || !n) return;
   hero.i = next;
   fillBacks($$('#hs-backs .hs-back')[next]);
-  paint(dir);
-  // Drawing the poster for the screens holds the page for a moment. It waits until the new
-  // content has started to fade in, which the browser then finishes on its own.
-  requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(showArena)));
+  // The card and the picture change together: while the arena is up, the slide waits (a
+  // moment at most) for its poster, so the card never shows one show over another's picture.
+  const turn = hero.turn = {};
+  const ready = hero.run?.ready ? preloadPoster(hero.list[next]) : null;
+  const show = () => {
+    if (hero.turn !== turn) return;
+    paint(dir);
+    // Drawing the poster for the screens holds the page for a moment. It waits until the new
+    // content has started to fade in, which the browser then finishes on its own.
+    requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(showArena)));
+  };
+  if (ready) Promise.race([ready, new Promise(r => setTimeout(r, 900))]).then(show);
+  else show();
 }
 const step = d => go(hero.i + d, d);
 
@@ -283,9 +292,13 @@ async function showArena() {
     run.poster = show;
     run.photo.setPoster(show);
   }
-  // The posters either side, ready before the visitor swipes to them.
+  // The posters either side first, then all the others, ready before the visitor swipes.
   const n = hero.list.length;
-  [1, -1].forEach(d => preloadPoster(hero.list[(hero.i + d + n) % n]));
+  if (!run.preloaded) {
+    run.preloaded = true;
+    const order = [1, -1, ...Array.from({ length: n }, (_, k) => k)].map(d => hero.list[(hero.i + d + n) % n]);
+    order.reduce((p, e) => p.then(() => preloadPoster(e)), Promise.resolve());
+  }
 }
 
 export function startHero() {
