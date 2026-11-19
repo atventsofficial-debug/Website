@@ -535,7 +535,7 @@ function paintTour() {
   const p = tourPass(), v = state.venue, s = ticketSeat();
   if (!p || !s) return;
   const cat = v.catById[p.cat], step = state.tour.step, e = v.meta;
-  const bar = `<ol class="tour-steps">${STEPS.map((t, i) => `<li class="${i + 1 < step ? 'is-done' : i + 1 === step ? 'is-on' : ''}"><b>${i + 1}</b><span>${t}</span></li>`).join('')}</ol>`;
+  const bar = `<ol class="tour-steps">${STEPS.map((t, i) => `<li class="${i + 1 < step ? 'is-done' : i + 1 === step ? 'is-on' : ''}"${i + 1 === step ? ' aria-current="step"' : ''}><b>${i + 1 < step ? icon('i-check') : i + 1}</b><span>${t}</span></li>`).join('')}</ol>`;
   const body = step === 1 ? `
       <h2>${esc(v.place.name)}</h2>
       <p>This is the whole venue for ${esc(e.title)}. Your ticket is <b>${esc(cat.name)}</b>: tap it below, or tap one of its seats.</p>

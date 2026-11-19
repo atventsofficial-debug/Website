@@ -138,7 +138,6 @@ export function matesBlock(p, { cats = {} } = {}) {
   // The WhatsApp groups are offered on the My passes page only, not over the 3D view.
   const catName = esc(cats[p.cat]?.name || 'your section');
   const head = `<div class="mates-head">
-      <span class="mates-ig">${icon('i-ig')}</span>
       <div><h3 class="mates-h">Connect with your section</h3><p class="mates-sub">Meet fans sitting in ${catName} on Instagram before the show.</p></div>
     </div>`;
   const count = others.length ? `<p class="mates-count"><b>${others.length}</b> fan${others.length === 1 ? '' : 's'} in ${catName} ${others.length === 1 ? 'is' : 'are'} here. Tap a name or a tag on the map to say hi.</p>` : '';

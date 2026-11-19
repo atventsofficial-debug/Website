@@ -217,10 +217,8 @@
 
 /* ---------- the 3D view's panels: solid enough that no section label shows through ---------- */
 .stage .app-side, .stage .sections { background: rgba(18, 17, 17, 0.98); }
-/* The tour's three steps on one line each: "1 The venue", never wrapped. */
-.tour-steps li { flex-direction: row; align-items: baseline; gap: 5px; min-width: 0; padding-top: 7px; font-size: 11px; letter-spacing: 0; text-transform: none; white-space: nowrap; }
-.tour-steps li span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.tour-steps li b { flex: none; font-size: 11px; }
+/* The tour's three steps: each label on one line, never wrapped. */
+.tour-steps li span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ---------- the seat tour on a phone: one card at the bottom, nothing under it ---------- */
 @media (max-width: 760px) {
