@@ -25,14 +25,14 @@
 .uf-pick-row:hover, .uf-pick-row:focus-visible { border-color: var(--coral); background: rgba(255, 255, 255, 0.06); outline: none; }
 .uf-pick-row .uf-poster { flex: none; display: block; width: 132px; aspect-ratio: 3 / 2; object-fit: cover; border-radius: 8px; background: #111; }
 .uf-pick-row .uf-event-text { flex: 1; min-width: 0; }
-/* On a phone each event leads with its whole poster, edge to edge, like the events list. */
+/* On a phone the same row as on a computer: the whole poster at 3:2 on the left, a little smaller. */
 @media (max-width: 760px) {
   .uf-pick { padding: 16px; }
-  .uf-pick-list { gap: 12px; }
-  .uf-pick-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 10px; padding: 0; overflow: hidden; }
-  .uf-pick-row > svg { margin-right: 14px; }
-  .uf-pick-row .uf-poster { grid-column: 1 / -1; width: 100%; border-radius: 0; }
-  .uf-pick-row .uf-event-text { padding: 12px 0 14px 14px; }
+  .uf-pick-row { gap: 12px; padding: 8px 12px 8px 8px; }
+  .uf-pick-row .uf-poster { width: 108px; border-radius: 8px; }
+  .uf-pick-row .uf-event-text b { font-size: 15px; line-height: 1.25; }
+  .uf-pick-row .uf-event-text small { font-size: 12px; line-height: 1.35; }
+  .uf-pick-row > svg { flex: none; }
 }
 .uf-pick-row > svg { width: 18px; height: 18px; color: var(--muted); }
 
