@@ -5,7 +5,7 @@
 //
 // Nothing is shown for a fan until they tick the box. Only fans with a paid pass for the
 // same concert see the tags, and only in the 3D view.
-import { igHandle, igUrl } from './fanrules.js';
+import { igHandle, igUrl, SEAT_TAKEN } from './fanrules.js';
 import { $, esc, icon, state, toast } from './ui.js';
 
 // What the Worker last said for the pass in the view: { passId, eventId, group, me, fans },
@@ -65,7 +65,7 @@ export function matesBlock(p, { cats = {} } = {}) {
   const d = mates.data;
   if (!d) return '';
   const others = d.fans.filter(f => !f.mine);
-  const group = waTiles(d);
+  // The WhatsApp groups are offered on the My passes page only, not over the 3D view.
   const count = others.length ? `${others.length} fan${others.length === 1 ? '' : 's'} at this concert ${others.length === 1 ? 'shows' : 'show'} their Instagram on their seat. Tap a tag to say hi.`
     : 'No other fans show their Instagram yet. Be the first, and they will find you.';
   let mine;
@@ -81,8 +81,10 @@ export function matesBlock(p, { cats = {} } = {}) {
       </form>`;
   } else if (d.me) {
     mine = `<p class="fine mates-me">Your seat shows <b>${esc(d.me.name)}</b> · <a class="u" href="${esc(igUrl(d.me.instagram))}" target="_blank" rel="noopener noreferrer">@${esc(d.me.instagram)}</a>. <button class="link" type="button" data-mates="edit">Edit</button> · <button class="link" type="button" data-mates="off">Delete my info</button></p>`;
+  } else if (others.some(f => f.seat === p.seat)) {
+    mine = `<p class="fine mates-me">${esc(SEAT_TAKEN)}</p>`;
   } else {
-    mine = `<div class="row-btns"><button class="btn btn-line btn-sm" type="button" data-mates="edit">${icon('i-check')}Show my Instagram on my seat</button></div><p class="fine">Optional. Skip it and nothing about you is shown.</p>`;
+    mine = `<div class="row-btns"><button class="btn btn-line btn-sm" type="button" data-mates="edit">${icon('i-check')}Show my Instagram on my seat</button></div><p class="fine">Optional. One seat shows one Instagram. Skip it and nothing about you is shown.</p>`;
   }
   // Fans in the same category first, then the rest, a handful at most: the 3D tags show all.
   const near = [...others.filter(f => f.cat === p.cat), ...others.filter(f => f.cat !== p.cat)].slice(0, 6);
@@ -91,7 +93,6 @@ export function matesBlock(p, { cats = {} } = {}) {
   return `<section class="mates">
       <h3 class="mates-title">${icon('i-eye')}Seat mates</h3>
       <p class="fine">${count}</p>
-      ${group}
       ${mine}
       ${list}
     </section>`;
