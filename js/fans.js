@@ -13,10 +13,14 @@ import { $, esc, icon, state, toast } from './ui.js';
 export const mates = { passId: '', data: null, loading: false, error: '', editing: false, draft: null, busy: false };
 
 const can = () => typeof state.store?.fans === 'function';
+// Seat mates are for fans who paid: a pass the Worker confirmed carries its key (token). A
+// pass from the preview checkout, where nothing is charged, has none, and gets no Instagram
+// form, no tags and no list, on phones and on desktop alike.
+const paid = p => !!p && p.status === 'confirmed' && p.route === 'paid' && !!p.token;
 
 // Ask for the concert's seat mates once per pass; `after` paints the panel and the tags.
 export async function loadMates(p, after) {
-  if (!p || p.status !== 'confirmed' || !can()) return;
+  if (!paid(p) || !can()) return;
   if (mates.passId === p.id && (mates.data || mates.loading)) return;
   Object.assign(mates, { passId: p.id, data: null, loading: true, error: '', editing: false, draft: null });
   try {
@@ -34,7 +38,7 @@ export function resetMates() {
 }
 
 // The tags for the 3D view. The fan's own tag sits where the tour put their seat.
-export const mateTags = (ownSeat) => (mates.data?.fans || []).map(f => (f.mine && ownSeat ? { ...f, seat: ownSeat } : f));
+export const mateTags = (ownSeat) => (mates.passId ? mates.data?.fans || [] : []).map(f => (f.mine && ownSeat ? { ...f, seat: ownSeat } : f));
 
 export const openInstagram = f => window.open(igUrl(f.instagram), '_blank', 'noopener,noreferrer');
 
@@ -55,7 +59,7 @@ export function waTiles(wa) {
 
 // The panel block: the WhatsApp group, the fan's own profile, and who else shows theirs.
 export function matesBlock(p, { cats = {} } = {}) {
-  if (!p || p.status !== 'confirmed' || !can()) return '';
+  if (!paid(p) || !can()) return '';
   if (mates.passId !== p.id || mates.loading) return `<section class="mates"><h3 class="mates-title">Seat mates</h3><p class="fine">Finding fans at this concert…</p></section>`;
   if (mates.error) return `<section class="mates"><h3 class="mates-title">Seat mates</h3><p class="fine">${esc(mates.error)} <button class="link" type="button" data-mates="retry">Try again</button></p></section>`;
   const d = mates.data;
@@ -68,16 +72,17 @@ export function matesBlock(p, { cats = {} } = {}) {
   if (mates.editing) {
     const v = mates.draft || {};
     mine = `<form class="mates-form" data-mates-form novalidate>
+        <p class="fine mates-note"><b>Optional.</b> Only fans who paid for a 3D pass to this concert can see it. Your email, phone and ticket details are never shown.</p>
         <label><span>Name other fans see</span><input name="name" maxlength="40" autocomplete="nickname" value="${esc(v.name || '')}" placeholder="Rani"></label>
         <label><span>Instagram</span><input name="instagram" maxlength="60" autocapitalize="none" autocomplete="off" spellcheck="false" value="${esc(v.instagram || '')}" placeholder="@yourname"></label>
-        <label class="check"><input type="checkbox" name="consent"${v.consent ? ' checked' : ''}><span>Show my name and Instagram on my seat to fans with a 3D pass for this concert. I can take them down any time.</span></label>
+        <label class="check"><input type="checkbox" name="consent"${v.consent ? ' checked' : ''}><span>I agree to show my name and Instagram on my seat. By ticking this, I accept that fans with a paid 3D pass for this concert can see them, and I will not hold atvents liable for that. I can delete them any time.</span></label>
         <p class="fine mates-err" role="alert" hidden></p>
         <div class="row-btns"><button class="btn btn-coral btn-sm" type="submit"${mates.busy ? ' disabled' : ''}>Show on my seat</button><button class="btn btn-line btn-sm" type="button" data-mates="cancel">Cancel</button></div>
       </form>`;
   } else if (d.me) {
-    mine = `<p class="fine mates-me">Your seat shows <b>${esc(d.me.name)}</b> · <a class="u" href="${esc(igUrl(d.me.instagram))}" target="_blank" rel="noopener noreferrer">@${esc(d.me.instagram)}</a>. <button class="link" type="button" data-mates="edit">Edit</button> · <button class="link" type="button" data-mates="off">Take it down</button></p>`;
+    mine = `<p class="fine mates-me">Your seat shows <b>${esc(d.me.name)}</b> · <a class="u" href="${esc(igUrl(d.me.instagram))}" target="_blank" rel="noopener noreferrer">@${esc(d.me.instagram)}</a>. <button class="link" type="button" data-mates="edit">Edit</button> · <button class="link" type="button" data-mates="off">Delete my info</button></p>`;
   } else {
-    mine = `<div class="row-btns"><button class="btn btn-line btn-sm" type="button" data-mates="edit">${icon('i-check')}Show my Instagram on my seat</button></div>`;
+    mine = `<div class="row-btns"><button class="btn btn-line btn-sm" type="button" data-mates="edit">${icon('i-check')}Show my Instagram on my seat</button></div><p class="fine">Optional. Skip it and nothing about you is shown.</p>`;
   }
   // Fans in the same category first, then the rest, a handful at most: the 3D tags show all.
   const near = [...others.filter(f => f.cat === p.cat), ...others.filter(f => f.cat !== p.cat)].slice(0, 6);
@@ -111,7 +116,7 @@ export function bindMates(root, { pass, repaint }) {
     if (act === 'off') {
       try {
         mates.data = await state.store.fans(p, null);
-        toast('Your Instagram is no longer shown on your seat.');
+        toast('Deleted. Your name and Instagram are no longer stored or shown.');
       } catch (err) { toast(err?.message || 'That did not go through. Please try again.'); }
       repaint();
     }
