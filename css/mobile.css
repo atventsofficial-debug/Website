@@ -212,6 +212,10 @@
 /* ---------- the seat tour on a phone: one card at the bottom, nothing under it ---------- */
 @media (max-width: 760px) {
   .in-tour .stage .sections { display: none; }
+  /* The card never climbs past the middle: a long one (the Instagram form) scrolls inside it,
+     and the round tools sit just above it, clear of the title at the top. */
+  .stage .app-side { max-height: 52svh; overflow-y: auto; overscroll-behavior: contain; }
+  .in-tour .stage .tools { bottom: calc(max(156px, var(--side-h, 0px)) + 24px); }
   .tour-steps { margin-bottom: 10px; }
   .tour-end .btn { height: 44px; padding: 0 12px; font-size: 13px; }
 }
