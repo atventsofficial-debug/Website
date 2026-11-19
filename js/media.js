@@ -85,21 +85,26 @@ export function placeCover(place, e, alt) {
 // An event's cover: its own artwork when it has some, else the render of its venue.
 export const eventImg = (e, alt, opts) => coverImg(e.image || e.photo, e.venue, alt, opts);
 
+// The card art is redrawn under the same names, and browsers keep pictures for a while
+// (scripts/build-site.mjs, /assets/*): bump this when the cards change, so every visitor
+// gets the new ones at once instead of the copy they already have.
+const CARD_V = '?v=20261119';
+
 // A ticket card's cover: the event's artwork drawn to the card's 5:7, so nothing is cropped
 // away. An event without artwork shows its venue's render, which the card crops.
 export function cardImg(e, alt) {
   if (!e.image || !Object.hasOwn(IMAGES, e.image)) return eventImg(e, alt);
-  const src = `assets/events/card/${e.image}`, c = IMAGES[e.image];
+  const src = `assets/events/card/${e.image}`, c = IMAGES[e.image], v = CARD_V;
   // A phone shows the poster itself, 3:2 and whole, across the card; the tall card art is for bigger screens.
   const full = c.src.replace(/\.webp$/, '');
   const phone = c.w ? `${c.src} ${c.w}w` : `${full}-640.webp 640w, ${c.src} 1200w`;
-  return `<picture><source media="(max-width: 760px)" srcset="${phone}" sizes="100vw"><img class="cover-img cover-image" src="${src}-480.webp" srcset="${src}-480.webp 480w, ${src}.webp 800w" sizes="(max-width: 640px) 92vw, 360px" alt="${c.alt.replace(/"/g, '&quot;')}" loading="lazy" decoding="async"></picture>`;
+  return `<picture><source media="(max-width: 760px)" srcset="${phone}" sizes="100vw"><img class="cover-img cover-image" src="${src}-480.webp${v}" srcset="${src}-480.webp${v} 480w, ${src}.webp${v} 800w" sizes="(max-width: 640px) 92vw, 360px" alt="${c.alt.replace(/"/g, '&quot;')}" loading="lazy" decoding="async"></picture>`;
 }
 
 // The poster, small, beside the order in the checkout. Empty for a concert without one.
 export function thumbImg(e) {
   if (!e?.image || !Object.hasOwn(IMAGES, e.image)) return '';
-  return `<img class="co-poster" src="assets/events/card/${e.image}-480.webp" alt="" decoding="async">`;
+  return `<img class="co-poster" src="assets/events/card/${e.image}-480.webp${CARD_V}" alt="" decoding="async">`;
 }
 
 // The poster at its own 3:2, for the event picker: whole, never cut, the same size for every event.

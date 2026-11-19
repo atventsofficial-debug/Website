@@ -78,7 +78,9 @@ fs.writeFileSync(path.join(out, 'index.html'), html);
 fs.writeFileSync(path.join(out, 'auth.html'), auth);
 
 // Hashed files never change, so they are kept for a year. Pictures keep their names when one
-// is replaced, so they are kept for a day and refreshed in the background for a week.
+// is replaced, so a browser keeps one five minutes and then asks again (a 304 when nothing
+// changed): a new picture reaches every visitor within minutes, not days. The page itself has
+// no rule: Cloudflare sends it with max-age=0, must-revalidate, so a release shows on the next load.
 // The pass email's pictures (assets/mail/) are shown by mail apps, from other addresses, so
 // their rule takes back the same-origin-only resource policy that /* gives every file
 // ("! header" removes a header an earlier rule set) and lets any site show them.
@@ -88,7 +90,7 @@ fs.writeFileSync(path.join(out, '_headers'), [
   block('/*', securityHeaders(out, true, { midtrans: true })),   // from the page as built: no import map, no CDN
   block('/js/*', { 'cache-control': code }),
   block('/css/*', { 'cache-control': code }),
-  block('/assets/*', { 'cache-control': 'public, max-age=86400, stale-while-revalidate=604800' }),
+  block('/assets/*', { 'cache-control': 'public, max-age=300' }),
   block('/assets/mail/*', { 'cross-origin-resource-policy': 'cross-origin' }, ['cross-origin-resource-policy']),
 ].join('\n'));
 writeWorkerCatalog(root);
