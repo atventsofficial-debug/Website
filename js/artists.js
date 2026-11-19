@@ -1,11 +1,11 @@
 // Who is playing, for the story trailer (trailer.js): what the act is and where from, in two
-// short lines, and a photo of them where Atvents has one from the promoter's own material.
+// short lines, and where their official poster shows their faces, which part of it does.
 // Keyed by the show's theme (themes.js), which is one per act.
 //
 // photo.src is the picture; photo.box the part of it with the act in it, as shares of its
 // width and height [left, top, right, bottom], kept clear of any type on it; photo.credit the
-// line its licence asks for (a Creative Commons photo: 'Name / CC BY 4.0'), shown on it. Without a photo,
-// the trailer's first two scenes are set in type on the show's colours.
+// line its licence asks for, if it is not the promoter's own (a Creative Commons photo:
+// 'Name / CC BY 4.0'), shown on it. Without a photo, the second scene is set in type.
 export const ARTISTS = {
   mcr: { about: ['Rock band from New Jersey, USA', 'Since 2001'] },
   gnr: { about: ['Hard rock band from Los Angeles, USA', 'Since 1985'] },

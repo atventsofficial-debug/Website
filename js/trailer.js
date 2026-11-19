@@ -1,9 +1,9 @@
 // The story as a trailer of the show, cut like an event flyer in motion: 17.4 seconds on the
-// track's 100 bpm grid. The act first, in a photo from the promoter's own material (or set in
-// type on the show's colours where there is none), with the date, the venue and the promoter;
-// then who they are and the tour; the glass cracking on the music's break and falling away to
-// the view from the fan's own seat with its block, row and seat; and the Atvents logo coming
-// together as it does when the site opens.
+// track's 100 bpm grid. The official poster with the date, the venue and the promoter; then
+// the act's face from their poster (or, where it has none, their name set in type on the
+// show's colours) with who they are and the tour; the glass cracking on the music's break and
+// falling away to the view from the fan's own seat with its block, row and seat; and the
+// Atvents logo coming together as it does when the site opens.
 //
 // Only facts go on it: the act, the tour, the date, the venue, the promoter, the seat. No
 // slogans. Colours come from the show's theme (themes.js). Text is only ever paper or ink: on
@@ -41,18 +41,33 @@ export const inkOn = bg => (contrast(bg, INK) >= contrast(bg, PAPER) ? INK : PAP
 
 // ---------------------------------------------------------------- the kit
 
-// The act's photo (`photo`: { img, box }, see artists.js) cut to the act and made ready in
-// colour and in black and white; a field of the show's colours, from the photo or else the
-// poster, blurred past reading and put in the show's duotone; the field as an LED wall; and a
-// crowd's silhouettes, for the shows with no photo.
+// The official poster whole, as the promoter made it; the act's face where the poster has
+// one (`photo`: { img, box }, see artists.js), cut to it; a field of the poster's colours,
+// blurred past reading and put in the show's duotone; the field as an LED wall; and a crowd's
+// silhouettes.
 export function makeKit({ poster, photo, logo, theme }) {
   const dark = theme?.screen?.a || '#0a0a0a', accent = theme?.band || '#ec5446';
   const pic = photo?.img ? picOf(photo.img, photo.box) : null;
-  const field = mapped(blurred(photo?.img || poster), duoMap(dark, accent, PAPER, 0.62));
-  return { field, led: ledOf(field), crowd: crowdOf(), pic, logo, accent, dark, onAccent: inkOn(accent) };
+  const field = mapped(blurred(poster || photo?.img), duoMap(dark, accent, PAPER, 0.62));
+  // A light show colour is dimmed behind the type, so paper still reads on it.
+  const veil = Math.min(0.55, Math.max(0, (lum(accent) - 0.12) * 1.4));
+  if (veil) { const g = field.getContext('2d'); g.fillStyle = `rgba(0,0,0,${veil})`; g.fillRect(0, 0, W, H); }
+  return { field, led: ledOf(field), crowd: crowdOf(), panel: panelOf(poster), pic, logo, accent, dark, onAccent: inkOn(accent) };
 }
 
-// The part of the photo with the act in it, 1040 px tall (and room either side to move).
+// The poster at its own shape, 720 px across at most (and 960 tall).
+function panelOf(img) {
+  if (!img) return null;
+  const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+  const k = Math.min(720 / iw, 960 / ih), w = Math.round(iw * k), h = Math.round(ih * k);
+  const c = canvas(w, h), g = c.getContext('2d');
+  g.imageSmoothingQuality = 'high';
+  g.drawImage(img, 0, 0, w, h);
+  return c;
+}
+
+
+// The part of the poster with the act's face, 1040 px tall (and room either side to move).
 function picOf(img, box = [0, 0, 1, 1]) {
   const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
   const bx = box[0] * iw, by = box[1] * ih, bw = (box[2] - box[0]) * iw, bh = (box[3] - box[1]) * ih;
@@ -67,7 +82,7 @@ function picOf(img, box = [0, 0, 1, 1]) {
   g.imageSmoothingQuality = 'high';
   if (lift > 1.02) g.filter = `brightness(${lift.toFixed(2)}) contrast(1.06)`;
   g.drawImage(img, bx, by, bw, bh, 0, 0, w, h);
-  return { color, mono: mapped(color, monoMap(), w, h) };
+  return { color };
 }
 
 function canvas(w = W, h = H) { return Object.assign(document.createElement('canvas'), { width: w, height: h }); }
@@ -102,10 +117,6 @@ function duoMap(dark, accent, light, top = 1) {
     return [p[0] + (q[0] - p[0]) * s, p[1] + (q[1] - p[1]) * s, p[2] + (q[2] - p[2]) * s];
   };
 }
-function monoMap() {
-  return l => { const x = Math.min(1, Math.max(0, (l - 0.12) * 1.5)); const v = 255 * x * x * (3 - 2 * x); return [v, v, v]; };
-}
-
 // The field as an LED wall: one lamp per 12 px, brightest at the top, gone by the middle.
 function ledOf(src) {
   const cols = 60, cell = W / cols, rows = Math.ceil(H / cell);
@@ -171,77 +182,78 @@ export function paint(ctx, t, look, kit, seat) {
 // In over `d` ms from `at`, eased.
 const inn = (t, at, d = 380) => ease((t - at) / d);
 
-// 0–4.8 s. The act: their photo drifting across the frame (or, with none, an LED wall and a
-// crowd), the date, the name, the details and the promoter, each in its turn.
+// 0–4.8 s. The show: the date stacked and lit like neon over an LED wall, the official
+// poster on it, the crowd in front, the name, the details and the promoter, each in its turn.
 function flyerOne(ctx, t, look, kit) {
-  const dur = T.s2 - T.s1;
-  if (kit.pic) {
-    picture(ctx, kit.pic.color, t / dur, 1.0, 1.07, 1);
-    grade(ctx, kit, 0.22);
-    ctx.save(); ctx.globalCompositeOperation = 'screen'; ctx.globalAlpha = 0.22; ctx.drawImage(kit.led, 0, 0); ctx.restore();
-    shade(ctx, 0.3, 0);
-    scrim(ctx, 0.4, 0.72);
-  } else {
-    field(ctx, kit, t, 1);
-    ctx.save(); ctx.globalCompositeOperation = 'screen'; ctx.globalAlpha = 0.6 + 0.15 * Math.sin(t / 300); ctx.drawImage(kit.led, 0, 0); ctx.restore();
-    shade(ctx, 0.35, 0);
-  }
+  field(ctx, kit, t, 1);
+  ctx.save(); ctx.globalCompositeOperation = 'screen'; ctx.globalAlpha = 0.5 + 0.12 * Math.sin(t / 300); ctx.drawImage(kit.led, 0, 0); ctx.restore();
+  shade(ctx, 0.35, 0);
 
-  // The name, and where it sits; the date stacked above it, or (with no photo to keep
-  // clear) four times down the top of the frame.
-  const lines = look.nameLines, ns = fitSize(ctx, lines, 900, W - 96, 96), lh = ns * 1.02;
-  const base = H - 300 - (lines.length - 1) * lh;
   const d = stackArt(look, 'date', look.dateStack, kit, 172);
-  const rows = kit.pic ? 2 : 4, y0 = kit.pic ? base - ns - 34 - rows * d.step : 196;
-  for (let i = 0; i < rows; i++) {
+  for (let i = 0; i < 4; i++) {
     const k = inn(t, 80 + i * 110, 520);
     if (k <= 0) continue;
     const dir = i % 2 ? 1 : -1, x = (W - d.w) / 2 + dir * ((1 - k) * 220 + t / 70);
     ctx.globalAlpha = k;
-    ctx.drawImage(i === 1 ? d.fill : d.line, x - d.pad, y0 + i * d.step - d.pad);
+    ctx.drawImage(i === 1 ? d.fill : d.line, x - d.pad, 196 + i * d.step - d.pad);
   }
   ctx.globalAlpha = 1;
 
-  if (!kit.pic) {
-    const glow = ctx.createRadialGradient(W / 2, H - 150, 20, W / 2, H - 150, 520);
-    glow.addColorStop(0, kit.accent); glow.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.save(); ctx.globalCompositeOperation = 'screen'; ctx.globalAlpha = 0.6;
-    ctx.fillStyle = glow; ctx.fillRect(0, H - 700, W, 700); ctx.restore();
-    ctx.drawImage(kit.crowd, Math.sin(t / 520) * 8 - 12, H - kit.crowd.height + 12 + Math.sin(t / 260) * 4, W + 24, kit.crowd.height);
-    scrim(ctx, 0.66, 0.6);
+  // The poster, settling in and growing very slowly.
+  const pk = pop((t - 320) / 560);
+  if (pk > 0 && kit.panel) {
+    const s = fitIn(kit.panel, 560, 560) * (0.86 + 0.14 * pk) * (1 + t / 40000);
+    ctx.globalAlpha = Math.min(1, pk * 1.6);
+    panel(ctx, kit, kit.panel, s, t - 320 < 120 ? glitchOf(3, Math.max(0, t - 320)) : null, -0.02, 0.5);
+    ctx.globalAlpha = 1;
   }
 
+  // The crowd against the stage's light.
+  const glow = ctx.createRadialGradient(W / 2, H - 150, 20, W / 2, H - 150, 520);
+  glow.addColorStop(0, kit.accent); glow.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.save(); ctx.globalCompositeOperation = 'screen'; ctx.globalAlpha = 0.6;
+  ctx.fillStyle = glow; ctx.fillRect(0, H - 700, W, 700); ctx.restore();
+  ctx.drawImage(kit.crowd, Math.sin(t / 520) * 8 - 12, H - kit.crowd.height + 12 + Math.sin(t / 260) * 4, W + 24, kit.crowd.height);
+  scrim(ctx, 0.6, 0.72);
+
+  const lines = look.nameLines, ns = fitSize(ctx, lines, 900, W - 96, 96), lh = ns * 1.02;
+  const base = H - 300 - (lines.length - 1) * lh;
   ctx.textAlign = 'center';
   lines.forEach((s, i) => {
-    const k = inn(t, 420 + i * 130, 460);
+    const k = inn(t, 700 + i * 130, 460);
     if (k <= 0) return;
     const y = base + i * lh;
     ctx.save();
     ctx.beginPath(); ctx.rect(0, y - ns * 1.02, W, ns * 1.3); ctx.clip();
     ctx.translate(0, (1 - k) * ns * 1.1);
     ctx.font = `900 ${ns}px ${EXP}`;
+    ctx.shadowColor = 'rgba(0,0,0,0.55)'; ctx.shadowBlur = 22;
     ctx.fillStyle = kit.accent; ctx.fillText(s, W / 2 + 5, y + 5);
+    ctx.shadowColor = 'transparent';
     ctx.fillStyle = PAPER; ctx.fillText(s, W / 2, y);
     ctx.restore();
   });
-  const ik = inn(t, 820);
+  const ik = inn(t, 1050);
   if (ik > 0) {
     ctx.globalAlpha = ik;
+    ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 10;
     small(ctx, look.line1, W / 2, H - 236, 22, PAPER, 800);
     small(ctx, look.line2, W / 2, H - 204, 18, PAPER, 700);
+    ctx.shadowColor = 'transparent';
     ctx.globalAlpha = 1;
   }
-  logos(ctx, look, kit, inn(t, 1000));
+  logos(ctx, look, kit, inn(t, 1250));
 }
 
-// 4.8–9.6 s. Who they are: the photo again in black and white and closer (or the name in
-// lit outline), the date in a box, the tour on two labels, the act in two lines on torn
-// paper. On the music's break it all holds still and the glass cracks.
+// 4.8–9.6 s. Who they are: the act's face from the poster, drifting across the frame (or,
+// where the poster has none, the name lit in outline), the date in a box, the tour on two
+// labels, the act in two lines on torn paper. On the music's break it all holds still and the
+// glass cracks.
 function flyerTwo(ctx, lt, look, kit) {
   const hold = T.crack - T.s2, t = Math.min(lt, hold + 60), dur = T.s3 - T.s2;
   if (kit.pic) {
-    picture(ctx, kit.pic.mono, t / dur, 1.22, 1.3, -1);
-    grade(ctx, kit, 0.3);
+    picture(ctx, kit.pic.color, t / dur, 1.04, 1.12, 1);
+    grade(ctx, kit, 0.25);
     shade(ctx, 0.45, 0);
     scrim(ctx, 0.46, 0.75);
   } else {
@@ -360,6 +372,29 @@ function end(ctx, lt) {
 }
 
 // ---------------------------------------------------------------- drawing kit
+
+const fitIn = (img, mw, mh) => Math.min(mw / img.width, mh / img.height);
+
+// The poster whole, at scale `s` round the point (W/2, H * yk), turned `rot`, with a
+// shadow; `glitch` shifts a few bands of it sideways (the hits).
+function panel(ctx, kit, img, s, glitch, rot = 0, yk = 0.45) {
+  if (!img) return;
+  const w = img.width, h = img.height;
+  ctx.save();
+  ctx.translate(W / 2, H * yk); ctx.rotate(rot); ctx.scale(s, s);
+  ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 50; ctx.shadowOffsetY = 24;
+  ctx.drawImage(img, -w / 2, -h / 2);
+  ctx.shadowColor = 'transparent';
+  if (glitch) {
+    for (const [y0, hh, dx] of glitch) {
+      const y = Math.floor(y0 * h), bh = Math.max(4, Math.floor(hh * h));
+      ctx.drawImage(img, 0, y, w, bh, -w / 2 + dx, -h / 2 + y, w, bh);
+      ctx.fillStyle = kit.accent; ctx.globalAlpha = 0.25; ctx.fillRect(-w / 2 + dx, -h / 2 + y, w, bh); ctx.globalAlpha = 1;
+    }
+  }
+  ctx.restore();
+}
+
 
 // A photo `c` filling the frame from the top, zoomed from `z0` to `z1` and drifting sideways
 // (`dir`) as `k` goes 0–1, with its foot fading into the dark.
