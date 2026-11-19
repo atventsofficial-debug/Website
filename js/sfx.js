@@ -172,6 +172,12 @@ export function createSfx(ac, out) {
       }
     },
 
+    // Everything down to silence over `d` seconds, with the picture's fade to black.
+    out(t, d = 0.55) {
+      master.gain.setValueAtTime(master.gain.value, t);
+      master.gain.linearRampToValueAtTime(0, t + d);
+    },
+
     // A ticket stamped: the rubber's thud on the counter, and the paper under it.
     stamp(t, gain = 0.4) {
       const b = src(t, 0.12, 0.6), lp = ac.createBiquadFilter(), g = ac.createGain();

@@ -1,4 +1,4 @@
-// The story a fan posts once their pass is paid: a 14-second vertical film, with sound, for
+// The story a fan posts once their pass is paid: a 16-second vertical film, with sound, for
 // an Instagram or TikTok story. No slogans: the venue in the dark, the fan's seat lit red
 // and a sight line drawn from it to the stage, the camera's flight into the seat as the
 // show's lights come up, the seat's numbers ticking in, and the paper pass. The look is the
@@ -93,7 +93,7 @@ export async function makeStory(pass) {
 
     // 1. The house in the dark, turning slowly; the seat lights up and the sight line runs
     // to the stage.
-    cue('room', 15);
+    cue('room', 20);   // longer than the film: it ends with the fade out
     // A slow push in, turning, towards the space between the seat and the stage.
     scene.orbit(30, 4.4, { push: 0.6, toward: look.seatAt.map((v, k) => (v + look.focus[k]) / 2) });
     await wait(900); mark('dot'); cue('seat');
@@ -119,7 +119,7 @@ export async function makeStory(pass) {
     mark('pass'); setTimeout(() => cue('stamp'), 560);
     sheet.progress(0.85, 'Your pass');
     await wait(3000);
-    mark('end');
+    mark('end'); cue('out', 0.55);
     await wait(600);
     rec.stop();
     await stopped;
@@ -425,7 +425,7 @@ function openSheet() {
         <div class="story-side">
           <p class="eyebrow">Your story</p>
           <h2 id="story-title">Making your seat pass</h2>
-          <p id="story-note">About 14 seconds, with sound. Keep this tab open.</p>
+          <p id="story-note">About 16 seconds, with sound. Keep this tab open.</p>
           <div class="story-bar"><i id="story-bar"></i></div>
           <div class="story-actions" id="story-actions"><button class="btn btn-line btn-sm" type="button" data-story="close">Cancel</button></div>
         </div>
