@@ -1,8 +1,8 @@
-// The story a fan posts once their pass is paid: a 16.8-second trailer of their show, cut
-// to the music like an event flyer in motion, from the promoter's own material (the poster
-// and the show's details as listed), then the view from the fan's own seat with its block,
-// row and seat, and Atvents last (trailer.js draws it; the music is a licensed track when
-// TRACK names one, else beat.js; sfx.js adds the crowd).
+// The story a fan posts once their pass is paid: a 17-second trailer of their show, cut to
+// the music like an event flyer in motion: the act (artists.js) with the show's details as
+// the promoter lists them, then the view from the fan's own seat with its block, row and
+// seat, and the Atvents logo last (trailer.js draws it; the music is the licensed track in
+// TRACK, else beat.js; sfx.js adds the crowd).
 //
 // The seat's view is a second, hidden copy of the venue at 720 x 1280, flown into the seat
 // with the show's lights up before recording starts; the trailer is drawn over its frames
@@ -15,6 +15,7 @@ import { placeSeat, numberingOf } from './seatflip.js';
 import { loadScene3d } from './viewer.js';
 import { THEMES } from './themes.js';
 import { IMAGES } from './media.js';
+import { ARTISTS } from './artists.js';
 import { createSfx } from './sfx.js';
 import { score } from './beat.js';
 import { paint, makeKit, lookOf, LENGTH, T } from './trailer.js';
@@ -28,11 +29,11 @@ const pickType = () => TYPES.find(t => window.MediaRecorder?.isTypeSupported?.(t
 const slug = t => (t || 'concert').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 // The beat for each show's music: the rock bands get drums and a fuzz bass, the rest a pop kit.
 const ROCK = new Set(['mcr', 'gnr', '5sos']);
-// A licensed track to cut to, in place of the beat: its file and the second of its drop. The
-// cuts are on a 100 bpm grid from the drop (trailer.js), the music's break on beat 15 and back
-// in on 16, so it must be a 100 bpm track built that way. Only a track Atvents holds a licence
-// for that covers fans posting it.
-const TRACK = null; // e.g. { src: 'assets/audio/story-track.m4a', from: 10.17 }
+// The track the trailer is cut to (licensed by Atvents), from its drop: the cuts are on its
+// 100 bpm grid (trailer.js), the glass cracks on its break (beat 15) and the seat comes in
+// with it on 16. `from` is the second of the drop in the file. Without it (TRACK null, or
+// the file not loading), the beat made in the browser (beat.js) plays to the same grid.
+const TRACK = { src: 'assets/audio/story-track.m4a', from: 0 };
 
 let busy = false;
 
@@ -56,6 +57,8 @@ export async function makeStory(pass) {
   try {
     const font = loadFonts();
     const art = e.image && IMAGES[e.image] ? loadImage(IMAGES[e.image].src) : Promise.resolve(null);
+    const artist = ARTISTS[e.theme] || null;
+    const shot = artist?.photo ? loadImage(artist.photo.src) : Promise.resolve(null);
     const logo = loadImage('assets/brand/atvents-logo-dark.svg');
     const track = TRACK && ac ? fetch(TRACK.src).then(r => r.arrayBuffer()).then(b => ac.decodeAudioData(b)).catch(() => null) : null;
     const { SeatScene } = await loadScene3d();
@@ -81,9 +84,10 @@ export async function makeStory(pass) {
     const focus = scene.focus ? [scene.focus.x, scene.focus.z] : [venue.stageX ?? -40, 0];
     const metres = Math.max(1, Math.round(Math.hypot(at.x - focus[0], at.z - focus[1])));
     const when = whenOf(e);
-    const look = lookOf({ e, place: venue.place, when, seat, cat, metres });
+    const look = lookOf({ e, place: venue.place, when, seat, cat, metres, artist });
     const theme = THEMES[e.theme] || THEMES.default;
-    const kit = makeKit({ poster: await art, logo: await logo, theme });
+    const photo = await shot;
+    const kit = makeKit({ poster: await art, photo: photo && { img: photo, box: artist.photo.box }, logo: await logo, theme });
     const out = sheet.canvas, ctx = out.getContext('2d');
 
     // Picture and sound, into one recording.
