@@ -316,3 +316,16 @@
   [data-evl="c"] .ev-hero .ev-specs { order: 9; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   [data-evl="c"] .ev-hero .ev-specs div:last-child { grid-column: 1 / -1; }
 }
+
+/* ---------- home on a phone: "On sale now" as rows, like Choose your event; All events at the far right ---------- */
+@media (max-width: 760px) {
+  #view-home .sec-side { display: flex; justify-content: flex-end; width: auto; max-width: none; margin-left: auto; }
+  #home-events .tkt { grid-template-columns: 108px minmax(0, 1fr); align-items: center; gap: 12px; padding: 8px 12px 8px 8px; }
+  #home-events .tkt-bg { grid-area: 1 / 1; border-radius: 8px; overflow: hidden; }
+  #home-events .tkt-in { grid-area: 1 / 2; padding: 0; gap: 3px; }
+  #home-events .tkt .tkt-title { font-size: 15px; line-height: 1.25; }
+  #home-events .tkt-when b { font-size: 10.5px; }
+  #home-events .tkt-when span { font-size: 12px; }
+  #home-events .tkt-price b { font-size: 14px; }
+  #home-events .tkt-price small { font-size: 11px; }
+}
