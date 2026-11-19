@@ -2245,7 +2245,7 @@ body { font-family: var(--font); font-feature-settings: "cv11", "ss01"; }
 @media (max-width: 760px) { .foot-alert { grid-template-columns: 1fr; } .fa-field .btn { flex: 1 1 100%; justify-content: center; } }
 
 /* How it works: a plain four-step timeline, no panel and no cards. */
-#how, #how.sec { background: none !important; border: 0 !important; border-radius: 0; padding: 0 var(--gut); margin-top: var(--s9); max-width: none; overflow: visible; }
+#how, #how.sec { background: none !important; border: 0 !important; border-radius: 0; padding: 0 var(--gut); margin: var(--s9) auto 0; max-width: calc(var(--max) + var(--gut) * 2); overflow: visible; }
 #how::before { content: none; }
 #how .sec-head { border-top-color: var(--line); }
 #how .sec-side p { color: var(--muted); }
