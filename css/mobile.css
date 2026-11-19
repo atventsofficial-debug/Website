@@ -285,36 +285,19 @@
 }
 
 @media (max-width: 760px) {
-  /* A: Ringkas. Title, chips, a short blurb, two buttons (Unlock stays in the bottom bar), facts as a list. */
-  [data-evl="a"] .ev-hero .ev-blurb { order: 4; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-  [data-evl="a"] .ev-hero .ev-sale { order: 5; }
-  [data-evl="a"] .ev-hero .ev-info .row-btns { order: 6; }
-  [data-evl="a"] .ev-hero .ev-info .row-btns .btn-coral { display: none; }
-  [data-evl="a"] .ev-hero .ev-specs { order: 7; display: block; border: 1px solid var(--line-2); border-radius: 14px; overflow: hidden; }
-  [data-evl="a"] .ev-hero .ev-specs div { display: grid; grid-template-columns: 84px minmax(0, 1fr); border: 0; border-radius: 0; background: transparent; }
-  [data-evl="a"] .ev-hero .ev-specs div + div { border-top: 1px solid var(--line-2); }
-  [data-evl="a"] .ev-hero .ev-specs dt { margin: 3px 0 0; }
-  [data-evl="a"] .ev-hero .ev-official { order: 8; padding: 0; border: 0; background: none; color: var(--muted); }
-  [data-evl="a"] .ev-hero .ev-actions { order: 9; }
+  /* Title, chips, a short blurb, two buttons (Unlock stays in the bottom bar), facts as a list. */
+  .ev-hero .ev-blurb { order: 4; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .ev-hero .ev-sale { order: 5; }
+  .ev-hero .ev-info .row-btns { order: 6; }
+  .ev-hero .ev-info .row-btns .btn-coral[href^="#unlock-"] { display: none; }
+  .ev-hero .ev-dates { order: 5; }
+  .ev-hero .ev-specs { order: 7; display: block; border: 1px solid var(--line-2); border-radius: 14px; overflow: hidden; }
+  .ev-hero .ev-specs div { display: grid; grid-template-columns: 84px minmax(0, 1fr); border: 0; border-radius: 0; background: transparent; }
+  .ev-hero .ev-specs div + div { border-top: 1px solid var(--line-2); }
+  .ev-hero .ev-specs dt { margin: 3px 0 0; }
+  .ev-hero .ev-official { order: 8; padding: 0; border: 0; background: none; color: var(--muted); }
+  .ev-hero .ev-actions { order: 9; }
 
-  /* B: Kartu info. The facts first in one card, then the buttons, then the story. */
-  [data-evl="b"] .ev-hero .ev-specs { order: 4; display: block; padding: 4px 0; border: 1px solid var(--line-2); border-radius: 16px; background: var(--panel); }
-  [data-evl="b"] .ev-hero .ev-specs div { border: 0; background: transparent; padding: 10px 14px; }
-  [data-evl="b"] .ev-hero .ev-specs div + div { border-top: 1px solid var(--line); }
-  [data-evl="b"] .ev-hero .ev-info .row-btns { order: 5; }
-  [data-evl="b"] .ev-hero .ev-official { order: 6; }
-  [data-evl="b"] .ev-hero .ev-blurb { order: 7; }
-  [data-evl="b"] .ev-hero .ev-sale { order: 8; }
-  [data-evl="b"] .ev-hero .ev-actions { order: 9; }
-
-  /* C: Tombol dulu. Under the title one line of date and place, then the actions; the rest after. */
-  [data-evl="c"] .ev-hero .ev-info .row-btns { order: 4; }
-  [data-evl="c"] .ev-hero .ev-actions { order: 5; }
-  [data-evl="c"] .ev-hero .ev-official { order: 6; }
-  [data-evl="c"] .ev-hero .ev-blurb { order: 7; padding-top: 14px; border-top: 1px solid var(--line); }
-  [data-evl="c"] .ev-hero .ev-sale { order: 8; }
-  [data-evl="c"] .ev-hero .ev-specs { order: 9; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  [data-evl="c"] .ev-hero .ev-specs div:last-child { grid-column: 1 / -1; }
 }
 
 /* ---------- home on a phone: "On sale now" as rows, like Choose your event; All events at the far right ---------- */
