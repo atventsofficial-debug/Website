@@ -1,12 +1,13 @@
 // The trailer's music: a beat made in the browser with Web Audio, written for the trailer's
 // cuts (trailer.js), so every cut, flash and the glass breaking land on a drum. No samples,
 // nothing licensed. Two kits: `rock` (drums, a distorted bass on a riff) and `pop` (a tight
-// four-on-the-floor kick, claps, a round synth bass). At 100 bpm, a beat is 0.6 s.
+// four-on-the-floor kick, claps, a round synth bass). At 122 bpm, like the licensed track it
+// stands in for, a beat is about 0.49 s.
 //
-// score(ac, out, t0, style) schedules the whole 16.8 seconds from t0 on the context's clock,
+// score(ac, out, t0, style) schedules the whole film from t0 on the context's clock,
 // so the same call makes the live track and an offline one.
 
-const B = 0.6, BAR = 4 * B;
+const B = 60 / 122, BAR = 4 * B;
 
 export function score(ac, out, t0, style = 'rock') {
   const bus = ac.createGain();
@@ -104,16 +105,16 @@ export function score(ac, out, t0, style = 'rock') {
   const at = k => t0 + k * B;     // beat k
   // 0: the drop, crash and kick together, and the groove under both flyers.
   kit.crash(at(0), 1.1);
-  for (let k = 0; k < 14; k++) groove(k);
+  for (let k = 0; k < 18; k++) groove(k);
   kit.crash(at(8), 0.8);
-  // 14: a fill on the toms. 15: the break, nothing; the glass cracks in the silence.
-  [0, 0.25, 0.5, 0.75].forEach((d, i) => kit.tom(at(14) + d * B, [140, 120, 100, 82][i], 0.8));
-  note(at(14), riff[6], B * 0.45); note(at(14) + B / 2, riff[7], B * 0.45);
-  // 16: back in on the seat, crash and kick together, the groove again.
-  kit.crash(at(16), 1.1);
-  for (let k = 16; k < 24; k++) groove(k);
-  // 24: the last hit, left to ring under the logo.
-  kit.kick(at(24), 1.1); kit.crash(at(24), 1.1); note(at(24), E, 2.2, 1);
+  // 18: a fill on the toms. 19: the break, nothing; the glass cracks in the silence.
+  [0, 0.25, 0.5, 0.75].forEach((d, i) => kit.tom(at(18) + d * B, [140, 120, 100, 82][i], 0.8));
+  note(at(18), riff[6], B * 0.45); note(at(18) + B / 2, riff[7], B * 0.45);
+  // 20: back in on the seat, crash and kick together, the groove again.
+  kit.crash(at(20), 1.1);
+  for (let k = 20; k < 32; k++) groove(k);
+  // 32: the last hit, left to ring under the logo.
+  kit.kick(at(32), 1.1); kit.crash(at(32), 1.1); note(at(32), E, 2.2, 1);
 
   function groove(k) {
     const inBar = k % 4;

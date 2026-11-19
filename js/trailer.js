@@ -1,5 +1,5 @@
-// The story as a trailer of the show, cut like an event flyer in motion: 17.4 seconds on the
-// track's 100 bpm grid. The official poster with the date, the venue and the promoter; then
+// The story as a trailer of the show, cut like an event flyer in motion: 18.7 seconds on the
+// track's 122 bpm grid. The official poster with the date, the venue and the promoter; then
 // the act's face from their poster (or, where it has none, their name set in type on the
 // show's colours) with who they are and the tour; the glass cracking on the music's break and
 // falling away to the view from the fan's own seat with its block, row and seat; and the
@@ -16,11 +16,11 @@
 import { logoMotion } from './logomotion.js';
 
 export const W = 720, H = 1280;
-export const BEAT = 600;            // the track's 100 bpm
-// The sections, in ms: in on the drop, the glass on the break (beat 15), the seat when the
-// music comes back (16), the logo on the last hit (24).
-export const T = { s1: 0, s2: 8 * BEAT, crack: 15 * BEAT, s3: 16 * BEAT, end: 24 * BEAT };
-export const LENGTH = 29 * BEAT;    // 17.4 s
+export const BEAT = 60000 / 122;    // the track's 122 bpm, about 492 ms
+// The sections, in ms: in on the drop, the second on the third bar (beat 8), the glass on the
+// break (beat 19), the seat when the music comes back (20), the logo on the last hit (32).
+export const T = { s1: 0, s2: 8 * BEAT, crack: 19 * BEAT, s3: 20 * BEAT, end: 32 * BEAT };
+export const LENGTH = 38 * BEAT;    // 18.7 s
 
 const EXP = '"Atvents Expanded", "Archivo", "Arial Black", sans-serif';
 const MONO = '"Atvents Mono", "JetBrains Mono", ui-monospace, Menlo, monospace';
@@ -182,7 +182,7 @@ export function paint(ctx, t, look, kit, seat) {
 // In over `d` ms from `at`, eased.
 const inn = (t, at, d = 380) => ease((t - at) / d);
 
-// 0–4.8 s. The show: the date stacked and lit like neon over an LED wall, the official
+// 0–3.9 s. The show: the date stacked and lit like neon over an LED wall, the official
 // poster on it, the crowd in front, the name, the details and the promoter, each in its turn.
 function flyerOne(ctx, t, look, kit) {
   field(ctx, kit, t, 1);
@@ -245,7 +245,7 @@ function flyerOne(ctx, t, look, kit) {
   logos(ctx, look, kit, inn(t, 1250));
 }
 
-// 4.8–9.6 s. Who they are: the act's face from the poster, drifting across the frame (or,
+// 3.9–9.8 s. Who they are: the act's face from the poster, drifting across the frame (or,
 // where the poster has none, the name lit in outline), the date in a box, the tour on two
 // labels, the act in two lines on torn paper. On the music's break it all holds still and the
 // glass cracks.
@@ -321,7 +321,7 @@ function flyerTwo(ctx, lt, look, kit) {
   if (lt >= hold) cracks(ctx, (lt - hold) / 120);
 }
 
-// 9.6–14.4 s. The glass falls away to the view from the seat, left clear: the category and
+// 9.8–15.7 s. The glass falls away to the view from the seat, left clear: the category and
 // the distance on a tape across the roof, the days to go on another low across the crowd, and
 // the block, row and seat along the bottom.
 function seatView(ctx, lt, look, kit, seat) {
@@ -352,8 +352,9 @@ function seatView(ctx, lt, look, kit, seat) {
       ctx.font = `900 ${vs}px ${EXP}`;
       ctx.fillStyle = kit.accent; ctx.fillText(v, 4, 4);
       ctx.fillStyle = PAPER;
-      const g = [2600, 3900].map(at => lt - at).find(a => a >= 0 && a < 120);
-      if (g !== undefined) stripes(ctx, v, vs, glitchOf(i * 5 + (lt > 3000 ? 1 : 0), g)); else ctx.fillText(v, 0, 0);
+      // A glitch on two beats of the seat's bars.
+      const g = [5, 8].map(b => lt - b * BEAT).find(a => a >= 0 && a < 120);
+      if (g !== undefined) stripes(ctx, v, vs, glitchOf(i * 5 + (lt > 6.5 * BEAT ? 1 : 0), g)); else ctx.fillText(v, 0, 0);
       ctx.restore();
     }
     x += w + gap;
@@ -365,7 +366,7 @@ function seatView(ctx, lt, look, kit, seat) {
   if (p >= 1) still = null;
 }
 
-// 14.4–17.4 s. Atvents: the logo coming together as it does when the site opens.
+// 15.7–18.7 s. Atvents: the logo coming together as it does when the site opens.
 function end(ctx, lt) {
   ctx.fillStyle = INK; ctx.fillRect(0, 0, W, H);
   logoMotion(ctx, lt / 1000 + 0.05, W / 2, H / 2, 440);
