@@ -89,6 +89,7 @@ export async function makeStory(pass) {
     const art = e.image && IMAGES[e.image] ? loadImage(IMAGES[e.image].src) : Promise.resolve(null);
     const artist = ARTISTS[e.theme] || null;
     const shot = artist?.photo ? loadImage(artist.photo.src) : Promise.resolve(null);
+    const shots = Promise.all((artist?.shots || []).map(s => loadImage(s.src).then(img => img && { img, box: s.box, credit: s.credit })));
     const logo = loadImage('assets/brand/atvents-logo-dark.svg');
     const track = TRACK && ac ? fetch(TRACK.src).then(r => r.arrayBuffer()).then(b => ac.decodeAudioData(b)).catch(() => null) : null;
     const { SeatScene } = await loadScene3d();
@@ -127,7 +128,7 @@ export async function makeStory(pass) {
     const look = lookOf({ e, place: venue.place, when, seat, cat, metres, artist });
     const theme = THEMES[e.theme] || THEMES.default;
     const photo = await shot;
-    const kit = makeKit({ poster: await art, photo: photo && { img: photo, box: artist.photo.box }, logo: await logo, theme });
+    const kit = makeKit({ poster: await art, photo: photo && { img: photo, box: artist.photo.box }, shots: (await shots).filter(Boolean), logo: await logo, theme });
     const out = sheet.canvas, ctx = out.getContext('2d');
 
     // The seat's view as a picture, renewed by every frame the scene draws.

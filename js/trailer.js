@@ -43,16 +43,18 @@ export const inkOn = bg => (contrast(bg, INK) >= contrast(bg, PAPER) ? INK : PAP
 
 // The official poster whole, as the promoter made it; the act's face where the poster has
 // one (`photo`: { img, box }, see artists.js), cut to it; a field of the poster's colours,
-// blurred past reading and put in the show's duotone; the field as an LED wall; and a crowd's
-// silhouettes.
-export function makeKit({ poster, photo, logo, theme }) {
+// blurred past reading and put in the show's duotone; the field as an LED wall; a crowd's
+// silhouettes; and the act on stage at earlier shows (`shots`: [{ img, box, credit }]), each
+// cut to its box.
+export function makeKit({ poster, photo, shots = [], logo, theme }) {
   const dark = theme?.screen?.a || '#0a0a0a', accent = theme?.band || '#ec5446';
   const pic = photo?.img ? picOf(photo.img, photo.box) : null;
+  const stage = shots.filter(s => s?.img).map(s => ({ ...picOf(s.img, s.box), credit: (s.credit || '').toUpperCase() }));
   const field = mapped(blurred(poster || photo?.img), duoMap(dark, accent, PAPER, 0.62));
   // A light show colour is dimmed behind the type, so paper still reads on it.
   const veil = Math.min(0.55, Math.max(0, (lum(accent) - 0.12) * 1.4));
   if (veil) { const g = field.getContext('2d'); g.fillStyle = `rgba(0,0,0,${veil})`; g.fillRect(0, 0, W, H); }
-  return { field, led: ledOf(field), crowd: crowdOf(), panel: panelOf(poster), pic, logo, accent, dark, onAccent: inkOn(accent) };
+  return { field, led: ledOf(field), crowd: crowdOf(), panel: panelOf(poster), pic, shots: stage, logo, accent, dark, onAccent: inkOn(accent) };
 }
 
 // The poster at its own shape, 720 px across at most (and 960 tall).
@@ -245,13 +247,25 @@ function flyerOne(ctx, t, look, kit) {
   logos(ctx, look, kit, inn(t, 1250));
 }
 
-// 3.9–9.8 s. Who they are: the act's face from the poster, drifting across the frame (or,
-// where the poster has none, the name lit in outline), the date in a box, the tour on two
+// 3.9–9.8 s. Who they are: the act on stage at earlier shows, a photo to a bar, each drifting
+// across the frame with its credit (or the act's face from the poster, drifting; or, where
+// there is neither, the name lit in outline), the date in a box, the tour on two
 // labels, the act in two lines on torn paper. On the music's break it all holds still and the
 // glass cracks.
 function flyerTwo(ctx, lt, look, kit) {
   const hold = T.crack - T.s2, t = Math.min(lt, hold + 60), dur = T.s3 - T.s2;
-  if (kit.pic) {
+  const shots = kit.shots || [], bar = 4 * BEAT;
+  const n = Math.min(shots.length - 1, Math.floor(t / bar)), shot = shots[n];
+  if (shot) {
+    // A photo to a bar, cut on its first beat with a flash, the last held through the break.
+    const k = shots.length > 1 ? Math.min(1, (t - n * bar) / (n === shots.length - 1 ? dur - n * bar : bar)) : t / dur;
+    picture(ctx, shot.color, k, 1.04, 1.12, n % 2 ? -1 : 1);
+    grade(ctx, kit, 0.25);
+    shade(ctx, 0.45, 0);
+    scrim(ctx, 0.46, 0.75);
+    const f = (t - n * bar) / 140;
+    if (n > 0 && f < 1) { ctx.fillStyle = `rgba(255,255,255,${0.45 * (1 - f) * (1 - f)})`; ctx.fillRect(0, 0, W, H); }
+  } else if (kit.pic) {
     picture(ctx, kit.pic.color, t / dur, 1.04, 1.12, 1);
     grade(ctx, kit, 0.25);
     shade(ctx, 0.45, 0);
@@ -316,7 +330,7 @@ function flyerTwo(ctx, lt, look, kit) {
     if (b) small(ctx, b, 0, 28, 18, INK, 700);
     ctx.restore();
   }
-  logos(ctx, look, kit, inn(t, 900));
+  logos(ctx, look, kit, inn(t, 900), undefined, shot ? shot.credit : kit.pic ? look.credit : '');
 
   if (lt >= hold) cracks(ctx, (lt - hold) / 120);
 }
@@ -454,13 +468,13 @@ function small(ctx, text, x, y, size, color, weight = 700, maxW = W - 96) {
 
 // The promoter and Atvents, small, along the bottom as a flyer's logos are, and the photo's
 // credit above them where its licence asks for one.
-function logos(ctx, look, kit, k, y = H - 142) {
+function logos(ctx, look, kit, k, y = H - 142, credit = '') {
   if (k <= 0) return;
   ctx.save();
   ctx.globalAlpha = k;
-  if (kit.pic && look.credit) {
+  if (credit) {
     ctx.font = `500 12px ${MONO}`; ctx.fillStyle = 'rgba(246,242,238,0.75)'; ctx.textAlign = 'left';
-    ctx.fillText(`PHOTO: ${look.credit}`, 56, y - 46, W - 112);
+    ctx.fillText(`PHOTO: ${credit}`, 56, y - 46, W - 112);
   }
   ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(0, y - 34, W, 68);
   if (look.host) {
