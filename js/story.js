@@ -106,8 +106,9 @@ export async function makeStory(pass) {
     // The flight starts wide and ends in the dark: the close pass over the seats and the
     // turn happen unseen, and the picture comes back on the stage as its lights switch on.
     mark('fly'); cue('near', 4);
-    onTurn = () => { mark('turn'); setTimeout(() => { mark('up'); cue('lights', 3); cue('cheer', 3.2); }, 1100); };
+    onTurn = () => { mark('turn'); setTimeout(() => { mark('up'); cue('lights', 3); cue('cheer', 3.2); }, 1150); };
     scene.flyToSeat(at);
+    look.flyMs = (scene.flyDur || 2) * 1000;
     await scene.settled();
     mark('seat');
     sheet.progress(0.65, 'The view from your seat');
@@ -210,7 +211,7 @@ export function paint(ctx, gl, t, look) {
   film(ctx, t);
   // In from black, out to it, and the cut in the flight: down to black on the way into the
   // stands, back up when the lights switch on.
-  const cut = A.fly == null ? 0 : A.up != null ? 1 - ease((t - A.up) / 320) : ease((t - A.fly - 700) / 450);
+  const cut = A.fly == null ? 0 : A.up != null ? 1 - ease((t - A.up) / 320) : ease((t - A.fly - Math.max(500, look.flyMs - 1000)) / 400);
   const black = Math.max(1 - ease(t / 700), cut, A.end != null ? ease((t - A.end) / 550) : 0);
   if (black > 0) { ctx.fillStyle = `rgba(0,0,0,${black})`; ctx.fillRect(0, 0, W, H); }
   ctx.restore();

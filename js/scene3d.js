@@ -929,6 +929,7 @@ export class SeatScene {
 
     const flyDur = quick ? 1.0 : THREE.MathUtils.clamp(1.4 + dist / 50, 1.6, 3.0);
     const turnDur = quick ? 1.0 : 1.9;
+    this.flyDur = flyDur;   // read by the story video, to cut before the close pass
     const qa = new THREE.Vector3(), qb = new THREE.Vector3(), target = new THREE.Vector3();
     let turning = false;
     const bank = { roll: 0 };
