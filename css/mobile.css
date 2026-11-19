@@ -325,6 +325,8 @@
 /* ---------- a pass's buttons, every size: the tour across, then Story and Copy pass link side by side ---------- */
 .pass .row-btns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .pass .row-btns .btn { width: 100%; min-width: 0; justify-content: center; gap: 8px; padding: 0 12px; white-space: nowrap; }
+/* Story and Copy pass link: the icon at one end, the words at the other. */
+.pass .row-btns .btn-line { justify-content: space-between; padding: 0 16px; }
 .pass .row-btns .btn-coral { grid-column: 1 / -1; }
 /* A lone second button (no Story, or no link) takes the whole row. */
 .pass .row-btns .btn-line:nth-child(2):last-child, .pass .row-btns .btn-line:first-child:last-child { grid-column: 1 / -1; }
