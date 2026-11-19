@@ -57,3 +57,6 @@ export function waOf(setting, eventId) {
   const { group, community } = waLinksFor(setting, eventId);
   return group || community ? { ...(group ? { group } : {}), ...(community ? { community } : {}) } : null;
 }
+
+// One seat shows one Instagram: the first fan to put theirs on a seat keeps it.
+export const SEAT_TAKEN = 'Another fan already shows their Instagram on this seat. One seat shows one Instagram. If this is your seat, write to us at halo@atvents.com.';

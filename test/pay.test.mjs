@@ -659,6 +659,29 @@ test('seat mates: only a paid pass gets in, and a fan shows only what they chose
   assert.deepEqual((await (await mates(b, { env: e })).json()).fans, []);
 });
 
+test('seat mates: one seat shows one Instagram, the first fan to put theirs there', async () => {
+  const DB = fakeD1(), e = env({ DB, FANBASE_WA: WA });
+  const a = await (await post(order(), { env: e })).json();
+  const b = await (await post(order({ name: 'Dimas Arya', email: 'dimas@example.com' }), { env: e })).json();
+  assert.ok(a.id && b.id && a.id !== b.id, 'two passes for the same seat');
+  paid[a.id] = { transaction_status: 'settlement' };
+  paid[b.id] = { transaction_status: 'settlement' };
+  const show = (p, instagram) => mates(p, { env: e, method: 'PUT', body: { name: 'Fan', instagram, consent: true } });
+  assert.equal((await show(a, '@rani.p')).status, 200);
+  // The second pass on that seat is told no, and the seat keeps the first fan.
+  const r = await show(b, '@dimas.a');
+  assert.equal(r.status, 409);
+  assert.match((await r.json()).error, /One seat shows one Instagram/);
+  const seen = await (await mates(b, { env: e })).json();
+  assert.deepEqual(seen.fans.map(f => f.instagram), ['rani.p']);
+  assert.equal(seen.me, null);
+  // The first fan can still change theirs; once they delete it, the seat is free.
+  assert.equal((await show(a, '@rani.putri')).status, 200);
+  await mates(a, { env: e, method: 'DELETE' });
+  assert.equal((await show(b, '@dimas.a')).status, 200);
+  await settled();
+});
+
 test('a paid pass gets the WhatsApp links: the concert\'s fanbase group and the community, in the answer and the email', async () => {
   const GROUP = 'https://chat.whatsapp.com/DewaDewa19Group', COMMUNITY = 'https://chat.whatsapp.com/KHrYTEwiAhnEjN4eMuOSio';
   const DB = fakeD1(), e = env({ DB, ...MAILING, FANBASE_WA: JSON.stringify({ '*': COMMUNITY, [live.id]: GROUP }) });

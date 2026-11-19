@@ -25,7 +25,7 @@ import { clientsOf } from '../js/sso.js';
 import { signPass, readPass } from './passkey.mjs';
 import { hasOrders, saveOrder, setStatus, statusOf, takeEmail, returnEmail } from './orders.mjs';
 import { hasFans, fansOf, saveFan, dropFan, dropConcert, KEEP_AFTER } from './fans.mjs';
-import { checkFan, waLinksFor, waOf } from '../js/fanrules.js';
+import { checkFan, waLinksFor, waOf, SEAT_TAKEN } from '../js/fanrules.js';
 import { mailerOf, passEmail } from './mail.mjs';
 
 const MAX_BODY = 4096, NOTIFY_BODY = 16384;
@@ -313,7 +313,7 @@ async function seatMates(request, env, ctx, url, id) {
     if (d instanceof Response) return d;
     const { fan, field, error } = checkFan(d);
     if (error) return fail(400, error, { field });
-    await saveFan(env, p, fan);
+    if ((await saveFan(env, p, fan)) === 'taken') return fail(409, SEAT_TAKEN);
   }
   if (m === 'DELETE') await dropFan(env, id);
   const rows = await fansOf(env, p.eventId);

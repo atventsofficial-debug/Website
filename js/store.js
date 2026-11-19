@@ -3,7 +3,7 @@
 // hosting), with the same rules as the server. PayStore is LocalStore with real payments,
 // through the site's Worker (worker/) and Midtrans. ApiStore talks to server/server.mjs.
 import { clientsOf } from './sso.js';
-import { checkFan } from './fanrules.js';
+import { checkFan, SEAT_TAKEN } from './fanrules.js';
 import { checkClick, checkClaim, checkSubscription, checkLead, checkConversions, passStatus, PASS_STATUSES, TAKEN, ACCESS_FEE, PAYMENT_ID } from './rules.js';
 
 const DB = 'atvents:demo-db';
@@ -94,6 +94,8 @@ export class LocalStore {
     else if (change) {
       const { fan, field, error } = checkFan(change);
       if (error) throw Object.assign(fail(400, error), { field });
+      // One seat shows one Instagram, as on the server.
+      if (list.some(f => f.id !== p.id && f.eventId === p.eventId && f.seat === p.seat)) throw fail(409, SEAT_TAKEN);
       list = this.db.fans = [...list.filter(f => f.id !== p.id), { id: p.id, eventId: p.eventId, cat: p.cat, seat: p.seat, ...fan }];
     }
     if (change !== undefined) this.save();
