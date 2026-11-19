@@ -234,7 +234,7 @@ function seatView(ctx, lt, look, kit, seat) {
   const s = 1.0 + lt / 4000 * 0.07;
   if (seat) { ctx.save(); ctx.translate(W / 2, H / 2); ctx.scale(s, s); ctx.drawImage(seat, -W / 2, -H / 2, W, H); ctx.restore(); }
   grade(ctx, kit);
-  shade(ctx, 0.55, 0.0);
+  shade(ctx, 0.35, 0.92);
   // The seat's numbers on a tape across the bottom, and the category and distance above.
   const k = ease((lt - 700) / 260);
   if (k > 0) {
