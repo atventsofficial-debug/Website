@@ -89,8 +89,11 @@ export const eventImg = (e, alt, opts) => coverImg(e.image || e.photo, e.venue, 
 // away. An event without artwork shows its venue's render, which the card crops.
 export function cardImg(e, alt) {
   if (!e.image || !Object.hasOwn(IMAGES, e.image)) return eventImg(e, alt);
-  const src = `assets/events/card/${e.image}`;
-  return `<img class="cover-img cover-image" src="${src}-480.webp" srcset="${src}-480.webp 480w, ${src}.webp 800w" sizes="(max-width: 640px) 92vw, 360px" alt="${IMAGES[e.image].alt.replace(/"/g, '&quot;')}" loading="lazy" decoding="async">`;
+  const src = `assets/events/card/${e.image}`, c = IMAGES[e.image];
+  // A phone shows the poster itself, 3:2 and whole, across the card; the tall card art is for bigger screens.
+  const full = c.src.replace(/\.webp$/, '');
+  const phone = c.w ? `${c.src} ${c.w}w` : `${full}-640.webp 640w, ${c.src} 1200w`;
+  return `<picture><source media="(max-width: 760px)" srcset="${phone}" sizes="100vw"><img class="cover-img cover-image" src="${src}-480.webp" srcset="${src}-480.webp 480w, ${src}.webp 800w" sizes="(max-width: 640px) 92vw, 360px" alt="${c.alt.replace(/"/g, '&quot;')}" loading="lazy" decoding="async"></picture>`;
 }
 
 // The poster, small, beside the order in the checkout. Empty for a concert without one.

@@ -119,13 +119,16 @@
 
   /* ---------- concerts as rows: poster, name, date and venue, price ---------- */
   .tkt-grid { grid-template-columns: minmax(0, 1fr); gap: 10px; }
-  .tkt { display: grid; grid-template-columns: 96px minmax(0, 1fr); aspect-ratio: auto; min-height: 118px; border: 1px solid var(--line); border-radius: 16px; background: var(--panel); -webkit-mask: none; mask: none; }
+  .tkt { display: grid; grid-template-columns: minmax(0, 1fr); aspect-ratio: auto; min-height: 0; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: var(--panel); -webkit-mask: none; mask: none; }
   .tkt:hover, .tkt:active { transform: none; }
   .tkt:active { background: var(--panel-2); }
-  .tkt-bg { position: relative; inset: auto; z-index: 0; grid-area: 1 / 1; }
+  /* The poster on top, edge to edge at its own 3:2, so nothing is cut and every card matches. */
+  .tkt-bg { position: relative; inset: auto; z-index: 0; grid-area: 1 / 1; aspect-ratio: 3 / 2; background: #111; }
+  .tkt-bg picture { display: contents; }
+  .tkt-bg img { object-fit: cover; object-position: 50% 50%; }
   .tkt-bg::before, .tkt-bg::after { display: none; }
   .tkt-bg img, .tkt:hover .tkt-bg img { transform: none; transition: none; }
-  .tkt-in { grid-area: 1 / 2; align-items: flex-start; justify-content: center; gap: 4px; height: auto; padding: 12px 14px; text-align: left; }
+  .tkt-in { grid-area: 2 / 1; align-items: flex-start; justify-content: center; gap: 4px; height: auto; padding: 12px 14px; text-align: left; }
   .tkt-top { order: 2; width: auto; margin: 0; }
   .tkt-brand, .tkt-cut, .tkt-code { display: none; }
   .tkt-when { max-width: none; text-align: left; }
