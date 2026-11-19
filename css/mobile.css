@@ -312,3 +312,12 @@
   #home-events .tkt-price b { font-size: 14px; }
   #home-events .tkt-price small { font-size: 11px; }
 }
+
+/* ---------- home hero, the flat arena (phones): a clean swap between slides ---------- */
+/* The new picture fades in on top; the old one stays whole under it until the fade ends. */
+.hs-flat canvas { z-index: 0; transition: opacity 0.5s ease; }
+.hs-flat canvas.is-prev { opacity: 1; transition: none; }
+.hs-flat canvas.is-on { z-index: 1; }
+/* The poster backdrops (before the arena is drawn) swap the same way: the old one leaves only once the new one is in. */
+.hs-back { transition: opacity 0.5s ease 0.5s; }
+.hs-back.is-on { z-index: 1; transition: opacity 0.5s ease; }

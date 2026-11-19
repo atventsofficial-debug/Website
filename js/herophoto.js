@@ -103,6 +103,8 @@ const posterSrc = meta => IMAGES[meta?.image]?.src || '';
 // The part of the poster a wide screen keeps (`screen` in media.js), as fractions.
 const posterFocus = meta => (IMAGES[meta?.image]?.screen || '50% 50%').split(' ').map(v => parseFloat(v) / 100);
 const images = new Map();
+// Fetches a show's poster ahead, so its slide swaps at once when it comes.
+export const preloadPoster = meta => { const src = posterSrc(meta); if (src) loadImage(src); };
 function loadImage(src) {
   if (!images.has(src)) {
     images.set(src, new Promise(resolve => {
@@ -462,7 +464,15 @@ export class FlatHeroPhoto {
     g.fillStyle = glow;
     g.fillRect(cx - 900, cy - 900, 1800, 1800);
     g.globalCompositeOperation = 'source-over';
-    if (c !== on) { c.classList.add('is-on'); on?.classList.remove('is-on'); }
+    // The new picture fades in over the old one, which stays fully drawn underneath until
+    // the fade is over: never two half-faded pictures, so nothing of the old slide lingers.
+    if (c !== on) {
+      c.classList.remove('is-prev');
+      on?.classList.replace('is-on', 'is-prev');
+      c.classList.add('is-on');
+      clearTimeout(this.fading);
+      this.fading = setTimeout(() => this.canvases.forEach(x => x.classList.remove('is-prev')), 600);
+    }
   }
 
   dispose() {

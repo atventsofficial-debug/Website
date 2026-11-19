@@ -9,7 +9,7 @@ import { IMAGES, cover, srcsetOf } from './media.js';
 import { whenOf } from './when.js';
 import { buyLink } from './passes.js';
 import { onSale, featured, datesOf, upcoming, timesLine } from './pages.js';
-import { HeroPhoto, FlatHeroPhoto } from './herophoto.js';
+import { HeroPhoto, FlatHeroPhoto, preloadPoster } from './herophoto.js';
 import { $, $$, esc, icon, countdownHtml, tickCountdowns } from './ui.js';
 
 // How long a slide stays before the next.
@@ -283,6 +283,9 @@ async function showArena() {
     run.poster = show;
     run.photo.setPoster(show);
   }
+  // The posters either side, ready before the visitor swipes to them.
+  const n = hero.list.length;
+  [1, -1].forEach(d => preloadPoster(hero.list[(hero.i + d + n) % n]));
 }
 
 export function startHero() {
