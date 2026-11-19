@@ -632,7 +632,7 @@ test('seat mates: only a paid pass gets in, and a fan shows only what they chose
   paid[b.id] = { transaction_status: 'settlement' };
   r = await mates(a, { env: e });
   assert.equal(r.status, 200);
-  assert.deepEqual(await r.json(), { eventId: live.id, group: '', community: WA, me: null, fans: [] });
+  assert.deepEqual(await r.json(), { eventId: live.id, group: '', community: WA, me: null, fans: [], others: [] });
   await settled();
 
   // Without the box ticked, or with no Instagram, nothing is saved.
@@ -714,4 +714,30 @@ test('seat mates stay off without the order book', async () => {
   const p = await newPass();
   paid[p.id] = { transaction_status: 'settlement' };
   assert.equal((await mates(p)).status, 503);
+});
+
+test('seat mates: a fan sees only the seat mates of their own category', async () => {
+  const DB = fakeD1(), e = env({ DB });
+  const otherCat = venue.seats.find(s => s.cat !== seat.cat && !s.standing && seatOf(concert(live.id), s.cat, s.id));
+  const sameCat = venue.seats.find(s => s.cat === seat.cat && s.id !== seat.id);
+  const a = await (await post(order(), { env: e })).json();
+  const b = await (await post(order({ cat: otherCat.cat, seat: otherCat.id, name: 'Dimas Arya', email: 'dimas@example.com' }), { env: e })).json();
+  const c = await (await post(order({ seat: sameCat.id, name: 'Salsa Bila', email: 'salsa@example.com' }), { env: e })).json();
+  for (const p of [a, b, c]) paid[p.id] = { transaction_status: 'settlement' };
+  const show = (p, name, instagram) => mates(p, { env: e, method: 'PUT', body: { name, instagram, consent: true } });
+  assert.equal((await show(a, 'Rani', 'rani.p')).status, 200);
+  assert.equal((await show(b, 'Dimas', 'dimas.arya')).status, 200);
+
+  // Salsa (same category as Rani) sees Rani, not Dimas.
+  const seenByC = (await (await mates(c, { env: e })).json()).fans;
+  assert.deepEqual(seenByC.map(f => f.instagram), ['rani.p']);
+  // Dimas, in another category, sees only himself.
+  const seenByB = await (await mates(b, { env: e })).json();
+  assert.deepEqual(seenByB.fans.map(f => f.instagram), ['dimas.arya']);
+  assert.equal(JSON.stringify(seenByB).includes('rani'), false);
+  assert.equal(JSON.stringify(seenByB).includes('Rani'), false);
+  // ...but he sees that someone sits in Rani's seat: a marker, with the seat and category only.
+  assert.deepEqual(seenByB.others, [{ seat: seat.id, cat: seat.cat }]);
+  assert.deepEqual(seenByC.length, 1);
+  await settled();
 });

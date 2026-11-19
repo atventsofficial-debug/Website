@@ -99,10 +99,12 @@ export class LocalStore {
       list = this.db.fans = [...list.filter(f => f.id !== p.id), { id: p.id, eventId: p.eventId, cat: p.cat, seat: p.seat, ...fan }];
     }
     if (change !== undefined) this.save();
-    const rows = list.filter(f => f.eventId === p.eventId), me = rows.find(f => f.id === p.id);
+    const rows = list.filter(f => f.eventId === p.eventId && f.cat === p.cat), me = rows.find(f => f.id === p.id);
+    const others = list.filter(f => f.eventId === p.eventId && f.cat !== p.cat).map(f => ({ seat: f.seat, cat: f.cat }));
     return {
       eventId: p.eventId, group: '', community: '', me: me ? { name: me.name, instagram: me.instagram } : null,
       fans: rows.map(f => ({ seat: f.seat, cat: f.cat, name: f.name, instagram: f.instagram, ...(f.id === p.id ? { mine: true } : {}) })),
+      others,
     };
   }
 

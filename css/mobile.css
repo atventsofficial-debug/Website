@@ -230,7 +230,9 @@
   .stage .app-side { max-height: 52svh; overflow-y: auto; overscroll-behavior: contain; }
   .in-tour .stage .tools { bottom: calc(max(156px, var(--side-h, 0px)) + 24px); }
   .tour-steps { margin-bottom: 10px; }
-  .tour-end .btn { height: 44px; padding: 0 12px; font-size: 13px; }
+  .tour-act { padding: 12px; border-radius: 14px; }
+  .tour-act b { font-size: 13px; }
+  .tour-act span { font-size: 11px; }
 }
 
 /* ---------- My passes: the facts in tidy rows on every size ---------- */

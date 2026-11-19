@@ -7,7 +7,7 @@
 //
 // The tour: (1) the whole venue, where only the fan's own category can be picked; (2) that
 // category up close, where only the seat on their e-ticket can be picked; (3) the view from
-// that seat. Then back to the home page, or a story video of the same three steps.
+// that seat. Then a photo or video of that view (capture.js), or the whole venue again.
 import { formatFee } from './rules.js';
 import { getEvent } from './events.js';
 import { crowdSeats, formatRpShort, REAL_KEYS } from './layouts.js';
@@ -15,7 +15,7 @@ import { whenOf } from './when.js';
 import { buyLink, activePass, openPass, passes, canView, toggleSeat, STATUS } from './passes.js';
 import { placeSeat, cleanNumbering, isDefault, numberingOf, numberingSource } from './seatflip.js';
 import { $, esc, icon, state, QUALITY, spotStats, share, toast } from './ui.js';
-import { loadMates, matesBlock, bindMates, mateTags, openInstagram, resetMates } from './fans.js';
+import { loadMates, matesBlock, bindMates, mateTags, resetMates, mates, startMatesLive, fanCardHtml } from './fans.js';
 
 const FOCUS_NAME = { concert: 'stage', cinema: 'screen', combat: 'octagon', stadium: 'centre spot' };
 const out = icon('i-out');
@@ -50,15 +50,33 @@ function paintTags() {
   const sc = state.scene, p = matesPass();
   if (!sc?.scene || !sc.venue) return;
   const list = p ? mateTags(state.tour ? tourSeat()?.id : p.seats?.[0] || p.seat) : [];
-  const key = `${state.venue?.eventId}|${list.map(f => `${f.seat}:${f.name}:${f.instagram}:${f.mine ? 1 : 0}`).join(',')}`;
+  const key = `${state.venue?.eventId}|${list.map(f => `${f.seat}:${f.name}:${f.instagram}:${f.mine ? 1 : 0}:${f.locked ? 1 : 0}`).join(',')}`;
   if (key === tagKey) return;
   tagKey = key;
   sc.setFans(list);
 }
 function paintMates() {
   const p = matesPass();
-  if (p) loadMates(p, paintViewer);
+  if (p) {
+    loadMates(p, paintViewer);
+    // New or deleted profiles arrive by themselves: the tags at once, the panel too unless
+    // the fan is typing in it.
+    startMatesLive(matesPass, () => { if (mates.editing) paintTags(); else paintViewer(); });
+  }
   paintTags();
+}
+
+// A tap on a seat mate's tag (or their name in the list): their card, not Instagram yet.
+function openFanCard(f) {
+  const v = state.venue, s = seatOf(f.seat), box = $('#fan-card');
+  if (!v || !box) return;
+  box.innerHTML = fanCardHtml(f, { cat: v.catById[f.cat]?.name || '', seat: s ? seatText(s) : '', unlock: `#unlock-${v.eventId}`, fee: formatFee() });
+  box.hidden = false;
+  box.querySelector('.fan-card-in')?.focus?.();
+}
+function closeFanCard() {
+  const box = $('#fan-card');
+  if (box) { box.hidden = true; box.innerHTML = ''; }
 }
 const seatText = s => (s.standing ? `${s.secName}, standing` : `${s.secName} · Row ${s.row} · Seat ${s.num}`);
 const priceText = c => (c.price == null ? c.note || 'On tiket.com' : formatRpShort(c.price));
@@ -99,7 +117,7 @@ export async function openViewer(id, { cat, seat, back, tour } = {}) {
       onHover: showTooltip,
       onSelect: pickSeat,
       onMode: setMode,
-      onFan: openInstagram,
+      onFan: f => openFanCard(f),
       onArrive: (s, dist) => {
         $('#sc-dist').textContent = `${Math.round(dist)} m to the ${FOCUS_NAME[state.venue.show ? 'concert' : state.venue.kind]} · eye height ${(s.y + (s.standing ? 1.62 : 1.2)).toFixed(1)} m${s.standing ? ' · free standing: stand anywhere on the floor' : ''}`;
       },
@@ -129,6 +147,8 @@ export function closeViewer() {
   state.tour = null;
   document.body.classList.remove('in-tour');
   resetMates();
+  closeFanCard();
+  import('./capture.js').then(m => m.stopCapture());
   tagKey = '';
   if (!state.scene) return;
   state.scene.dispose();
@@ -326,7 +346,7 @@ export function bindViewer() {
     if (act === 'cat') tourCat(tourPass()?.cat);
     if (act === 'seat') { const s = tourSeat(); if (s) tourPick(s); }
     if (act === 'again') startTour();
-    if (act === 'story') import('./story.js').then(m => m.makeStory(tourPass())).catch(() => toast('The story video could not start. Please try again.'));
+    if (act === 'capture') import('./capture.js').then(m => m.startCapture(state.scene, { title: state.venue?.meta?.title, seat: seatText(ticketSeat()) })).catch(() => toast('The camera could not start. Please try again.'));
     if (act === 'pickseat') startPicking();
     if (act === 'pickcancel') { state.tour.picking = false; paintTour(); }
     if (act === 'unpick') setNumbering('pick', '');
@@ -335,6 +355,18 @@ export function bindViewer() {
     if (act === 'back') state.scene?.backToOverview();
   });
   bindMates($('#app-side'), { pass: matesPass, repaint: paintViewer });
+  $('#app-side').addEventListener('click', e => {
+    const seat = e.target.closest('[data-fan-open]')?.dataset.fanOpen;
+    const f = seat && (mates.data?.fans || []).find(x => x.seat === seat);
+    if (f) openFanCard(f);
+  });
+  $('#fan-card').addEventListener('click', e => {
+    const act = e.target.closest('[data-fancard]')?.dataset.fancard;
+    if (e.target === e.currentTarget || act === 'close') closeFanCard();
+    if (act === 'edit') { closeFanCard(); $('#app-side [data-mates="edit"]')?.click(); }
+    if (e.target.closest('a[href^="#unlock-"]')) closeFanCard();
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeFanCard(); });
   $('#sc-close').addEventListener('click', closePeek);
   $('#zoom').addEventListener('click', e => {
     const d = e.target.closest('[data-zoom]')?.dataset.zoom;
@@ -523,10 +555,9 @@ function paintTour() {
       ${seatNote(p, s)}
       ${numberingControls(p, s)}
       <div class="tour-end">
-        <button class="btn btn-coral" type="button" data-tour="story">${icon('i-share', 'lead')}<span>Upload to story</span></button>
-        <a class="btn btn-line" href="#home">${icon('i-back')}Back to home</a>
-      </div>
-      <p class="fine"><button class="link" type="button" data-tour="again">Take the tour again</button></p>`;
+        <button class="tour-act is-capture" type="button" data-tour="capture">${icon('i-camera')}<b>Capture this moment</b><span>Photo or video of your view</span></button>
+        <button class="tour-act" type="button" data-tour="again">${icon('i-venue')}<b>See the whole venue</b><span>Take the tour again</span></button>
+      </div>`;
   // Seat mates on every step but while the fan taps their seat.
   const mates = step === 2 && state.tour.picking ? '' : matesBlock(p, { cats: v.catById });
   $('#app-side').innerHTML = `${bar}${body}${mates}`;

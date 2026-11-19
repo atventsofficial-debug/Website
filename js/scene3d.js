@@ -13,6 +13,8 @@ import { LensPass, GradePass, depthTarget } from './post.js';
 import { treadShading, concreteNormalMap } from './arena-detail.js';
 import { buildConcert, buildCinema, buildCombat, buildStadium, prepareVenue, preparePoster, posterArt, seatGeometry, crowdGeometries, mats, SEAT_HINGE, concertStage } from './venues3d.js';
 
+const PLUMBOB = '<svg viewBox="0 0 24 40" aria-hidden="true"><path class="pb-a" d="M12 1 2 14h10z"/><path class="pb-b" d="M12 1l10 13H12z"/><path class="pb-c" d="M2 14l10 25V14z"/><path class="pb-d" d="M22 14 12 39V14z"/></svg><i class="pb-glow"></i>';
+
 const SEATED_EYE = 1.2;
 const STANDING_EYE = 1.72;
 const STAND_LIFT = 0.42;   // a standing person's hips sit this much higher than a seated one's
@@ -656,12 +658,11 @@ export class SeatScene {
       const s = this.venue.seats[i];
       const el = document.createElement('button');
       el.type = 'button';
-      el.className = `fan-tag${f.mine ? ' is-mine' : ''}`;
+      // A floating plumbob marks a fan; who it is stays in the card a tap opens.
+      el.className = `fan-tag fan-bob${f.locked ? ' is-locked' : f.mine ? ' is-mine' : ''}`;
       el.dataset.fan = f.seat;
-      const b = document.createElement('b'), span = document.createElement('span');
-      b.textContent = f.mine ? 'You' : f.name;
-      span.textContent = `@${f.instagram}`;
-      el.append(b, span);
+      el.setAttribute('aria-label', f.locked ? 'A fan in another category' : f.mine ? 'You' : `${f.name} on Instagram`);
+      el.innerHTML = PLUMBOB;
       el.addEventListener('pointerdown', e => e.stopPropagation());
       el.addEventListener('click', e => { e.stopPropagation(); this.cb.onFan?.(f, s); });
       const obj = new CSS2DObject(el);

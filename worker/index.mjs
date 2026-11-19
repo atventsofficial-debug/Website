@@ -316,13 +316,18 @@ async function seatMates(request, env, ctx, url, id) {
     if ((await saveFan(env, p, fan)) === 'taken') return fail(409, SEAT_TAKEN);
   }
   if (m === 'DELETE') await dropFan(env, id);
-  const rows = await fansOf(env, p.eventId);
+  // A fan sees the seat mates of their own category only (CAT 2 sees CAT 2): the rest
+  // never leave the Worker.
+  // Fans in other categories show as a marker only: their seat and its category, never a
+  // name or an Instagram.
+  const all = await fansOf(env, p.eventId), rows = all.filter(r => r.cat === p.cat);
   const me = rows.find(r => r.order_id === id);
   return json(200, {
     eventId: p.eventId,
     ...waLinksFor(env.FANBASE_WA, p.eventId),
     me: me ? { name: me.name, instagram: me.instagram } : null,
     fans: rows.map(r => ({ seat: r.seat, cat: r.cat, name: r.name, instagram: r.instagram, ...(r.order_id === id ? { mine: true } : {}) })),
+    others: all.filter(r => r.cat !== p.cat).map(r => ({ seat: r.seat, cat: r.cat })),
   });
 }
 
