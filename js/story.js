@@ -1,7 +1,8 @@
-// The story a fan posts once their pass is paid: a 16-second trailer of their show, cut to
-// a beat, from the promoter's own material (the poster and the show's details as listed),
-// then the view from the fan's own seat with its block, row and seat, and Atvents last
-// (trailer.js draws it; beat.js and sfx.js make its sound).
+// The story a fan posts once their pass is paid: a 16.8-second trailer of their show, cut
+// to the music like an event flyer in motion, from the promoter's own material (the poster
+// and the show's details as listed), then the view from the fan's own seat with its block,
+// row and seat, and Atvents last (trailer.js draws it; the music is a licensed track when
+// TRACK names one, else beat.js; sfx.js adds the crowd).
 //
 // The seat's view is a second, hidden copy of the venue at 720 x 1280, flown into the seat
 // with the show's lights up before recording starts; the trailer is drawn over its frames
@@ -27,6 +28,11 @@ const pickType = () => TYPES.find(t => window.MediaRecorder?.isTypeSupported?.(t
 const slug = t => (t || 'concert').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 // The beat for each show's music: the rock bands get drums and a fuzz bass, the rest a pop kit.
 const ROCK = new Set(['mcr', 'gnr', '5sos']);
+// A licensed track to cut to, in place of the beat: its file and the second of its drop. The
+// cuts are on a 100 bpm grid from the drop (trailer.js), the music's break on beat 15 and back
+// in on 16, so it must be a 100 bpm track built that way. Only a track Atvents holds a licence
+// for that covers fans posting it.
+const TRACK = null; // e.g. { src: 'assets/audio/story-track.m4a', from: 10.17 }
 
 let busy = false;
 
@@ -50,7 +56,8 @@ export async function makeStory(pass) {
   try {
     const font = loadFonts();
     const art = e.image && IMAGES[e.image] ? loadImage(IMAGES[e.image].src) : Promise.resolve(null);
-    const logo = loadImage('assets/brand/atvents-logo-light.svg');
+    const logo = loadImage('assets/brand/atvents-logo-dark.svg');
+    const track = TRACK && ac ? fetch(TRACK.src).then(r => r.arrayBuffer()).then(b => ac.decodeAudioData(b)).catch(() => null) : null;
     const { SeatScene } = await loadScene3d();
     await font;
     scene = new SeatScene(sheet.stage, { quality: 'medium', interactive: false, labels: false, fps: 30, drift: 0.05 });
@@ -74,7 +81,7 @@ export async function makeStory(pass) {
     const focus = scene.focus ? [scene.focus.x, scene.focus.z] : [venue.stageX ?? -40, 0];
     const metres = Math.max(1, Math.round(Math.hypot(at.x - focus[0], at.z - focus[1])));
     const when = whenOf(e);
-    const look = lookOf({ e, place: venue.place, when, seat, cat, metres, count: countdown(when.ms) });
+    const look = lookOf({ e, place: venue.place, when, seat, cat, metres });
     const theme = THEMES[e.theme] || THEMES.default;
     const kit = makeKit({ poster: await art, logo: await logo, theme });
     const out = sheet.canvas, ctx = out.getContext('2d');
@@ -83,11 +90,18 @@ export async function makeStory(pass) {
     const stream = out.captureStream(30);
     if (ac) {
       const dest = ac.createMediaStreamDestination();
+      const music = await track;
       const t0 = ac.currentTime + 0.1;
       const sfx = createSfx(ac, dest);
-      sfx.room(t0, LENGTH / 1000 + 0.5); sfx.near(t0 + 1, 7); sfx.cheer(t0 + T.seat / 1000, 3.5); sfx.out(t0 + (LENGTH - 600) / 1000, 0.6);
-      const bus = score(ac, dest, t0, ROCK.has(e.theme) ? 'rock' : 'pop');
-      bus.gain.setValueAtTime(0.8, t0 + (LENGTH - 800) / 1000); bus.gain.linearRampToValueAtTime(0, t0 + (LENGTH - 50) / 1000);
+      sfx.room(t0, LENGTH / 1000 + 0.5); sfx.cheer(t0 + T.s3 / 1000, 3.5); sfx.out(t0 + (LENGTH - 600) / 1000, 0.6);
+      let bus;
+      if (music) {
+        const src = ac.createBufferSource();
+        src.buffer = music; bus = ac.createGain(); bus.gain.value = 0.9;
+        src.connect(bus).connect(dest); src.start(t0, TRACK.from, LENGTH / 1000 + 0.2);
+      } else bus = score(ac, dest, t0, ROCK.has(e.theme) ? 'rock' : 'pop');
+      const level = bus.gain.value;
+      bus.gain.setValueAtTime(level, t0 + (LENGTH - 600) / 1000); bus.gain.linearRampToValueAtTime(0, t0 + (LENGTH - 50) / 1000);
       dest.stream.getAudioTracks().forEach(tr => stream.addTrack(tr));
       // The picture starts when the sound does.
       await wait(Math.max(0, (t0 - ac.currentTime) * 1000));
@@ -128,22 +142,15 @@ function loadImage(src) {
 }
 
 // The brand's type, from the site's own files (assets/fonts, SIL Open Font License). One
-// variable Archivo serves both widths: each face pins the width axis.
+// variable Archivo serves every width: each face pins the width axis.
 export async function loadFonts() {
   if (!window.FontFace || !document.fonts) return;
   const faces = [
     new FontFace('Atvents Condensed', 'url(assets/fonts/archivo-latin-wdth-wght.woff2)', { weight: '100 900', stretch: '62%' }),
+    new FontFace('Atvents Expanded', 'url(assets/fonts/archivo-latin-wdth-wght.woff2)', { weight: '100 900', stretch: '125%' }),
     new FontFace('Atvents Mono', 'url(assets/fonts/jetbrains-mono-latin-wght.woff2)', { weight: '100 800' }),
   ];
   await Promise.all(faces.map(f => f.load().then(x => document.fonts.add(x)).catch(() => {})));
-}
-
-// "H-4": days to the show on the fan's calendar, as Indonesian fans count them.
-export function countdown(ms, now = Date.now()) {
-  if (!Number.isFinite(ms)) return '';
-  const day = t => { const d = new Date(t); return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()); };
-  const n = Math.round((day(ms) - day(now)) / 864e5);
-  return n >= 1 ? `H-${n}` : '';
 }
 
 // ---------------------------------------------------------------- the sheet

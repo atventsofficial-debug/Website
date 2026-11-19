@@ -1,36 +1,55 @@
-// The story as a trailer of the show: 16 seconds cut to a beat, in the show's own colours,
-// from the promoter's own material (the poster and the event's details as listed), then
-// the view from the fan's seat with its block, row and seat, and Atvents last.
+// The story as a trailer of the show, cut like an event flyer in motion: 16.8 seconds at
+// 100 bpm. Two flyers made from the promoter's own material (the poster and the show's
+// details as listed), the glass breaking on the music's break into the view from the fan's
+// own seat with its block, row and seat, and Atvents last.
 //
 // Only what the promoter published goes on it: the artist, the tour, the date, the venue,
-// the time. No slogans. The look of each show comes from its theme (themes.js), taken from
-// the tour's artwork; the type is the brand's (Archivo Condensed, JetBrains Mono).
+// the time, the promoter. No slogans. Colours come from the show's theme (themes.js). Text is
+// only ever paper or ink: on a colour it takes whichever of the two reads better on it
+// (inkOn), and it never sits in the accent straight on the picture. Type is the brand's
+// Archivo, at its widest, and JetBrains Mono.
 //
-// paint() draws one frame at a time `t` (ms) onto a 720 x 1280 canvas; `kit` holds the
+// paint() draws one frame at time `t` (ms) onto a 720 x 1280 canvas; `kit` holds the
 // pictures, made once by makeKit(), and `seat` is the view from the seat at that moment (the
 // live 3D canvas in the page, a rendered frame in a preview).
 
 export const W = 720, H = 1280;
-export const BEAT = 500;            // 120 bpm
-export const LENGTH = 16000;
-// The sections, in ms.
-export const T = { date: 1000, poster: 3000, tape: 5000, info: 7000, seat: 9000, recap: 13000, end: 14000 };
+export const BEAT = 600;            // 100 bpm
+// The sections, in ms, on the beat: in on the drop, the glass on the break (beat 15), the
+// seat when the music comes back (16), the logo on the last hit (24).
+export const T = { s1: 0, s2: 8 * BEAT, crack: 15 * BEAT, s3: 16 * BEAT, end: 24 * BEAT };
+export const LENGTH = 28 * BEAT;    // 16.8 s
 
-const CON = '"Atvents Condensed", "Archivo", "Arial Narrow", sans-serif';
+const EXP = '"Atvents Expanded", "Archivo", "Arial Black", sans-serif';
 const MONO = '"Atvents Mono", "JetBrains Mono", ui-monospace, Menlo, monospace';
+export const INK = '#0b0a0a', PAPER = '#f6f2ee';
+const AMBER = '#ff9a3c';
 const LOGO_AR = 4724 / 900;
+
+// ---------------------------------------------------------------- colour
+
+const hex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+const lum = h => {
+  const [r, g, b] = hex(h).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+};
+const contrast = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+// Ink or paper, whichever reads better on `bg`.
+export const inkOn = bg => (contrast(bg, INK) >= contrast(bg, PAPER) ? INK : PAPER);
 
 // ---------------------------------------------------------------- the kit
 
-// The poster in two forms: whole, as the promoter made it (the panel, in colour and in
-// black and white), and as a field of its colours, blurred past reading and put in the
-// show's duotone, behind everything.
+// The poster whole, as the promoter made it (in colour and in black and white); a field of
+// its colours, blurred past reading and put in the show's duotone, behind everything; the
+// same field as an LED wall; and a crowd's silhouettes.
 export function makeKit({ poster, logo, theme }) {
-  const dark = theme?.screen?.a || '#0a0a0a', accent = theme?.band || '#ec5446', light = '#f6f2ee';
-  const field = mapped(blurred(poster), duoMap(dark, accent, light, 0.7));
+  const dark = theme?.screen?.a || '#0a0a0a', accent = theme?.band || '#ec5446';
+  const field = mapped(blurred(poster), duoMap(dark, accent, PAPER, 0.62));
   const panel = panelOf(poster), panelMono = panel && mapped(panel, monoMap(), panel.width, panel.height);
-  return { field, panel, panelMono, logo, accent, dark, light };
+  return { field, led: ledOf(field), crowd: crowdOf(), panel, panelMono, logo, accent, dark, onAccent: inkOn(accent) };
 }
+
+function canvas(w = W, h = H) { return Object.assign(document.createElement('canvas'), { width: w, height: h }); }
 
 function blurred(img) {
   const c = canvas(), g = c.getContext('2d');
@@ -42,25 +61,14 @@ function blurred(img) {
   return c;
 }
 
-// The poster at its own shape, 600 px across (at most 820 tall).
+// The poster at its own shape, 720 px across at most (and 960 tall).
 function panelOf(img) {
   if (!img) return null;
   const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
-  const k = Math.min(600 / iw, 820 / ih), w = Math.round(iw * k), h = Math.round(ih * k);
-  const c = canvas(w, h); c.getContext('2d').drawImage(img, 0, 0, w, h);
-  return c;
-}
-
-function canvas(w = W, h = H) { return Object.assign(document.createElement('canvas'), { width: w, height: h }); }
-
-// The poster covering the frame, a little larger than it so the punch-ins have room.
-function fitted(img, over) {
-  const c = canvas(), g = c.getContext('2d');
-  g.fillStyle = '#000'; g.fillRect(0, 0, W, H);
-  if (!img) return c;
-  const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
-  const k = Math.max(W / iw, H / ih) * over;
-  g.drawImage(img, (W - iw * k) / 2, (H - ih * k) / 2, iw * k, ih * k);
+  const k = Math.min(720 / iw, 960 / ih), w = Math.round(iw * k), h = Math.round(ih * k);
+  const c = canvas(w, h), g = c.getContext('2d');
+  g.imageSmoothingQuality = 'high';
+  g.drawImage(img, 0, 0, w, h);
   return c;
 }
 
@@ -77,8 +85,7 @@ function mapped(src, map, w = W, h = H) {
   return c;
 }
 
-const hex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
-// Shadows to the show's dark, mids to its accent, highlights to paper; contrast pushed.
+// Shadows to the show's dark, mids to its accent, highlights towards paper; contrast pushed.
 function duoMap(dark, accent, light, top = 1) {
   const a = hex(dark), b = hex(accent), c = hex(light);
   return l => {
@@ -90,50 +97,331 @@ function duoMap(dark, accent, light, top = 1) {
 function monoMap() {
   return l => { const x = Math.min(1, Math.max(0, (l - 0.12) * 1.5)); const v = 255 * x * x * (3 - 2 * x); return [v, v, v]; };
 }
+
+// The field as an LED wall: one lamp per 12 px, brightest at the top, gone by the middle.
+function ledOf(src) {
+  const cols = 60, cell = W / cols, rows = Math.ceil(H / cell);
+  const s = canvas(cols, rows), sg = s.getContext('2d');
+  sg.drawImage(src, 0, 0, cols, rows);
+  const px = sg.getImageData(0, 0, cols, rows).data;
+  const c = canvas(), g = c.getContext('2d');
+  for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
+    const i = (y * cols + x) * 4, k = 2.2, f = v => Math.min(255, Math.round(v * k + 14));
+    g.fillStyle = `rgb(${f(px[i])},${f(px[i + 1])},${f(px[i + 2])})`;
+    g.fillRect(x * cell + 2, y * cell + 2, cell - 4, cell - 4);
+  }
+  g.globalCompositeOperation = 'destination-in';
+  const m = g.createLinearGradient(0, 0, 0, H);
+  m.addColorStop(0, 'rgba(0,0,0,1)'); m.addColorStop(0.25, 'rgba(0,0,0,0.8)'); m.addColorStop(0.6, 'rgba(0,0,0,0)');
+  g.fillStyle = m; g.fillRect(0, 0, W, H);
+  return c;
+}
+
+// The front of a crowd against the light: two rows of heads and shoulders.
+function crowdOf() {
+  const h = 460, c = canvas(W, h), g = c.getContext('2d');
+  let seed = 11; const r = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  g.fillStyle = '#050404';
+  for (const [y0, rad] of [[250, 38], [320, 50]]) {
+    for (let x = -30 - r() * 40; x < W + 60; x += rad * 2.2 + r() * 34) {
+      const y = y0 + r() * 34;
+      g.beginPath(); g.ellipse(x, y, rad * 0.82, rad, 0, 0, Math.PI * 2); g.fill();
+      g.beginPath(); g.ellipse(x, y + rad * 2.2, rad * 2.1, rad * 1.5, 0, 0, Math.PI * 2); g.fill();
+    }
+  }
+  g.fillRect(0, 380, W, h - 380);
+  return c;
+}
+
 // ---------------------------------------------------------------- the frame
 
-let grain = null, still = null;
-
-let lastT = Infinity;
+let grain = null, still = null, lastT = Infinity;
 
 export function paint(ctx, t, look, kit, seat) {
-  // The last frame before the seat, kept for the glass to break.
-  if (t >= T.seat && lastT < T.seat) { still ??= canvas(); still.getContext('2d').drawImage(ctx.canvas, 0, 0); }
-  if (t < T.seat) still = null;
+  // The last frame before the seat, kept for the glass to fall away.
+  if (t >= T.s3 && lastT < T.s3) { still ??= canvas(); still.getContext('2d').drawImage(ctx.canvas, 0, 0); }
+  if (t < T.s3) still = null;
   lastT = t;
   ctx.save();
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
-  if (t < T.date) intro(ctx, t, look, kit);
-  else if (t < T.poster) dates(ctx, t - T.date, look, kit);
-  else if (t < T.tape) poster(ctx, t - T.poster, look, kit);
-  else if (t < T.info) tapes(ctx, t - T.tape, look, kit);
-  else if (t < T.seat) info(ctx, t - T.info, look, kit);
-  else if (t < T.recap) seatView(ctx, t - T.seat, look, kit, seat);
-  else if (t < T.end) recap(ctx, t - T.recap, look, kit, seat);
+  ctx.textBaseline = 'alphabetic';
+  if (t < T.s2) flyerOne(ctx, t - T.s1, look, kit);
+  else if (t < T.s3) flyerTwo(ctx, t - T.s2, look, kit);
+  else if (t < T.end) seatView(ctx, t - T.s3, look, kit, seat);
   else end(ctx, t - T.end, look, kit);
   film(ctx, t);
-  // A white frame on the hits that open a section.
-  for (const at of [T.date, T.poster, T.info, T.recap]) {
-    const k = (t - at) / 90;
-    if (k >= 0 && k < 1) { ctx.fillStyle = `rgba(255,255,255,${0.85 * (1 - k)})`; ctx.fillRect(0, 0, W, H); }
+  // A white frame on the cuts that come on a hit.
+  for (const [at, k0] of [[T.s1, 0.9], [T.s2, 0.8], [T.end, 0.7]]) {
+    const k = (t - at) / 140;
+    if (k >= 0 && k < 1) { ctx.fillStyle = `rgba(255,255,255,${k0 * (1 - k) * (1 - k)})`; ctx.fillRect(0, 0, W, H); }
   }
-  const fade = Math.max(1 - t / 300, (t - (LENGTH - 500)) / 500, 0);
+  const fade = (t - (LENGTH - 500)) / 500;
   if (fade > 0) { ctx.fillStyle = `rgba(0,0,0,${Math.min(1, fade)})`; ctx.fillRect(0, 0, W, H); }
   ctx.restore();
 }
 
 // Since the last beat, in ms, and which beat.
 const beatOf = lt => ({ n: Math.floor(lt / BEAT), at: lt % BEAT });
-const punch = at => 1 + 0.06 * Math.exp(-at / 120);
+const punch = at => 1 + 0.045 * Math.exp(-at / 110);
 
-// 0–1 s: the dark, and the poster seen in two flickers.
-function intro(ctx, t, look, kit) {
-  for (const at of [380, 760]) {
-    if (t >= at && t < at + 70) { ctx.globalAlpha = 0.6; ctx.drawImage(kit.field, 0, 0); ctx.globalAlpha = 1; panel(ctx, kit, kit.panelMono, 1.04, 0, 0); }
+// 0–4.8 s. The first flyer: the date stacked and lit like neon over an LED wall, the poster
+// on it, the crowd in front, the name, the details, the promoter.
+function flyerOne(ctx, t, look, kit) {
+  const { n, at } = beatOf(t), hit = Math.exp(-at / 160);
+  field(ctx, kit, t, 1);
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen'; ctx.globalAlpha = 0.45 + 0.35 * hit;
+  ctx.drawImage(kit.led, 0, 0);
+  ctx.restore();
+  shade(ctx, 0.35, 0);
+
+  // The date, four times, a line on each half beat, sliding apart.
+  const d = dateArt(look, kit), y0 = 196;
+  for (let i = 0; i < 4; i++) {
+    const k = ease((t - i * BEAT / 2) / 260);
+    if (k <= 0) continue;
+    const dir = i % 2 ? 1 : -1, x = (W - d.w) / 2 + dir * ((1 - k) * 280 + t / 60);
+    ctx.globalAlpha = k;
+    ctx.drawImage(i === 1 ? d.fill : d.line, x - d.pad, y0 + i * d.step - d.pad);
+  }
+  ctx.globalAlpha = 1;
+
+  // The poster from beat 2, a punch and a glitch on every other beat.
+  const pk = pop((t - 2 * BEAT) / 340);
+  if (pk > 0 && kit.panel) {
+    const s = fitIn(kit.panel, 580, 620) * (0.82 + 0.18 * pk) * (n >= 2 ? punch(at) : 1);
+    ctx.globalAlpha = Math.min(1, pk * 1.6);
+    panel(ctx, kit, kit.panel, s, n >= 2 && n % 2 === 0 ? glitchOf(n, at) : null, -0.02, 0.555);
+    ctx.globalAlpha = 1;
+  }
+
+  // The crowd against the stage's light, jumping a little on the beat.
+  const glow = ctx.createRadialGradient(W / 2, H - 150, 20, W / 2, H - 150, 520);
+  glow.addColorStop(0, kit.accent); glow.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.save(); ctx.globalCompositeOperation = 'screen'; ctx.globalAlpha = 0.55 + 0.3 * hit;
+  ctx.fillStyle = glow; ctx.fillRect(0, H - 700, W, 700); ctx.restore();
+  const sway = Math.sin(t / 420) * 8;
+  ctx.drawImage(kit.crowd, sway - 12, H - kit.crowd.height + 18 - 10 * hit, W + 24, kit.crowd.height);
+  scrim(ctx, 0.66, 0.6);
+
+  // The name from beat 4, a line a half beat; paper over an offset of the accent.
+  const lines = look.nameLines, ns = fitSize(ctx, lines, 900, W - 96, 96), lh = ns * 1.02;
+  const base = H - 290 - (lines.length - 1) * lh;
+  ctx.textAlign = 'center';
+  lines.forEach((s, i) => {
+    const k = ease((t - (4 + i / 2) * BEAT) / 300);
+    if (k <= 0) return;
+    const y = base + i * lh;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(0, y - ns * 1.02, W, ns * 1.3); ctx.clip();
+    ctx.translate(0, (1 - k) * ns * 1.1);
+    ctx.font = `900 ${ns}px ${EXP}`;
+    ctx.fillStyle = kit.accent; ctx.fillText(s, W / 2 + 5, y + 5);
+    ctx.fillStyle = PAPER; ctx.fillText(s, W / 2, y);
+    ctx.restore();
+  });
+
+  // The details on beat 6, the promoter on 7.
+  const ik = ease((t - 6 * BEAT) / 300);
+  if (ik > 0) {
+    ctx.globalAlpha = ik;
+    small(ctx, look.line1, W / 2, H - 228, 22, PAPER, 800);
+    small(ctx, look.line2, W / 2, H - 196, 18, PAPER, 700);
+    ctx.globalAlpha = 1;
+  }
+  logos(ctx, look, kit, ease((t - 7 * BEAT) / 300));
+}
+
+// 4.8–9.6 s. The second flyer: the poster big, the date in a box, the tour on two labels,
+// the details on a strip of torn paper; on the break (beat 15) it all holds still and the
+// glass cracks.
+function flyerTwo(ctx, lt, look, kit) {
+  const hold = T.crack - T.s2, t = Math.min(lt, hold + 60);
+  const { n, at } = beatOf(t);
+  const mono = n === 3 || n === 5;
+  field(ctx, kit, t + 2600, mono ? 0.5 : 0.9);
+  if (mono) gray(ctx);
+  shade(ctx, 0.45, 0.65);
+
+  if (kit.panel) {
+    const s = fitIn(kit.panel, 620, 680) * (1 + 0.14 * (1 - ease(t / 520))) * punch(at);
+    panel(ctx, kit, mono ? kit.panelMono : kit.panel, s, n % 2 === 0 ? glitchOf(n + 9, at) : null, 0, 0.44);
+  }
+
+  // The date in a box, top right.
+  const bk = pop((t - 120) / 340);
+  if (bk > 0 && look.badge) {
+    const b = 172;
+    ctx.save();
+    ctx.translate(W - 54 - b / 2, 296); ctx.rotate(-0.04); ctx.scale(bk, bk);
+    ctx.fillStyle = kit.accent; ctx.fillRect(-b / 2, -b / 2, b, b);
+    ctx.fillStyle = kit.onAccent; ctx.textAlign = 'center';
+    ctx.font = `900 64px ${EXP}`;
+    ctx.fillText(look.badge[0], 0, -10); ctx.fillText(look.badge[1], 0, 58);
+    ctx.restore();
+  }
+
+  // The tour on two labels, on beats 9 and 10: ink on paper, then the accent's own ink on it.
+  const lab = look.labels, ls = fitSize(ctx, lab, 900, W - 170, 70);
+  lab.forEach((s, i) => {
+    const k = ease((t - (1 + i) * BEAT) / 300);
+    if (k <= 0) return;
+    const dir = i % 2 ? 1 : -1, y = 760 + i * ls * 1.32;
+    ctx.save();
+    ctx.font = `900 ${ls}px ${EXP}`;
+    const w = ctx.measureText(s).width + 40, h = ls * 1.12;
+    ctx.translate(W / 2 + dir * (1 - k) * W + dir * 14, y);
+    ctx.rotate(i % 2 ? 0.02 : -0.03);
+    ctx.fillStyle = i % 2 ? kit.accent : PAPER; ctx.fillRect(-w / 2, -h / 2, w, h);
+    ctx.fillStyle = i % 2 ? kit.onAccent : INK; ctx.textAlign = 'center';
+    ctx.fillText(s, 0, ls * 0.36);
+    ctx.restore();
+  });
+
+  // The details on torn paper, from beat 12.
+  const tk = ease((t - 4 * BEAT) / 380);
+  if (tk > 0) {
+    const y = 760 + lab.length * ls * 1.32 + 70;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(0, 0, W * tk, H); ctx.clip();
+    torn(ctx, W / 2, y, W + 80, 128, PAPER, 5, -0.015);
+    ctx.translate(W / 2, y); ctx.rotate(-0.015);
+    small(ctx, look.line1, 0, -6, 24, INK, 800);
+    small(ctx, look.line2, 0, 28, 18, INK, 700);
+    ctx.restore();
+  }
+  logos(ctx, look, kit, ease((t - 5 * BEAT) / 300));
+
+  if (lt >= hold) cracks(ctx, (lt - hold) / 120);
+}
+
+// 9.6–14.4 s. The glass falls away to the view from the seat: the seat on a tape, the days
+// to go on another, and the numbers big on dark torn paper.
+function seatView(ctx, lt, look, kit, seat) {
+  const { n, at } = beatOf(lt);
+  const s = 1.02 + lt / (8 * BEAT) * 0.06;
+  if (seat) { ctx.save(); ctx.translate(W / 2, H / 2); ctx.scale(s, s); ctx.drawImage(seat, -W / 2, -H / 2, W, H); ctx.restore(); }
+  grade(ctx, kit);
+  shade(ctx, 0.4, 0.3);
+
+  tape(ctx, H * 0.165, -0.085, AMBER, INK, look.seatRun, lt / 7, ease((lt - BEAT) / 320));
+  if (look.countRun) tape(ctx, H * 0.6, 0.05, INK, PAPER, look.countRun, -lt / 9, ease((lt - 2 * BEAT) / 320));
+
+  const pk = ease((lt - 3 * BEAT) / 360);
+  if (pk > 0) {
+    const top = H - 440, ph = 330;
+    ctx.save();
+    ctx.translate(0, (1 - pk) * (ph + 140));
+    torn(ctx, W / 2, top + ph / 2, W + 80, ph, '#121010', 9, 0.012);
+    ctx.textAlign = 'left';
+    ctx.font = `600 17px ${MONO}`; ctx.fillStyle = PAPER;
+    ctx.fillText(look.catLine, 56, top + 62, W - 112);
+    // The block, row and seat, each as wide as it needs, all as big as fits.
+    const cells = look.cells, gap = 44;
+    ctx.font = `900 100px ${EXP}`;
+    const raw = cells.map(([, v]) => ctx.measureText(v).width);
+    const vs = Math.min(124, Math.floor(100 * (W - 112 - gap * (cells.length - 1)) / raw.reduce((a, b) => a + b, 0)));
+    let x = 56;
+    cells.forEach(([label, v], i) => {
+      const w = raw[i] * vs / 100, k = pop((lt - (3.5 + i / 2) * BEAT) / 280);
+      if (k > 0) {
+        ctx.save();
+        ctx.globalAlpha = Math.min(1, k);
+        ctx.font = `600 16px ${MONO}`; ctx.fillStyle = 'rgba(246,242,238,0.72)';
+        ctx.fillText(label, x + 2, top + 122);
+        ctx.translate(x, top + 132 + vs * 0.74);
+        ctx.scale(k, k);
+        ctx.font = `900 ${vs}px ${EXP}`;
+        ctx.fillStyle = kit.accent; ctx.fillText(v, 5, 5);
+        ctx.fillStyle = PAPER;
+        const g = n >= 6 ? glitchOf(n * 3 + i, at) : null;
+        if (g) stripes(ctx, v, vs, g); else ctx.fillText(v, 0, 0);
+        ctx.restore();
+      }
+      x += w + gap;
+    });
+    ctx.restore();
+  }
+
+  // The glass: the flyer's last frame in pieces, falling away.
+  const p = lt / 620;
+  if (p < 1 && still) shatter(ctx, still, p);
+  if (p >= 1) still = null;
+}
+
+// 14.4–16.8 s. Atvents: the mark and the name, nothing else.
+function end(ctx, lt, look, kit) {
+  ctx.fillStyle = '#161414'; ctx.fillRect(0, 0, W, H);
+  const k = ease(lt / 650);
+  if (kit.logo) {
+    const w = 380, h = w / LOGO_AR;
+    ctx.globalAlpha = k;
+    ctx.drawImage(kit.logo, (W - w) / 2, H / 2 - h / 2 + (1 - k) * 18, w, h);
+    ctx.globalAlpha = 1;
   }
 }
 
-// The colour field behind, drifting slowly, brighter on each beat.
+// ---------------------------------------------------------------- drawing kit
+
+const fitIn = (img, mw, mh) => Math.min(mw / img.width, mh / img.height);
+
+// The largest size (to `max`) at which the longest of `lines` fits in `maxW`.
+function fitSize(ctx, lines, weight, maxW, max) {
+  ctx.font = `${weight} 100px ${EXP}`;
+  const w = Math.max(1, ...lines.map(l => ctx.measureText(l).width));
+  return Math.max(18, Math.min(max, Math.floor(100 * maxW / w)));
+}
+
+// Small wide type, letter-spaced, squeezed to fit if it must.
+function small(ctx, text, x, y, size, color, weight = 700, maxW = W - 96) {
+  if (!text) return;
+  ctx.font = `${weight} ${size}px ${EXP}`; ctx.fillStyle = color; ctx.textAlign = 'center';
+  const ls = 'letterSpacing' in ctx;
+  if (ls) ctx.letterSpacing = `${Math.round(size * 0.06)}px`;
+  ctx.fillText(text, x, y, maxW);
+  if (ls) ctx.letterSpacing = '0px';
+}
+
+// The promoter and Atvents, small, along the bottom as a flyer's logos are.
+function logos(ctx, look, kit, k, y = H - 142) {
+  if (k <= 0) return;
+  ctx.save();
+  ctx.globalAlpha = k;
+  ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(0, y - 34, W, 68);
+  if (look.host) {
+    ctx.font = `600 15px ${MONO}`; ctx.fillStyle = PAPER; ctx.textAlign = 'left';
+    ctx.fillText(look.host, 56, y + 5, 400);
+  }
+  if (kit.logo) { const w = 124, h = w / LOGO_AR; ctx.drawImage(kit.logo, W - 56 - w, y - h / 2, w, h); }
+  ctx.restore();
+}
+
+// The date drawn once: one line as a lit outline, one solid.
+function dateArt(look, kit) {
+  const c = look.cache;
+  if (c.date) return c.date;
+  const probe = canvas(10, 10).getContext('2d');
+  const size = fitSize(probe, [look.dateStack], 900, W - 70, 172), pad = 40;
+  probe.font = `900 ${size}px ${EXP}`;
+  const w = Math.ceil(probe.measureText(look.dateStack).width), h = Math.ceil(size * 0.78);
+  const make = solid => {
+    const cv = canvas(w + pad * 2, h + pad * 2), g = cv.getContext('2d');
+    g.font = `900 ${size}px ${EXP}`; g.textBaseline = 'alphabetic';
+    if (solid) {
+      g.shadowColor = kit.accent; g.shadowBlur = 36; g.fillStyle = PAPER;
+      g.fillText(look.dateStack, pad, pad + h);
+    } else {
+      g.shadowColor = 'rgba(255,255,255,0.75)'; g.shadowBlur = 16; g.lineWidth = 2.6; g.strokeStyle = PAPER;
+      g.strokeText(look.dateStack, pad, pad + h);
+      g.shadowBlur = 0; g.strokeText(look.dateStack, pad, pad + h);
+    }
+    return cv;
+  };
+  c.date = { line: make(false), fill: make(true), w, pad, step: Math.round(size * 0.84) };
+  return c.date;
+}
+
+// The colour field behind, drifting slowly.
 function field(ctx, kit, t, k = 1) {
   const s = 1.06 + 0.03 * Math.sin(t / 1300);
   ctx.save();
@@ -143,160 +431,9 @@ function field(ctx, kit, t, k = 1) {
   ctx.restore();
 }
 
-// 1–3 s: the date, stacked, a line landing on each half beat.
-function dates(ctx, lt, look, kit) {
-  field(ctx, kit, lt, 0.55);
-  ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(0, 0, W, H);
-  const lines = 7, size = 196, step = 172, top = (H - step * (lines - 1)) / 2 + size * 0.36;
-  ctx.font = `800 ${size}px ${CON}`; ctx.textAlign = 'center';
-  for (let i = 0; i < lines; i++) {
-    const at = lt - i * (BEAT / 2);
-    if (at < 0) break;
-    const k = ease(at / 220), dir = i % 2 ? 1 : -1;
-    const x = W / 2 + dir * (1 - k) * 420 + dir * (lt / 40), y = top + i * step;
-    if (i === 3) { ctx.fillStyle = kit.accent; ctx.fillText(look.dateBig, x, y); }
-    else { ctx.lineWidth = 2.5; ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.strokeText(look.dateBig, x, y); }
-  }
+function gray(ctx) {
+  ctx.save(); ctx.globalCompositeOperation = 'saturation'; ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H); ctx.restore();
 }
-
-// 3–5 s: the poster itself, punching in on each beat, the title building up under it.
-function poster(ctx, lt, look, kit) {
-  const { n, at } = beatOf(lt);
-  field(ctx, kit, lt + 2000, 0.85 + 0.15 * Math.exp(-at / 150));
-  shade(ctx, 0.2, 0.85);
-  panel(ctx, kit, kit.panel, punch(at) * (0.96 + lt / 60000), glitchOf(n, at), -0.025, 0.42);
-  const lines = look.titleLines;
-  ctx.textAlign = 'left'; ctx.fillStyle = kit.light;
-  const size = Math.min(look.titleSize, 120), y0 = H - 170 - (lines.length - 1) * size * 0.9;
-  lines.forEach((w, i) => {
-    if (i > n) return;
-    const k = ease((lt - i * BEAT) / 160);
-    ctx.save();
-    ctx.globalAlpha = k;
-    ctx.font = `800 ${size}px ${CON}`;
-    ctx.translate(56, y0 + i * size * 0.9);
-    ctx.scale(1 + (1 - k) * 0.25, 1 + (1 - k) * 0.25);
-    ctx.fillText(w, 0, 0);
-    ctx.restore();
-  });
-  ctx.font = `600 22px ${MONO}`; ctx.fillStyle = kit.accent; ctx.textAlign = 'left';
-  ctx.fillText(look.subtitle.toUpperCase(), 58, H - 116, W - 116);
-}
-
-// 5–7 s: the poster trading colour for black and white on each beat, two tapes across it.
-function tapes(ctx, lt, look, kit) {
-  const { n, at } = beatOf(lt);
-  const bw = n % 2 === 1;
-  field(ctx, kit, lt + 4000, bw ? 0.35 : 0.8);
-  if (bw) { ctx.save(); ctx.globalCompositeOperation = 'saturation'; ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H); ctx.restore(); }
-  panel(ctx, kit, bw ? kit.panelMono : kit.panel, punch(at) * 1.08, glitchOf(n + 3, at), [0.03, -0.02, 0.015, -0.03][n % 4], 0.47);
-  const run = `${look.title.toUpperCase()}  —  ${look.subtitle.toUpperCase()}  —  `;
-  tape(ctx, H * 0.3, -0.13, kit.accent, '#0b0b0b', run, lt / 9, ease(lt / 260));
-  tape(ctx, H * 0.7, 0.09, kit.light, '#0b0b0b', `${look.dateBig}  ·  ${look.place.toUpperCase()}  ·  `, -lt / 7, ease((lt - BEAT) / 260));
-}
-
-// 7–9 s: the show's details as the promoter lists them, one line a half beat.
-function info(ctx, lt, look, kit) {
-  field(ctx, kit, lt + 6000, 0.45);
-  ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(0, 0, W, H);
-  const rows = look.info;
-  const x = 56, y0 = 420;
-  rows.forEach(([label, value], i) => {
-    const k = ease((lt - i * (BEAT / 2)) / 200);
-    if (k <= 0) return;
-    const y = y0 + i * 170;
-    ctx.save();
-    ctx.globalAlpha = k;
-    ctx.translate((1 - k) * -30, 0);
-    ctx.font = `600 20px ${MONO}`; ctx.fillStyle = kit.accent; ctx.textAlign = 'left';
-    ctx.fillText(label, x, y);
-    const big = value.length > 16 ? 70 : 104;
-    ctx.font = `800 ${big}px ${CON}`; ctx.fillStyle = kit.light;
-    ctx.fillText(value.toUpperCase(), x - 3, y + big * 0.95, W - 112);
-    ctx.restore();
-  });
-  if (look.count) {
-    const k = pop((lt - 4 * (BEAT / 2)) / 260);
-    if (k > 0) {
-      ctx.save();
-      ctx.translate(W - 56, 280); ctx.scale(k, k); ctx.rotate(-0.06);
-      ctx.font = `800 72px ${CON}`;
-      const w = ctx.measureText(look.count).width + 44;
-      ctx.fillStyle = '#ff9a3c'; ctx.fillRect(-w, -50, w, 100);
-      ctx.fillStyle = '#141212'; ctx.textAlign = 'right'; ctx.fillText(look.count, -22, 26);
-      ctx.restore();
-    }
-  }
-}
-
-// 9–13 s: through the glass to the view from the seat, and its numbers.
-function seatView(ctx, lt, look, kit, seat) {
-  const s = 1.0 + lt / 4000 * 0.07;
-  if (seat) { ctx.save(); ctx.translate(W / 2, H / 2); ctx.scale(s, s); ctx.drawImage(seat, -W / 2, -H / 2, W, H); ctx.restore(); }
-  grade(ctx, kit);
-  shade(ctx, 0.35, 0.92);
-  // The seat's numbers on a tape across the bottom, and the category and distance above.
-  const k = ease((lt - 700) / 260);
-  if (k > 0) {
-    ctx.save();
-    ctx.translate(0, (1 - k) * 60); ctx.globalAlpha = k;
-    ctx.fillStyle = kit.accent; ctx.font = `600 20px ${MONO}`; ctx.textAlign = 'left';
-    ctx.fillText(look.catLine, 56, H - 300);
-    ctx.restore();
-    const cells = look.cells;
-    const y = H - 230, cw = (W - 112) / cells.length;
-    cells.forEach(([label, v], i) => {
-      const ki = pop((lt - 700 - i * (BEAT / 2)) / 240);
-      if (ki <= 0) return;
-      ctx.save();
-      ctx.translate(56 + i * cw, y);
-      ctx.globalAlpha = Math.min(1, ki);
-      ctx.font = `600 18px ${MONO}`; ctx.fillStyle = 'rgba(246,242,238,0.7)';
-      ctx.fillText(label, 0, 0);
-      ctx.font = `800 ${cells.length === 1 ? 84 : 120}px ${CON}`; ctx.fillStyle = kit.light;
-      ctx.translate(0, 112); ctx.scale(ki, ki);
-      ctx.fillText(v.toUpperCase(), -4, 0, cw - 10);
-      ctx.restore();
-    });
-  }
-  // The break: cracks over the last frame, then its pieces falling away.
-  const p = lt / 520;
-  if (p < 1 && still) shatter(ctx, still, p);
-  if (p >= 1) still = null;
-}
-
-// 13–14 s: the film again in half beats, fast: poster, seat, date, seat.
-function recap(ctx, lt, look, kit, seat) {
-  const q = Math.floor(lt / (BEAT / 2)), at = lt % (BEAT / 2);
-  if (q % 2 === 1 && seat) { ctx.drawImage(seat, 0, 0, W, H); grade(ctx, kit); }
-  else { field(ctx, kit, lt + 8000, 0.7); }
-  if (q === 0) panel(ctx, kit, kit.panel, punch(at) * 1.1, 0, 0.02, 0.45);
-  if (q === 2) {
-    ctx.textAlign = 'center'; ctx.fillStyle = kit.accent; ctx.font = `800 230px ${CON}`;
-    ctx.fillText(look.dateBig, W / 2, H / 2 + 80, W - 60);
-  }
-  if (q % 2 === 1) {
-    ctx.textAlign = 'center'; ctx.fillStyle = kit.light; ctx.font = `800 64px ${CON}`;
-    ctx.fillText(look.cells.map(([, v]) => v).join(' · ').toUpperCase(), W / 2, H - 200, W - 80);
-  }
-}
-
-// 14–16 s: Atvents.
-function end(ctx, lt, look, kit) {
-  ctx.fillStyle = '#161414'; ctx.fillRect(0, 0, W, H);
-  const k = ease(lt / 500);
-  if (kit.logo) {
-    const w = 330, h = w / LOGO_AR;
-    ctx.globalAlpha = k;
-    ctx.drawImage(kit.logo, (W - w) / 2, H / 2 - h / 2 - 20 + (1 - k) * 16, w, h);
-  }
-  ctx.globalAlpha = ease((lt - 250) / 500);
-  ctx.font = `500 20px ${MONO}`; ctx.fillStyle = 'rgba(244,240,238,0.6)'; ctx.textAlign = 'center';
-  ctx.fillText('ATVENTS.COM', W / 2, H / 2 + 60);
-  ctx.globalAlpha = 1;
-}
-
-// ---------------------------------------------------------------- drawing kit
 
 // The poster whole, at scale `s` round the point (W/2, H * yk), turned `rot`, with a
 // shadow; `glitch` shifts a few bands of it sideways (the hits).
@@ -323,7 +460,24 @@ function glitchOf(n, at) {
   if (at > 120) return null;
   let seed = 31 + n * 7919; const r = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
   const k = 1 - at / 120;
-  return [0, 1, 2].map(() => [r(), 0.02 + r() * 0.06, (r() - 0.5) * 60 * k]);
+  return [0, 1, 2].map(() => [r(), 0.04 + r() * 0.1, (r() - 0.5) * 60 * k]);
+}
+
+// Text cut into bands, each shifted by its own amount (the glitch, on type).
+function stripes(ctx, text, size, bands) {
+  const rows = bands.map(([y0, hh, dx]) => [-size * 0.8 + y0 * size * 0.8, Math.max(3, hh * size), dx]);
+  ctx.save();
+  ctx.beginPath(); ctx.rect(-40, -size * 1.1, 2000, size * 1.4);
+  for (const [y, bh] of rows) ctx.rect(-40, y, 2000, bh);
+  ctx.clip('evenodd');
+  ctx.fillText(text, 0, 0);
+  ctx.restore();
+  for (const [y, bh, dx] of rows) {
+    ctx.save();
+    ctx.beginPath(); ctx.rect(-40, y, 2000, bh); ctx.clip();
+    ctx.fillText(text, dx, 0);
+    ctx.restore();
+  }
 }
 
 // Darker at the top and the bottom, for the type.
@@ -334,29 +488,54 @@ function shade(ctx, top, bottom) {
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
 }
 
+// Dark from `from` (a share of the height) down, for type over a picture.
+function scrim(ctx, from, k) {
+  const g = ctx.createLinearGradient(0, H * from, 0, H);
+  g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(0.35, `rgba(0,0,0,${k})`); g.addColorStop(1, `rgba(0,0,0,${Math.min(1, k + 0.25)})`);
+  ctx.fillStyle = g; ctx.fillRect(0, H * from, W, H * (1 - from));
+}
+
 // The seat's view in the show's colours, a little: its accent into the shadows.
 function grade(ctx, kit) {
   ctx.save();
-  ctx.globalCompositeOperation = 'soft-light'; ctx.globalAlpha = 0.35;
+  ctx.globalCompositeOperation = 'soft-light'; ctx.globalAlpha = 0.3;
   ctx.fillStyle = kit.accent; ctx.fillRect(0, 0, W, H);
+  ctx.restore();
+}
+
+// A strip of paper with torn long edges, `w` x `h` round (cx, cy), turned `rot`.
+function torn(ctx, cx, cy, w, h, color, seed, rot = 0) {
+  let s = seed * 9973 + 1; const r = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+  const edge = (y, dir) => { const pts = []; for (let x = -w / 2; x <= w / 2 + 1; x += 9 + r() * 10) pts.push([x, y + dir * (r() * 9 + (r() < 0.15 ? r() * 10 : 0))]); return pts; };
+  const top = edge(-h / 2, -1), bottom = edge(h / 2, 1).reverse();
+  ctx.save();
+  ctx.translate(cx, cy); ctx.rotate(rot);
+  ctx.shadowColor = 'rgba(0,0,0,0.45)'; ctx.shadowBlur = 24; ctx.shadowOffsetY = 10;
+  ctx.beginPath();
+  [...top, ...bottom].forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+  ctx.closePath();
+  ctx.fillStyle = color; ctx.fill();
   ctx.restore();
 }
 
 // A strip of tape across the frame at `angle`, its text running by `shift`.
 function tape(ctx, y, angle, bg, fg, text, shift, k) {
-  if (k <= 0) return;
+  if (k <= 0 || !text) return;
+  const run = `${text}   ·   `;
   ctx.save();
   ctx.translate(W / 2, y); ctx.rotate(angle);
-  const len = 1500, h = 64, x0 = -len / 2 + (1 - k) * (angle < 0 ? -len : len);
+  const len = 1500, h = 66, x0 = -len / 2 + (1 - k) * (angle < 0 ? -len : len);
+  ctx.shadowColor = 'rgba(0,0,0,0.4)'; ctx.shadowBlur = 18; ctx.shadowOffsetY = 6;
   ctx.fillStyle = bg; ctx.fillRect(x0, -h / 2, len, h);
+  ctx.shadowColor = 'transparent';
   ctx.beginPath(); ctx.rect(x0, -h / 2, len, h); ctx.clip();
-  ctx.font = `700 28px ${MONO}`; ctx.fillStyle = fg; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
-  const w = ctx.measureText(text).width, start = x0 + ((shift % w) + w) % w - w;
-  for (let x = start; x < x0 + len; x += w) ctx.fillText(text, x, 2);
+  ctx.font = `800 27px ${EXP}`; ctx.fillStyle = fg; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+  const w = ctx.measureText(run).width, start = x0 + ((shift % w) + w) % w - w;
+  for (let x = start; x < x0 + len; x += w) ctx.fillText(run, x, 2);
   ctx.restore();
 }
 
-// Glass: cracks from a point, then the pieces of `img` falling and turning away.
+// Glass: the pieces round a point, each between two cracks running to the frame's edge.
 const SHARDS = (() => {
   const cx = W * 0.58, cy = H * 0.44, n = 11, pts = [];
   let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
@@ -364,20 +543,37 @@ const SHARDS = (() => {
   const edge = a => { const dx = Math.cos(a), dy = Math.sin(a); const k = Math.min(Math.abs((dx > 0 ? W - cx : cx) / (dx || 1e-6)), Math.abs((dy > 0 ? H - cy : cy) / (dy || 1e-6))); return [cx + dx * k * 1.02, cy + dy * k * 1.02]; };
   return pts.map((a, i) => {
     const b = pts[(i + 1) % n] + (i === n - 1 ? Math.PI * 2 : 0), m = (a + b) / 2;
-    return { poly: [[cx, cy], edge(a), edge(m), edge(b)], dir: [Math.cos(m), Math.sin(m)], spin: (rnd() - 0.5) * 0.6, speed: 0.7 + rnd() * 0.6, cx, cy };
+    return { poly: [[cx, cy], edge(a), edge(m), edge(b)], dir: [Math.cos(m), Math.sin(m)], spin: (rnd() - 0.5) * 0.6, speed: 0.7 + rnd() * 0.6, ring: [0.1 + rnd() * 0.06, 0.26 + rnd() * 0.1], cx, cy };
   });
 })();
 
+// The cracks running out from the point, `p` 0–1, and two rings of them.
+function cracks(ctx, p) {
+  const k = ease(Math.min(1, p));
+  ctx.save();
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  for (const [lw, col] of [[4, 'rgba(0,0,0,0.4)'], [1.6, 'rgba(255,255,255,0.92)']]) {
+    ctx.lineWidth = lw; ctx.strokeStyle = col; ctx.beginPath();
+    SHARDS.forEach((s, i) => {
+      const [x, y] = s.poly[1], [nx, ny] = SHARDS[(i + 1) % SHARDS.length].poly[1];
+      ctx.moveTo(s.cx, s.cy); ctx.lineTo(s.cx + (x - s.cx) * k, s.cy + (y - s.cy) * k);
+      for (const r of s.ring) if (k > r * 1.5) { ctx.moveTo(s.cx + (x - s.cx) * r, s.cy + (y - s.cy) * r); ctx.lineTo(s.cx + (nx - s.cx) * r * 1.06, s.cy + (ny - s.cy) * r * 1.06); }
+    });
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
 function shatter(ctx, img, p) {
-  const crack = p < 0.22, fall = Math.max(0, (p - 0.22) / 0.78);
+  const fall = ease(p) * p;
   for (const s of SHARDS) {
     ctx.save();
-    const d = fall * fall * 900 * s.speed;
-    ctx.translate(s.dir[0] * d, s.dir[1] * d + fall * fall * 600);
+    const d = fall * 900 * s.speed;
+    ctx.translate(s.dir[0] * d, s.dir[1] * d + fall * 700);
     ctx.translate(s.cx, s.cy); ctx.rotate(s.spin * fall); ctx.translate(-s.cx, -s.cy);
     ctx.beginPath(); s.poly.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.closePath();
-    ctx.save(); ctx.clip(); ctx.globalAlpha = 1 - fall * 0.6; ctx.drawImage(img, 0, 0); ctx.restore();
-    ctx.strokeStyle = `rgba(255,255,255,${crack ? 0.9 : 0.5 * (1 - fall)})`; ctx.lineWidth = crack ? 2 : 1.5; ctx.stroke();
+    ctx.save(); ctx.clip(); ctx.globalAlpha = 1 - fall * 0.5; ctx.drawImage(img, 0, 0); ctx.restore();
+    ctx.strokeStyle = `rgba(255,255,255,${0.7 * (1 - fall)})`; ctx.lineWidth = 1.5; ctx.stroke();
     ctx.restore();
   }
 }
@@ -402,27 +598,50 @@ const pop = x => { x = Math.min(1, Math.max(0, x)); const c = 1.70158; return x 
 
 // ---------------------------------------------------------------- the words
 
+const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+
+// Words in two lines as even as they go (one if short).
+function twoLines(s) {
+  const w = s.split(/\s+/).filter(Boolean);
+  if (w.length < 2 || s.length <= 10) return [s];
+  let best = null;
+  for (let i = 1; i < w.length; i++) {
+    const a = w.slice(0, i).join(' '), b = w.slice(i).join(' '), d = Math.max(a.length, b.length);
+    if (!best || d < best[0]) best = [d, [a, b]];
+  }
+  return best[1];
+}
+
+// "3 DAYS TO GO": days to the show on the fan's calendar.
+export function countdownText(ms, now = Date.now()) {
+  if (!Number.isFinite(ms)) return '';
+  const day = t => { const d = new Date(t); return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()); };
+  const n = Math.round((day(ms) - day(now)) / 864e5);
+  return n > 1 ? `${n} DAYS TO GO` : n === 1 ? 'TOMORROW' : n === 0 ? 'TODAY' : '';
+}
+
 // What the frames say, worked out once: the promoter's details, and the fan's seat.
-export function lookOf({ e, place, when, seat, cat, metres, count }) {
+export function lookOf({ e, place, when, seat, cat, metres, now = Date.now() }) {
   const d = new Date(when.ms), ok = Number.isFinite(when.ms);
   const pad = n => String(n).padStart(2, '0');
-  const title = e.title || '';
-  // The title in lines of a few words, as big as the longest lets it be.
-  const words = title.toUpperCase().split(/\s+/), lines = [];
-  for (const w of words) { const last = lines.at(-1); if (last && (last + ' ' + w).length <= 9) lines[lines.length - 1] = last + ' ' + w; else lines.push(w); }
-  const longest = Math.max(...lines.map(l => l.length), 1);
-  const cells = seat.standing ? [['AREA', seat.secName]] : [['BLOK', String(seat.sec || seat.secName)], ['BARIS', String(seat.row)], ['KURSI', String(seat.num)]];
-  const days = ['MINGGU', 'SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'];
+  const title = (e.title || '').toUpperCase(), sub = (e.subtitle || '').toUpperCase();
+  const city = (place.city || '').toUpperCase(), venue = (place.name || '').toUpperCase();
+  const time = e.time && e.time !== 'TBA' ? String(e.time).toUpperCase() : '';
+  const cells = (seat.standing ? [['AREA', seat.secName]] : [['BLOCK', seat.sec || seat.secName], ['ROW', seat.row], ['SEAT', seat.num]])
+    .map(([l, v]) => [l, String(v).toUpperCase()]);
   return {
-    title, subtitle: e.subtitle || '', place: place.name, titleLines: lines,
-    titleSize: Math.min(150, Math.floor(1000 / longest)),
-    dateBig: ok ? `${pad(d.getDate())}.${pad(d.getMonth() + 1)}` : '',
-    info: [
-      ['TANGGAL', ok ? `${days[d.getDay()]} ${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}` : 'TBA'],
-      ['VENUE', place.name],
-      ['KOTA', place.city || ''],
-      ...(e.time && e.time !== 'TBA' ? [['MULAI', e.time]] : []),
-    ].filter(([, v]) => v),
-    count, cells, catLine: `${cat.name.toUpperCase()}  ·  ${metres} M KE PANGGUNG`,
+    title, nameLines: twoLines(title),
+    dateStack: ok ? `${pad(d.getDate())}${MONTHS[d.getMonth()]}` : city,
+    badge: ok ? [pad(d.getDate()), pad(d.getMonth() + 1)] : null,
+    labels: sub ? twoLines(sub) : [city].filter(Boolean),
+    line1: [ok ? `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}` : '', time].filter(Boolean).join('  |  '),
+    line2: [venue, city && !venue.includes(city) ? city : ''].filter(Boolean).join(', '),
+    host: (e.host || '').toUpperCase(),
+    cells,
+    seatRun: cells.map(([l, v]) => `${l} ${v}`).join('  ·  '),
+    countRun: [countdownText(when.ms, now), title].filter(Boolean).join('  ·  '),
+    catLine: [cat?.name ? cat.name.toUpperCase() : '', metres ? `${metres} M TO THE STAGE` : ''].filter(Boolean).join('  ·  '),
+    cache: {},
   };
 }

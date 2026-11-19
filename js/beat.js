@@ -1,12 +1,12 @@
 // The trailer's music: a beat made in the browser with Web Audio, written for the trailer's
 // cuts (trailer.js), so every cut, flash and the glass breaking land on a drum. No samples,
 // nothing licensed. Two kits: `rock` (drums, a distorted bass on a riff) and `pop` (a tight
-// four-on-the-floor kick, claps, a round synth bass). At 120 bpm, a beat is 0.5 s.
+// four-on-the-floor kick, claps, a round synth bass). At 100 bpm, a beat is 0.6 s.
 //
-// score(ac, out, t0, style) schedules the whole 16 seconds from t0 on the context's clock,
+// score(ac, out, t0, style) schedules the whole 16.8 seconds from t0 on the context's clock,
 // so the same call makes the live track and an offline one.
 
-const B = 0.5, BAR = 4 * B;
+const B = 0.6, BAR = 4 * B;
 
 export function score(ac, out, t0, style = 'rock') {
   const bus = ac.createGain();
@@ -102,35 +102,18 @@ export function score(ac, out, t0, style = 'rock') {
   const riff = rock ? [E, E, E, E, E, E, G, A] : [E, E, E, E, D, D, G, G];
 
   const at = k => t0 + k * B;     // beat k
-  // 0–1 s: the dark. A tom on each flicker of the poster.
-  kit.tom(t0 + 0.38, 90, 0.7); kit.tom(t0 + 0.76, 72, 0.8);
-  // 1–3 s: the dates. Kick on the beats, a hat on each line as it lands.
-  for (let k = 2; k < 6; k++) { kit.kick(at(k)); kit.hat(at(k) + B / 2, 0.9); }
-  kit.crash(at(2), 0.6);
-  kit.snare(at(5) + B * 0.5, 0.6); kit.snare(at(5) + B * 0.75, 0.8);
-  // 3–7 s: the poster and the tapes, the full groove.
-  for (let k = 6; k < 14; k++) groove(k);
-  kit.crash(at(6));
-  kit.crash(at(10), 0.7);
-  // 7–9 s: the details. Half time, a fill into the glass.
-  for (let k = 14; k < 18; k++) {
-    if (k % 2 === 0) kit.kick(at(k)); else kit.snare(at(k), 0.9);
-    kit.hat(at(k), 0.6); kit.hat(at(k) + B / 2, 0.6);
-    if (k < 17) note(at(k), riff[0], B * 0.95, 0.8);
-  }
-  [0, 0.25, 0.5, 0.75].forEach((d, i) => kit.tom(at(17) + d * B, [140, 120, 100, 82][i], 0.8));
-  // 9–13 s: the seat. Crash and kick together on the break, then the groove again.
-  kit.crash(at(18), 1.1);
-  for (let k = 18; k < 26; k++) groove(k);
-  // 13–14 s: the recap, in double time.
-  for (let k = 26; k < 28; k++) {
-    kit.kick(at(k)); kit.kick(at(k) + B / 2, 0.8);
-    (rock ? kit.snare : kit.clap)(at(k) + B * 0.25, 0.8); (rock ? kit.snare : kit.clap)(at(k) + B * 0.75, 0.9);
-    for (let h = 0; h < 4; h++) kit.hat(at(k) + h * B / 4, 0.7);
-    note(at(k), riff[6], B / 2 * 0.9); note(at(k) + B / 2, riff[7], B / 2 * 0.9);
-  }
-  // 14 s: the last hit, left to ring under the logo.
-  kit.kick(at(28), 1.1); kit.crash(at(28), 1.1); note(at(28), E, 1.8, 1);
+  // 0: the drop, crash and kick together, and the groove under both flyers.
+  kit.crash(at(0), 1.1);
+  for (let k = 0; k < 14; k++) groove(k);
+  kit.crash(at(8), 0.8);
+  // 14: a fill on the toms. 15: the break, nothing; the glass cracks in the silence.
+  [0, 0.25, 0.5, 0.75].forEach((d, i) => kit.tom(at(14) + d * B, [140, 120, 100, 82][i], 0.8));
+  note(at(14), riff[6], B * 0.45); note(at(14) + B / 2, riff[7], B * 0.45);
+  // 16: back in on the seat, crash and kick together, the groove again.
+  kit.crash(at(16), 1.1);
+  for (let k = 16; k < 24; k++) groove(k);
+  // 24: the last hit, left to ring under the logo.
+  kit.kick(at(24), 1.1); kit.crash(at(24), 1.1); note(at(24), E, 2.2, 1);
 
   function groove(k) {
     const inBar = k % 4;
