@@ -266,3 +266,53 @@
   .ev-hero .ev-poster img { width: 100%; height: auto; aspect-ratio: auto; object-fit: contain; border-radius: 0; box-shadow: none; }
   .ev-hero .ev-poster figcaption { padding: 0 var(--gut); }
 }
+
+/* ---------- concert page top on a phone: shared tidy-up for every option ---------- */
+@media (max-width: 760px) {
+  .ev-hero .hero-in { gap: 12px; }
+  .ev-hero.has-poster .ev-info { display: contents; }
+  .ev-hero .hero-kicker { order: 1; align-self: flex-start; text-align: left; font-size: 13px; letter-spacing: 0.02em; color: var(--muted); }
+  .ev-hero .hero-title { order: 2; margin: 0; font-size: clamp(30px, 9vw, 38px) !important; line-height: 1.02; }
+  .ev-hero .ev-info .tags { order: 3; }
+  .ev-hero .tags .tag { height: 26px; padding: 0 10px; font-size: 11px; }
+  .ev-hero .ev-blurb { font-size: 14px; line-height: 1.5; }
+  .ev-hero .ev-sale { font-size: 13px; }
+  .ev-hero .ev-official { font-size: 12.5px; padding: 10px 12px; }
+  .ev-hero .row-btns .btn { height: 46px; font-size: 14px; }
+  .ev-hero .ev-specs { gap: 8px; }
+  .ev-hero .ev-specs div { padding: 12px 14px; border-radius: 14px; }
+  .ev-hero .ev-specs dd { font-size: 14px; }
+}
+
+@media (max-width: 760px) {
+  /* A: Ringkas. Title, chips, a short blurb, two buttons (Unlock stays in the bottom bar), facts as a list. */
+  [data-evl="a"] .ev-hero .ev-blurb { order: 4; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  [data-evl="a"] .ev-hero .ev-sale { order: 5; }
+  [data-evl="a"] .ev-hero .ev-info .row-btns { order: 6; }
+  [data-evl="a"] .ev-hero .ev-info .row-btns .btn-coral { display: none; }
+  [data-evl="a"] .ev-hero .ev-specs { order: 7; display: block; border: 1px solid var(--line-2); border-radius: 14px; overflow: hidden; }
+  [data-evl="a"] .ev-hero .ev-specs div { display: grid; grid-template-columns: 84px minmax(0, 1fr); border: 0; border-radius: 0; background: transparent; }
+  [data-evl="a"] .ev-hero .ev-specs div + div { border-top: 1px solid var(--line-2); }
+  [data-evl="a"] .ev-hero .ev-specs dt { margin: 3px 0 0; }
+  [data-evl="a"] .ev-hero .ev-official { order: 8; padding: 0; border: 0; background: none; color: var(--muted); }
+  [data-evl="a"] .ev-hero .ev-actions { order: 9; }
+
+  /* B: Kartu info. The facts first in one card, then the buttons, then the story. */
+  [data-evl="b"] .ev-hero .ev-specs { order: 4; display: block; padding: 4px 0; border: 1px solid var(--line-2); border-radius: 16px; background: var(--panel); }
+  [data-evl="b"] .ev-hero .ev-specs div { border: 0; background: transparent; padding: 10px 14px; }
+  [data-evl="b"] .ev-hero .ev-specs div + div { border-top: 1px solid var(--line); }
+  [data-evl="b"] .ev-hero .ev-info .row-btns { order: 5; }
+  [data-evl="b"] .ev-hero .ev-official { order: 6; }
+  [data-evl="b"] .ev-hero .ev-blurb { order: 7; }
+  [data-evl="b"] .ev-hero .ev-sale { order: 8; }
+  [data-evl="b"] .ev-hero .ev-actions { order: 9; }
+
+  /* C: Tombol dulu. Under the title one line of date and place, then the actions; the rest after. */
+  [data-evl="c"] .ev-hero .ev-info .row-btns { order: 4; }
+  [data-evl="c"] .ev-hero .ev-actions { order: 5; }
+  [data-evl="c"] .ev-hero .ev-official { order: 6; }
+  [data-evl="c"] .ev-hero .ev-blurb { order: 7; padding-top: 14px; border-top: 1px solid var(--line); }
+  [data-evl="c"] .ev-hero .ev-sale { order: 8; }
+  [data-evl="c"] .ev-hero .ev-specs { order: 9; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  [data-evl="c"] .ev-hero .ev-specs div:last-child { grid-column: 1 / -1; }
+}
