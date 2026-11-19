@@ -362,6 +362,8 @@ test('security headers and the static file allow-list', async () => {
   // Scripts from elsewhere: only the three.js folders the import map names, at their version.
   assert.match(csp, /script-src 'self' 'sha256-[A-Za-z0-9+/=]+' https:\/\/cdn\.jsdelivr\.net\/npm\/three@0\.160\.0\/build\/ https:\/\/cdn\.jsdelivr\.net\/npm\/three@0\.160\.0\/examples\/jsm\/;/);
   assert.match(csp, /connect-src 'self';/);
+  // The story video's preview plays from the recording in memory.
+  assert.match(csp, /media-src 'self' blob:;/);
   assert.ok(!/unsafe-inline[^;]*script|script-src[^;]*unsafe/.test(csp), 'no inline scripts');
   assert.ok(!/midtrans/i.test(csp));
   assert.match(r.headers.get('permissions-policy'), /payment=\(\)/);

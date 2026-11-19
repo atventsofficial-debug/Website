@@ -7,7 +7,10 @@
 // The seat's view is a second, hidden copy of the venue at 720 x 1280, flown into the seat
 // with the show's lights up before recording starts; the trailer is drawn over its frames
 // on a 2D canvas, and picture and sound are recorded together with MediaRecorder. Nothing on
-// it can open the pass: no name, pass id, key or link of the fan's.
+// it can open the pass: no name, pass id, key or link of the fan's. The film keeps a clock of
+// its own: each 3D frame is copied to a picture the film draws, so a slow or stalled frame of
+// the venue never holds the film. When it is done the fan watches it in the sheet before
+// sharing or saving it.
 import { getEvent } from './events.js';
 import { crowdSeats } from './layouts.js';
 import { whenOf } from './when.js';
@@ -53,7 +56,8 @@ export async function makeStory(pass) {
   const ac = AC ? new AC() : null;
   ac?.resume?.().catch(() => {});
   const sheet = openSheet();
-  let scene = null, rec = null;
+  sheet.progress(0.02, '', 0.12);   // under the sheet's first note: keep this tab open
+  let scene = null, rec = null, raf = 0;
   try {
     const font = loadFonts();
     const art = e.image && IMAGES[e.image] ? loadImage(IMAGES[e.image].src) : Promise.resolve(null);
@@ -63,6 +67,7 @@ export async function makeStory(pass) {
     const track = TRACK && ac ? fetch(TRACK.src).then(r => r.arrayBuffer()).then(b => ac.decodeAudioData(b)).catch(() => null) : null;
     const { SeatScene } = await loadScene3d();
     await font;
+    sheet.progress(0.12, 'Building the venue', 0.24);
     scene = new SeatScene(sheet.stage, { quality: 'medium', interactive: false, labels: false, fps: 30, drift: 0.05 });
     scene.renderer.setPixelRatio(W / sheet.stage.clientWidth);
     scene.resize();
@@ -72,14 +77,13 @@ export async function makeStory(pass) {
     scene.setCrowd(true);
     scene.setLabels(false);
     await waitShown(scene);
-    sheet.progress(0.2, 'Finding your seat');
+    sheet.progress(0.24, 'Finding your seat', 0.3);
     // Into the seat, and the show's lights all the way up, before the film starts.
     scene.realColors = true;
     scene.setMine([at.id]);
     scene.flyToSeat(at, { quick: true });
     await scene.settled();
     await wait(1800);
-    sheet.progress(0.3, 'Cutting your trailer');
 
     const focus = scene.focus ? [scene.focus.x, scene.focus.z] : [venue.stageX ?? -40, 0];
     const metres = Math.max(1, Math.round(Math.hypot(at.x - focus[0], at.z - focus[1])));
@@ -110,21 +114,55 @@ export async function makeStory(pass) {
       // The picture starts when the sound does.
       await wait(Math.max(0, (t0 - ac.currentTime) * 1000));
     }
-    const start = performance.now();
-    scene.afterRender = gl => paint(ctx, performance.now() - start, look, kit, gl);
+    // The seat's view as a picture, renewed by every frame the scene draws.
+    const view = picture(), vctx = view.getContext('2d');
+    vctx.drawImage(scene.renderer.domElement, 0, 0, W, H);
+    scene.afterRender = gl => vctx.drawImage(gl, 0, 0, W, H);
+    // The film's frame at its cover moment, for the preview while the video loads.
+    const cover = picture();
 
     const chunks = [];
     rec = new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: 8e6, audioBitsPerSecond: 160e3 });
     rec.ondataavailable = ev => { if (ev.data.size) chunks.push(ev.data); };
     const stopped = new Promise(r => { rec.onstop = r; });
-    rec.start(250);
-    for (let k = 1; k <= 8; k++) { await wait(LENGTH / 8); sheet.progress(0.3 + k * 0.0875, k < 5 ? 'Cutting your trailer' : k < 7 ? 'The view from your seat' : 'Almost done'); }
+    const start = performance.now();
+    let last = -1e3, covered = false;
+    await new Promise(finish => {
+      const tick = now => {
+        const t = now - start;
+        if (t >= LENGTH) { finish(); return; }
+        raf = requestAnimationFrame(tick);
+        // 30 frames a second, which is what the recording keeps.
+        if (t - last < 30) return;
+        last = t;
+        try { paint(ctx, t, look, kit, view); } catch (err) { console.error(err); }
+        if (!covered && t >= COVER) { covered = true; cover.getContext('2d').drawImage(out, 0, 0); }
+        sheet.progress(0.3 + 0.68 * t / LENGTH, t < T.s3 ? 'Cutting your trailer' : t < T.end ? 'The view from your seat' : 'Almost done');
+      };
+      try { paint(ctx, 0, look, kit, view); } catch (err) { console.error(err); }
+      rec.start(250);
+      raf = requestAnimationFrame(tick);
+    });
+    try { paint(ctx, LENGTH, look, kit, view); } catch { /* the last frame is the fade's black */ }
+    await wait(120);
     rec.stop();
     await stopped;
     const blob = new Blob(chunks, { type: type.split(';')[0] });
     const ext = blob.type === 'video/mp4' ? 'mp4' : 'webm';
-    sheet.done(new File([blob], `atvents-${slug(e.title)}-my-seat.${ext}`, { type: blob.type }), e, seat);
+    // Where the browser cannot play back what it recorded, the sheet plays the film again
+    // on the canvas, with the seat's last frame for its view.
+    const replay = live => {
+      const from = performance.now();
+      const step = now => {
+        if (!live()) return;
+        try { paint(ctx, (now - from) % LENGTH, look, kit, view); } catch { /* the next frame */ }
+        requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    };
+    sheet.done(new File([blob], `atvents-${slug(e.title)}-my-seat.${ext}`, { type: blob.type }), e, seat, { cover, replay });
   } catch (err) {
+    cancelAnimationFrame(raf);
     if (rec?.state === 'recording') rec.stop();
     sheet.fail();
   } finally {
@@ -133,6 +171,10 @@ export async function makeStory(pass) {
     busy = false;
   }
 }
+
+// The frame the preview shows before the video plays: the first flyer, all of it in.
+const COVER = 3600;
+const picture = () => Object.assign(document.createElement('canvas'), { width: W, height: H });
 
 const waitShown = scene => new Promise(r => { const t = () => (scene.shown || scene.disposed ? r() : setTimeout(t, 60)); t(); });
 
@@ -164,12 +206,12 @@ function openSheet() {
   document.body.insertAdjacentHTML('beforeend', `
     <div class="story" id="story" role="dialog" aria-modal="true" aria-label="Story">
       <div class="story-card">
-        <div class="story-frame"><div class="story-stage" id="story-stage"></div><canvas id="story-canvas" width="${W}" height="${H}"></canvas><video id="story-video" playsinline loop muted hidden></video></div>
+        <div class="story-frame"><div class="story-stage" id="story-stage"></div><canvas id="story-canvas" width="${W}" height="${H}"></canvas><video id="story-video" playsinline loop muted preload="auto" hidden></video></div>
         <div class="story-side">
           <p class="eyebrow">Your story</p>
           <h2 id="story-title">Making your seat pass</h2>
           <p id="story-note">About 20 seconds. Keep this tab open.</p>
-          <div class="story-bar"><i id="story-bar"></i></div>
+          <div class="story-meter" id="story-meter"><div class="story-bar"><i id="story-bar"></i></div><span class="story-pct" id="story-pct" aria-live="off">0%</span></div>
           <div class="story-actions" id="story-actions"><button class="btn btn-line btn-sm" type="button" data-story="close">Cancel</button></div>
         </div>
       </div>
@@ -182,9 +224,18 @@ function openSheet() {
   fit();
   if (window.ResizeObserver) new ResizeObserver(fit).observe(frame); else window.addEventListener('resize', fit);
   let files = {}, urls = [], text = '';
+  // The share in hundredths: it creeps toward the end of each step while the step runs, so
+  // the number keeps moving through the long ones (loading the venue).
+  let shown = 0, aim = 0, upto = 0, creep = 0;
+  const show = k => {
+    shown = Math.min(1, Math.max(shown, k));
+    $('#story-bar').style.transform = `scaleX(${shown})`;
+    $('#story-pct').textContent = `${Math.floor(shown * 100 + 1e-6)}%`;
+  };
+  const close = () => { clearInterval(creep); urls.forEach(u => URL.revokeObjectURL(u)); root.remove(); };
   root.addEventListener('click', async ev => {
     const act = ev.target.closest('[data-story]')?.dataset.story;
-    if (act === 'close') { urls.forEach(u => URL.revokeObjectURL(u)); root.remove(); }
+    if (act === 'close') close();
     if (act === 'share' && files.share) {
       try { await navigator.share({ files: [files[act]], title: 'My seat', text }); } catch { /* closed the share sheet */ }
     }
@@ -192,23 +243,54 @@ function openSheet() {
   return {
     stage: $('#story-stage'),
     canvas: $('#story-canvas'),
-    progress(k, label) { $('#story-bar').style.transform = `scaleX(${k})`; $('#story-note').textContent = `${label}…`; },
-    done(video, e, seat) {
+    progress(k, label, to = k) {
+      if (!root.isConnected) return;
+      aim = k; upto = Math.max(k, to);
+      show(k);
+      if (label) $('#story-note').textContent = `${label}…`;
+      if (!creep) creep = setInterval(() => { if (upto > shown) show(shown + (aim + (upto - aim) * 0.92 - shown) * 0.06); }, 200);
+    },
+    done(video, e, seat, { cover, replay }) {
+      clearInterval(creep);
+      if (!root.isConnected) return;
       const vurl = URL.createObjectURL(video);
       urls = [vurl];
       files = { share: video };
       // What WhatsApp, X and the like post with it; Instagram takes the file alone.
       const where = seat.standing ? seat.secName : `Row ${seat.row}, Seat ${seat.num}`;
       text = `I'm going to ${e.title}! ${where}. Where are you sitting? ${location.origin}/#event-${e.id}`;
-      const v = $('#story-video');
-      v.src = vurl; v.hidden = false; v.play().catch(() => {});
-      $('#story-canvas').hidden = true;
-      $('#story-bar').style.transform = 'scaleX(1)';
+      // The preview: the video itself, muted until the fan turns the sound on, over its cover
+      // frame until its first frame is in. If this browser cannot play what it recorded, the
+      // film plays again on the canvas instead.
+      const v = $('#story-video'), c = $('#story-canvas');
+      c.getContext('2d').drawImage(cover, 0, 0);
+      cover.toBlob(b => { if (b && root.isConnected) { const u = URL.createObjectURL(b); urls.push(u); v.poster = u; } }, 'image/jpeg', 0.85);
+      let settled = false;
+      const fallback = () => {
+        if (settled) return;
+        settled = true;
+        v.hidden = true; v.removeAttribute('src'); v.load();
+        replay(() => root.isConnected);
+      };
+      v.addEventListener('loadeddata', () => {
+        if (settled) return;
+        if (!v.videoWidth) { fallback(); return; }
+        settled = true;
+        v.play().catch(() => {});
+      }, { once: true });
+      v.addEventListener('error', fallback, { once: true });
+      // A recording with no length in its header plays once and stops on its last frame,
+      // the fade's black: it starts over from here.
+      v.addEventListener('ended', () => { v.currentTime = 0; v.play().catch(() => {}); });
+      setTimeout(() => { if (!settled && v.readyState < 2) fallback(); }, 5000);
+      v.controls = true;
+      v.src = vurl; v.hidden = false; v.load();
+      $('#story-meter').hidden = true;
       $('#story-title').textContent = 'Your seat pass is ready';
       const canShare = !!navigator.canShare?.({ files: [video] });
       $('#story-note').textContent = canShare
-        ? 'Post it to your story and let your friends answer where they are sitting.'
-        : 'Save it, then post it as a story from Instagram or TikTok on your phone.';
+        ? 'Watch it here first; the speaker button turns the sound on. Then post it to your story and let your friends answer where they are sitting.'
+        : 'Watch it here first; the speaker button turns the sound on. Then save it and post it as a story from Instagram or TikTok on your phone.';
       $('#story-actions').innerHTML = `
         ${canShare ? `<button class="btn btn-coral" type="button" data-story="share">${icon('i-share', 'lead')}<span>Share video to story</span></button>` : `<a class="btn btn-coral" href="${vurl}" download="${esc(video.name)}">${icon('i-down', 'lead')}<span>Save video</span></a>`}
         ${canShare ? `<a class="link" href="${vurl}" download="${esc(video.name)}">Save the video to this device</a>` : ''}
@@ -216,6 +298,9 @@ function openSheet() {
       state.lastStory = { name: video.name, size: video.size, type: video.type, event: e.id };
     },
     fail() {
+      clearInterval(creep);
+      if (!root.isConnected) return;
+      $('#story-meter').hidden = true;
       $('#story-title').textContent = 'The video could not be made';
       $('#story-note').textContent = 'Your device ran out of memory or stopped the recording. Close other tabs and try again.';
       $('#story-actions').innerHTML = '<button class="btn btn-line btn-sm" type="button" data-story="close">Close</button>';

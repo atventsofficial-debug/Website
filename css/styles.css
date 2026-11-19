@@ -1315,6 +1315,9 @@ input, select, textarea { border-radius: 0; }
 .story-side { display: flex; flex-direction: column; gap: var(--s3); }
 .story-side h2 { font: 500 28px/1.05 var(--font); text-transform: uppercase; letter-spacing: -0.02em; }
 .story-side p:not(.eyebrow) { color: var(--muted); font-size: 14px; }
+.story-meter { display: flex; align-items: center; gap: 12px; }
+.story-meter .story-bar { flex: 1 1 auto; }
+.story-pct { min-width: 4ch; text-align: right; font: 600 13px/1 var(--mono); font-variant-numeric: tabular-nums; color: var(--text); }
 .story-bar { height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.15); overflow: hidden; }
 .story-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; }
 .story-actions .btn { flex: 1 1 100%; }
