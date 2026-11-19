@@ -23,7 +23,17 @@
 .uf-pick-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .uf-pick-row { display: flex; align-items: center; gap: 14px; padding: 10px 14px 10px 10px; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 16px; background: rgba(255, 255, 255, 0.035); transition: border-color .15s, background-color .15s; }
 .uf-pick-row:hover, .uf-pick-row:focus-visible { border-color: var(--coral); background: rgba(255, 255, 255, 0.06); outline: none; }
-.uf-pick-row .co-poster { width: 44px; border-radius: 6px; }
+.uf-pick-row .uf-poster { flex: none; display: block; width: 132px; aspect-ratio: 3 / 2; object-fit: cover; border-radius: 8px; background: #111; }
+.uf-pick-row .uf-event-text { flex: 1; min-width: 0; }
+/* On a phone each event leads with its whole poster, edge to edge, like the events list. */
+@media (max-width: 760px) {
+  .uf-pick { padding: 16px; }
+  .uf-pick-list { gap: 12px; }
+  .uf-pick-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 10px; padding: 0; overflow: hidden; }
+  .uf-pick-row > svg { margin-right: 14px; }
+  .uf-pick-row .uf-poster { grid-column: 1 / -1; width: 100%; border-radius: 0; }
+  .uf-pick-row .uf-event-text { padding: 12px 0 14px 14px; }
+}
 .uf-pick-row > svg { width: 18px; height: 18px; color: var(--muted); }
 
 /* The event list's filter (js/pages.js, renderConcerts): one chip per kind of event on sale. */

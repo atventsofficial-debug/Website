@@ -4,7 +4,7 @@
 import { formatRpShort, crowdSeats, REAL_KEYS } from './layouts.js';
 import { loadScene3d } from './viewer.js';
 import { EVENTS, PLACES, CITY, LISTED, getEvent, eventMeta, placeOf, timeKnown, minPrice, soldOut, allSoldOut, isConcert, demoFor, onTiket, sellerOf, saleInfo, EVENT_TYPES, typeOf } from './events.js';
-import { cardImg, eventImg, placeCover, posterFig, thumbImg } from './media.js';
+import { cardImg, eventImg, placeCover, posterFig, posterImg, thumbImg } from './media.js';
 import { picker } from './picker.js';
 import { whenOf, startOf, venueClock, gapText } from './when.js';
 import { waTiles } from './fans.js';
@@ -486,7 +486,7 @@ export function renderUnlock(eventId) {
     $('#unlock-note').hidden = true;
     $('#uf-pick').innerHTML = `<div class="uf-head"><h2>Choose your event</h2><small>Then your seat, then pay</small></div>
       <ul class="uf-pick-list">${onSale().map(e => `<li><a class="uf-pick-row" href="#unlock-${esc(e.id)}">
-        ${thumbImg(e)}<span class="uf-event-text"><b>${esc(e.title)}</b><small>${esc(whenOf(e).date)} · ${esc(placeOf(e).name)}</small></span>${icon('i-arrow')}</a></li>`).join('')}</ul>`;
+        ${posterImg(e)}<span class="uf-event-text"><b>${esc(e.title)}</b><small>${esc(whenOf(e).date)} · ${esc(placeOf(e).name)}</small></span>${icon('i-arrow')}</a></li>`).join('')}</ul>`;
     return;
   }
   const all = onSale();

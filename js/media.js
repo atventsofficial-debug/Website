@@ -102,6 +102,14 @@ export function thumbImg(e) {
   return `<img class="co-poster" src="assets/events/card/${e.image}-480.webp" alt="" decoding="async">`;
 }
 
+// The poster at its own 3:2, for the event picker: whole, never cut, the same size for every event.
+export function posterImg(e) {
+  if (!e?.image || !Object.hasOwn(IMAGES, e.image)) return '';
+  const c = IMAGES[e.image], full = c.src.replace(/\.webp$/, '');
+  const set = c.w ? `${c.src} ${c.w}w` : `${full}-640.webp 640w, ${c.src} 1200w`;
+  return `<img class="uf-poster" src="${c.w ? c.src : `${full}-640.webp`}" srcset="${set}" sizes="(max-width: 760px) 100vw, 160px" alt="" loading="lazy" decoding="async">`;
+}
+
 // The artwork itself, sharp and uncropped, with its credit: on the event page.
 export function posterFig(e) {
   if (!e.image || !Object.hasOwn(IMAGES, e.image)) return '';
