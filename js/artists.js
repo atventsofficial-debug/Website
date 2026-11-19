@@ -7,8 +7,8 @@
 // line its licence asks for, if it is not the promoter's own (a Creative Commons photo:
 // 'Name / CC BY 4.0'), shown on it. Without a photo, the second scene is set in type.
 //
-// shots: photos of the act on stage at earlier shows, cut together on the beat in the second
-// scene in place of photo; each { src, box, credit } as photo's. Only photos whose licence
+// shots: photos of the act on stage at earlier shows (for a match, the athlete or both teams
+// playing), cut together on the beat in the second scene in place of photo; each { src, box, credit } as photo's. Only photos whose licence
 // lets them be changed and used to promote the show (CC BY or CC0, never NC, ND or SA), each
 // credited as its licence asks.
 export const ARTISTS = {
