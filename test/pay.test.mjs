@@ -741,3 +741,97 @@ test('seat mates: a fan sees only the seat mates of their own category', async (
   assert.deepEqual(seenByC.length, 1);
   await settled();
 });
+
+// ---------------------------------------------------------------- many fans at once
+
+test('a crowd: a paid pass in the order book is answered without asking Midtrans again', async () => {
+  const DB = fakeD1(), e = env({ DB });
+  const a = await (await post(order(), { env: e })).json();
+  paid[a.id] = { transaction_status: 'settlement' };
+  const ask = () => req(`/api/passes/${a.id}`, { env: e, headers: { 'x-pass-token': a.token } });
+  assert.equal((await (await ask()).json()).status, 'confirmed');
+  await settled();
+  calls = [];
+  for (let i = 0; i < 5; i++) assert.equal((await (await ask()).json()).status, 'confirmed');
+  await settled();
+  assert.equal(calls.filter(c => c.url.includes('/status')).length, 0, 'Midtrans is not asked once the book says paid');
+});
+
+test('a crowd: seat mates send only a version when the list has not changed, and survive D1 going down', async () => {
+  const DB = fakeD1(), e = env({ DB, FANBASE_WA: WA });
+  const a = await (await post(order(), { env: e })).json();
+  const other = venue.seats.find(s => s.cat === seat.cat && s.id !== seat.id);
+  const b = await (await post(order({ seat: other.id, name: 'Dimas Arya', email: 'dimas@example.com' }), { env: e })).json();
+  paid[a.id] = { transaction_status: 'settlement' };
+  paid[b.id] = { transaction_status: 'settlement' };
+  await mates(a, { env: e, method: 'PUT', body: { name: 'Rani', instagram: 'rani.p', consent: true } });
+  let r = await mates(b, { env: e });
+  assert.equal(r.status, 200);
+  const v = r.headers.get('x-fans-version');
+  assert.ok(v);
+  // Same list: 204, no body.
+  r = await mates(b, { env: e, headers: { 'x-fans-have': v } });
+  assert.equal(r.status, 204);
+  assert.equal(await r.text(), '');
+  // A change shows straight away, with a new version.
+  await mates(a, { env: e, method: 'DELETE' });
+  r = await mates(b, { env: e, headers: { 'x-fans-have': v } });
+  assert.equal(r.status, 200);
+  assert.notEqual(r.headers.get('x-fans-version'), v);
+  assert.deepEqual((await r.json()).fans, []);
+  await settled();
+  // D1 stops answering: the last list keeps being served (once it is past its few seconds).
+  const realPrepare = DB.prepare.bind(DB);
+  DB.prepare = () => { throw new Error('D1 is down'); };
+  await new Promise(res => setTimeout(res, 4100));
+  r = await mates(b, { env: e });
+  assert.equal(r.status, 200);
+  assert.deepEqual((await r.json()).fans, []);
+  DB.prepare = realPrepare;
+});
+
+test('a crowd: the limiter counts per pass, so fans sharing one address do not block each other', async () => {
+  const seen = [];
+  const LIM = { limit: async ({ key }) => { seen.push(key); return { success: seen.filter(k => k === key).length <= 2 }; } };
+  const DB = fakeD1(), e = env({ DB, FANBASE_WA: WA, FANS_LIMIT: LIM });
+  const a = await (await post(order(), { env: e })).json();
+  const other = venue.seats.find(s => s.cat === seat.cat && s.id !== seat.id);
+  const b = await (await post(order({ seat: other.id, name: 'Dimas Arya', email: 'dimas@example.com' }), { env: e })).json();
+  paid[a.id] = { transaction_status: 'settlement' };
+  paid[b.id] = { transaction_status: 'settlement' };
+  const ip = { 'cf-connecting-ip': '114.4.4.4' };
+  assert.equal((await mates(a, { env: e, headers: ip })).status, 200);
+  assert.equal((await mates(a, { env: e, headers: ip })).status, 200);
+  const third = await mates(a, { env: e, headers: ip });
+  assert.equal(third.status, 429);
+  assert.equal(third.headers.get('retry-after'), '30');
+  // Same address, another fan: still in.
+  assert.equal((await mates(b, { env: e, headers: ip })).status, 200);
+  // A broken limiter lets fans through.
+  const e2 = env({ DB, FANBASE_WA: WA, FANS_LIMIT: { limit: async () => { throw new Error('limiter down'); } } });
+  assert.equal((await mates(b, { env: e2, headers: ip })).status, 200);
+});
+
+test('a crowd: 300 fans asking at the same moment read the concert list from D1 once', async () => {
+  const DB = fakeD1(), e = env({ DB, FANBASE_WA: WA });
+  let fanReads = 0;
+  const prepare = DB.prepare;
+  DB.prepare = sql => { if (/FROM fans WHERE event_id = \? ORDER BY/.test(sql)) fanReads++; return prepare(sql); };
+  const seats = venue.seats.filter((s, i) => i % 7 === 0).slice(0, 300);
+  const fans = [];
+  for (const s of seats) {
+    const p = await (await post(order({ cat: s.cat, seat: s.id, email: `f${fans.length}@example.com` }), { env: e })).json();
+    paid[p.id] = { transaction_status: 'settlement' };
+    fans.push(p);
+  }
+  await settled();
+  // Each pass's first ask confirms it is paid; then all 300 ask together.
+  await Promise.all(fans.map(p => mates(p, { env: e })));
+  fanReads = 0;
+  const t0 = performance.now();
+  const answers = await Promise.all(fans.map(p => mates(p, { env: e })));
+  const ms = performance.now() - t0;
+  assert.ok(answers.every(r => r.status === 200));
+  assert.ok(fanReads <= 1, `D1 read ${fanReads} times`);
+  console.info(`300 fans at once: ${ms.toFixed(0)} ms, ${fanReads} D1 read`);
+});

@@ -922,14 +922,15 @@ export function renderPaid(id) {
     busy = true;
     try {
       if (!document.hidden) {
-        await refresh(passes.get(id) || first);
+        // A busy server or a bad connection: ask a little less often, up to every 30 s.
+        if ((await refresh(passes.get(id) || first)) === false) co.every = Math.min(30000, Math.round(co.every * 1.5));
         if (!alive()) return;
         const p = passes.get(id);
         if (!p || settled(p)) return;
         if (!inForm) sheet.innerHTML = paidSheet(p, id);
       }
     } finally { busy = false; }
-    if (alive() && Date.now() < until + LATE) co.poll = setTimeout(check, co.every);
+    if (alive() && Date.now() < until + LATE) co.poll = setTimeout(check, Math.round(co.every * (0.85 + Math.random() * 0.3)));
   };
   co.wake = check;
   co.every = 10000;

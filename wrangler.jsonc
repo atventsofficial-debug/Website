@@ -11,10 +11,13 @@
   "compatibility_date": "2026-10-01",
   "build": { "command": "node scripts/build-site.mjs" },
   "assets": { "directory": "./site", "binding": "ASSETS" },
-  // Per visitor address: orders started, and payment checks, per minute.
+  // Per minute. Orders started: per visitor address (raised from 10: phones on one mobile
+  // network often share an address). Payment checks and seat-mate changes: per pass and
+  // address. Seat-mate lists: per pass and address, well above one every 8 seconds.
   "ratelimits": [
-    { "name": "PAY_LIMIT", "namespace_id": "1001", "simple": { "limit": 10, "period": 60 } },
-    { "name": "STATUS_LIMIT", "namespace_id": "1002", "simple": { "limit": 60, "period": 60 } }
+    { "name": "PAY_LIMIT", "namespace_id": "1001", "simple": { "limit": 30, "period": 60 } },
+    { "name": "STATUS_LIMIT", "namespace_id": "1002", "simple": { "limit": 60, "period": 60 } },
+    { "name": "FANS_LIMIT", "namespace_id": "1003", "simple": { "limit": 40, "period": 60 } }
   ],
   // The order book (worker/orders.mjs). With no database_id, Cloudflare makes the database
   // on the first deploy and keeps using it; its table is made on first use.

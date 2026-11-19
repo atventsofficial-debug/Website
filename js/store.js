@@ -11,14 +11,16 @@ const fail = (status, message) => Object.assign(new Error(message), { status });
 const newId = prefix => `${prefix}-${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
 
 // A JSON request to our own API; an error carries the status and the server's message.
-async function call(path, { method = 'GET', body, headers = {}, keepalive = false } = {}) {
+async function call(path, { method = 'GET', body, headers = {}, keepalive = false, onHeaders } = {}) {
   const r = await fetch(path, {
     method, keepalive,
     headers: { ...(body ? { 'content-type': 'application/json' } : {}), ...headers },
     body: body ? JSON.stringify(body) : undefined,
   });
-  const data = await r.json().catch(() => ({}));
-  if (!r.ok) throw Object.assign(fail(r.status, data.error || `HTTP ${r.status}`), { field: data.field });
+  const data = r.status === 204 ? null : await r.json().catch(() => ({}));
+  // retryAfter: the seconds the server asks us to wait (429, 503), for the live lists.
+  if (!r.ok) throw Object.assign(fail(r.status, data?.error || `HTTP ${r.status}`), { field: data?.field, retryAfter: Number(r.headers.get('retry-after')) || 0 });
+  if (onHeaders) onHeaders(r.headers, r.status);
   return data;
 }
 
@@ -204,11 +206,17 @@ export class PayStore extends LocalStore {
   cancelPay(id, token) { return call(`api/passes/${encodeURIComponent(id)}/cancel`, { method: 'POST', headers: { 'x-pass-token': token } }); }
   // Seat mates: undefined reads, a profile shows it, null takes it down. A pass from the
   // preview, without a key, is still this browser's.
-  fans(p, change) {
+  // With { since: true } a read sends the version of the list it already has, and gets
+  // { unchanged: true } back when nothing changed (a tiny answer, for the live list).
+  fans(p, change, { since = false } = {}) {
     if (!p.token) return super.fans(p, change);
     const path = `api/passes/${encodeURIComponent(p.id)}/fans`, headers = { 'x-pass-token': p.token };
-    if (change === null) return call(path, { method: 'DELETE', headers });
-    return change ? call(path, { method: 'PUT', headers, body: change }) : call(path, { headers });
+    this.fansVer ||= {};
+    const onHeaders = h => { const v = h.get('x-fans-version'); if (v) this.fansVer[p.id] = v; };
+    if (change === null) return call(path, { method: 'DELETE', headers, onHeaders });
+    if (change) return call(path, { method: 'PUT', headers, body: change, onHeaders });
+    if (since && this.fansVer[p.id]) headers['x-fans-have'] = this.fansVer[p.id];
+    return call(path, { headers, onHeaders }).then(d => d ?? { unchanged: true });
   }
   // A pass from the preview, without a key, is still this browser's.
   claimStatus(id, token) {

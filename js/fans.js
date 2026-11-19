@@ -41,30 +41,62 @@ export function resetMates() {
 // Live: while the 3D view is open and on screen, ask again every few seconds, so a fan who
 // shows (or deletes) their Instagram appears for everyone in the category without a reload.
 // `changed()` is called only when the list really changed.
+//
+// Made for a crowd: each fan's next ask is a little early or late (so thousands never ask in
+// the same second), an unchanged list comes back as a tiny answer, a busy or failing server
+// is asked less and less often (up to once a minute, or when it says), and a fan who has not
+// touched the page for IDLE stops asking until they do.
 export const LIVE_EVERY = 8000;
-let live = 0;
+const MAX_EVERY = 60000, IDLE = 10 * 6e4;
+let live = null;
 const sameFans = (a, b) => ['fans', 'others', 'me'].every(k => JSON.stringify(a?.[k] || null) === JSON.stringify(b?.[k] || null));
+const jitter = ms => Math.round(ms * (0.8 + Math.random() * 0.4));
+
+// What the next wait is after one ask: back to normal when it worked, longer when not.
+export function nextWait(prev, err) {
+  if (!err) return LIVE_EVERY;
+  if (err.retryAfter) return Math.min(MAX_EVERY, Math.max(LIVE_EVERY, err.retryAfter * 1000));
+  return Math.min(MAX_EVERY, Math.max(LIVE_EVERY, prev) * 2);
+}
+// The pass no longer opens seat mates (not paid, wrong key, after the show): stop asking.
+const finalError = err => [403, 404, 410].includes(err?.status);
+
 export async function refreshMates(p, changed) {
   if (!paid(p) || !can() || mates.passId !== p.id || mates.loading || mates.busy || document.hidden) return;
-  try {
-    const d = await state.store.fans(p);
-    if (mates.passId !== p.id || sameFans(d, mates.data)) return;
-    mates.data = d;
-    changed?.();
-  } catch { /* the next round tries again */ }
+  const d = await state.store.fans(p, undefined, { since: !!mates.data });
+  if (!d || d.unchanged || mates.passId !== p.id || sameFans(d, mates.data)) return;
+  mates.data = d;
+  changed?.();
 }
 export function startMatesLive(pass, changed) {
   if (live) return;
-  live = setInterval(() => refreshMates(pass(), changed), LIVE_EVERY);
-  document.addEventListener('visibilitychange', onVisible);
-  startMatesLive.again = () => refreshMates(pass(), changed);
+  live = { wait: LIVE_EVERY, timer: 0, last: Date.now(), idle: false };
+  const L = live;
+  const round = async () => {
+    if (live !== L) return;
+    if (document.hidden || Date.now() - L.last > IDLE) { L.idle = true; return; }   // woken by onWake
+    let err = null;
+    try { await refreshMates(pass(), changed); } catch (e) { err = e; }
+    if (live !== L) return;
+    if (finalError(err)) { stopMatesLive(); return; }
+    L.wait = nextWait(L.wait, err);
+    L.timer = setTimeout(round, jitter(L.wait));
+  };
+  L.wake = () => {
+    L.last = Date.now();
+    if (L.idle && !document.hidden) { L.idle = false; clearTimeout(L.timer); round(); }
+  };
+  L.timer = setTimeout(round, jitter(L.wait));
+  document.addEventListener('visibilitychange', L.wake);
+  for (const ev of WAKE_ON) addEventListener(ev, L.wake, { passive: true });
 }
-function onVisible() { if (!document.hidden) startMatesLive.again?.(); }
+const WAKE_ON = ['pointerdown', 'keydown', 'wheel', 'touchstart'];
 export function stopMatesLive() {
-  clearInterval(live);
-  live = 0;
-  document.removeEventListener('visibilitychange', onVisible);
-  startMatesLive.again = null;
+  if (!live) return;
+  clearTimeout(live.timer);
+  document.removeEventListener('visibilitychange', live.wake);
+  for (const ev of WAKE_ON) removeEventListener(ev, live.wake);
+  live = null;
 }
 
 // The card a tap on a seat mate's tag opens: who sits there, and a way to their Instagram.

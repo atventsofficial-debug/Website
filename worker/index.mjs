@@ -24,7 +24,7 @@ import { payMethod, methodsOn } from '../js/paymethods.js';
 import { clientsOf } from '../js/sso.js';
 import { signPass, readPass } from './passkey.mjs';
 import { hasOrders, saveOrder, setStatus, statusOf, takeEmail, returnEmail } from './orders.mjs';
-import { hasFans, fansOf, saveFan, dropFan, dropConcert, KEEP_AFTER } from './fans.mjs';
+import { hasFans, fansList, forgetFans, saveFan, dropFan, dropConcert, KEEP_AFTER } from './fans.mjs';
 import { checkFan, waLinksFor, waOf, SEAT_TAKEN } from '../js/fanrules.js';
 import { mailerOf, passEmail } from './mail.mjs';
 
@@ -43,7 +43,7 @@ const HEADERS = {
   'cross-origin-resource-policy': 'same-origin',
 };
 const json = (status, data, extra) => new Response(JSON.stringify(data), { status, headers: { ...HEADERS, ...extra } });
-const fail = (status, error, more = {}) => json(status, { error, ...more });
+const fail = (status, error, more = {}, extra) => json(status, { error, ...more }, extra);
 const notAllowed = allow => json(405, { error: 'Method not allowed' }, { allow });
 
 export default {
@@ -88,11 +88,18 @@ function config(env) {
 }
 
 // Cloudflare's rate limiter, per visitor address, when the binding is there (wrangler.jsonc).
-async function tooMany(env, binding, request) {
+// A pass's own calls are counted per pass and address, not per address alone: phones on a
+// mobile network often share one address (carrier NAT), and one fan must not use up the
+// others' turns. A limiter that fails lets the call through: it guards, it never blocks.
+async function tooMany(env, binding, request, pass = '') {
   if (!env[binding]?.limit) return false;
-  const { success } = await env[binding].limit({ key: request.headers.get('cf-connecting-ip') || 'unknown' });
-  return !success;
+  const ip = request.headers.get('cf-connecting-ip') || 'unknown';
+  try {
+    const { success } = await env[binding].limit({ key: pass ? `${pass}:${ip}` : ip });
+    return !success;
+  } catch { return false; }
 }
+const slowDown = () => fail(429, 'Too many tries. Please wait a minute.', {}, { 'retry-after': '30' });
 
 async function readJson(request, max = MAX_BODY) {
   if ((request.headers.get('content-type') || '').split(';')[0].trim() !== 'application/json') return fail(415, 'Send JSON.');
@@ -123,7 +130,7 @@ async function createPayment(request, env, url) {
   // Only this site's own pages may start an order.
   const origin = request.headers.get('origin');
   if (origin && origin !== url.origin) return fail(403, 'Forbidden');
-  if (await tooMany(env, 'PAY_LIMIT', request)) return fail(429, 'Too many tries. Please wait a minute.');
+  if (await tooMany(env, 'PAY_LIMIT', request)) return slowDown();
   const d = await readJson(request);
   if (d instanceof Response) return d;
 
@@ -186,9 +193,16 @@ async function createPayment(request, env, url) {
 async function passStatus(request, env, ctx, id) {
   const pay = paymentsOf(env);
   if (!pay) return fail(503, 'Payments are not switched on yet.');
-  if (await tooMany(env, 'STATUS_LIMIT', request)) return fail(429, 'Too many tries. Please wait a minute.');
+  if (await tooMany(env, 'STATUS_LIMIT', request, id)) return slowDown();
   const p = await passOf(pay, request, id);
   if (!p) return fail(404, 'Pass not found');
+  // Settled in the order book: no need to ask Midtrans again (it keeps the book up to date
+  // with its notifications), so a crowd opening their passes never queues on Midtrans.
+  const known = await statusOf(env, id).catch(() => null);
+  if (known === 'confirmed' || known === 'rejected') {
+    if (known === 'confirmed') later(ctx, sendPass(env, pay, id).catch(() => {}));
+    return passJson(p, known, env);
+  }
   const t = await midtrans(pay).status(id);
   const status = !t && Date.now() - p.createdAt > UNPAID_CLOSE ? 'rejected' : passStateOf(t, { id, amount: ACCESS_FEE });
   if (status !== 'checking') later(ctx, settle(env, pay, id, status));
@@ -219,7 +233,7 @@ async function cancelPayment(request, env, ctx, url, id) {
   if (!pay) return fail(503, 'Payments are not switched on yet.');
   const origin = request.headers.get('origin');
   if (origin && origin !== url.origin) return fail(403, 'Forbidden');
-  if (await tooMany(env, 'STATUS_LIMIT', request)) return fail(429, 'Too many tries. Please wait a minute.');
+  if (await tooMany(env, 'STATUS_LIMIT', request, id)) return slowDown();
   const p = await passOf(pay, request, id);
   if (!p) return fail(404, 'Pass not found');
   const mt = midtrans(pay);
@@ -295,14 +309,15 @@ async function seatMates(request, env, ctx, url, id) {
     const origin = request.headers.get('origin');
     if (origin && origin !== url.origin) return fail(403, 'Forbidden');
   }
-  if (await tooMany(env, 'STATUS_LIMIT', request)) return fail(429, 'Too many tries. Please wait a minute.');
+  if (await tooMany(env, m === 'GET' ? 'FANS_LIMIT' : 'STATUS_LIMIT', request, id)) return slowDown();
   const p = await passOf(pay, request, id);
   if (!p) return fail(404, 'Pass not found');
-  if ((await statusOf(env, id)) !== 'confirmed') {
+  if (!paidSeen(env, id) && (await statusOf(env, id)) !== 'confirmed') {
     const status = passStateOf(await midtrans(pay).status(id), { id, amount: ACCESS_FEE });
     if (status !== 'confirmed') return fail(403, 'Seat mates open once your pass is paid.');
     later(ctx, settle(env, pay, id, status));
   }
+  paidSeen(env, id, true);
   const show = concert(p.eventId);
   if (!show || show.start + KEEP_AFTER < Date.now()) {
     await dropConcert(env, p.eventId);
@@ -316,11 +331,20 @@ async function seatMates(request, env, ctx, url, id) {
     if ((await saveFan(env, p, fan)) === 'taken') return fail(409, SEAT_TAKEN);
   }
   if (m === 'DELETE') await dropFan(env, id);
+  if (m !== 'GET') await forgetFans(env, p.eventId);
   // A fan sees the seat mates of their own category only (CAT 2 sees CAT 2): the rest
   // never leave the Worker.
   // Fans in other categories show as a marker only: their seat and its category, never a
   // name or an Instagram.
-  const all = await fansOf(env, p.eventId), rows = all.filter(r => r.cat === p.cat);
+  let list;
+  try { list = await fansList(env, p.eventId); } catch (err) {
+    console.error(`seat mates ${p.eventId}: ${err?.message || err}`);
+    return fail(503, 'Seat mates are busy. Trying again shortly.', {}, { 'retry-after': '20' });
+  }
+  // The browser already has this list: a tiny answer instead of the whole list again.
+  const vh = { 'x-fans-version': list.version };
+  if (m === 'GET' && request.headers.get('x-fans-have') === list.version) return new Response(null, { status: 204, headers: { ...HEADERS, ...vh } });
+  const all = list.rows, rows = all.filter(r => r.cat === p.cat);
   const me = rows.find(r => r.order_id === id);
   return json(200, {
     eventId: p.eventId,
@@ -328,7 +352,19 @@ async function seatMates(request, env, ctx, url, id) {
     me: me ? { name: me.name, instagram: me.instagram } : null,
     fans: rows.map(r => ({ seat: r.seat, cat: r.cat, name: r.name, instagram: r.instagram, ...(r.order_id === id ? { mine: true } : {}) })),
     others: all.filter(r => r.cat !== p.cat).map(r => ({ seat: r.seat, cat: r.cat })),
-  });
+  }, vh);
+}
+
+// Passes this Worker has seen paid, for a few minutes: a fan with the 3D view open asks
+// every few seconds, and a paid pass stays paid, so the order book is not asked each time.
+const PAID_FOR = 5 * 6e4, paidMem = new WeakMap();
+function paidSeen(env, id, set = false, now = Date.now()) {
+  const key = env.DB || env;
+  let m = paidMem.get(key);
+  if (!m) paidMem.set(key, (m = new Map()));
+  if (set) { if (m.size > 20000) m.clear(); m.set(id, now); return true; }
+  const at = m.get(id);
+  return !!at && now - at < PAID_FOR;
 }
 
 // Midtrans adds ?order_id=… to the finish address. The page takes it from there.

@@ -77,3 +77,64 @@ export async function dropConcert(env, eventId) {
   if (!d) return;
   await d.prepare('DELETE FROM fans WHERE event_id = ?').bind(eventId).run();
 }
+
+// ---------------------------------------------------------------- many fans at once
+// Thousands of fans with the 3D view open each ask every few seconds. The concert's list is
+// read from D1 once and kept a few seconds: in this Worker's memory (one copy, and one read
+// in flight, per concert) and in Cloudflare's cache of this data centre, so the other
+// Workers there skip D1 too. A fan's own change clears both here; elsewhere it shows within
+// FRESH. Should D1 not answer, the last list keeps being served for up to STALE.
+// The version (a hash of the list) lets a browser that already has it get a tiny answer.
+export const FRESH = 4000, STALE = 10 * 6e4;
+const mem = new WeakMap();   // env.DB -> Map(eventId -> { at, rows, version, pending })
+const cacheKey = eventId => `https://fans.cache.internal/${encodeURIComponent(eventId)}`;
+const edge = () => globalThis.caches?.default || null;
+
+async function versionOf(rows) {
+  const text = JSON.stringify(rows);
+  if (globalThis.crypto?.subtle) {
+    const h = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)));
+    return [...h.slice(0, 8)].map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+  let h = 0;
+  for (let i = 0; i < text.length; i++) h = (h * 31 + text.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(16);
+}
+
+export async function fansList(env, eventId, now = Date.now()) {
+  if (!env?.DB) return { rows: [], version: '0' };
+  let m = mem.get(env.DB);
+  if (!m) mem.set(env.DB, (m = new Map()));
+  const hit = m.get(eventId);
+  if (hit && now - hit.at < FRESH) return hit;
+  if (hit?.pending) return hit.pending;
+  const load = (async () => {
+    const c = edge();
+    const cached = c && await c.match(cacheKey(eventId)).catch(() => null);
+    if (cached) {
+      const v = await cached.json().catch(() => null);
+      if (v && now - v.at < FRESH) return v;
+    }
+    const rows = await fansOf(env, eventId);
+    const v = { at: now, rows, version: await versionOf(rows) };
+    c?.put(cacheKey(eventId), new Response(JSON.stringify(v), { headers: { 'cache-control': `max-age=${Math.ceil(FRESH / 1000)}` } })).catch(() => {});
+    return v;
+  })();
+  m.set(eventId, { ...(hit || {}), pending: load });
+  try {
+    const v = await load;
+    m.set(eventId, v);
+    return v;
+  } catch (err) {
+    // D1 is down or slow: the last list we had, if it is not too old.
+    if (hit?.rows && now - hit.at < STALE) { m.set(eventId, { ...hit, pending: null }); return { ...hit, stale: true }; }
+    m.delete(eventId);
+    throw err;
+  }
+}
+
+// After a fan saves or removes their Instagram: the next read goes to D1.
+export async function forgetFans(env, eventId) {
+  mem.get(env?.DB)?.delete(eventId);
+  await edge()?.delete(cacheKey(eventId)).catch(() => {});
+}

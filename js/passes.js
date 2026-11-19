@@ -148,12 +148,13 @@ export function holdPass(r) {
 export async function refresh(p) {
   if (state.store.mode === 'server' && !p.token) return;
   const r = await state.store.claimStatus(p.id, p.token).catch(() => null);
-  if (!r) return;
+  if (!r) return false;   // offline, or the server busy: the caller asks again later
   // The Worker says which WhatsApp links a paid pass has; the demo store says nothing.
   const wa = r.status !== 'confirmed' ? null : 'wa' in r ? waLinks(r.wa) : p.wa || null;
   if (r.status !== p.status || (r.seat && r.seat !== p.seat) || JSON.stringify(wa) !== JSON.stringify(p.wa || null)) {
     passes.save({ ...p, status: r.status, seat: r.seat || p.seat, seats: r.seat ? [r.seat] : p.seats, wa });
   }
+  return true;
 }
 
 // The WhatsApp links a paid pass gets from the Worker (FANBASE_WA): the concert's fanbase
