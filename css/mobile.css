@@ -51,9 +51,9 @@
 }
 
 @media (max-width: 760px) {
-  :root { --bar-h: 58px; --tab-h: 84px; --gut: 16px; }   /* tab bar: 64 px, about 12 px under it (with the home bar's space), 8 over */
+  :root { --bar-h: 58px; --tab-h: 92px; --gut: 16px; }   /* tab bar: 64 px, 20 px under it, 8 over */
   html { scroll-padding-top: 72px; }
-  body { padding-bottom: calc(var(--tab-h) + env(safe-area-inset-bottom)); -webkit-tap-highlight-color: transparent; }
+  body { padding-bottom: var(--tab-h); -webkit-tap-highlight-color: transparent; }
   body.is-focus { padding-bottom: 0; }
   body[data-view="seats"] { padding-bottom: 0; }
   .frame::after { display: none; }   /* the film grain: a full-page overlay blended on every frame */
@@ -75,10 +75,12 @@
      bar, with the icons alone and a lighter pill behind the page you are on. The names stay
      for screen readers. Frosted glass, like Threads: the one place on phones with a backdrop
      blur, a small fixed bar, so scrolling stays smooth; without blur support it is near solid. */
-  .tabbar { position: fixed; z-index: 50; left: 12px; right: 12px; bottom: max(12px, calc(env(safe-area-inset-bottom) - 6px)); display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: center; height: 64px; padding: 0 6px; border-radius: 999px; background: rgba(30, 27, 27, 0.92); border: 1px solid rgba(255, 255, 255, 0.12); box-shadow: 0 12px 32px -10px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  .tabbar { position: fixed; z-index: 50; left: 12px; right: 12px; bottom: 20px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: center; height: 64px; padding: 0 6px; border-radius: 999px; background: rgba(30, 27, 27, 0.92); border: 1px solid rgba(255, 255, 255, 0.12); box-shadow: 0 12px 32px -10px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.06);
     transform: translate3d(0, 0, 0); will-change: transform; -webkit-backface-visibility: hidden; backface-visibility: hidden; }
-  /* No rubber-band bounce at the top or bottom of the page: on iPhones it dragged the tab bar
-     along. The bar sits on its own layer (above) so the blur does not wobble while scrolling. */
+  /* The bar's distance from the bottom is a fixed 20 px, clear of the iPhone home bar, and not
+     the safe-area inset: Instagram's browser changes that inset while its top bar folds away
+     on scroll, which made the tab bar jump up and down. No rubber-band bounce either, and the
+     bar on its own layer so the blur does not wobble. */
   html, body { overscroll-behavior-y: none; }
   @supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
     .tabbar { background: rgba(38, 34, 34, 0.42); -webkit-backdrop-filter: blur(22px) saturate(180%); backdrop-filter: blur(22px) saturate(180%); }
@@ -96,11 +98,16 @@
   body.is-focus .tabbar, body[data-view="seats"] .tabbar { display: none; }
 
   /* ---------- More: the menu as a sheet above the tab bar ---------- */
-  .menu { position: fixed; z-index: 45; inset: auto 0 calc(var(--tab-h) + env(safe-area-inset-bottom)); max-height: calc(100svh - var(--tab-h) - 72px); overflow-y: auto; overscroll-behavior: contain;
-    padding: 10px var(--gut) 18px; border: 1px solid var(--line-2); border-bottom: 0; border-radius: 22px 22px 0 0; background: #1b1818; translate: 0 18px;
+  /* The More menu: a frosted sheet that rises from the bottom edge, with the tab bar floating
+     over its lower part, so nothing is cut off between the two. */
+  .menu { position: fixed; z-index: 45; inset: auto 0 0; max-height: 88svh; overflow-y: auto; overscroll-behavior: contain;
+    padding: 12px var(--gut) calc(var(--tab-h) + 14px); border: 1px solid rgba(255, 255, 255, 0.12); border-bottom: 0; border-radius: 30px 30px 0 0; background: rgba(30, 27, 27, 0.94); translate: 0 18px;
     box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0); transition: opacity .2s ease, translate .25s ease, box-shadow .25s, visibility 0s linear .25s; }
-  .menu.is-open { box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.55); translate: none; }
-  .menu::before { content: ""; display: block; width: 38px; height: 4px; margin: 0 auto 14px; border-radius: 4px; background: var(--line-2); }
+  @supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+    .menu { background: rgba(34, 30, 30, 0.82); -webkit-backdrop-filter: blur(24px) saturate(180%); backdrop-filter: blur(24px) saturate(180%); }
+  }
+  .menu.is-open { box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.5); translate: none; }
+  .menu::before { content: ""; display: block; width: 40px; height: 5px; margin: 0 auto 16px; border-radius: 5px; background: rgba(255, 255, 255, 0.25); }
   .menu-in { gap: 14px; align-items: stretch; }
   .menu .mode-lg { display: flex; width: 100%; }
   .menu .mode-lg a { flex: 1; justify-content: center; height: 40px; font-size: 14px; }
