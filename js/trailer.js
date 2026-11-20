@@ -74,12 +74,14 @@ function picOf(img, box = [0, 0, 1, 1]) {
   const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
   const bx = box[0] * iw, by = box[1] * ih, bw = (box[2] - box[0]) * iw, bh = (box[3] - box[1]) * ih;
   const k = Math.max(1040 / bh, W * 1.2 / bw), w = Math.round(bw * k), h = Math.round(bh * k);
-  // A dark photo brought up to a common brightness, so the act can be seen under the type.
+  // A dark photo brought up to a common brightness, so the act can be seen under the type; but
+  // never so far that its brightest part (a face in a spotlight on a black stage) burns out.
   const probe = canvas(32, 32), pg = probe.getContext('2d');
   pg.drawImage(img, bx, by, bw, bh, 0, 0, 32, 32);
-  const px = pg.getImageData(0, 0, 32, 32).data;
-  let sum = 0; for (let i = 0; i < px.length; i += 4) sum += (0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2]) / 255;
-  const lift = Math.min(1.9, Math.max(1, 0.42 / (sum / 1024 || 1)));
+  const px = pg.getImageData(0, 0, 32, 32).data, lum = [];
+  for (let i = 0; i < px.length; i += 4) lum.push((0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2]) / 255);
+  const mean = lum.reduce((a, b) => a + b, 0) / lum.length, top = lum.sort((a, b) => a - b)[Math.floor(lum.length * 0.97)];
+  const lift = Math.max(1, Math.min(1.9, 0.42 / (mean || 1), 0.92 / (top || 1)));
   const color = canvas(w, h), g = color.getContext('2d');
   g.imageSmoothingQuality = 'high';
   if (lift > 1.02) g.filter = `brightness(${lift.toFixed(2)}) contrast(1.06)`;

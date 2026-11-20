@@ -222,7 +222,7 @@ export const EVENTS = [
   {
     id: 'evt-boyz2men-dewa19', venue: 'ina-b2m',
     title: 'Boyz II Men with Dewa 19', subtitle: 'feat. Ari Lasso & Virzha, Live in Jakarta',
-    dateISO: '2026-12-09T00:00', time: '18:00', doors: 'TBA', ends: '22:00', age: '',
+    dateISO: '2026-12-09T18:00', time: '18:00', doors: 'TBA', ends: '22:00', age: '',
     host: 'Rajawali Indonesia', hostNote: 'Promoter',
     blurb: 'Boyz II Men share the Indonesia Arena stage with Dewa 19 feat. Ari Lasso and Virzha, a full set each. Standing Festival round a catwalk on the floor; VIP, Diamond and Platinum in the first tier, Gold and Silver above.',
     about: [
@@ -245,7 +245,7 @@ export const EVENTS = [
   {
     id: 'evt-nflying-jakarta', venue: 'basket-nflying',
     title: 'N.Flying', subtitle: "LIVE '&CON5: into REM' in Indonesia",
-    dateISO: '2027-01-10T00:00', time: '19:00', doors: 'TBA', ends: '', age: '',
+    dateISO: '2027-01-10T19:00', time: '19:00', doors: 'TBA', ends: '', age: '',
     host: 'Karalas Live', hostNote: 'Promoter',
     blurb: 'N.Flying bring their &CON5 tour to Basket Hall at Gelora Bung Karno. Cockpit and Runway stand on the floor; Cloud 9, Skyline and Horizon are the seats along the two sides.',
     about: [
@@ -267,7 +267,7 @@ export const EVENTS = [
   {
     id: 'evt-bigbang-1', venue: 'jis-bigbang',
     title: 'BIGBANG', subtitle: 'World Tour XX: COSMOS · Day 1',
-    dateISO: '2027-01-16T00:00', time: '19:00', doors: 'TBA', ends: '', age: '',
+    dateISO: '2027-01-16T19:00', time: '19:00', doors: 'TBA', ends: '', age: '',
     host: 'PK Entertainment', hostNote: 'Promoter, with AEG Presents Asia and Sound Rhythm',
     blurb: 'BIGBANG (G-Dragon, Taeyang and Daesung) celebrate 20 years with the XX: COSMOS world tour at Jakarta International Stadium. An X-shaped thrust runs out from the stage, the Ultimate VIP standing pens inside it.',
     about: [
@@ -289,7 +289,7 @@ export const EVENTS = [
   {
     id: 'evt-bigbang-2', venue: 'jis-bigbang',
     title: 'BIGBANG', subtitle: 'World Tour XX: COSMOS · Day 2',
-    dateISO: '2027-01-17T00:00', time: '19:00', doors: 'TBA', ends: '', age: '',
+    dateISO: '2027-01-17T19:00', time: '19:00', doors: 'TBA', ends: '', age: '',
     host: 'PK Entertainment', hostNote: 'Promoter, with AEG Presents Asia and Sound Rhythm',
     blurb: 'BIGBANG (G-Dragon, Taeyang and Daesung) celebrate 20 years with the XX: COSMOS world tour at Jakarta International Stadium. An X-shaped thrust runs out from the stage, the Ultimate VIP standing pens inside it.',
     about: [
@@ -311,7 +311,7 @@ export const EVENTS = [
   {
     id: 'evt-enhypen-jakarta', venue: 'jis-enhypen',
     title: 'ENHYPEN', subtitle: "World Tour 'Blood Saga'",
-    dateISO: '2027-01-23T00:00', time: '19:00', doors: 'TBA', ends: '', age: '',
+    dateISO: '2027-01-23T19:00', time: '19:00', doors: 'TBA', ends: '', age: '',
     host: 'PK Entertainment', hostNote: 'Promoter',
     blurb: "ENHYPEN bring the 'Blood Saga' world tour to Jakarta International Stadium. A runway runs from the stage to a walkway right across the floor, with VIP A and B standing either side of it.",
     about: [

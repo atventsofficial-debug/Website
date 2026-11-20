@@ -57,7 +57,14 @@ test('a show without announced times keeps the venue’s date and no time', () =
     assert.equal(w.date, 'Tue, 3 Nov 2026');
     assert.equal(w.time, '');
   }
-  for (const e of EVENTS) assert.match(whenOf(e, 'Pacific/Auckland').date, new RegExp(`^\\w{3}, ${+e.dateISO.slice(8, 10)} `), e.id);
+  for (const e of EVENTS.filter(e => e.time === 'TBA')) assert.match(whenOf(e, 'Pacific/Auckland').date, new RegExp(`^\\w{3}, ${+e.dateISO.slice(8, 10)} `), e.id);
+});
+
+test('a show with an announced start time starts then, at the venue', () => {
+  for (const e of EVENTS.filter(e => e.time !== 'TBA')) assert.equal(e.dateISO.slice(11, 16), e.time, e.id);
+  const b2m = eventMeta('evt-boyz2men-dewa19');
+  assert.equal(venueWhen(b2m).date, 'Wed, 9 Dec 2026');
+  assert.equal(venueWhen(b2m).time, '18:00 WIB');
 });
 
 test('tickets print the venue’s clock wherever the fan is', () => {
