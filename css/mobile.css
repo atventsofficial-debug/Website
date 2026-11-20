@@ -438,3 +438,10 @@
   .s3d-foot svg { width: 13px; height: 13px; margin: 0 3px -2px 2px; }
 
 }
+
+/* The tab bar's chunky icons (i-t-* in index.html): a solid face in the tab's colour, its
+   side a shade darker, the inner lines in --tb-ink. */
+@media (max-width: 760px) {
+  .tabbar { --tb-ink: #1a1616; }
+  .tabbar > * > svg, .tab-main b svg { width: 28px; height: 28px; }
+}
