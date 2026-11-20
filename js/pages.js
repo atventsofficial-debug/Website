@@ -8,7 +8,7 @@ import { cardImg, eventImg, placeCover, posterFig, posterImg, thumbImg } from '.
 import { picker } from './picker.js';
 import { whenOf, startOf, venueClock, gapText } from './when.js';
 import { waTiles } from './fans.js';
-import { justBought, buyUrl, buyAttrs, buyLink, passes, activePass, claim, holdPass, refresh, passLink, clicksFor, STATUS } from './passes.js';
+import { justBought, buyUrl, buyAttrs, buyLink, passes, activePass, claim, holdPass, refresh, passLink, clicksFor, STATUS, markVerified, sendCode, useCode } from './passes.js';
 import { checkClaim, formatFee } from './rules.js';
 import { ACCESS_FEE, PAY_MINUTES, line, email as cleanEmail, isEmail } from './order.js';
 import { signIn, PROVIDERS } from './sso.js';
@@ -961,6 +961,8 @@ export function renderPaid(id) {
   const settled = p => {
     if (p.status === 'confirmed') { stopCheckout(); closePay(form); form.reset(); showUnlocked(p, { emailed: state.store.mail && !!p.email }); return true; }
     if (p.status === 'rejected') { stopCheckout(); sheet.innerHTML = paidSheet(p, id); return true; }
+    // Paid, but open on two other devices: My 3D passes asks for the email code.
+    if (p.status === 'device') { stopCheckout(); closePay(form); location.hash = 'passes'; return true; }
     return false;
   };
   if (settled(first)) return;
@@ -1159,7 +1161,7 @@ async function otherWay(id, btn) {
   btn.disabled = true;
   try {
     const r = await state.store.cancelPay(id, p.token);
-    if (r.status === 'confirmed') { passes.save({ ...p, status: 'confirmed' }); renderPaid(id); return; }
+    if (r.status === 'confirmed') { markVerified(id); passes.save({ ...p, status: 'confirmed' }); renderPaid(id); return; }
     backToForm(id, { ways: true });
     passes.remove(id);   // closed and never paid: nothing to keep
   } catch (e) {
@@ -1310,12 +1312,22 @@ function passCard(p, { actions = true } = {}) {
         ${p.status === 'rejected' ? `<a class="btn btn-coral btn-sm" href="#unlock-${p.eventId}">Unlock again</a><a class="btn btn-line btn-sm" href="#contact">Write to us</a>`
           : p.status === 'confirmed' ? `<a class="btn btn-coral btn-sm" href="#tour-${esc(p.id)}">Start my seat tour ${icon('i-arrow')}</a>${p.seat ? `<button class="btn btn-line btn-sm" type="button" data-story-pass="${esc(p.id)}">${icon('i-share')}Story</button>` : ''}`
             : `<a class="btn btn-line btn-sm" href="#seats-${p.eventId}">Look round the venue ${icon('i-arrow')}</a>`}
-        ${p.token ? `<button class="btn btn-line btn-sm" type="button" data-copy-pass="${esc(p.id)}">${icon('i-link')}Copy pass link</button>` : ''}
-      </div>${waButtons(p) ? `<div class="pass-wa">${waButtons(p)}</div>` : ''}
+        ${p.token && p.status !== 'device' ? `<button class="btn btn-line btn-sm" type="button" data-copy-pass="${esc(p.id)}">${icon('i-link')}Copy pass link</button>` : ''}
+      </div>${p.status === 'device' ? otpForm(p) : ''}${waButtons(p) ? `<div class="pass-wa">${waButtons(p)}</div>` : ''}
 ` : ''}
     </div>
   </article>`;
 }
+
+// A paid pass open on two other devices: the code goes to the buyer's email, and the code
+// back opens the pass here (worker/devices.mjs).
+const otpForm = p => (p.canMail === false
+  ? '<p class="pass-otp-note">Write to us with your payment reference to open your pass on this device.</p>'
+  : `<form class="pass-otp" data-otp-pass="${esc(p.id)}" novalidate>
+      <button class="btn btn-coral btn-sm" type="button" data-send-code="${esc(p.id)}">${icon('i-mail')}Email a code${p.lockedTo ? ` to ${esc(p.lockedTo)}` : ''}</button>
+      <label class="pass-otp-field"><span>Code from the email</span><input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="123456" required></label>
+      <button class="btn btn-line btn-sm" type="submit">Open here</button>
+    </form>`);
 
 export function renderPasses({ check = false } = {}) {
   const starts = p => { const e = eventMeta(p.eventId); return e ? startOf(e) : Infinity; };
@@ -1334,7 +1346,40 @@ export function renderPasses({ check = false } = {}) {
 // Pass buttons work wherever a pass card is drawn: copy its link, make its story video, or
 // take it off this device.
 export function bindPassButtons() {
-  document.addEventListener('click', ev => {
+  document.addEventListener('submit', async ev => {
+    const form = ev.target.closest('[data-otp-pass]');
+    if (!form) return;
+    ev.preventDefault();
+    const p = passes.get(form.dataset.otpPass), code = form.code.value.replace(/\s+/g, '');
+    if (!p) return;
+    if (!/^\d{6}$/.test(code)) { toast('Type the 6-digit code from the email.'); form.code.focus(); return; }
+    const btn = form.querySelector('[type="submit"]');
+    btn.disabled = true;
+    try {
+      await useCode(p, code);
+      toast('Your pass is open on this device.');
+    } catch (e) {
+      btn.disabled = false;
+      toast(e.status === 429 ? 'Too many tries. Please wait a minute.' : e.message || 'That code did not work. Please try again.');
+    }
+  });
+  document.addEventListener('click', async ev => {
+    const send = ev.target.closest('[data-send-code]');
+    if (send) {
+      const p = passes.get(send.dataset.sendCode);
+      if (!p) return;
+      send.disabled = true;
+      try {
+        const r = await sendCode(p);
+        if (r.open) { await refresh(p); toast('Your pass is open on this device.'); return; }
+        toast(`Code sent to ${r.email}. It works for ${r.minutes} minutes.`);
+        send.closest('form')?.code?.focus();
+      } catch (e) {
+        toast(e.message || 'The code could not be sent. Please try again.');
+      }
+      setTimeout(() => { send.disabled = false; }, 30000);
+      return;
+    }
     const copy = ev.target.closest('[data-copy-pass]');
     if (copy) {
       const link = passLink(passes.get(copy.dataset.copyPass) || {});

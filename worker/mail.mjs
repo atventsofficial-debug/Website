@@ -205,3 +205,35 @@ ${waLinks.map(([t, href]) => `        <table role="presentation" width="100%" ce
 
   return { subject, html, text };
 }
+
+// The code that opens a paid pass on one more device (devices.mjs): { subject, html, text }.
+export function codeEmail({ order, concert, code, minutes }) {
+  const title = concert?.title || order.title;
+  const firstName = order.name.split(' ')[0];
+  const subject = `${code} is your Atvents pass code`;
+  const text = [
+    `Hi ${firstName},`,
+    '',
+    `Someone asked to open your 3D pass for ${title} on another device. The code is:`,
+    '',
+    code,
+    '',
+    `It works for ${minutes} minutes, on the device that asked. Your pass opens on two devices at a time: with this code, the one you used least recently is signed out.`,
+    '',
+    'If that was not you, ignore this email and do not share the code. Your pass stays as it is.',
+    '',
+    'Atvents',
+  ].join('\n');
+  const html = `<!DOCTYPE html><html><body style="margin:0;background:#0c0c0c;color:#f2f2f2;font-family:Helvetica,Arial,sans-serif">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#0c0c0c"><tr><td align="center" style="padding:32px 16px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px">
+<tr><td style="font-size:15px;line-height:1.6;color:#f2f2f2">
+<p style="margin:0 0 16px">Hi ${esc(firstName)},</p>
+<p style="margin:0 0 16px">Someone asked to open your 3D pass for <b>${esc(title)}</b> on another device. The code is:</p>
+<p style="margin:0 0 16px;font-size:34px;font-weight:700;letter-spacing:8px;color:#ff5a1f">${esc(code)}</p>
+<p style="margin:0 0 16px">It works for ${minutes} minutes, on the device that asked. Your pass opens on two devices at a time: with this code, the one you used least recently is signed out.</p>
+<p style="margin:0 0 16px;color:#9a9a9a">If that was not you, ignore this email and do not share the code. Your pass stays as it is.</p>
+<p style="margin:0;color:#9a9a9a">Atvents</p>
+</td></tr></table></td></tr></table></body></html>`;
+  return { subject, html, text };
+}

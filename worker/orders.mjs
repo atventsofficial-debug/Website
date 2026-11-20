@@ -28,13 +28,31 @@ const SCHEMA = `CREATE TABLE IF NOT EXISTS orders (
 // A table made before the way to pay was kept gets its column. SQLite has no ADD COLUMN IF
 // NOT EXISTS: on a table that has it, the ALTER fails with "duplicate column", which is fine.
 const ADD_METHOD = "ALTER TABLE orders ADD COLUMN method TEXT NOT NULL DEFAULT ''";
+// The devices a paid pass is open on, and the one email code a pass may have out at a time,
+// for opening it on another device (devices.mjs).
+const DEVICES = `CREATE TABLE IF NOT EXISTS pass_devices (
+  order_id TEXT NOT NULL,
+  device TEXT NOT NULL,
+  added_at INTEGER NOT NULL,
+  seen_at INTEGER NOT NULL,
+  PRIMARY KEY (order_id, device)
+)`;
+const CODES = `CREATE TABLE IF NOT EXISTS pass_codes (
+  order_id TEXT PRIMARY KEY,
+  device TEXT NOT NULL,
+  code TEXT NOT NULL,
+  sent_at INTEGER NOT NULL,
+  tries INTEGER NOT NULL DEFAULT 0
+)`;
 async function setUp(d) {
   await d.prepare(SCHEMA).run();
+  await d.prepare(DEVICES).run();
+  await d.prepare(CODES).run();
   await d.prepare(ADD_METHOD).run().catch(err => { if (!/duplicate column/i.test(String(err?.message))) throw err; });
 }
 
 const ready = new WeakMap();
-async function db(env) {
+export async function db(env) {
   const d = env?.DB;
   if (!d?.prepare) return null;
   if (!ready.has(d)) ready.set(d, setUp(d).catch(err => { ready.delete(d); throw err; }));
@@ -53,11 +71,13 @@ export async function saveOrder(env, o) {
   return true;
 }
 
-// The order's state as Midtrans last told it. paid_at is the first time it was paid.
+// The order's state as Midtrans last told it. paid_at is the first time it was paid. A pass
+// the admin took back ('revoked', README: Taking a pass back) stays taken back, whatever
+// Midtrans says later.
 export async function setStatus(env, id, status, now = Date.now()) {
   const d = await db(env);
   if (!d) return;
-  await d.prepare(`UPDATE orders SET status = ?1, paid_at = COALESCE(paid_at, CASE WHEN ?1 = 'confirmed' THEN ?2 END) WHERE id = ?3 AND status <> ?1`)
+  await d.prepare(`UPDATE orders SET status = ?1, paid_at = COALESCE(paid_at, CASE WHEN ?1 = 'confirmed' THEN ?2 END) WHERE id = ?3 AND status <> ?1 AND status <> 'revoked'`)
     .bind(status, now, id).run();
 }
 
@@ -78,9 +98,17 @@ export async function returnEmail(env, id) {
   await d.prepare('UPDATE orders SET emailed_at = NULL WHERE id = ?').bind(id).run();
 }
 
-// The order's state in the book: 'confirmed' once paid, or null when the book has no row.
+// The order's state in the book: 'confirmed' once paid, 'revoked' once taken back, or null
+// when the book has no row.
 export async function statusOf(env, id) {
   const d = await db(env);
   if (!d) return null;
   return (await d.prepare('SELECT status FROM orders WHERE id = ?').bind(id).first())?.status ?? null;
+}
+
+// The order's row, or null: for the email code (devices.mjs) and its address.
+export async function orderOf(env, id) {
+  const d = await db(env);
+  if (!d) return null;
+  return d.prepare('SELECT id, event_id, title, name, email, status FROM orders WHERE id = ?').bind(id).first();
 }

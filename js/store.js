@@ -7,8 +7,21 @@ import { checkFan, SEAT_TAKEN } from './fanrules.js';
 import { checkClick, checkClaim, checkSubscription, checkLead, checkConversions, passStatus, PASS_STATUSES, TAKEN, ACCESS_FEE, PAYMENT_ID } from './rules.js';
 
 const DB = 'atvents:demo-db';
+const DEVICE_KEY = 'atvents:device';
 const fail = (status, message) => Object.assign(new Error(message), { status });
 const newId = prefix => `${prefix}-${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+
+// This browser's device id, sent with every pass request (x-device): a paid pass opens on two
+// devices (worker/devices.mjs). Made once and kept; clearing the site's data makes a new one.
+export function deviceId() {
+  let id = '';
+  try { id = localStorage.getItem(DEVICE_KEY) || ''; } catch { /* below */ }
+  if (/^[A-Za-z0-9_-]{16,64}$/.test(id)) return id;
+  id = [...crypto.getRandomValues(new Uint8Array(18))].map(b => 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_'[b & 63]).join('');
+  deviceId.mem ||= id;
+  try { localStorage.setItem(DEVICE_KEY, id); } catch { return deviceId.mem; }
+  return id;
+}
 
 // A JSON request to our own API; an error carries the status and the server's message.
 async function call(path, { method = 'GET', body, headers = {}, keepalive = false, onHeaders } = {}) {
@@ -19,7 +32,8 @@ async function call(path, { method = 'GET', body, headers = {}, keepalive = fals
   });
   const data = r.status === 204 ? null : await r.json().catch(() => ({}));
   // retryAfter: the seconds the server asks us to wait (429, 503), for the live lists.
-  if (!r.ok) throw Object.assign(fail(r.status, data?.error || `HTTP ${r.status}`), { field: data?.field, retryAfter: Number(r.headers.get('retry-after')) || 0 });
+  // code 'device' (a pass open on two other devices): where its email code goes, and the pass.
+  if (!r.ok) throw Object.assign(fail(r.status, data?.error || `HTTP ${r.status}`), { field: data?.field, code: data?.code, email: data?.email, mail: data?.mail, pass: data?.pass, expired: data?.expired, retryAfter: Number(r.headers.get('retry-after')) || 0 });
   if (onHeaders) onHeaders(r.headers, r.status);
   return data;
 }
@@ -201,16 +215,16 @@ export class PayStore extends LocalStore {
   }
   get mode() { return 'pay'; }
   get live() { return true; }
-  pay(d) { return call('api/payments', { method: 'POST', body: d }); }
+  pay(d) { return call('api/payments', { method: 'POST', body: d, headers: { 'x-device': deviceId() } }); }
   // Another way to pay: the server has Midtrans close this order first.
-  cancelPay(id, token) { return call(`api/passes/${encodeURIComponent(id)}/cancel`, { method: 'POST', headers: { 'x-pass-token': token } }); }
+  cancelPay(id, token) { return call(`api/passes/${encodeURIComponent(id)}/cancel`, { method: 'POST', headers: { 'x-pass-token': token, 'x-device': deviceId() } }); }
   // Seat mates: undefined reads, a profile shows it, null takes it down. A pass from the
   // preview, without a key, is still this browser's.
   // With { since: true } a read sends the version of the list it already has, and gets
   // { unchanged: true } back when nothing changed (a tiny answer, for the live list).
   fans(p, change, { since = false } = {}) {
     if (!p.token) return super.fans(p, change);
-    const path = `api/passes/${encodeURIComponent(p.id)}/fans`, headers = { 'x-pass-token': p.token };
+    const path = `api/passes/${encodeURIComponent(p.id)}/fans`, headers = { 'x-pass-token': p.token, 'x-device': deviceId() };
     this.fansVer ||= {};
     const onHeaders = h => { const v = h.get('x-fans-version'); if (v) this.fansVer[p.id] = v; };
     if (change === null) return call(path, { method: 'DELETE', headers, onHeaders });
@@ -220,8 +234,11 @@ export class PayStore extends LocalStore {
   }
   // A pass from the preview, without a key, is still this browser's.
   claimStatus(id, token) {
-    return token ? call(`api/passes/${encodeURIComponent(id)}`, { headers: { 'x-pass-token': token } }) : super.claimStatus(id);
+    return token ? call(`api/passes/${encodeURIComponent(id)}`, { headers: { 'x-pass-token': token, 'x-device': deviceId() } }) : super.claimStatus(id);
   }
+  // A paid pass open on two other devices: a code to the buyer's email, then the code back.
+  passCode(id, token) { return call(`api/passes/${encodeURIComponent(id)}/code`, { method: 'POST', headers: { 'x-pass-token': token, 'x-device': deviceId() } }); }
+  passDevice(id, token, code) { return call(`api/passes/${encodeURIComponent(id)}/device`, { method: 'POST', body: { code }, headers: { 'x-pass-token': token, 'x-device': deviceId() } }); }
 }
 
 export class ApiStore {

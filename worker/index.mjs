@@ -8,6 +8,9 @@
 //   POST /api/passes/<id>/cancel  the fan picks another way to pay: Midtrans closes this one
 //   GET/PUT/DELETE /api/passes/<id>/fans  seat mates: the concert's fans who show their
 //                               Instagram on their seat, and its WhatsApp group (fans.mjs)
+//   POST /api/passes/<id>/code  a paid pass, open on two devices already: email the buyer a
+//                               code that opens it on this one (devices.mjs)
+//   POST /api/passes/<id>/device  { code }: this device gets in, the least used one goes
 //   POST /api/midtrans/notify   Midtrans telling us a payment changed (signed with the server key)
 //   GET  /pay/done              where Midtrans sends the fan back, on to #paid-<id>
 //
@@ -23,10 +26,11 @@ import { paymentsOf, midtrans, MidtransError, PaymentRefused, chargeOf, payDetai
 import { payMethod, methodsOn } from '../js/paymethods.js';
 import { clientsOf } from '../js/sso.js';
 import { signPass, readPass } from './passkey.mjs';
-import { hasOrders, saveOrder, setStatus, statusOf, takeEmail, returnEmail } from './orders.mjs';
+import { hasOrders, saveOrder, setStatus, statusOf, takeEmail, returnEmail, orderOf } from './orders.mjs';
+import { deviceOf, admit, newCode, useCode, maskEmail, CODE_MINUTES } from './devices.mjs';
 import { hasFans, fansList, forgetFans, saveFan, dropFan, dropConcert, KEEP_AFTER } from './fans.mjs';
 import { checkFan, waLinksFor, waOf, SEAT_TAKEN } from '../js/fanrules.js';
-import { mailerOf, passEmail } from './mail.mjs';
+import { mailerOf, passEmail, codeEmail } from './mail.mjs';
 
 const MAX_BODY = 4096, NOTIFY_BODY = 16384;
 const PAY_WINDOW = PAY_MINUTES * 6e4;
@@ -58,6 +62,10 @@ export default {
       if (cancel) return method === 'POST' ? await cancelPayment(request, env, ctx, url, cancel[1]) : notAllowed('POST');
       const mates = /^\/api\/passes\/([^/]{1,40})\/fans$/.exec(path);
       if (mates) return ['GET', 'PUT', 'DELETE'].includes(method) ? await seatMates(request, env, ctx, url, mates[1]) : notAllowed('GET, PUT, DELETE');
+      const code = /^\/api\/passes\/([^/]{1,40})\/code$/.exec(path);
+      if (code) return method === 'POST' ? await sendCode(request, env, url, code[1]) : notAllowed('POST');
+      const device = /^\/api\/passes\/([^/]{1,40})\/device$/.exec(path);
+      if (device) return method === 'POST' ? await addDevice(request, env, url, device[1]) : notAllowed('POST');
       if (path === '/api/midtrans/notify') return method === 'POST' ? await notified(request, env) : notAllowed('POST');
       if (path === '/pay/done') return backFromPayment(url);
       if (path.startsWith('/api/')) return fail(404, 'Not found');
@@ -181,6 +189,9 @@ async function createPayment(request, env, url) {
   // Without the order book the pass still opens on this device; only the email cannot go.
   await saveOrder(env, { id, eventId, title: e.title, cat, seat: seat.id, seatLabel: where, name: buyer.name, email: buyer.email, amount: ACCESS_FEE, method: way.id, origin: url.origin, createdAt })
     .catch(err => console.error(`order ${id} not saved: ${err?.message || err}`));
+  // The device that paid is the pass's first.
+  const dev = await deviceOf(request);
+  if (dev && hasOrders(env)) await admit(env, id, dev, createdAt).catch(err => console.error(`order ${id}: device not kept: ${err?.message || err}`));
   const token = await signPass(pay.key, { id, eventId, cat, seat: seat.id, createdAt });
   return json(201, {
     id, token, method: way.id, ...paying, amount: ACCESS_FEE, sandbox: pay.sandbox,
@@ -199,14 +210,76 @@ async function passStatus(request, env, ctx, id) {
   // Settled in the order book: no need to ask Midtrans again (it keeps the book up to date
   // with its notifications), so a crowd opening their passes never queues on Midtrans.
   const known = await statusOf(env, id).catch(() => null);
-  if (known === 'confirmed' || known === 'rejected') {
-    if (known === 'confirmed') later(ctx, sendPass(env, pay, id).catch(() => {}));
-    return passJson(p, known, env);
+  if (known === 'revoked') return passJson(p, 'rejected', env);
+  let status = known;
+  if (known === 'confirmed') later(ctx, sendPass(env, pay, id).catch(() => {}));
+  else if (known !== 'rejected') {
+    const t = await midtrans(pay).status(id);
+    status = !t && Date.now() - p.createdAt > UNPAID_CLOSE ? 'rejected' : passStateOf(t, { id, amount: ACCESS_FEE });
+    if (status !== 'checking') later(ctx, settle(env, pay, id, status));
   }
-  const t = await midtrans(pay).status(id);
-  const status = !t && Date.now() - p.createdAt > UNPAID_CLOSE ? 'rejected' : passStateOf(t, { id, amount: ACCESS_FEE });
-  if (status !== 'checking') later(ctx, settle(env, pay, id, status));
-  return passJson(p, status, env);
+  if (status !== 'confirmed') return passJson(p, status, env);
+  const locked = await deviceLock(env, request, id, p);
+  return locked || passJson(p, status, env);
+}
+
+// A paid pass never ends: the seat view and the story stay the fan's after the show. Only
+// a refund (Midtrans) or the admin (status 'revoked', README) closes it.
+
+// A paid pass opens on two devices (devices.mjs): null lets this one in, else the 403 that
+// tells the page to ask for an email code. Without the order book any device gets in.
+async function deviceLock(env, request, id, p) {
+  if (!hasOrders(env)) return null;
+  const device = await deviceOf(request);
+  if (device && paidSeen(env, `${id}:${device}`)) return null;
+  if (device && (await admit(env, id, device)) === 'ok') { paidSeen(env, `${id}:${device}`, true); return null; }
+  const order = await orderOf(env, id).catch(() => null);
+  return fail(403, device ? 'This pass is already open on two other devices.' : 'Reload the page to open this pass.', { code: 'device', email: maskEmail(order?.email), mail: !!mailerOf(env) && !!device,
+    // What the key says anyway, so the page can show which pass this is.
+    pass: { id: p.id, eventId: p.eventId, cat: p.cat, seat: p.seat, createdAt: new Date(p.createdAt).toISOString() } });
+}
+
+// The email code for one more device. Only for a paid pass, with its key, from this site.
+async function sendCode(request, env, url, id) {
+  const pay = paymentsOf(env);
+  if (!pay || !hasOrders(env)) return fail(503, 'Payments are not switched on yet.');
+  const origin = request.headers.get('origin');
+  if (origin && origin !== url.origin) return fail(403, 'Forbidden');
+  if (await tooMany(env, 'STATUS_LIMIT', request, id)) return slowDown();
+  const p = await passOf(pay, request, id);
+  if (!p) return fail(404, 'Pass not found');
+  const device = await deviceOf(request);
+  if (!device) return fail(400, 'Reload the page to open this pass.');
+  const order = await orderOf(env, id);
+  if (order?.status !== 'confirmed') return fail(403, 'This pass is not paid.');
+  const mailer = mailerOf(env);
+  if (!mailer) return fail(503, 'Email is not switched on. Write to us to open your pass here.');
+  if ((await admit(env, id, device)) === 'ok') return json(200, { ok: true, open: true });
+  const c = await newCode(env, id, device);
+  if (c.wait) return fail(429, `A code was just sent to ${maskEmail(order.email)}. Wait ${c.wait} seconds to ask for another.`, {}, { 'retry-after': String(c.wait) });
+  await mailer.send({ to: order.email, ...codeEmail({ order, concert: concert(order.event_id), code: c.code, minutes: CODE_MINUTES }) });
+  console.log(`pass code sent: ${id}`);
+  return json(200, { ok: true, sent: true, email: maskEmail(order.email), minutes: CODE_MINUTES });
+}
+
+// The code back: this device gets in, and the pass answers as GET /api/passes/<id> does.
+async function addDevice(request, env, url, id) {
+  const pay = paymentsOf(env);
+  if (!pay || !hasOrders(env)) return fail(503, 'Payments are not switched on yet.');
+  const origin = request.headers.get('origin');
+  if (origin && origin !== url.origin) return fail(403, 'Forbidden');
+  if (await tooMany(env, 'STATUS_LIMIT', request, id)) return slowDown();
+  const p = await passOf(pay, request, id);
+  if (!p) return fail(404, 'Pass not found');
+  const device = await deviceOf(request);
+  if (!device) return fail(400, 'Reload the page to open this pass.');
+  const d = await readJson(request);
+  if (d instanceof Response) return d;
+  if ((await statusOf(env, id)) !== 'confirmed') return fail(403, 'This pass is not paid.');
+  const r = await useCode(env, id, device, line(d.code).replace(/\s+/g, ''));
+  if (r === 'wrong') return fail(400, 'That code is not right. Check the email and try again.', { field: 'code' });
+  if (r !== 'ok') return fail(400, 'That code has run out. Ask for a new one.', { field: 'code', expired: true });
+  return passJson(p, 'confirmed', env);
 }
 
 const passOf = async (pay, request, id) => {
@@ -312,12 +385,18 @@ async function seatMates(request, env, ctx, url, id) {
   if (await tooMany(env, m === 'GET' ? 'FANS_LIMIT' : 'STATUS_LIMIT', request, id)) return slowDown();
   const p = await passOf(pay, request, id);
   if (!p) return fail(404, 'Pass not found');
-  if (!paidSeen(env, id) && (await statusOf(env, id)) !== 'confirmed') {
-    const status = passStateOf(await midtrans(pay).status(id), { id, amount: ACCESS_FEE });
-    if (status !== 'confirmed') return fail(403, 'Seat mates open once your pass is paid.');
-    later(ctx, settle(env, pay, id, status));
+  if (!paidSeen(env, id)) {
+    const known = await statusOf(env, id);
+    if (known === 'revoked') return fail(403, 'Seat mates open once your pass is paid.');
+    if (known !== 'confirmed') {
+      const status = passStateOf(await midtrans(pay).status(id), { id, amount: ACCESS_FEE });
+      if (status !== 'confirmed') return fail(403, 'Seat mates open once your pass is paid.');
+      later(ctx, settle(env, pay, id, status));
+    }
   }
   paidSeen(env, id, true);
+  const locked = await deviceLock(env, request, id, p);
+  if (locked) return locked;
   const show = concert(p.eventId);
   if (!show || show.start + KEEP_AFTER < Date.now()) {
     await dropConcert(env, p.eventId);

@@ -100,7 +100,9 @@ afterEach(() => { globalThis.fetch = realFetch; console.error = realError; conso
 let waits = [];
 const ctx = { waitUntil: p => waits.push(p) };
 const settled = async () => { const w = waits; waits = []; await Promise.all(w); };
-const req = (p, init = {}) => worker.fetch(new Request(`${ORIGIN}${p}`, init), init.env || env(), ctx);
+// Every request comes from one device unless a test names another (x-device, js/passes.js).
+const DEVICE = 'device-aaaaaaaaaaaaaaaa';
+const req = (p, init = {}) => worker.fetch(new Request(`${ORIGIN}${p}`, { ...init, headers: { 'x-device': DEVICE, ...init.headers } }), init.env || env(), ctx);
 const post = (body, { headers = {}, ...more } = {}) => req('/api/payments', {
   method: 'POST', headers: { 'content-type': 'application/json', origin: ORIGIN, ...headers }, body: typeof body === 'string' ? body : JSON.stringify(body), ...more,
 });
@@ -834,4 +836,101 @@ test('a crowd: 300 fans asking at the same moment read the concert list from D1 
   assert.ok(answers.every(r => r.status === 200));
   assert.ok(fanReads <= 1, `D1 read ${fanReads} times`);
   console.info(`300 fans at once: ${ms.toFixed(0)} ms, ${fanReads} D1 read`);
+});
+
+// ---------------------------------------------------------------- a pass and its devices
+
+const onDevice = (dev, p, e, path = '', init = {}) => req(`/api/passes/${p.id}${path}`, {
+  env: e, ...init, headers: { 'x-pass-token': p.token, 'x-device': dev, origin: ORIGIN, ...(init.body ? { 'content-type': 'application/json' } : {}), ...init.headers },
+});
+const PHONE = 'device-bbbbbbbbbbbbbbbb', FRIEND = 'device-cccccccccccccccc', TABLET = 'device-dddddddddddddddd';
+
+test('a paid pass opens on two devices; a third gets in only with the code emailed to the buyer', async () => {
+  const { DB, e, p } = await mailedOrder();
+  paid[p.id] = { transaction_status: 'settlement' };
+  // The device that paid, then the phone the email is opened on.
+  assert.equal((await (await onDevice(DEVICE, p, e)).json()).status, 'confirmed');
+  assert.equal((await (await onDevice(PHONE, p, e)).json()).status, 'confirmed');
+  await settled();
+  mails = [];
+  // The link passed on to a friend: not a third device.
+  const r = await onDevice(FRIEND, p, e);
+  assert.equal(r.status, 403);
+  const body = await r.json();
+  assert.equal(body.code, 'device');
+  assert.equal(body.email, 'r***@example.com');
+  assert.equal(body.mail, true);
+  assert.equal(body.status, undefined, 'no pass details for the third device');
+  // No header at all: no way round it.
+  assert.equal((await req(`/api/passes/${p.id}`, { env: e, headers: { 'x-pass-token': p.token, 'x-device': '' } })).status, 403);
+  // Seat mates are closed to it too.
+  assert.equal((await onDevice(FRIEND, p, e, '/fans')).status, 403);
+
+  // The code goes to the buyer, never to the device asking.
+  const sent = await onDevice(FRIEND, p, e, '/code', { method: 'POST' });
+  assert.equal(sent.status, 200);
+  const s = await sent.json();
+  assert.deepEqual(s, { ok: true, sent: true, email: 'r***@example.com', minutes: 15 });
+  assert.equal(mails.length, 1);
+  assert.deepEqual(mails[0].to, ['rani@example.com']);
+  const code = /\b(\d{6})\b/.exec(mails[0].text)[1];
+  assert.ok(!JSON.stringify(s).includes(code));
+  // Asking again at once sends nothing.
+  assert.equal((await onDevice(FRIEND, p, e, '/code', { method: 'POST' })).status, 429);
+  assert.equal(mails.length, 1);
+  // Only the device that asked can use it.
+  assert.equal((await onDevice(TABLET, p, e, '/device', { method: 'POST', body: JSON.stringify({ code }) })).status, 400);
+  const wrong = code === '000000' ? '111111' : '000000';
+  assert.equal((await (await onDevice(FRIEND, p, e, '/device', { method: 'POST', body: JSON.stringify({ code: wrong }) })).json()).field, 'code');
+  const ok = await onDevice(FRIEND, p, e, '/device', { method: 'POST', body: JSON.stringify({ code: code.slice(0, 3) + ' ' + code.slice(3) }) });
+  assert.equal(ok.status, 200);
+  assert.equal((await ok.json()).status, 'confirmed');
+  // The code is used up; the device used least recently is signed out, the other stays.
+  assert.equal((await onDevice(TABLET, p, e, '/device', { method: 'POST', body: JSON.stringify({ code }) })).status, 400);
+  const devices = DB.prepare('SELECT device FROM pass_devices WHERE order_id = ?').bind(p.id);
+  assert.equal((await devices.all()).results.length, 2);
+  assert.equal((await onDevice(FRIEND, p, e)).status, 200);
+});
+
+test('a code runs out after five wrong tries and after fifteen minutes', async () => {
+  const { e, p } = await mailedOrder();
+  paid[p.id] = { transaction_status: 'settlement' };
+  await onDevice(DEVICE, p, e); await onDevice(PHONE, p, e); await settled();
+  mails = [];
+  await onDevice(FRIEND, p, e, '/code', { method: 'POST' });
+  const code = /\b(\d{6})\b/.exec(mails[0].text)[1], wrong = code === '000000' ? '111111' : '000000';
+  for (let i = 0; i < 5; i++) await onDevice(FRIEND, p, e, '/device', { method: 'POST', body: JSON.stringify({ code: wrong }) });
+  const r = await (await onDevice(FRIEND, p, e, '/device', { method: 'POST', body: JSON.stringify({ code }) })).json();
+  assert.equal(r.expired, true, 'the right code no longer works');
+  assert.equal((await onDevice(FRIEND, p, e)).status, 403);
+});
+
+test('an unpaid pass sends no code, and an unpaid pass is not held to its devices', async () => {
+  const { e, p } = await mailedOrder();
+  assert.equal((await onDevice(FRIEND, p, e, '/code', { method: 'POST' })).status, 403);
+  assert.equal(mails.length, 0);
+  for (const d of [PHONE, FRIEND, TABLET]) assert.equal((await (await onDevice(d, p, e)).json()).status, 'checking');
+});
+
+test('a pass the admin takes back closes, whatever Midtrans says after', async () => {
+  const { DB, e, p } = await mailedOrder();
+  paid[p.id] = { transaction_status: 'settlement' };
+  assert.equal((await (await onDevice(DEVICE, p, e)).json()).status, 'confirmed');
+  await settled();
+  await DB.prepare("UPDATE orders SET status = 'revoked' WHERE id = ?").bind(p.id).run();
+  assert.equal((await (await onDevice(DEVICE, p, e)).json()).status, 'rejected');
+  assert.equal((await notify({ order_id: p.id }, { env: e })).status, 200);
+  assert.equal(DB.rows()[0].status, 'revoked');
+  assert.equal((await (await onDevice(DEVICE, p, e)).json()).status, 'rejected');
+});
+
+test('a paid pass stays open after its show', async () => {
+  const { e, p } = await mailedOrder();
+  paid[p.id] = { transaction_status: 'settlement' };
+  const realNow = Date.now;
+  try {
+    Date.now = () => concert(live.id).start + 400 * 864e5;
+    assert.equal((await (await onDevice(DEVICE, p, e)).json()).status, 'confirmed');
+    await settled();
+  } finally { Date.now = realNow; }
 });

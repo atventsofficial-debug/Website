@@ -12,7 +12,7 @@ import { formatFee } from './rules.js';
 import { getEvent } from './events.js';
 import { crowdSeats, formatRpShort, REAL_KEYS } from './layouts.js';
 import { whenOf } from './when.js';
-import { buyLink, activePass, openPass, passes, canView, toggleSeat, STATUS } from './passes.js';
+import { buyLink, activePass, openPass, passes, canView, toggleSeat, STATUS, refresh } from './passes.js';
 import { placeSeat, cleanNumbering, isDefault, numberingOf, numberingSource } from './seatflip.js';
 import { $, esc, icon, state, QUALITY, spotStats, share, toast } from './ui.js';
 import { loadMates, matesBlock, bindMates, mateTags, resetMates, mates, startMatesLive, fanCardHtml } from './fans.js';
@@ -85,6 +85,8 @@ const priceText = c => (c.price == null ? c.note || 'On tiket.com' : formatRpSho
 
 export async function openViewer(id, { cat, seat, back, tour } = {}) {
   const venue = getEvent(id);
+  // A tour opens only on a pass the Worker has just said is paid (passes.js).
+  if (tour && passes.get(tour)?.status === 'verifying') await refresh(passes.get(tour));
   $('#seats-back').href = tour ? '#passes' : back || (venue.meta.demo ? '#partner-demo' : `#event-${id}`);
   state.shared = !tour && venue.seatById.has(seat) ? seat : null;
   const p = tour ? passes.get(tour) : null;
@@ -195,6 +197,16 @@ export function paintViewer() {
       <p>Your pass is paid and open. Take the tour from the whole venue to your category, then to the view from your seat.</p>
       <div class="row-btns"><a class="btn btn-coral btn-sm" href="#tour-${esc(p.id)}">Start my seat tour ${icon('i-arrow')}</a></div>
       ${matesBlock(p, { cats: v.catById })}`
+      : p?.status === 'verifying' ? `
+      <p class="eyebrow">${icon('i-clock')}Checking your pass</p>
+      <h2>One moment</h2>
+      <p>${esc(STATUS.verifying.note)}</p>
+      <div class="row-btns"><a class="btn btn-line btn-sm" href="#passes">My 3D passes</a></div>`
+      : p?.status === 'device' ? `
+      <p class="eyebrow">${icon('i-lock')}Open on 2 other devices</p>
+      <h2>Open it on this device</h2>
+      <p>${esc(STATUS.device.note)}</p>
+      <div class="row-btns"><a class="btn btn-coral btn-sm" href="#passes">Get the code ${icon('i-arrow')}</a></div>`
       : p?.status === 'checking' ? `
       <p class="eyebrow">${icon('i-clock')}Waiting for payment</p>
       <h2>Almost there</h2>

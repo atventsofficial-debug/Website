@@ -66,7 +66,8 @@ const TRACK = { src: 'assets/audio/story-track.m4a', from: 0 };
 let busy = false;
 
 export async function makeStory(pass) {
-  if (busy || !pass) return;
+  // Only a pass the Worker has said is paid (passes.js: 'verifying' until then).
+  if (busy || !pass || pass.status !== 'confirmed') return;
   const venue = getEvent(pass.eventId), i = venue?.seatById.get(pass.seat);
   if (i === undefined) return;
   busy = true;

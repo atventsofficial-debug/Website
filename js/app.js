@@ -2,7 +2,7 @@
 // partner page by partners.js, the admin by admin.js and the 3D seat view by viewer.js.
 import { getEvent, isConcert, demoFor } from './events.js';
 import { LocalStore, ApiStore, PayStore } from './store.js';
-import { bindBuyLinks, importPass, passes } from './passes.js';
+import { bindBuyLinks, importPass, passes, refresh } from './passes.js';
 import { bindSoldOut } from './soldpop.js';
 import { validAffiliate, formatFee, PAYMENT_ID } from './rules.js';
 import { stopEventHero, renderHome, renderConcerts, renderEvent, renderUnlock, renderPaid, renderFootage, renderPasses, renderFaq, bindPassButtons, navCount } from './pages.js';
@@ -79,6 +79,9 @@ async function boot() {
   });
   window.addEventListener('hashchange', () => { if (payTestSwitch()) location.reload(); else route(); });
   route();
+  // With live payments, every paid pass on this device is checked with the Worker before it
+  // opens (passes.js): the wallet alone opens nothing.
+  if (state.store.live) passes.all().filter(p => p.status === 'verifying').forEach(p => refresh(p));
 }
 
 // ---------------------------------------------------------------- routing
@@ -146,7 +149,10 @@ async function route() {
     // A paid pass opens on its own page ("You're in"); an older pass goes to My 3D passes.
     const to = hash => history.replaceState(null, '', `${location.pathname}${location.search}#${hash}`);
     to(PAYMENT_ID.test(link[1]) ? `paid-${link[1]}` : 'passes');
-    try { await importPass(link[1], link[2]); toast('Pass added to this device.'); } catch { to('passes'); toast('That pass link did not work. Write to us with your payment reference.'); }
+    try {
+      const p = await importPass(link[1], link[2]);
+      if (p?.status === 'device') { to('passes'); toast('This pass is already open on two other devices. Get a code by email to open it here.'); } else toast('Pass added to this device.');
+    } catch { to('passes'); toast('That pass link did not work. Write to us with your payment reference.'); }
   }
   const r = parse(location.hash.slice(1));
   const prev = state.view;

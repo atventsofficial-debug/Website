@@ -90,17 +90,27 @@ export const clicksFor = eventId => localClicks().filter(c => c.eventId === even
 
 // ---------------------------------------------------------------- the wallet
 
+// The wallet on this device says which passes are paid, but anyone can write to it. With
+// live payments a pass opens only once the Worker has said it is paid, on this page view:
+// until then a 'confirmed' pass reads as 'verifying' (and is kept as 'confirmed').
+const verified = new Set();
+export const markVerified = id => { verified.add(id); };
+const live = () => !!state.store?.live;
+// A pass with no key (the preview's) cannot be checked, so with live payments it is closed.
+const asShown = p => (p.status !== 'confirmed' || !live() || verified.has(p.id) ? p : { ...p, status: p.token ? 'verifying' : 'rejected' });
+const asKept = p => (p.status === 'verifying' ? { ...p, status: 'confirmed' } : p);
+
 export const passes = {
-  all() { return read(WALLET, this._mem); },
+  all() { return read(WALLET, this._mem).map(asShown); },
   get(id) { return this.all().find(p => p.id === id); },
   save(p) {
-    const list = this.all().filter(x => x.id !== p.id).concat(p);
+    const list = read(WALLET, this._mem).filter(x => x.id !== p.id).concat(asKept(p));
     this._mem = list;
     write(WALLET, list);
     emit('passes');
   },
   remove(id) {
-    const list = this.all().filter(x => x.id !== id);
+    const list = read(WALLET, this._mem).filter(x => x.id !== id);
     this._mem = list;
     write(WALLET, list);
     emit('passes');
@@ -147,17 +157,42 @@ export function holdPass(r) {
   return pass;
 }
 
-// Ask how the check is going. Offline, or without the token, the pass stays as it was.
+// Ask how the check is going. Offline, or the server busy, the pass stays as it was. A pass
+// the Worker does not know (a key it never signed) closes; one open on two other devices
+// asks for the email code ('device').
 export async function refresh(p) {
   if (state.store.mode === 'server' && !p.token) return;
-  const r = await state.store.claimStatus(p.id, p.token).catch(() => null);
-  if (!r) return false;   // offline, or the server busy: the caller asks again later
+  // With live payments a pass with no key cannot be checked, so it never opens.
+  if (live() && !p.token) return true;
+  let r;
+  try { r = await state.store.claimStatus(p.id, p.token); } catch (err) {
+    if (live() && (err?.status === 404 || err?.status === 400)) { passes.save({ ...p, status: 'rejected', wa: null }); return true; }
+    if (live() && err?.status === 403 && err.code === 'device') { saveLocked(p, err); return true; }
+    return false;   // offline, or the server busy: the caller asks again later
+  }
+  if (r.status === 'confirmed') markVerified(p.id);
   // The Worker says which WhatsApp links a paid pass has; the demo store says nothing.
   const wa = r.status !== 'confirmed' ? null : 'wa' in r ? waLinks(r.wa) : p.wa || null;
-  if (r.status !== p.status || (r.seat && r.seat !== p.seat) || JSON.stringify(wa) !== JSON.stringify(p.wa || null)) {
+  const now = asShown({ ...p, status: r.status }).status;
+  if (now !== p.status || (r.seat && r.seat !== p.seat) || JSON.stringify(wa) !== JSON.stringify(p.wa || null)) {
     passes.save({ ...p, status: r.status, seat: r.seat || p.seat, seats: r.seat ? [r.seat] : p.seats, wa });
   }
   return true;
+}
+
+// A paid pass open on two other devices: kept here as 'device', with where the code goes.
+function saveLocked(p, err) {
+  if (p.status === 'device' && p.lockedTo === (err.email || '')) return;
+  passes.save({ ...p, status: 'device', lockedTo: err.email || '', canMail: !!err.mail, wa: null });
+}
+
+// The email code for this device, then the code back: the pass opens here.
+export const sendCode = p => state.store.passCode(p.id, p.token);
+export async function useCode(p, code) {
+  const r = await state.store.passDevice(p.id, p.token, code);
+  markVerified(p.id);
+  passes.save({ ...p, status: r.status, seat: r.seat || p.seat, wa: waLinks(r.wa), lockedTo: undefined, canMail: undefined });
+  return passes.get(p.id);
 }
 
 // The WhatsApp links a paid pass gets from the Worker (FANBASE_WA): the concert's fanbase
@@ -170,13 +205,22 @@ export function waLinks(v) {
 
 // A pass link from another device: #pass-<id>-<token>.
 export async function importPass(id, token) {
-  const r = await state.store.claimStatus(id, token);
+  let r;
+  try { r = await state.store.claimStatus(id, token); } catch (err) {
+    // Paid, and open on two other devices: the pass comes in locked, with the email code.
+    if (err?.status !== 403 || err.code !== 'device' || !err.pass || err.pass.id !== id) throw err;
+    const k = err.pass, old = passes.get(id);
+    const p = { ...(old || {}), id, token, eventId: k.eventId, cat: k.cat, qty: 1, seat: k.seat || '', route: 'paid', status: 'device', lockedTo: err.email || '', canMail: !!err.mail, ref: old?.ref || '', createdAt: k.createdAt, seats: old?.seats || (k.seat ? [k.seat] : []), wa: null };
+    passes.save(p);
+    return passes.get(id);
+  }
+  if (r.status === 'confirmed') markVerified(id);
   const p = { id: r.id, token, eventId: r.eventId, cat: r.cat, qty: r.qty, seat: r.seat || '', route: r.route || 'affiliate', status: r.status, ref: passes.get(r.id)?.ref || '', createdAt: r.createdAt, seats: r.seat ? [r.seat] : passes.get(r.id)?.seats || [], wa: waLinks(r.wa) };
   // How the fan set the venue's numbering stays with the pass on this device (seatflip.js).
   const numbering = passes.get(r.id)?.numbering;
   if (numbering) p.numbering = numbering;
   passes.save(p);
-  return p;
+  return passes.get(id);
 }
 
 export const passLink = p => (p.token ? `${location.origin}${location.pathname}#pass-${p.id}-${p.token}` : '');
@@ -185,4 +229,6 @@ export const STATUS = {
   checking: { label: 'Waiting for payment', note: 'Your seat view opens as soon as the payment goes through.' },
   confirmed: { label: 'Paid · open', note: 'Paid. Your seat view is open until after the show.' },
   rejected: { label: 'Closed', note: 'This pass is closed: its payment did not go through, or it was refunded. Write to us if that looks wrong.' },
+  verifying: { label: 'Checking…', note: 'Checking your pass with Atvents. The seat view opens once it is confirmed, which needs an internet connection.' },
+  device: { label: 'On 2 other devices', note: 'This pass is already open on two other devices. Get a code by email to open it here: the device used least recently is then signed out.' },
 };
