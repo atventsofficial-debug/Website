@@ -370,3 +370,39 @@
 .pass .row-btns .btn-line { min-width: 0; justify-content: center; gap: 8px; padding: 0 12px; }
 /* A small button on its own (no Story, or no link) takes the whole row. */
 .pass .row-btns .btn-coral + .btn-line:last-child, .pass .row-btns .btn-line:only-child { grid-column: 1 / -1; }
+
+/* ---------- My seat 3D, before a concert is chosen (js/pages.js, renderUnlock) ----------
+   Not a second Events list: a real view from a seat, the three steps, the fan's own seat
+   views, then the concerts as a grid of posters. */
+.uf-pick { padding: 0; border: 0; background: none; }
+.s3d-hero { position: relative; margin: 0 0 14px; border-radius: 24px; overflow: hidden; aspect-ratio: 4 / 3; background: #111; }
+.s3d-hero img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.s3d-hero figcaption { position: absolute; inset: auto 0 0; display: flex; flex-direction: column; gap: 6px; padding: 48px 18px 16px; background: linear-gradient(180deg, transparent, rgba(10, 8, 8, 0.92) 60%); }
+.s3d-hero b { font: 700 20px/1.2 var(--font); letter-spacing: -0.01em; color: #fff; }
+.s3d-hero small { font-size: 13px; color: rgba(244, 240, 238, 0.75); }
+.s3d-chip { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 999px; background: rgba(236, 84, 70, 0.9); color: #fff; font: 700 11px/1 var(--font); letter-spacing: 0.04em; text-transform: uppercase; }
+.s3d-chip svg { width: 14px; height: 14px; }
+.s3d-steps { list-style: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 0 0 22px; padding: 6px; border-radius: 999px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08); }
+.s3d-steps li { display: flex; align-items: center; justify-content: center; gap: 8px; height: 38px; border-radius: 999px; font: 600 13px/1 var(--font); color: var(--muted); }
+.s3d-steps i { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; border: 1px solid currentColor; font: 700 11px/1 var(--font); font-style: normal; }
+.s3d-steps .is-on { background: var(--text); color: var(--ink); }
+.s3d-mine { margin: 0 0 22px; padding: 14px; border-radius: 20px; background: rgba(236, 84, 70, 0.1); border: 1px solid rgba(236, 84, 70, 0.3); }
+.s3d-mine .uf-head { margin-bottom: 10px; }
+.s3d-mine ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.s3d-mine a { display: grid; grid-template-columns: 22px minmax(0, 1fr) 18px; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 14px; background: rgba(0, 0, 0, 0.25); color: var(--text); }
+.s3d-mine a > svg { width: 20px; height: 20px; color: var(--coral); }
+.s3d-mine a > svg:last-child { width: 16px; height: 16px; color: var(--muted); }
+.s3d-mine b { display: block; font-size: 15px; }
+.s3d-mine small { font-size: 12px; color: var(--muted); }
+.s3d-head { margin-bottom: 12px; }
+.s3d-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px 10px; }
+.s3d-grid a { display: flex; flex-direction: column; gap: 4px; color: var(--text); }
+.s3d-poster { display: block; aspect-ratio: 3 / 2; margin-bottom: 4px; border-radius: 14px; overflow: hidden; background: #1a1717; border: 1px solid rgba(255, 255, 255, 0.08); transition: border-color .15s, transform .15s; }
+.s3d-poster .uf-poster { display: block; width: 100%; height: 100%; object-fit: cover; }
+.s3d-noposter { display: grid; place-items: center; height: 100%; padding: 8px; text-align: center; font: 800 15px/1.1 var(--font); text-transform: uppercase; color: rgba(244, 240, 238, 0.7); }
+.s3d-grid a:hover .s3d-poster, .s3d-grid a:focus-visible .s3d-poster { border-color: var(--coral); }
+.s3d-grid a:active .s3d-poster { transform: scale(0.97); }
+.s3d-grid b { font: 700 14px/1.25 var(--font); }
+.s3d-grid small { font-size: 12px; color: var(--muted); }
+.s3d-foot { margin: 22px 0 0; font-size: 13px; color: var(--muted); }
+@media (min-width: 761px) { .s3d-hero { aspect-ratio: 21 / 9; } .s3d-grid { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); } }
