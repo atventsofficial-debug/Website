@@ -20,9 +20,12 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { securityHeaders } from '../server/http.mjs';
 import { writeWorkerCatalog } from './worker-catalog.mjs';
+import { writeSeatCounts } from './seat-counts.mjs';
 
 const root = path.resolve(new URL('..', import.meta.url).pathname);
 const out = path.join(root, 'site');
+// The seat counts go into the bundle, so they are brought up to date first.
+writeSeatCounts(root);
 fs.rmSync(out, { recursive: true, force: true });
 fs.mkdirSync(out);
 fs.cpSync(path.join(root, 'assets'), path.join(out, 'assets'), { recursive: true });
@@ -90,7 +93,12 @@ fs.writeFileSync(path.join(out, '_headers'), [
   block('/*', securityHeaders(out, true, { midtrans: true })),   // from the page as built: no import map, no CDN
   block('/js/*', { 'cache-control': code }),
   block('/css/*', { 'cache-control': code }),
-  block('/assets/*', { 'cache-control': 'public, max-age=300' }),
+  // stale-while-revalidate: after the five minutes a picture still shows from the cache at
+  // once while the browser checks it in the background, so a return visit waits for none.
+  block('/assets/*', { 'cache-control': 'public, max-age=300, stale-while-revalidate=604800' }),
+  // The font never changes under its name: a week, so a return visit does not ask again ("!"
+  // drops the /assets/* rule's value first, as Cloudflare would otherwise join the two).
+  block('/assets/fonts/*', { 'cache-control': 'public, max-age=604800' }, ['cache-control']),
   block('/assets/mail/*', { 'cross-origin-resource-policy': 'cross-origin' }, ['cross-origin-resource-policy']),
 ].join('\n'));
 writeWorkerCatalog(root);

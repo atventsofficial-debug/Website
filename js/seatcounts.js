@@ -1,0 +1,23 @@
+// Written by scripts/seat-counts.mjs (npm run build:site): do not edit by hand.
+export const SEAT_COUNTS = {
+  'concert': 8734,
+  'cinema': 270,
+  'combat': 7632,
+  'combat-studio': 1020,
+  'tennis': 6332,
+  'stadium': 14774,
+  'stadium-end': 22307,
+  'stadium-round': 21390,
+  'stadium-tottenham': 23083,
+  'madya-end': 15498,
+  'jis-mcr': 26512,
+  'ina-5sos': 13862,
+  'ina-b2m': 13718,
+  'jis-bigbang': 27940,
+  'jis-maroon5': 27185,
+  'jis-enhypen': 27221,
+  'ina-script': 13340,
+  'basket-nflying': 4322,
+  'tennis-m2m': 5007,
+  'istora-nancy': 7867,
+};

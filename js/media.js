@@ -118,10 +118,13 @@ const CARD_V = '?v=20261119';
 export function cardImg(e, alt) {
   if (!e.image || !Object.hasOwn(IMAGES, e.image)) return eventImg(e, alt);
   const src = `assets/events/card/${e.image}`, c = IMAGES[e.image], v = CARD_V;
-  // A phone shows the poster itself, 3:2 and whole, across the card; the tall card art is for bigger screens.
+  // A phone shows the poster itself, 3:2 and whole, across the card; the tall card art is for
+  // bigger screens. Its `sizes` under-states the card's width like the covers' (smallOf above),
+  // so phones take the 640 px file: with 100vw every phone took the 1200 px one, about 1.4 MB
+  // for the home page's list.
   const full = c.src.replace(/\.webp$/, '');
   const phone = c.w ? `${c.src} ${c.w}w` : `${full}-640.webp 640w, ${c.src} 1200w`;
-  return `<picture><source media="(max-width: 760px)" srcset="${phone}" sizes="100vw"><img class="cover-img cover-image" src="${src}-480.webp${v}" srcset="${src}-480.webp${v} 480w, ${src}.webp${v} 800w" sizes="(max-width: 640px) 92vw, 360px" alt="${c.alt.replace(/"/g, '&quot;')}" loading="lazy" decoding="async"></picture>`;
+  return `<picture><source media="(max-width: 760px)" srcset="${phone}" sizes="50vw"><img class="cover-img cover-image" src="${src}-480.webp${v}" srcset="${src}-480.webp${v} 480w, ${src}.webp${v} 800w" sizes="(max-width: 640px) 92vw, 360px" alt="${c.alt.replace(/"/g, '&quot;')}" loading="lazy" decoding="async"></picture>`;
 }
 
 // The poster, small, beside the order in the checkout. Empty for a concert without one.

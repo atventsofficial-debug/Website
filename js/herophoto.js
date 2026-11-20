@@ -99,7 +99,14 @@ function posterTint(img) {
 // would turn the wall into a white glare against the dark hall.
 const POSTER_LIGHT = 0.22;
 
-const posterSrc = meta => IMAGES[meta?.image]?.src || '';
+// Phones (the flat version) draw the screens from the 640 px copy: the main screen is about
+// that wide on a phone, and the full file is three times the download.
+let smallPosters = false;
+const posterSrc = meta => {
+  const c = IMAGES[meta?.image];
+  if (!c?.src) return '';
+  return smallPosters && !c.w ? c.src.replace(/\.webp$/, '-640.webp') : c.src;
+};
 // The part of the poster a wide screen keeps (`screen` in media.js), as fractions.
 const posterFocus = meta => (IMAGES[meta?.image]?.screen || '50% 50%').split(' ').map(v => parseFloat(v) / 100);
 const images = new Map();
@@ -318,8 +325,12 @@ function quadPoint([[x0, y0], [x1, y1], [x2, y2], [x3, y3]]) {
 }
 
 // `src` drawn onto the quad `pts` in small affine triangles, close enough to the true
-// perspective at this size.
-function drawQuad(g, src, pts, n = 8) {
+// perspective at this size. `px` is how many device pixels one photo pixel covers: a screen
+// small on the phone takes fewer triangles (each one is a clip and a draw of the whole
+// poster, and 8 by 8 on every screen kept a phone's CPU busy for half a second a slide).
+function drawQuad(g, src, pts, px = 1) {
+  const span = Math.max(...pts.map(([x, y]) => Math.hypot(x - pts[0][0], y - pts[0][1]))) * px;
+  const n = Math.max(2, Math.min(8, Math.ceil(span / 90)));
   const at = quadPoint(pts), W = src.width, H = src.height;
   const tri = (s, d) => {
     // The affine map taking the source triangle s onto d.
@@ -362,6 +373,7 @@ export class FlatHeroPhoto {
     this.view = null;
     this.posters = null;
     this.tint = '';
+    smallPosters = true;
     root.classList.add('hs-photo', 'hs-flat');
     root.innerHTML = '<canvas></canvas><canvas></canvas>';
     this.canvases = [...root.querySelectorAll('canvas')];
@@ -416,14 +428,43 @@ export class FlatHeroPhoto {
     return true;
   }
 
+  // The photo and the haze at the size the canvas draws them (`px` device pixels a photo
+  // pixel), scaled by the browser off the main thread. Scaling the 2400 px photo down inside
+  // each draw held a phone's main thread for a quarter of a second or more. Null until the
+  // first copies are ready, then the last ones made while a new size is on its way.
+  scaledFor(px) {
+    const w = Math.round(this.arena.w * px), h = Math.round(this.arena.h * px);
+    if (this.scaled?.w === w || this.flatOnly) return this.scaled;
+    if (this.scaling !== w) {
+      this.scaling = w;
+      const opt = { resizeWidth: w, resizeHeight: h, resizeQuality: 'high' };
+      // From the file (in the cache by now), not from the <img>: browsers decode and scale a
+      // file in the background, an <img> on the main thread.
+      const bitmap = src => fetch(src).then(r => (r.ok ? r.blob() : Promise.reject())).then(b => createImageBitmap(b, opt));
+      Promise.all([bitmap(this.arena.src), this.arena.haze && this.haze ? bitmap(this.arena.haze) : null])
+        .then(([img, haze]) => {
+          if (this.scaling !== w) return;
+          this.scaled = { w, img, haze };
+          this.draw(!!this.canvases.find(c => c.classList.contains('is-on')));
+        })
+        .catch(() => { this.flatOnly = true; this.draw(); });
+    }
+    return this.scaled;
+  }
+
   // Draws into the canvas not showing and fades it in; `same` redraws the one showing
   // (a resize), with no fade.
   draw(same = false) {
     const v = this.view;
     if (!v || !this.img || !this.posters || !v.w || !v.h) return;
     const on = this.canvases.find(c => c.classList.contains('is-on'));
-    const c = same && on ? on : this.canvases.find(x => x !== on) || this.canvases[0];
     const dpr = Math.min(2, window.devicePixelRatio || 1);
+    if (typeof createImageBitmap !== 'function') this.flatOnly = true;
+    const scaled = this.scaledFor(dpr * v.s);
+    // The first picture waits the few milliseconds for its scaled copies.
+    if (!scaled && !this.flatOnly && !on) return;
+    const photo = scaled?.img || this.img, haze = scaled ? scaled.haze : this.haze;
+    const c = same && on ? on : this.canvases.find(x => x !== on) || this.canvases[0];
     c.width = Math.round(v.w * dpr);
     c.height = Math.round(v.h * dpr);
     const g = c.getContext('2d');
@@ -434,8 +475,9 @@ export class FlatHeroPhoto {
     g.imageSmoothingQuality = 'high';
     const { screens, w: W, h: H } = this.arena;
     // The screens seen through the photo's cut-outs, then the photo, then those hung in front.
-    screens.forEach((s, i) => { if (!s.cab) drawQuad(g, this.posters[i], grow(s.pts, 3)); });
-    g.drawImage(this.img, 0, 0, W, H);
+    const px = dpr * v.s;
+    screens.forEach((s, i) => { if (!s.cab) drawQuad(g, this.posters[i], grow(s.pts, 3), px); });
+    g.drawImage(photo, 0, 0, W, H);
     screens.forEach((s, i) => {
       if (!s.cab) return;
       g.fillStyle = '#0e0e0f';
@@ -443,7 +485,7 @@ export class FlatHeroPhoto {
       s.cab.forEach(([x, y], k) => (k ? g.lineTo(x, y) : g.moveTo(x, y)));
       g.closePath();
       g.fill();
-      drawQuad(g, this.posters[i], grow(s.pts, 3));
+      drawQuad(g, this.posters[i], grow(s.pts, 3), px);
     });
     screens.forEach(s => {
       if (!s.frame) return;
@@ -456,7 +498,7 @@ export class FlatHeroPhoto {
       g.stroke();
     });
     g.globalCompositeOperation = 'screen';
-    if (this.haze) { g.globalAlpha = 0.85; g.drawImage(this.haze, 0, 0, W, H); }
+    if (haze) { g.globalAlpha = 0.85; g.drawImage(haze, 0, 0, W, H); }
     // The main screen's light spilling into the haze, in the poster's colour.
     const m = screens[0].pts, cx = m.reduce((a, p) => a + p[0], 0) / 4, cy = m.reduce((a, p) => a + p[1], 0) / 4;
     const glow = g.createRadialGradient(cx, cy, 0, cx, cy, 900);

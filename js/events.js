@@ -4,7 +4,7 @@
 // venue confirms how its seats are numbered, is how every pass's seat tour counts rows and
 // seats (seatflip.js: { seats, rows, letters }); a fan can still set their own. Pure data:
 // the Node server imports it too, so event ids and categories are checked on both sides.
-import { getVenue, REAL_KEYS } from './layouts.js';
+import { getVenue, venueInfo, REAL_KEYS } from './layouts.js';
 import { THEMES } from './themes.js';
 
 // Country, time zone and the airport-style code printed on tickets. Times are the clock at
@@ -82,7 +82,7 @@ const STANDIN = 'The seating plan for this show has not been published, so the 3
 // matching demo layout as its stand-in. `prices` is the promoter's own price list in words,
 // `standInNote` replaces the stand-in sentence, `until` keeps a film on the lists through its run.
 const SHOW = ({ id, image, theme, title, subtitle, dateISO, time = 'TBA', place, venue, type, host = 'TBA', hostNote = 'Promoter', from = null, range = '', prices = '', soldOutAll = false, blurb, extra = [], sale = {}, url = '', branding, standInNote = STANDIN, until, age = '' }) => {
-  const cats = getVenue(venue).categories.map(c => ({ ...c, price: null }));
+  const cats = venueInfo(venue).categories.map(c => ({ ...c, price: null }));
   const seller = SELLERS[sale.seller] || { name: 'tiket.com', url: TIKET(title) };
   const official = url ? { ...seller, url } : seller;
   const onTiketCom = official.name === 'tiket.com';
@@ -554,11 +554,13 @@ export function getEvent(id) {
   const e = byId.get(id);
   if (!e) return null;
   if (!cache[id]) {
-    const base = getVenue(e.venue);
+    // Without the seats at first: lists and prices need only the categories, and laying out a
+    // venue's seats is seconds of a phone's CPU. `seats` and `seatById` are built the first
+    // time a page reads them (a 3D view, a seat picker, a seat count).
+    const base = venueInfo(e.venue);
     const categories = (e.cats || base.categories).map(c => ({ ...c }));
-    cache[id] = {
+    const ev = cache[id] = {
       ...base,
-      seats: e.zone ? base.seats.map(s => ({ ...s, cat: e.zone(s) })) : base.seats,
       occupancy: e.occupancy || base.occupancy,
       eventId: e.id,
       meta: e,
@@ -573,6 +575,13 @@ export function getEvent(id) {
       catById: Object.fromEntries(categories.map(c => [c.id, c])),
       event: { title: e.title, venue: `${e.place.name}, ${e.place.city}` },
     };
+    const lazy = (name, make) => Object.defineProperty(ev, name, {
+      configurable: true, enumerable: true,
+      get() { const value = make(); Object.defineProperty(ev, name, { value, writable: true, enumerable: true, configurable: true }); return value; },
+      set(value) { Object.defineProperty(ev, name, { value, writable: true, enumerable: true, configurable: true }); },
+    });
+    lazy('seats', () => { const full = getVenue(e.venue); return e.zone ? full.seats.map(s => ({ ...s, cat: e.zone(s) })) : full.seats; });
+    lazy('seatById', () => getVenue(e.venue).seatById);
   }
   return cache[id];
 }

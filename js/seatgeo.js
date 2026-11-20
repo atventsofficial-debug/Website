@@ -11,9 +11,19 @@ export function superPoint(t, rx, rz, p) {
   return [rx * Math.sign(c) * Math.abs(c) ** p, rz * Math.sign(s) * Math.abs(s) ** p];
 }
 
+// While `dryRun` runs a venue builder, the seat helpers place nothing: the builder returns its
+// categories, prices and settings at once, without the tens of thousands of seats that take a
+// phone's CPU seconds to lay out (layouts.js venueInfo). Pages that only list a venue use that.
+let dry = 0;
+export function dryRun(build) {
+  dry++;
+  try { return build(); } finally { dry--; }
+}
+
 // `ri` is the row index from the front of the section; `standing` marks a spot on a
 // standing floor rather than a seat.
 export function pushSeat(out, o, row, num, x, y, z, fx, fz) {
+  if (dry) return;
   const label = rowLabel(row);
   out.push({
     id: `${o.sec}-${label}${num}`,
@@ -34,6 +44,7 @@ export function pushSeat(out, o, row, num, x, y, z, fx, fz) {
 
 // Straight (optionally bowed) rows. dir is the direction the audience faces.
 export function gridRows(out, o) {
+  if (dry) return;
   const { x0, z0, rows, cols, sx = 0.56, sz = 0.92, dir = [0, -1], baseY = 0, rise = 0, riseFrom = 0,
     curve = 0, focus, rowStart = 0, numStart = 1, reverse = false } = o;
   const [fx, fz] = dir, rx = -fz, rz = fx;
@@ -55,6 +66,7 @@ export function gridRows(out, o) {
 // keeps at least that many metres clear at the two ends of every row (an aisle). Seats
 // number from the t0 end, or from the t1 end with `reverse`.
 export function arcRows(out, o) {
+  if (dry) return;
   const { cx = 0, cz = 0, rx0, rz0 = rx0, p = 1, rows, gap = 0.9, t0, t1, spacing = 0.56,
     baseY = 0, rise = 0, rowStart = 0, trim = 0, reverse = false } = o;
   const N = 240;
@@ -91,6 +103,7 @@ export function arcRows(out, o) {
 // come out longer than those in the corners; with `even` they are equal in length along
 // the front row, and `aisle` is in metres instead of radians.
 export function bowl(out, o) {
+  if (dry) return;
   const { from, to, sections, aisle = 0.022, name, catOf, skip, even } = o;
   const cuts = even && evenCuts(o.rx0, o.rz0 ?? o.rx0, o.p ?? 1, from, to, sections);
   const span = (to - from) / sections;

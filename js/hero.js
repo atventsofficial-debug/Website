@@ -139,7 +139,14 @@ function go(i, dir) {
   const next = ((i % n) + n) % n;
   if (next === hero.i || !n) return;
   hero.i = next;
-  fillBacks($$('#hs-backs .hs-back')[next]);
+  const backs = $$('#hs-backs .hs-back');
+  fillBacks(backs[next]);
+  // The slide after this one gets its backdrop and poster now, while this one shows.
+  const after = (next + (dir < 0 ? -1 : 1) + n) % n;
+  (window.requestIdleCallback || setTimeout)(() => {
+    fillBacks(backs[after]);
+    if (hero.run?.preloaded) preloadPoster(hero.list[after]);
+  });
   // The card and the picture change together: while the arena is up, the slide waits (a
   // moment at most) for its poster, so the card never shows one show over another's picture.
   const turn = hero.turn = {};
@@ -189,7 +196,7 @@ function hold(reason, on) {
 // The backdrops and the tabs, one a show; drawn again only when the shows on sale change.
 // A backdrop is the poster, sharp where the stage will be, over a blurred copy of itself:
 // it shows until the arena photo is ready, and instead of it for data savers.
-const fillBacks = (root = $('#hs-backs')) => {
+const fillBacks = root => {
   for (const img of root?.querySelectorAll('img[data-src]') || []) {
     if (img.dataset.srcset) img.srcset = img.dataset.srcset;
     img.src = img.dataset.src;
@@ -205,7 +212,9 @@ function build() {
     const files = `${at}src="${esc(c.src)}"${set ? ` ${at}srcset="${esc(set)}" sizes="min(600px, 76vw)"` : ''}`;
     return `<div class="hs-back"><img class="hs-blur" ${files} alt="" decoding="async"><img class="hs-poster" ${files} alt="" decoding="async"${now ? ' fetchpriority="high"' : ''}></div>`;
   }).join('');
-  const rest = () => (window.requestIdleCallback || setTimeout)(() => fillBacks());
+  // The backdrops either side once the page has loaded; the others as the slides turn (go).
+  const n = hero.list.length, backs = () => $$('#hs-backs .hs-back');
+  const rest = () => (window.requestIdleCallback || setTimeout)(() => [1, -1].forEach(d => fillBacks(backs()[(hero.i + d + n) % n])));
   if (document.readyState === 'complete') rest(); else addEventListener('load', rest, { once: true });
   $('#hs-tabs').innerHTML = hero.list.map((e, k) => `<li><button class="hs-tab" type="button" data-hs-go="${k}" aria-label="${esc(e.title)}">
       <span class="hs-tab-t"><b>${String(k + 1).padStart(2, '0')}</b>${esc(e.title)}</span><span class="hs-bar"><i></i></span></button></li>`).join('');
@@ -293,12 +302,13 @@ async function showArena() {
     run.poster = show;
     run.photo.setPoster(show);
   }
-  // The posters either side first, then all the others, ready before the visitor swipes.
+  // The posters either side, ready before the visitor swipes. The rest follow one slide
+  // ahead as the slides turn (go): fetching all twenty at once took the phone's bandwidth
+  // and memory while the page was still opening.
   const n = hero.list.length;
   if (!run.preloaded) {
     run.preloaded = true;
-    const order = [1, -1, ...Array.from({ length: n }, (_, k) => k)].map(d => hero.list[(hero.i + d + n) % n]);
-    order.reduce((p, e) => p.then(() => preloadPoster(e)), Promise.resolve());
+    [1, -1].map(d => hero.list[(hero.i + d + n) % n]).reduce((p, e) => p.then(() => preloadPoster(e)), Promise.resolve());
   }
 }
 

@@ -1,6 +1,6 @@
 // The partner page: the 3D seat view offered to ticketing apps, promoters, venues, travel
 // companies, banks and media. Drawn once; the demo request form is bound once.
-import { VENUE_KEYS, getVenue } from './layouts.js';
+import { VENUE_KEYS, venueInfo, seatCount } from './layouts.js';
 import { DEMOS, getEvent } from './events.js';
 import { USES, PLANS, FAQ_PARTNERS, faqHtml, brandText } from './content.js';
 import { dotMap } from './pages.js';
@@ -14,9 +14,9 @@ export function renderPartners() {
   if (drawn) return;
   drawn = true;
   // Figures from the models themselves, so the page never claims more than is built.
-  const sizes = VENUE_KEYS.map(k => ({ key: k, seats: getVenue(k).seats.length }));
+  const sizes = VENUE_KEYS.map(k => ({ key: k, seats: seatCount(k) }));
   const largest = sizes.reduce((a, b) => (b.seats > a.seats ? b : a));
-  const largestName = DEMOS.find(d => d.venue === largest.key)?.place.name || getVenue(largest.key).event.venue;
+  const largestName = DEMOS.find(d => d.venue === largest.key)?.place.name || venueInfo(largest.key).event.venue;
   $('#partner-stats').innerHTML = [
     ['Venue layouts', n(VENUE_KEYS.length), 'Arenas, stadiums, halls, cinemas'],
     ['Seats modelled', n(sizes.reduce((a, s) => a + s.seats, 0)), 'Every one a viewpoint'],

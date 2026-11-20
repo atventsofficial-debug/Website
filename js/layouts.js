@@ -2,7 +2,8 @@
 // No browser or three.js dependency, so the Node server imports the same file
 // to check event ids and categories.
 
-import { superPoint, gridRows, bowl, deg, norm } from './seatgeo.js';
+import { superPoint, gridRows, bowl, deg, norm, dryRun } from './seatgeo.js';
+import { SEAT_COUNTS } from './seatcounts.js';
 import { REAL_BUILDERS } from './realvenues.js';
 
 export { superPoint };
@@ -408,6 +409,29 @@ export function getVenue(key) {
   }
   return cache[key];
 }
+
+// The template without its seats (no `seats`, no `seatById`): its categories, prices, colours
+// and camera settings, the same as getVenue's. Laying out every seat of every venue took a
+// phone seconds on the home page, which lists venues and prices but draws no seat; the seats
+// are built when a page first asks for them (getEvent in events.js).
+const infoCache = {};
+export function venueInfo(key) {
+  if (cache[key]) return cache[key];
+  if (!builders[key]) throw new Error(`Unknown template: ${key}`);
+  if (!infoCache[key]) {
+    const v = dryRun(builders[key]);
+    delete v.seats;
+    v.eventId = `tpl-${v.key}`;
+    v.catById = Object.fromEntries(v.categories.map(c => [c.id, c]));
+    infoCache[key] = v;
+  }
+  return infoCache[key];
+}
+
+// How many seats a template has, without building them: js/seatcounts.js, written by the
+// build (scripts/build-site.mjs) and checked by the tests. A template it does not list yet is
+// counted the long way.
+export const seatCount = key => SEAT_COUNTS[key] ?? getVenue(key).seats.length;
 
 // Seats with someone in them on the night, the same for every visitor: the 3D crowd.
 // It is atmosphere, not availability (tiket.com has the live stock). A category the
