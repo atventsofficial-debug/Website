@@ -51,7 +51,7 @@
 }
 
 @media (max-width: 760px) {
-  :root { --bar-h: 58px; --tab-h: 80px; --gut: 16px; }   /* tab bar: 64 px and 8 px under it, 8 over */
+  :root { --bar-h: 58px; --tab-h: 84px; --gut: 16px; }   /* tab bar: 64 px, about 12 px under it (with the home bar's space), 8 over */
   html { scroll-padding-top: 72px; }
   body { padding-bottom: calc(var(--tab-h) + env(safe-area-inset-bottom)); -webkit-tap-highlight-color: transparent; }
   body.is-focus { padding-bottom: 0; }
@@ -75,7 +75,11 @@
      bar, with the icons alone and a lighter pill behind the page you are on. The names stay
      for screen readers. Frosted glass, like Threads: the one place on phones with a backdrop
      blur, a small fixed bar, so scrolling stays smooth; without blur support it is near solid. */
-  .tabbar { position: fixed; z-index: 50; left: 12px; right: 12px; bottom: calc(8px + env(safe-area-inset-bottom)); display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: center; height: 64px; padding: 0 6px; border-radius: 999px; background: rgba(30, 27, 27, 0.92); border: 1px solid rgba(255, 255, 255, 0.12); box-shadow: 0 12px 32px -10px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.06); }
+  .tabbar { position: fixed; z-index: 50; left: 12px; right: 12px; bottom: max(12px, calc(env(safe-area-inset-bottom) - 6px)); display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: center; height: 64px; padding: 0 6px; border-radius: 999px; background: rgba(30, 27, 27, 0.92); border: 1px solid rgba(255, 255, 255, 0.12); box-shadow: 0 12px 32px -10px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    transform: translate3d(0, 0, 0); will-change: transform; -webkit-backface-visibility: hidden; backface-visibility: hidden; }
+  /* No rubber-band bounce at the top or bottom of the page: on iPhones it dragged the tab bar
+     along. The bar sits on its own layer (above) so the blur does not wobble while scrolling. */
+  html, body { overscroll-behavior-y: none; }
   @supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
     .tabbar { background: rgba(38, 34, 34, 0.42); -webkit-backdrop-filter: blur(22px) saturate(180%); backdrop-filter: blur(22px) saturate(180%); }
   }
