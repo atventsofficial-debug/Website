@@ -447,3 +447,11 @@
   .tabbar { --tb-ink: #1a1616; }
   .tabbar > * > svg, .tab-main b svg { width: 28px; height: 28px; }
 }
+
+/* Payment step on phones: the Pay bar fixed to the bottom of the screen, as the concert page's
+   buy bar, not sticky inside the checkout (it rode up and down where the checkout ended) and
+   not padded by the safe area (Instagram's browser keeps changing it while scrolling). */
+@media (max-width: 760px) {
+  .co-sum.is-go { position: fixed; z-index: 40; top: auto; left: 0; right: 0; bottom: 0; margin: 0; padding: 12px var(--gut) 22px; border-width: 1px 0 0; border-radius: 20px 20px 0 0; transform: translate3d(0, 0, 0); -webkit-backface-visibility: hidden; backface-visibility: hidden; }
+  .pay-sheet:has(.co-sum.is-go) { padding-bottom: calc(var(--pad-y) + 110px); }
+}
