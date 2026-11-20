@@ -456,6 +456,51 @@ let unlockBound = false;
 // concert was chosen on the page before, so it is shown, not asked again.
 const unlock = { payment: null, data: null, again: null, method: '', who: null, typing: false, fixed: false };
 
+// Phones, "My seat 3D": the concerts on sale as cards in a sheet that rises from the bottom,
+// in place of a dropdown that grows with every concert. A search field once there are many.
+let evSheet = null, evSheetFrom = null;
+function closeEvSheet() {
+  if (!evSheet || evSheet.hidden) return;
+  evSheet.hidden = true;
+  document.documentElement.classList.remove('has-evsheet');
+  evSheetFrom?.focus?.();
+}
+function openEvSheet(list) {
+  if (!evSheet) {
+    evSheet = document.createElement('div');
+    evSheet.className = 'evsheet';
+    evSheet.hidden = true;
+    document.body.append(evSheet);
+    evSheet.addEventListener('click', ev => {
+      if (ev.target === evSheet || ev.target.closest('[data-es-close]') || ev.target.closest('.evsheet-grid a')) setTimeout(closeEvSheet, 0);
+    });
+    evSheet.addEventListener('input', ev => {
+      if (!ev.target.matches('.evsheet-find input')) return;
+      const q = ev.target.value.trim().toLowerCase();
+      let shown = 0;
+      evSheet.querySelectorAll('.evsheet-grid li').forEach(li => { const on = !q || li.dataset.q.includes(q); li.hidden = !on; shown += on; });
+      evSheet.querySelector('.evsheet-none').hidden = shown > 0;
+    });
+    document.addEventListener('keydown', ev => { if (ev.key === 'Escape') closeEvSheet(); });
+    window.addEventListener('hashchange', closeEvSheet);
+  }
+  evSheet.innerHTML = `
+    <div class="evsheet-card" role="dialog" aria-modal="true" aria-labelledby="es-title">
+      <div class="evsheet-head"><div><h2 id="es-title">Choose your concert</h2><small>${list.length} on sale</small></div>
+        <button class="evsheet-x" type="button" data-es-close aria-label="Close">${icon('i-x')}</button></div>
+      ${list.length > 6 ? `<label class="evsheet-find">${icon('i-search')}<input type="search" placeholder="Search a concert or venue" aria-label="Search a concert"></label>` : ''}
+      <div class="evsheet-body">
+        <ul class="evsheet-grid">${list.map(e => `<li data-q="${esc(`${e.title} ${placeOf(e).name}`.toLowerCase())}"><a href="#unlock-${esc(e.id)}">
+          <span class="evsheet-img">${posterImg(e)}</span><b>${esc(e.title)}</b><small>${esc(whenOf(e).date)}</small><small>${esc(placeOf(e).name)}</small></a></li>`).join('')}</ul>
+        <p class="evsheet-none" hidden>No concert by that name.</p>
+      </div>
+    </div>`;
+  evSheetFrom = document.activeElement;
+  evSheet.hidden = false;
+  document.documentElement.classList.add('has-evsheet');
+  evSheet.querySelector('.evsheet-x').focus();
+}
+
 export function renderUnlock(eventId) {
   const form = $('#unlock-form');
   if (!unlockBound) { unlockBound = true; bindUnlock(form); }
@@ -486,13 +531,13 @@ export function renderUnlock(eventId) {
         <ol class="s3d-steps" aria-label="Three steps">
           <li class="is-on"><i>1</i><span>Concert</span></li><li><i>2</i><span>Your seat</span></li><li><i>3</i><span>Pay &amp; view</span></li>
         </ol>
-        <label class="uf-field s3d-select">Which concert?<select id="s3d-ev"><option value="" selected disabled>Choose your concert</option>${list.map(e => `<option value="${esc(e.id)}">${esc(e.title)} · ${esc(whenOf(e).date)}</option>`).join('')}</select></label>
+        <button type="button" class="uf-field s3d-select" id="s3d-ev" aria-haspopup="dialog"><small>Which concert?</small><b>Choose your concert</b>${icon('i-down')}</button>
         <p class="s3d-note">${icon('i-seat')}<span>Next you pick the seat: the one on your ticket, or one you are thinking of buying. Category, section, row and seat, then pay.</span></p>
         ${mine.length ? `<div class="s3d-mine"><div class="uf-head"><h2>Your seat views</h2><small>Paid and open</small></div>
           <ul>${mine.map(p => { const e = eventMeta(p.eventId), st = seatIn(p.eventId, p.seat); return `<li><a href="#tour-${esc(p.id)}">${icon('i-seat')}<span><b>${esc(e.title)}</b><small>${st ? esc(spotStats(st).map(([k, v]) => `${k} ${v}`).join(' · ')) : esc(whenOf(e).date)}</small></span>${icon('i-arrow')}</a></li>`; }).join('')}</ul></div>` : ''}
         <p class="s3d-foot">Just looking? Every concert in ${icon('i-search')}<a class="u" href="#concerts">Events</a> lets you look round its venue from above, free. The 3D view does not include a concert ticket: tickets are sold by the seller on each concert page.</p>
       </div>`;
-    $('#s3d-ev').addEventListener('change', e => { if (e.target.value) location.hash = `#unlock-${e.target.value}`; });
+    $('#s3d-ev').addEventListener('click', () => openEvSheet(list));
     return;
   }
   const all = onSale();
