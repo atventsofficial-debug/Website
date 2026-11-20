@@ -190,8 +190,9 @@ export function renderHome() {
       <span class="pill-link">Concert alerts ${icon('i-arrow')}</span>
     </a>`;
 
-  $('#home-venues').innerHTML = PLACES.map((p, i) => {
-    const shows = p.events.filter(upcoming), first = shows[0] || p.events[0];
+  // A venue whose shows have all taken place leaves the list with them.
+  $('#home-venues').innerHTML = PLACES.filter(p => p.events.some(upcoming)).map((p, i) => {
+    const shows = p.events.filter(upcoming), first = shows[0];
     const from = Math.min(...shows.map(e => minPrice(e.id) ?? Infinity));
     return `<a class="venue" href="#seats-${first.id}">
       <div class="venue-cover">${placeCover(p, first, `${p.name}, ${p.city}`)}</div>
@@ -511,6 +512,8 @@ export function renderUnlock(eventId) {
   closePay(form);
   // From the tab, the menu or Unlock 3D with no concert in hand: the events on sale first, as
   // cards; one tap opens the form for it (#unlock-<id>), poster and all.
+  // A concert that has taken place sells no more passes: its link opens the list instead.
+  if (isConcert(eventId) && !upcoming(eventMeta(eventId))) { eventId = ''; unlock.again = null; }
   const picking = !isConcert(eventId) && !unlock.again;
   $('#uf-pick').hidden = !picking;
   form.hidden = picking;
@@ -520,7 +523,9 @@ export function renderUnlock(eventId) {
     // the middle tab) get a page of their own that is not a second Events list: what the seat
     // view is, the three steps, one field to choose the concert, and the fan's own seat views.
     const list = onSale();
-    const mine = passes.all().filter(p => p.status === 'confirmed' && isConcert(p.eventId));
+    // Shows still to come first, then the ones that have taken place.
+    const mine = passes.all().filter(p => p.status === 'confirmed' && isConcert(p.eventId))
+      .sort((a, b) => !upcoming(eventMeta(a.eventId)) - !upcoming(eventMeta(b.eventId)));
     $('#uf-pick').innerHTML = `
       <div class="uf-desk"><div class="uf-head"><h2>Choose your event</h2><small>Then your seat, then pay</small></div>
       <ul class="uf-pick-list">${list.map(e => `<li><a class="uf-pick-row" href="#unlock-${esc(e.id)}">
@@ -534,7 +539,7 @@ export function renderUnlock(eventId) {
         <button type="button" class="uf-field s3d-select" id="s3d-ev" aria-haspopup="dialog"><small>Which concert?</small><b>Choose your concert</b>${icon('i-down')}</button>
         <p class="s3d-note">${icon('i-seat')}<span>Next you pick the seat: the one on your ticket, or one you are thinking of buying. Category, section, row and seat, then pay.</span></p>
         ${mine.length ? `<div class="s3d-mine"><div class="uf-head"><h2>Your seat views</h2><small>Paid and open</small></div>
-          <ul>${mine.map(p => { const e = eventMeta(p.eventId), st = seatIn(p.eventId, p.seat); return `<li><a href="#tour-${esc(p.id)}">${icon('i-seat')}<span><b>${esc(e.title)}</b><small>${st ? esc(spotStats(st).map(([k, v]) => `${k} ${v}`).join(' · ')) : esc(whenOf(e).date)}</small></span>${icon('i-arrow')}</a></li>`; }).join('')}</ul></div>` : ''}
+          <ul>${mine.map(p => { const e = eventMeta(p.eventId), st = seatIn(p.eventId, p.seat); return `<li><a href="#tour-${esc(p.id)}">${icon('i-seat')}<span><b>${esc(e.title)}</b><small>${upcoming(e) ? '' : 'Event ended · '}${st ? esc(spotStats(st).map(([k, v]) => `${k} ${v}`).join(' · ')) : esc(whenOf(e).date)}</small></span>${icon('i-arrow')}</a></li>`; }).join('')}</ul></div>` : ''}
         <p class="s3d-foot">Just looking? Every concert in ${icon('i-search')}<a class="u" href="#concerts">Events</a> lets you look round its venue from above, free. The 3D view does not include a concert ticket: tickets are sold by the seller on each concert page.</p>
       </div>`;
     $('#s3d-ev').addEventListener('click', () => openEvSheet(list));
@@ -1289,6 +1294,8 @@ function passCard(p, { actions = true } = {}) {
   const e = eventMeta(p.eventId);
   if (!e) return '';
   const venue = getEvent(p.eventId), c = venue.catById[p.cat], w = whenOf(e), st = STATUS[p.status] || STATUS.checking;
+  // After the show a paid pass stays open for good: the seat tour and the story still play.
+  const ended = !upcoming(e), kept = ended && p.status === 'confirmed';
   const seats = (p.seats || []).map(id => venue.seats[venue.seatById.get(id)]).filter(Boolean);
   const len = code(c || { name: p.cat }).length;
   return `<article class="pass${p.status === 'rejected' ? ' is-closed' : ''}">
@@ -1298,10 +1305,10 @@ function passCard(p, { actions = true } = {}) {
       <span class="pass-n">1 seat</span>
     </div>
     <div class="pass-body">
-      <div class="pass-top"><span class="pass-pill is-${p.status}">${st.label}</span><span class="mono">${esc(p.id)}</span>${actions ? `<button class="pass-del" type="button" data-remove-pass="${esc(p.id)}" aria-label="Remove this pass from this device" title="Remove from this device">${icon('i-trash')}</button>` : ''}</div>
+      <div class="pass-top"><span class="pass-pill is-${p.status}">${st.label}</span>${ended ? '<span class="pass-pill is-ended">Event ended</span>' : ''}<span class="mono">${esc(p.id)}</span>${actions ? `<button class="pass-del" type="button" data-remove-pass="${esc(p.id)}" aria-label="Remove this pass from this device" title="Remove from this device">${icon('i-trash')}</button>` : ''}</div>
       <h3>${esc(e.title)}</h3>
       <p class="pass-when">${esc(w.date)} · ${esc(placeOf(e).name)}</p>
-      <p class="pass-note">${esc(st.note)}</p>
+      <p class="pass-note">${esc(kept ? 'The show is over. Your seat view stays yours: open the tour and your story any time.' : st.note)}</p>
       <dl class="pass-facts">
         <div><dt>Category</dt><dd>${esc(c?.name || p.cat)}</dd></div>
         ${p.name ? `<div><dt>Name</dt><dd>${esc(p.name)}</dd></div>` : ''}
@@ -1309,7 +1316,7 @@ function passCard(p, { actions = true } = {}) {
         ${p.route === 'paid' || p.route === 'outside' ? `<div><dt>Access</dt><dd>${formatFee()}, paid</dd></div>` : ''}
       </dl>
       ${actions ? `<div class="row-btns">
-        ${p.status === 'rejected' ? `<a class="btn btn-coral btn-sm" href="#unlock-${p.eventId}">Unlock again</a><a class="btn btn-line btn-sm" href="#contact">Write to us</a>`
+        ${p.status === 'rejected' ? `${ended ? '' : `<a class="btn btn-coral btn-sm" href="#unlock-${p.eventId}">Unlock again</a>`}<a class="btn btn-line btn-sm" href="#contact">Write to us</a>`
           : p.status === 'confirmed' ? `<a class="btn btn-coral btn-sm" href="#tour-${esc(p.id)}">Start my seat tour ${icon('i-arrow')}</a>${p.seat ? `<button class="btn btn-line btn-sm" type="button" data-story-pass="${esc(p.id)}">${icon('i-share')}Story</button>` : ''}`
             : `<a class="btn btn-line btn-sm" href="#seats-${p.eventId}">Look round the venue ${icon('i-arrow')}</a>`}
         ${p.token && p.status !== 'device' ? `<button class="btn btn-line btn-sm" type="button" data-copy-pass="${esc(p.id)}">${icon('i-link')}Copy pass link</button>` : ''}
@@ -1331,7 +1338,9 @@ const otpForm = p => (p.canMail === false
 
 export function renderPasses({ check = false } = {}) {
   const starts = p => { const e = eventMeta(p.eventId); return e ? startOf(e) : Infinity; };
-  const list = passes.all().filter(p => eventMeta(p.eventId)).sort((a, b) => starts(a) - starts(b));
+  const past = p => !upcoming(eventMeta(p.eventId));
+  const list = passes.all().filter(p => eventMeta(p.eventId))
+    .sort((a, b) => past(a) - past(b) || (past(a) ? starts(b) - starts(a) : starts(a) - starts(b)));
   const open = list.filter(p => p.status !== 'rejected').length;
   $('#passes-note').textContent = list.length
     ? `${plural(list.length, 'pass', 'passes')} on this device${open < list.length ? `, ${open} open` : ''}. Each opens the seat views of its concert.`

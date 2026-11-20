@@ -227,7 +227,7 @@ export const passLink = p => (p.token ? `${location.origin}${location.pathname}#
 
 export const STATUS = {
   checking: { label: 'Waiting for payment', note: 'Your seat view opens as soon as the payment goes through.' },
-  confirmed: { label: 'Paid · open', note: 'Paid. Your seat view is open until after the show.' },
+  confirmed: { label: 'Paid · open', note: 'Paid. Your seat view is open, and stays yours after the show too.' },
   rejected: { label: 'Closed', note: 'This pass is closed: its payment did not go through, or it was refunded. Write to us if that looks wrong.' },
   verifying: { label: 'Checking…', note: 'Checking your pass with Atvents. The seat view opens once it is confirmed, which needs an internet connection.' },
   device: { label: 'On 2 other devices', note: 'This pass is already open on two other devices. Get a code by email to open it here: the device used least recently is then signed out.' },

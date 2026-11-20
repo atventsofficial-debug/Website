@@ -136,7 +136,7 @@ ${poster ? `      <tr><td style="padding:0;"><a href="${esc(link)}" style="text-
               <td valign="bottom">
                 <div style="font:700 10px/1.2 ${font};letter-spacing:0.14em;text-transform:uppercase;color:${orange};">3D pass</div>
                 <div style="margin-top:6px;font:800 26px/1.05 ${font};letter-spacing:-0.01em;text-transform:uppercase;color:${orange};">${esc(category || '1 seat')}</div>
-                <div style="margin-top:6px;font:400 13px/1.4 ${font};color:${inkMuted};">Open until the day after the show</div>
+                <div style="margin-top:6px;font:400 13px/1.4 ${font};color:${inkMuted};">Yours for good, even after the show</div>
               </td>
               <td align="right" valign="bottom">
                 <div style="${label}">Access</div>
@@ -150,7 +150,7 @@ ${poster ? `      <tr><td style="padding:0;"><a href="${esc(link)}" style="text-
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:26px 0 14px;"><tr><td align="center" bgcolor="${orange}" style="background:${orange};border-radius:999px;">
           <a href="${esc(link)}" style="display:block;padding:17px 24px;font:700 16px/1.2 ${font};color:${ink};text-decoration:none;border-radius:999px;">Open my 3D seat view &rarr;</a>
         </td></tr></table>
-        <p style="margin:0 0 28px;font:400 13px/1.55 ${font};color:${muted};text-align:center;">Opens on any phone or laptop, until the day after the show. Keep this email to yourself: the link opens your pass.</p>
+        <p style="margin:0 0 28px;font:400 13px/1.55 ${font};color:${muted};text-align:center;">Opens on any phone or laptop, and stays yours after the show. Keep this email to yourself: the link opens your pass.</p>
 
 ${waLinks.length ? `        <div style="border-top:1px solid ${edge};font-size:0;line-height:0;">&nbsp;</div>
         <p style="margin:24px 0 8px;font:700 11px/1.2 ${font};letter-spacing:0.14em;text-transform:uppercase;color:${muted};">Meet other fans</p>
@@ -194,7 +194,7 @@ ${waLinks.map(([t, href]) => `        <table role="presentation" width="100%" ce
     'Open my 3D seat view:',
     link,
     '',
-    'Opens on any phone or laptop, until the day after the show. Keep this email to yourself: the link opens your pass.',
+    'Opens on any phone or laptop, and stays yours after the show. Keep this email to yourself: the link opens your pass.',
     ...(waLinks.length ? ['', 'Meet other fans on WhatsApp:', ...waLinks.map(([t, href]) => `${t}: ${href}`)] : []),
     '',
     'The 3D view is not a concert ticket. Your ticket comes from the concert’s official seller.',

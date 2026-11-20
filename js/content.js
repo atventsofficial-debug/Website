@@ -7,7 +7,7 @@ const brand = t => t.replaceAll('{brand}', esc(state.cfg.brand));
 
 export const FAQ_FANS = [
   { id: 'price', q: 'How much is the view from my seat?',
-    a: 'Rp25.000 for one seat at one concert. You pay once, and the view stays open until the day after the show.' },
+    a: 'Rp25.000 for one seat at one concert. You pay once, and the pass is yours for good: the view, the seat tour and your story still open after the show.' },
   { id: 'unlock', q: 'How do I get the view from my seat?',
     a: 'Open <a class="u" href="#unlock">Unlock 3D</a>, choose your concert, category, section, row and seat, add your name and email, and pay. Your pass opens straight away and the seat tour starts from there.' },
   { id: 'pay', q: 'How can I pay?',
