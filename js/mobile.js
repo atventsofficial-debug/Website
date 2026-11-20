@@ -33,6 +33,17 @@ function bind() {
   $$('#tabbar a').forEach(a => a.addEventListener('click', () => {
     if (a.getAttribute('aria-current') === 'page') pageToTop(true);
   }));
+  // On phones only <body> scrolls. When the keyboard opens for a field, iOS scrolls the window
+  // itself anyway and can leave it there after the keyboard closes: the page then looks right
+  // but every tap lands that far off (a concert card would not open). Put it back.
+  const pin = () => {
+    const f = document.activeElement;
+    if (f && f.matches('input, textarea, select, [contenteditable="true"]')) return;
+    if (matchMedia('(max-width: 760px)').matches && (window.scrollX || window.scrollY)) window.scrollTo(0, 0);
+  };
+  document.addEventListener('focusout', () => setTimeout(pin, 60));
+  window.addEventListener('scroll', pin, { passive: true });
+  window.visualViewport?.addEventListener('resize', () => setTimeout(pin, 60));
   // The home page's search field opens the concert list with its search ready to type in.
   $('#m-find')?.addEventListener('click', () => { findNext = true; });
 }
