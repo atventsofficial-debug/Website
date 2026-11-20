@@ -30,12 +30,21 @@ export const IMAGES = {
   'jkt48-15th': { src: 'assets/events/jkt48-15th.webp', alt: 'JKT48 AYO SENYUMLAH 15th Anniversary Concert poster with the seating plan', credit: 'Poster · JKT48, via Loket.com', pos: '35% 50%' },
   'thescript-arena': { src: 'assets/events/thescript-arena-official.webp', alt: 'The Script on stage', credit: 'Photo · via indonesia.travel', pos: '55% 50%' },
 
-  // Stand-in artwork made by Atvents until the promoter's poster is out. Swap in the official
-  // files under new names and change the credit.
-  'boyz2men-dewa19': { src: 'assets/events/boyz2men-dewa19.webp', alt: 'Boyz II Men with Dewa 19' + ' artwork', credit: 'Artwork · Atvents, until the official poster', pos: '50% 50%' },
-  'nflying-jakarta': { src: 'assets/events/nflying-jakarta.webp', alt: "N.Flying LIVE '&CON5: into REM'" + ' artwork', credit: 'Artwork · Atvents, until the official poster', pos: '50% 50%' },
-  'maroon5-asia': { src: 'assets/events/maroon5-asia.webp', alt: 'Maroon 5 Asia 2027' + ' artwork', credit: 'Artwork · Atvents, until the official poster', pos: '50% 50%' },
-  'm2m-two': { src: 'assets/events/m2m-two.webp', alt: 'M2M Two Tour' + ' artwork', credit: 'Artwork · Atvents, until the official poster', pos: '50% 50%' },
+  // Until a promoter publishes a poster, the event shows a free-licensed photo of the act (or
+  // the club) from Wikimedia Commons, credited as its licence asks. Sources:
+  // commons.wikimedia.org/wiki/File:2022_Gershwin_Prize_for_Popular_Song_(51930552139).jpg
+  // commons.wikimedia.org/wiki/File:180112_엔플라잉.jpg
+  // commons.wikimedia.org/wiki/File:Maroon_5_live_in_Jakarta.jpg
+  // commons.wikimedia.org/wiki/File:Marit_Larsen_and_Marion_Raven.jpg
+  // commons.wikimedia.org/wiki/File:Duel-Persija-Lawan-Borneo-010320-app-1.jpg
+  // commons.wikimedia.org/wiki/File:Fabio_Calonego_-_Persija.jpg
+  // Swap in the official poster under a new name when it is out.
+  'boyz2men-live': { src: 'assets/events/boyz2men-live.webp', alt: 'Boyz II Men performing on stage', credit: 'Photo · Library of Congress Life, CC0, via Wikimedia Commons', pos: '50% 50%' },
+  'nflying-band': { src: 'assets/events/nflying-band.webp', alt: 'The members of N.Flying', credit: 'Photo · 뉴스인스타 (NewsInStar), CC BY 3.0, via Wikimedia Commons', pos: '50% 40%' },
+  'maroon5-jakarta-live': { src: 'assets/events/maroon5-jakarta-live.webp', alt: 'Maroon 5 live at Jakarta International Stadium', credit: 'Photo · Netaholic13, CC BY-SA 4.0, via Wikimedia Commons', pos: '45% 40%' },
+  'm2m-live': { src: 'assets/events/m2m-live.webp', alt: 'Marit Larsen and Marion Raven of M2M performing', credit: 'Photo · Martijn van de Streek and Maxker89, CC BY-SA 2.0, via Wikimedia Commons', pos: '50% 45%' },
+  'persija-match': { src: 'assets/events/persija-match.webp', alt: 'Persija Jakarta in a league match', credit: 'Photo · Adityadandito, CC BY-SA 4.0, via Wikimedia Commons', pos: '50% 55%' },
+  'persija-calonego': { src: 'assets/events/persija-calonego.webp', alt: 'Persija Jakarta defender Fabio Calonego on the pitch', credit: 'Photo · Bogororange, CC0, via Wikimedia Commons', pos: '50% 40%' },
 };
 
 const RENDERS = {

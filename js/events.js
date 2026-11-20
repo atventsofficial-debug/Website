@@ -256,7 +256,7 @@ export const EVENTS = [
     place: INA_ARENA,
     sale: { opens: '2026-09-26T10:00', seller: 'loket', tiket: false },
     official: { name: 'Loket.com', url: 'https://www.loket.com/event/boyziimen-9des-3ux9' },
-    photo: 'event-concert-1', image: 'boyz2men-dewa19',
+    photo: 'event-concert-1', image: 'boyz2men-live',
   },
   {
     id: 'evt-nflying-jakarta', venue: 'basket-nflying',
@@ -278,7 +278,7 @@ export const EVENTS = [
     place: BASKET,
     sale: { seller: 'loket', tiket: false },
     official: { name: 'Loket.com', url: 'https://nflyingjakarta2027.com/' },
-    photo: 'event-concert-1', image: 'nflying-jakarta',
+    photo: 'event-concert-1', image: 'nflying-band',
   },
   {
     id: 'evt-bigbang-1', venue: 'jis-bigbang',
@@ -389,7 +389,7 @@ export const EVENTS = [
     place: JIS,
     sale: { opens: '2026-08-29T10:00', tiket: null },
     official: { name: 'tiket.com', url: 'https://www.tiket.com/en-id/to-do/maroon5asia2027-generalonsale' },
-    photo: 'event-stadium-end-1', image: 'maroon5-asia',
+    photo: 'event-stadium-end-1', image: 'maroon5-jakarta-live',
   },
   {
     id: 'evt-thescript-jakarta', venue: 'ina-script',
@@ -432,7 +432,7 @@ export const EVENTS = [
     place: TENNIS,
     sale: { opens: '2026-10-26T11:00', seller: 'loket', tiket: false },
     official: { name: 'Loket.com', url: 'https://m2minjakarta.com/' },
-    photo: 'event-concert-1', image: 'm2m-two',
+    photo: 'event-concert-1', image: 'm2m-live',
   },
 
   // Added 20 November 2026, each read off the seller's or promoter's own event page that day.
@@ -469,7 +469,7 @@ export const EVENTS = [
     blurb: "BOYNEXTDOOR bring their first world tour, 'KNOCK ON Vol.2', to ICE BSD City Hall 5–6. Standing pens on the floor, ONEDOOR VIP at the front; CAT 1 and CAT 2 are numbered seats.",
     prices: 'From tiket.com: ONEDOOR VIP A and B (standing) Rp 3,944,000; ORANGE A and B (standing) Rp 3,190,000; PINK A and B (standing) Rp 2,146,000; CAT 1 (numbered seating) Rp 3,190,000; CAT 2 (numbered seating) Rp 2,726,000. Prices include the 10% tax and the 6% platform fee. ORANGE A and PINK A were sold out on 20 November 2026.',
     extra: ['Sold only on tiket.com, up to six tickets per transaction. Wristband redemption is announced by the promoter (@pkentertainment.id, bndinjakarta.com). No under-12s in the standing pens.'] }),
-  SHOW({ id: 'evt-persija-baliutd', type: 'football', theme: 'gnr', title: 'Persija Jakarta vs Bali United', subtitle: 'BRI Super League 2026/27', dateISO: '2026-12-12T19:00', time: '19:00', place: GBK, venue: 'stadium',
+  SHOW({ id: 'evt-persija-baliutd', image: 'persija-match', type: 'football', theme: 'gnr', title: 'Persija Jakarta vs Bali United', subtitle: 'BRI Super League 2026/27', dateISO: '2026-12-12T19:00', time: '19:00', place: GBK, venue: 'stadium',
     host: 'Persija Jakarta', hostNote: 'Home club', sale: { seller: 'persija' }, url: 'https://www.persija.id/matches/persija-jakarta-vs-bali-united-fc-2026-12-12',
     blurb: 'Persija host Bali United at Gelora Bung Karno Main Stadium in the BRI Super League, kick-off 19:00 WIB.',
     branding: { home: 'PERSIJA', away: 'BALI UTD' },
@@ -481,7 +481,7 @@ export const EVENTS = [
     branding: { mark: 'JANICE TJEN', sub: 'GAME · SET · CELEBRATE', hall: 'TENNIS INDOOR SENAYAN', title: 'JANICE TJEN LIVE · JAKARTA' },
     prices: 'From Loket.com: Platinum Rp 7,000,000 and VIP Seats Rp 3,960,000 (both sold out), Courtside Rp 2,700,000, CAT 1 Rp 830,000, CAT 2 Rp 600,000. Gates and programme from 13:00 to 21:00 WIB.',
     standInNote: 'The 3D venue is our tennis centre court, with courtside rows along both sidelines and two tiers round it, not the promoter’s plan of Tennis Indoor (none has been published): use it for a feel of courtside and the stands, not to pick a seat.' }),
-  SHOW({ id: 'evt-persija-madura', type: 'football', theme: 'gnr', title: 'Persija Jakarta vs Madura United', subtitle: 'BRI Super League 2026/27', dateISO: '2026-12-16T15:30', time: '15:30', place: GBK, venue: 'stadium',
+  SHOW({ id: 'evt-persija-madura', image: 'persija-calonego', type: 'football', theme: 'gnr', title: 'Persija Jakarta vs Madura United', subtitle: 'BRI Super League 2026/27', dateISO: '2026-12-16T15:30', time: '15:30', place: GBK, venue: 'stadium',
     host: 'Persija Jakarta', hostNote: 'Home club', sale: { seller: 'persija' }, url: 'https://www.persija.id/matches/persija-jakarta-vs-madura-united-fc-2026-12-16',
     blurb: 'Persija host Madura United at Gelora Bung Karno Main Stadium in the BRI Super League, kick-off 15:30 WIB.',
     branding: { home: 'PERSIJA', away: 'MADURA UTD' },
