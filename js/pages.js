@@ -482,14 +482,14 @@ export function renderUnlock(eventId) {
         ${posterImg(e)}<span class="uf-event-text"><b>${esc(e.title)}</b><small>${esc(whenOf(e).date)} · ${esc(placeOf(e).name)}</small></span>${icon('i-arrow')}</a></li>`).join('')}</ul></div>
       <div class="s3d-m">
         <figure class="s3d-hero"><img src="assets/tour/seat-640.webp" srcset="assets/tour/seat-640.webp 640w, assets/tour/seat.webp 1200w" sizes="92vw" alt="The stage seen from a seat in 3D" decoding="async">
-          <figcaption><span class="s3d-chip">${icon('i-cube')}Seat view in 3D</span><b>See the stage from any seat, before you buy or before the night.</b><small>${formatFee()} · one seat, one concert · opens at once</small></figcaption></figure>
+          <figcaption><span class="s3d-chip">${icon('i-seat')}Seat view in 3D</span><b>See the stage from any seat, before you buy or before the night.</b><small>${formatFee()} · one seat, one concert · opens at once</small></figcaption></figure>
         <ol class="s3d-steps" aria-label="Three steps">
           <li class="is-on"><i>1</i><span>Concert</span></li><li><i>2</i><span>Your seat</span></li><li><i>3</i><span>Pay &amp; view</span></li>
         </ol>
         <label class="uf-field s3d-select">Which concert?<select id="s3d-ev"><option value="" selected disabled>Choose your concert</option>${list.map(e => `<option value="${esc(e.id)}">${esc(e.title)} · ${esc(whenOf(e).date)}</option>`).join('')}</select></label>
         <p class="s3d-note">${icon('i-seat')}<span>Next you pick the seat: the one on your ticket, or one you are thinking of buying. Category, section, row and seat, then pay.</span></p>
         ${mine.length ? `<div class="s3d-mine"><div class="uf-head"><h2>Your seat views</h2><small>Paid and open</small></div>
-          <ul>${mine.map(p => { const e = eventMeta(p.eventId), st = seatIn(p.eventId, p.seat); return `<li><a href="#tour-${esc(p.id)}">${icon('i-cube')}<span><b>${esc(e.title)}</b><small>${st ? esc(spotStats(st).map(([k, v]) => `${k} ${v}`).join(' · ')) : esc(whenOf(e).date)}</small></span>${icon('i-arrow')}</a></li>`; }).join('')}</ul></div>` : ''}
+          <ul>${mine.map(p => { const e = eventMeta(p.eventId), st = seatIn(p.eventId, p.seat); return `<li><a href="#tour-${esc(p.id)}">${icon('i-seat')}<span><b>${esc(e.title)}</b><small>${st ? esc(spotStats(st).map(([k, v]) => `${k} ${v}`).join(' · ')) : esc(whenOf(e).date)}</small></span>${icon('i-arrow')}</a></li>`; }).join('')}</ul></div>` : ''}
         <p class="s3d-foot">Just looking? Every concert in ${icon('i-search')}<a class="u" href="#concerts">Events</a> lets you look round its venue from above, free. The 3D view does not include a concert ticket: tickets are sold by the seller on each concert page.</p>
       </div>`;
     $('#s3d-ev').addEventListener('change', e => { if (e.target.value) location.hash = `#unlock-${e.target.value}`; });

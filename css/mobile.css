@@ -408,10 +408,12 @@
   .s3d-foot { margin: 8px 2px 0; font-size: 13px; line-height: 1.5; color: var(--muted); }
   .s3d-foot svg { width: 13px; height: 13px; margin: 0 3px -2px 2px; }
 
-  /* The tab bar: the middle tab is the seat view, a raised orange circle with a 3D cube,
-     unlike the magnifier of Events and the wallet of My passes. */
-  .tab-main b { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 50%; background: var(--coral); color: #fff; box-shadow: 0 6px 18px -6px rgba(236, 84, 70, 0.8); }
-  .tab-main b svg { width: 24px; height: 24px; }
+  /* The tab bar: the middle tab is the seat view, a raised orange circle with a seat and
+     "3D" under it, so it reads without a label; unlike the magnifier of Events and the
+     wallet of My passes. */
+  .tab-main b { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; width: 48px; height: 48px; border-radius: 50%; background: var(--coral); color: #fff; box-shadow: 0 6px 18px -6px rgba(236, 84, 70, 0.8); }
+  .tab-main b svg { width: 22px; height: 22px; margin-top: 2px; }
+  .tab-main b em { font: 800 10px/1 var(--font); font-style: normal; letter-spacing: 0.04em; }
   .tabbar .tab-main, .tabbar .tab-main[aria-current="page"] { background: none; color: #fff; }
   .tab-main[aria-current="page"] b { box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.9), 0 6px 18px -6px rgba(236, 84, 70, 0.8); }
 }
