@@ -1,7 +1,7 @@
 // Phones (up to 760 px wide) get the site as an app: a tab bar at the bottom, a slim top bar
 // with a back button on inner pages, and only what it takes to find a concert and pay for the
 // seat view (css/mobile.css hides the rest). Wider screens never see any of it.
-import { $, $$ } from './ui.js';
+import { $, $$, pageScrollY, pageToTop } from './ui.js';
 
 // The tab each page belongs to. A concert page and the checkout have a buy bar of their own
 // and hide the tab bar, as an app's detail page does.
@@ -25,12 +25,13 @@ function bind() {
   });
   // The top bar turns solid once the page moves under it.
   const nav = $('#nav');
-  const paint = () => nav.classList.toggle('is-solid', window.scrollY > 8);
-  addEventListener('scroll', paint, { passive: true });
+  const paint = () => nav.classList.toggle('is-solid', pageScrollY() > 8);
+  // Capture: on phones the scroll happens in <body>, whose scroll events do not bubble.
+  document.addEventListener('scroll', paint, { passive: true, capture: true });
   paint();
   // Tapping the tab you are on goes back to the top, as apps do.
   $$('#tabbar a').forEach(a => a.addEventListener('click', () => {
-    if (a.getAttribute('aria-current') === 'page') window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (a.getAttribute('aria-current') === 'page') pageToTop(true);
   }));
   // The home page's search field opens the concert list with its search ready to type in.
   $('#m-find')?.addEventListener('click', () => { findNext = true; });

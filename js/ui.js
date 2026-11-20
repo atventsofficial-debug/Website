@@ -150,3 +150,13 @@ export function fitGiants(root = document) {
   });
   if (document.fonts?.status !== 'loaded') document.fonts?.ready.then(() => root.querySelectorAll('.giant').forEach(fitGiant));
 }
+
+// On phones the page scrolls inside <body> rather than the window (css/mobile.css: so the
+// in-app browsers of Instagram and others never fold their bars and never move the tab bar).
+// These work for both: how far the page has scrolled, and back to the top.
+export const pageScrollY = () => window.scrollY || document.body.scrollTop || 0;
+export function pageToTop(smooth = false) {
+  const o = { top: 0, behavior: smooth ? 'smooth' : 'auto' };
+  window.scrollTo(o);
+  document.body.scrollTo?.(o);
+}

@@ -11,7 +11,7 @@ import { renderPartners } from './partners.js';
 import { renderAdmin } from './admin.js';
 import { openViewer, closeViewer, bindViewer, paintViewer, loadScene3d } from './viewer.js';
 import { mobileRoute } from './mobile.js';
-import { $, $$, state, on, toast, tickCountdowns, captureCampaign, fitGiants, bindSubscribe } from './ui.js';
+import { $, $$, state, on, toast, tickCountdowns, captureCampaign, fitGiants, bindSubscribe, pageToTop } from './ui.js';
 
 // Two sides of the site. The route decides which one shows; the toggle in the nav switches.
 const SIDE = 'atvents:side';
@@ -187,7 +187,7 @@ async function route() {
   // An anchor in the page, or the part the page is about (the checkout of #paid-<id>).
   const target = document.getElementById(r.anchor || r.focus || '');
   if (target && !target.hidden) requestAnimationFrame(() => target.scrollIntoView());
-  else if (prev !== r.view || r.view !== 'concerts') window.scrollTo(0, 0);
+  else if (prev !== r.view || r.view !== 'concerts') pageToTop();
 }
 
 window.atvents = state;   // for the browser console

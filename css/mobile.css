@@ -81,7 +81,11 @@
      the safe-area inset: Instagram's browser changes that inset while its top bar folds away
      on scroll, which made the tab bar jump up and down. No rubber-band bounce either, and the
      bar on its own layer so the blur does not wobble. */
-  html, body { overscroll-behavior-y: none; }
+  /* The page scrolls inside <body>, not the window. The browser's own page then never moves,
+     so Instagram's (and other apps') in-app browser keeps its bars still and never resizes the
+     page under the tab bar: that resizing is what made the bar jump while scrolling. */
+  html { height: 100%; overflow: hidden; }
+  body { height: 100%; overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-y: none; }
   @supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
     .tabbar { background: rgba(38, 34, 34, 0.42); -webkit-backdrop-filter: blur(22px) saturate(180%); backdrop-filter: blur(22px) saturate(180%); }
   }
