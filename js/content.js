@@ -13,7 +13,7 @@ export const FAQ_FANS = [
   { id: 'pay', q: 'How can I pay?',
     a: 'QRIS, GoPay, ShopeePay, bank transfer, card, or cash at Alfamart or Indomaret, right on this site. Midtrans handles the payment: card numbers go only into Midtrans’ own card form, and we never see your card, wallet or bank details. Once it is paid, the pass opens and its link comes to your email.' },
   { id: 'seller', q: 'Do you sell concert tickets?',
-    a: 'No. Each concert page names its official seller (tiket.com, Loket, TipTip or Traveloka) and links to it. The 3D view does not include a ticket.' },
+    a: 'No. Each concert page names its official seller (tiket.com, Loket, TipTip, Traveloka or the promoter’s own ticket site) and links to that concert’s own page. The 3D view does not include a ticket.' },
   { id: 'tour', q: 'What does the seat tour show?',
     a: 'Three views, in order: the whole venue from above, then your category with your seat marked, then the view from your seat. Drag to look round. At the end you can go back home or make a story video.' },
   { id: 'story', q: 'How does the story video work?',

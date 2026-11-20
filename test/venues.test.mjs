@@ -54,9 +54,13 @@ test('Tottenham Hotspur Stadium has the plan’s blocks, tiers and colours', () 
 test('concerts link to their seller and price every category; demos cover every layout', () => {
   for (const e of EVENTS) {
     assert.ok(isConcert(e.id), e.id);
-    // tiket.com, or for a show tiket.com does not sell, the seller that does.
+    // tiket.com, or for a show tiket.com does not sell, the seller or promoter's site that does.
+    // Every link opens that show's own page: never a seller's home page or a search, except
+    // for a show that has already taken place.
+    assert.match(e.official.url, /^https:\/\/[a-z0-9.-]+\.[a-z]+\//, e.id);
     if (e.official.name === 'tiket.com') assert.match(e.official.url, /^https:\/\/www\.tiket\.com\//, e.id);
-    else assert.match(e.official.url, /^https:\/\/(www\.loket\.com|tiptip\.id|www\.traveloka\.com)\//, e.id);
+    const generic = /^https:\/\/(www\.)?(loket\.com|tiptip\.id|tiket\.com|traveloka\.com)\/([a-z]{2}-[a-z]{2}\/)?(activities)?$|\/search\?/.test(e.official.url);
+    if (Date.parse(e.dateISO) > Date.parse('2026-11-20')) assert.ok(!generic, `${e.id}: links to its own page, not ${e.official.url}`);
     if (e.sale?.opens) assert.ok(!Number.isNaN(Date.parse(e.sale.opens.length === 7 ? `${e.sale.opens}-01` : e.sale.opens)), `${e.id}: sale date`);
     const v = getEvent(e.id);
     // Shows on a stand-in layout have no per-category prices yet; the rest price every category.

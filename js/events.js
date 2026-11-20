@@ -19,7 +19,8 @@ export const CITY = {
 // Concerts sold on tiket.com, as listed there in October 2026. Facts come from the
 // promoters' announcements as reported by the press; anything not announced shows as TBA.
 // We do not sell these tickets: `official` is where fans buy them, through our affiliate
-// link when one is set (config.js). Replace the search links with each show's own page.
+// link when one is set (config.js). Each `url` is that show's own page on the seller or the
+// promoter's ticket site, never a seller's home page or a search (checked November 2026).
 const TIKET = q => `https://www.tiket.com/en-id/to-do/search?title=${encodeURIComponent(q)}&productAllCategoryCodes=EVENT`;
 export const LISTED = 'November 2026';
 const PRICES = 'Prices as announced by the promoter, before tiket.com’s fees and tax. tiket.com has the live price and stock.';
@@ -70,9 +71,10 @@ export function saleInfo(e, now = Date.now()) {
   return { ms, soon, date, line: soon ? `Ticket sale opens ${date} on ${sellerOf(e)}.` : `Ticket sale opened ${date} on ${sellerOf(e)}.` };
 }
 const STANDIN = 'The seating plan for this show has not been published, so the 3D venue uses a stand-in layout. Use it for a feel of the venue, not to pick a seat.';
-const SHOW = ({ id, image, theme, title, subtitle, dateISO, place, venue, host = 'TBA', hostNote = 'Promoter', from = null, range = '', soldOutAll = false, blurb, extra = [], sale = {} }) => {
+const SHOW = ({ id, image, theme, title, subtitle, dateISO, place, venue, host = 'TBA', hostNote = 'Promoter', from = null, range = '', soldOutAll = false, blurb, extra = [], sale = {}, url = '' }) => {
   const cats = getVenue(venue).categories.map(c => ({ ...c, price: null }));
-  const official = SELLERS[sale.seller] || { name: 'tiket.com', url: TIKET(title) };
+  const seller = SELLERS[sale.seller] || { name: 'tiket.com', url: TIKET(title) };
+  const official = url ? { ...seller, url } : seller;
   return {
     id, venue, title, subtitle, dateISO, time: 'TBA', doors: 'TBA', ends: '', age: '',
     host, hostNote, blurb, cats, from, standIn: true,
@@ -97,6 +99,8 @@ const SHOW = ({ id, image, theme, title, subtitle, dateISO, place, venue, host =
   };
 };
 
+// Each day has its own page on tiket.com.
+const BTS_URL = { 1: 'bts-jakarta-day1', 2: 'bts-jakarta-day2', 3: 'bts-jakarta-3rdshowday' };
 const BTS_DAY = (n, dateISO, more = {}) => ({
   id: `evt-bts-arirang-${n}`, venue: 'stadium-round', theme: 'bts',
   title: 'BTS', subtitle: `World Tour ARIRANG · Day ${n}`,
@@ -112,7 +116,7 @@ const BTS_DAY = (n, dateISO, more = {}) => ({
   runs: [],
   branding: { wall: 'BTS', sub: 'WORLD TOUR · ARIRANG', band: ['BTS WORLD TOUR', 'ARIRANG', 'GELORA BUNG KARNO', 'JAKARTA'] },
   place: GBK,
-  official: { name: 'tiket.com', url: TIKET('BTS') },
+  official: { name: 'tiket.com', url: `https://www.tiket.com/en-id/to-do/${BTS_URL[n]}` },
   photo: `event-stadium-round-${n === 2 ? 2 : 1}`, image: 'bts-arirang',
   ...more,
 });
@@ -169,7 +173,7 @@ export const EVENTS = [
     soldOut: ['vvip'],
     place: JIS,
     sale: { opens: '2026-02-07T10:00', tiket: true },
-    official: { name: 'tiket.com', url: TIKET('My Chemical Romance') },
+    official: { name: 'tiket.com', url: 'https://www.tiket.com/en-id/to-do/my-chemical-romance-live-in-jakarta-2026' },
     photo: 'event-jis-mcr-1', image: 'mcr-jakarta',
   },
   BTS_DAY(1, '2026-12-26T00:00'),
@@ -206,7 +210,7 @@ export const EVENTS = [
     about: [
       "GA is standing on the whole floor, the GA VIP 'No.1 Obsession' package at its front, the sound desk at the back. CAT 1 runs round the first tier, with a CAT 1 VIP block on each side towards the stage. The VIP Box seats ring the hall above CAT 1.",
       'CAT 2 is the upper tier facing the stage and along the sides, CAT 3 its blocks nearest the stage, and CAT 4 the end blocks beside the stage, with a side view. Numbered seats from Rp 910K (CAT 4) to Rp 5M (VIP Box).',
-      PRICES,
+      'Prices as announced by the promoter, Chakra Live Asia. Sold only on 5sosjakarta.com, the promoter’s ticket site, not on tiket.com: it has the live price and stock.',
       MODEL,
     ],
     runs: [],
@@ -215,8 +219,8 @@ export const EVENTS = [
     // Four-piece: lead vocals on guitar, guitar, bass, drums.
     lineup: [{ role: 'vocals-guitar' }, { role: 'guitar' }, { role: 'bass' }, { role: 'drums' }],
     place: INA_ARENA,
-    sale: { opens: '2026-06-21T12:00', tiket: null },
-    official: { name: 'tiket.com', url: TIKET('5 Seconds of Summer') },
+    sale: { opens: '2026-06-21T12:00', tiket: false },
+    official: { name: '5sosjakarta.com', url: 'https://5sosjakarta.com/' },
     photo: 'event-concert-1', image: '5sos-jakarta',
   },
   {
@@ -261,7 +265,7 @@ export const EVENTS = [
     lineup: [{ role: 'vocals-guitar' }, { role: 'vocals' }, { role: 'guitar' }, { role: 'bass' }, { role: 'drums' }],
     place: BASKET,
     sale: { seller: 'loket', tiket: false },
-    official: SELLERS.loket,
+    official: { name: 'Loket.com', url: 'https://nflyingjakarta2027.com/' },
     photo: 'event-concert-1', image: 'nflying-jakarta',
   },
   {
@@ -283,7 +287,7 @@ export const EVENTS = [
     lineup: [{ role: 'vocals' }, { role: 'vocals' }, { role: 'vocals' }, { role: 'dancer' }, { role: 'dancer' }, { role: 'dancer' }, { role: 'dancer' }, { role: 'dancer' }, { role: 'dancer' }],
     place: JIS,
     sale: { opens: '2026-09-20T10:00', seller: 'loket', tiket: false },
-    official: { name: 'Loket.com', url: 'https://www.loket.com/' },
+    official: { name: 'Loket.com', url: 'https://bigbanginjakarta.com/' },
     photo: 'event-stadium-end-1', image: 'bigbang-cosmos',
   },
   {
@@ -305,7 +309,7 @@ export const EVENTS = [
     lineup: [{ role: 'vocals' }, { role: 'vocals' }, { role: 'vocals' }, { role: 'dancer' }, { role: 'dancer' }, { role: 'dancer' }, { role: 'dancer' }, { role: 'dancer' }, { role: 'dancer' }],
     place: JIS,
     sale: { opens: '2026-09-24T10:00', seller: 'loket', tiket: false },
-    official: { name: 'Loket.com', url: 'https://www.loket.com/' },
+    official: { name: 'Loket.com', url: 'https://bigbanginjakarta.com/' },
     photo: 'event-stadium-end-1', image: 'bigbang-cosmos',
   },
   {
@@ -327,10 +331,10 @@ export const EVENTS = [
     lineup: Array.from({ length: 7 }, () => ({ role: 'dancer' })),
     place: JIS,
     sale: { opens: '2026-07-13T15:00', seller: 'loket', tiket: false },
-    official: { name: 'Loket.com', url: 'https://www.loket.com/' },
+    official: { name: 'Loket.com', url: 'https://enhypeninjakarta.com/' },
     photo: 'event-stadium-end-1', image: 'enhypen-bloodsaga',
   },
-  SHOW({ id: 'evt-westlife-jakarta', theme: 'westlife', sale: { opens: '2026-05-23T10:00' }, image: 'westlife-25', title: 'Westlife', subtitle: '25: The Anniversary World Tour', dateISO: '2027-01-23T00:00', place: GBK, venue: 'stadium-end',
+  SHOW({ id: 'evt-westlife-jakarta', theme: 'westlife', sale: { opens: '2026-05-23T10:00', seller: 'loket' }, url: 'https://westlifestadiumshowjkt.com/', image: 'westlife-25', title: 'Westlife', subtitle: '25: The Anniversary World Tour', dateISO: '2027-01-23T00:00', place: GBK, venue: 'stadium-end',
     soldOutAll: true, blurb: 'Westlife mark 25 years at Gelora Bung Karno Main Stadium.' }),
   {
     id: 'evt-nancy-ajram', venue: 'istora-nancy',
@@ -350,7 +354,7 @@ export const EVENTS = [
     lineup: [{ role: 'vocals', female: true }, { role: 'keys' }, { role: 'keys' }, { role: 'guitar' }, { role: 'bass' }, { role: 'drums' }],
     place: ISTORA,
     sale: { opens: '2026-03-16T10:00', seller: 'traveloka', tiket: false },
-    official: SELLERS.traveloka,
+    official: { name: 'Traveloka', url: 'https://www.traveloka.com/en-id/activities/indonesia/product/nancy-ajram-live-in-jakarta-2027-tickets-8745573405209' },
     photo: 'event-concert-1', image: 'nancy-ajram',
   },
   {
@@ -372,7 +376,7 @@ export const EVENTS = [
     lineup: [{ role: 'vocals' }, { role: 'guitar' }, { role: 'guitar' }, { role: 'bass' }, { role: 'keys' }, { role: 'drums' }],
     place: JIS,
     sale: { opens: '2026-08-29T10:00', tiket: null },
-    official: { name: 'tiket.com', url: TIKET('Maroon 5') },
+    official: { name: 'tiket.com', url: 'https://www.tiket.com/en-id/to-do/maroon5asia2027-generalonsale' },
     photo: 'event-stadium-end-1', image: 'maroon5-asia',
   },
   {
@@ -394,7 +398,7 @@ export const EVENTS = [
     lineup: [{ role: 'vocals' }, { role: 'guitar' }, { role: 'guitar' }, { role: 'bass' }, { role: 'keys' }, { role: 'drums' }],
     place: INA_ARENA,
     sale: { opens: '2026-08-22T10:00', seller: 'tiptip', tiket: false },
-    official: SELLERS.tiptip,
+    official: { name: 'TipTip', url: 'https://info.tiptip.id/thescriptjkt2027' },
     photo: 'event-concert-1', image: 'thescript-arena',
   },
   {
@@ -415,7 +419,7 @@ export const EVENTS = [
     lineup: [{ role: 'vocals-guitar', female: true }, { role: 'vocals', female: true }, { role: 'guitar' }, { role: 'bass' }, { role: 'keys' }, { role: 'drums' }],
     place: TENNIS,
     sale: { opens: '2026-10-26T11:00', seller: 'loket', tiket: false },
-    official: SELLERS.loket,
+    official: { name: 'Loket.com', url: 'https://m2minjakarta.com/' },
     photo: 'event-concert-1', image: 'm2m-two',
   },
 ];
