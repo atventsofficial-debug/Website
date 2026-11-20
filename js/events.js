@@ -81,7 +81,10 @@ const STANDIN = 'The seating plan for this show has not been published, so the 3
 // `type` sets the list filter (EVENT_TYPES below); a match, a fight or a film runs on the
 // matching demo layout as its stand-in. `prices` is the promoter's own price list in words,
 // `standInNote` replaces the stand-in sentence, `until` keeps a film on the lists through its run.
-const SHOW = ({ id, image, theme, title, subtitle, dateISO, time = 'TBA', place, venue, type, host = 'TBA', hostNote = 'Promoter', from = null, range = '', prices = '', soldOutAll = false, blurb, extra = [], sale = {}, url = '', branding, standInNote = STANDIN, until, age = '' }) => {
+// `tickets` is the promoter's own category list ({ name, price, note, sold }): the event page
+// shows it as the tickets, while the 3D stand-in keeps its own generic blocks.
+const SHOW = ({ id, image, theme, title, subtitle, dateISO, time = 'TBA', place, venue, type, host = 'TBA', hostNote = 'Promoter', from = null, range = '', prices = '', soldOutAll = false, blurb, extra = [], sale = {}, url = '', branding, standInNote = STANDIN, until, age = '', tickets }) => {
+  const tks = tickets?.map(t => ({ ...t, id: `tk-${t.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}` }));
   const cats = venueInfo(venue).categories.map(c => ({ ...c, price: null }));
   const seller = SELLERS[sale.seller] || { name: 'tiket.com', url: TIKET(title) };
   const official = url ? { ...seller, url } : seller;
@@ -107,7 +110,8 @@ const SHOW = ({ id, image, theme, title, subtitle, dateISO, time = 'TBA', place,
     // is on their screens. A venue from a promoter's plan is drawn for its own show, so a
     // stand-in show there takes the end-stage stadium instead.
     photo: REAL_KEYS.includes(venue) ? 'event-stadium-end-1' : `event-${venue}-1`, image,
-    ...(soldOutAll ? { soldOut: cats.map(c => c.id) } : {}),
+    ...(tks ? { tickets: tks } : {}),
+    ...(soldOutAll || tks?.some(t => t.sold) ? { soldOut: [...(soldOutAll ? cats.map(c => c.id) : []), ...(tks || []).filter(t => t.sold || soldOutAll).map(t => t.id)] } : {}),
   };
 };
 
@@ -172,7 +176,7 @@ export const EVENTS = [
     host: 'Ravel Entertainment', hostNote: 'Promoter',
     blurb: 'My Chemical Romance headline Jakarta International Stadium. A standing festival floor in front of the stage; the three tiers are CAT 1, CAT 2 and CAT 3, each split into Center, facing the stage, and Left and Right.',
     about: [
-      'VVIP and VVIP Upgrade, the pen in front of the stage, sold out soon after sales opened in February; Festival, CAT 2 Center and CAT 3 Center were close behind.',
+      'VVIP and VVIP Upgrade, the pen in front of the stage, sold out soon after sales opened in February. On 21 November 2026 tiket.com also had CAT 2 Center and CAT 3 Center sold out; Festival and the other blocks were still on sale.',
       'Festival is standing, round the VVIP pen and back past the sound desk. CAT 1 is the lower tier, CAT 2 the middle tier and CAT 3 the upper tier, numbered seats from Rp 1.06M to Rp 3.3M. The MCR boxes sit between CAT 2 and CAT 3 in the Center stand. The stands behind the stage are closed.',
       PRICES,
       MODEL,
@@ -182,24 +186,25 @@ export const EVENTS = [
     theme: 'mcr',
     // Vocals, two guitars and bass, with keys and drums on tour.
     lineup: [{ role: 'vocals' }, { role: 'guitar' }, { role: 'guitar' }, { role: 'bass' }, { role: 'keys' }, { role: 'drums' }],
-    soldOut: ['vvip'],
+    soldOut: ['vvip', 'cat2c', 'cat3c'],
     place: JIS,
     sale: { opens: '2026-02-07T10:00', tiket: true },
     official: { name: 'tiket.com', url: 'https://www.tiket.com/en-id/to-do/my-chemical-romance-live-in-jakarta-2026' },
     photo: 'event-jis-mcr-1', image: 'mcr-jakarta',
   },
-  BTS_DAY(1, '2026-12-26T00:00'),
-  BTS_DAY(2, '2026-12-27T00:00'),
+  // Days 1 and 2 sold out on tiket.com, as checked on 21 November 2026.
+  BTS_DAY(1, '2026-12-26T00:00', { soldOut: ['vip', 'plat', 'cat1', 'cat2', 'cat3'] }),
+  BTS_DAY(2, '2026-12-27T00:00', { soldOut: ['vip', 'plat', 'cat1', 'cat2', 'cat3'] }),
   BTS_DAY(3, '2026-12-29T00:00', { soldOut: ['vip', 'plat', 'cat1', 'cat2', 'cat3'] }),
   {
     id: 'evt-gnr-jakarta', venue: 'madya-end',
     title: "Guns N' Roses", subtitle: 'World Tour 2026',
-    dateISO: '2026-11-21T00:00', time: 'TBA', doors: 'TBA', ends: '', age: '',
+    dateISO: '2026-11-21T17:00', time: '17:00', doors: '17:00', ends: '22:00', age: '',
     host: 'Rajawali Indonesia', hostNote: 'Promoter, with HKE · presented by bale by BTN',
     blurb: "Guns N' Roses bring their 2026 world tour to Stadion Madya at Gelora Bung Karno: an end stage in the south bend, three standing festival areas on the field and seats in both grandstands.",
     about: [
       'Festival A, B and C stand on the field, front to back. In both grandstands VIP is nearest the stage, then Tribune A, then Tribune B. General sale prices run from Rp 1.75M (Festival C) to Rp 7.5M (VIP).',
-      'Seat numbers come closer to the show. TipTip lists the gates open from 17:00 to 22:00 WIB. Delay towers and the front-of-house desk may block part of the view from some spots.',
+      'TipTip lists the show from 17:00 to 22:00 WIB and every category as sold out (21 November 2026). VIP, Tribune A and Tribune B are numbered seats; the seat number is emailed up to three days before the show. Up to eight tickets per transaction; children over 3 pay full price. Delay towers and the front-of-house desk may block part of the view from some spots.',
       `Prices as announced by the promoter, before the 10% tax and TipTip's fees. Sold on TipTip, not on tiket.com: TipTip has the live price and stock.`,
       MODEL,
     ],
@@ -208,6 +213,7 @@ export const EVENTS = [
     theme: 'gnr',
     // Vocals, two guitars, bass, two keyboards and drums.
     lineup: [{ role: 'vocals' }, { role: 'guitar' }, { role: 'guitar' }, { role: 'bass' }, { role: 'keys' }, { role: 'keys', female: true }, { role: 'drums' }],
+    soldOut: ['vip', 'fesa', 'triba', 'fesb', 'tribb', 'fesc'],
     place: MADYA,
     sale: { opens: '2026-07-30T10:00', seller: 'tiptip', tiket: false },
     official: { name: 'TipTip', url: 'https://tiptip.id/event/2e313def-fcca-4af8-ae16-2c243df736a8' },
@@ -266,7 +272,7 @@ export const EVENTS = [
     blurb: 'N.Flying bring their &CON5 tour to Basket Hall at Gelora Bung Karno. Cockpit and Runway stand on the floor; Cloud 9, Skyline and Horizon are the seats along the two sides.',
     about: [
       'On the floor Cockpit A and B stand at the front, Runway A and B behind them, with no barrier between Cockpit and Runway; a barrier runs down the middle, A on the left and B on the right, the sound desk at the back.',
-      'The seats are in the two side stands, in three bands from the floor up: Cloud 9 nearest the floor, then Skyline, then Horizon. Seat and queue numbers are announced closer to the show.',
+      'The seats are in the two side stands, in three bands from the floor up: Cloud 9 nearest the floor, then Skyline, then Horizon. Seat and queue numbers come seven days before the show, up to four tickets per transaction. On 21 November 2026 Runway A, both Skyline blocks and both Horizon blocks were sold out.',
       'Prices as announced by the promoter, before the government tax and the ticketing fee. Sold on Loket.com, not on tiket.com: Loket.com has the live price and stock.',
       MODEL,
     ],
@@ -275,6 +281,8 @@ export const EVENTS = [
     theme: 'nflying',
     // The band: lead vocals and rhythm guitar, a second singer, guitar, bass and drums.
     lineup: [{ role: 'vocals-guitar' }, { role: 'vocals' }, { role: 'guitar' }, { role: 'bass' }, { role: 'drums' }],
+    // Sold out on Loket.com on 21 November 2026.
+    soldOut: ['runwaya', 'skylinea', 'skylineb', 'horizona', 'horizonb'],
     place: BASKET,
     sale: { seller: 'loket', tiket: false },
     official: { name: 'Loket.com', url: 'https://nflyingjakarta2027.com/' },
@@ -287,7 +295,7 @@ export const EVENTS = [
     host: 'PK Entertainment', hostNote: 'Promoter, with AEG Presents Asia and Sound Rhythm',
     blurb: 'BIGBANG (G-Dragon, Taeyang and Daesung) celebrate 20 years with the XX: COSMOS world tour at Jakarta International Stadium. An X-shaped thrust runs out from the stage, the Ultimate VIP standing pens inside it.',
     about: [
-      'The first night sold out in presale; the promoter released more seats on 13 November 2026, in limited numbers.',
+      'The first night sold out in presale; the promoter released more seats on 13 November 2026, in limited numbers. On 21 November 2026 Loket.com listed only the Ultimate, Diamond and Gold VIP categories for this night, all sold out.',
       'On the floor: Ultimate VIP standing inside the X, Diamond VIP numbered chairs round it and Gold VIP chairs behind, by the sound desk. CAT 2 is the first tier, with CAT 1 A and B along its sides by the stage; CAT 3 the middle tier; CAT 4 the upper tier, with CAT 5 A and B along its sides by the stage. CAT 6 and CAT 7 are the restricted-view blocks beside the stage.',
       'Prices as announced by the promoter, before the 10% tax, the 6% platform fee and other fees. Seat numbers come closer to the show. Sold on Loket.com, not on tiket.com: Loket.com has the live price and stock.',
       MODEL,
@@ -297,6 +305,8 @@ export const EVENTS = [
     theme: 'bigbang',
     // Three singers, with dancers.
     lineup: [{ role: 'vocals' }, { role: 'vocals' }, { role: 'vocals' }, { role: 'dancer' }, { role: 'dancer' }, { role: 'dancer' }, { role: 'dancer' }, { role: 'dancer' }, { role: 'dancer' }],
+    // On 21 November 2026 Loket.com offered only the VIP categories for this night, all sold out.
+    soldOut: ['uvip', 'dvip', 'gvip', 'cat1a', 'cat1b', 'cat2', 'cat3', 'cat4', 'cat5a', 'cat5b', 'cat6a', 'cat6b', 'cat7a', 'cat7b'],
     place: JIS,
     sale: { opens: '2026-09-20T10:00', seller: 'loket', tiket: false },
     official: { name: 'Loket.com', url: 'https://bigbanginjakarta.com/' },
@@ -309,7 +319,7 @@ export const EVENTS = [
     host: 'PK Entertainment', hostNote: 'Promoter, with AEG Presents Asia and Sound Rhythm',
     blurb: 'BIGBANG (G-Dragon, Taeyang and Daesung) celebrate 20 years with the XX: COSMOS world tour at Jakarta International Stadium. An X-shaped thrust runs out from the stage, the Ultimate VIP standing pens inside it.',
     about: [
-      'The second night, added after the first sold out; more seats were released on 13 November 2026.',
+      'The second night, added after the first sold out; more seats were released on 13 November 2026. On 21 November 2026 Gold VIP, CAT 1 B and CAT 2 to CAT 5 were still on sale; Ultimate VIP, Diamond VIP, CAT 1 A, CAT 6 and CAT 7 were sold out.',
       'On the floor: Ultimate VIP standing inside the X, Diamond VIP numbered chairs round it and Gold VIP chairs behind, by the sound desk. CAT 2 is the first tier, with CAT 1 A and B along its sides by the stage; CAT 3 the middle tier; CAT 4 the upper tier, with CAT 5 A and B along its sides by the stage. CAT 6 and CAT 7 are the restricted-view blocks beside the stage.',
       'Prices as announced by the promoter, before the 10% tax, the 6% platform fee and other fees. Seat numbers come closer to the show. Sold on Loket.com, not on tiket.com: Loket.com has the live price and stock.',
       MODEL,
@@ -319,6 +329,8 @@ export const EVENTS = [
     theme: 'bigbang',
     // Three singers, with dancers.
     lineup: [{ role: 'vocals' }, { role: 'vocals' }, { role: 'vocals' }, { role: 'dancer' }, { role: 'dancer' }, { role: 'dancer' }, { role: 'dancer' }, { role: 'dancer' }, { role: 'dancer' }],
+    // Sold out on Loket.com on 21 November 2026.
+    soldOut: ['uvip', 'dvip', 'cat1a', 'cat6a', 'cat6b', 'cat7a', 'cat7b'],
     place: JIS,
     sale: { opens: '2026-09-24T10:00', seller: 'loket', tiket: false },
     official: { name: 'Loket.com', url: 'https://bigbanginjakarta.com/' },
@@ -341,22 +353,32 @@ export const EVENTS = [
     theme: 'enhypen',
     // Seven members, singing and dancing.
     lineup: Array.from({ length: 7 }, () => ({ role: 'dancer' })),
+    // Sold out on Loket.com on 21 November 2026.
+    soldOut: ['vipa', 'vipb', 'cat1', 'cat2a', 'cat2c', 'cat7a', 'cat7b'],
     place: JIS,
     sale: { opens: '2026-07-13T15:00', seller: 'loket', tiket: false },
     official: { name: 'Loket.com', url: 'https://enhypeninjakarta.com/' },
     photo: 'event-stadium-end-1', image: 'enhypen-bloodsaga',
   },
-  SHOW({ id: 'evt-westlife-jakarta', theme: 'westlife', sale: { opens: '2026-05-23T10:00', seller: 'loket' }, url: 'https://westlifestadiumshowjkt.com/', image: 'westlife-25', title: 'Westlife', subtitle: '25: The Anniversary World Tour', dateISO: '2027-01-23T00:00', place: GBK, venue: 'stadium-end',
-    soldOutAll: true, blurb: 'Westlife mark 25 years at Gelora Bung Karno Main Stadium.' }),
+  SHOW({ id: 'evt-westlife-jakarta', tickets: [
+      { name: 'VIP', price: 2750000, note: 'Numbered seat', sold: true }, { name: 'CAT 1', price: 2500000, note: 'Numbered seat', sold: true },
+      { name: 'CAT 2', price: 2250000, note: 'Numbered seat', sold: true }, { name: 'CAT 3', price: 1850000, note: 'Numbered seat', sold: true },
+      { name: 'CAT 4', price: 1450000, note: 'Numbered seat', sold: true }, { name: 'CAT 5', price: 1250000, note: 'Numbered seat', sold: true },
+      { name: 'CAT 6', price: 850000, note: 'Numbered seat', sold: true },
+    ], theme: 'westlife', sale: { opens: '2026-05-23T10:00', seller: 'loket' }, url: 'https://westlifestadiumshowjkt.com/', image: 'westlife-25', title: 'Westlife', subtitle: '25: The Anniversary World Tour', dateISO: '2027-01-23T00:00', place: GBK, venue: 'stadium-end',
+    host: 'Sound Rhythm', hostNote: 'Promoter, with Folago Pro', soldOutAll: true, blurb: 'Westlife mark 25 years at Gelora Bung Karno Main Stadium. Every category is a numbered seat, and all of them are sold out.',
+    prices: 'From the official ticket page (Loket.com, via westlifestadiumshowjkt.com): VIP Rp 2,750,000, CAT 1 Rp 2,500,000, CAT 2 Rp 2,250,000, CAT 3 Rp 1,850,000, CAT 4 Rp 1,450,000, CAT 5 Rp 1,250,000 and CAT 6 Rp 850,000, all numbered seats, before local tax and the admin fee. Every category was sold out on 21 November 2026.',
+    standInNote: 'The 3D venue is our end-stage stadium, not the promoter’s plan: the real show has no standing floor, only numbered seats from VIP to CAT 6. Use it for a feel of the view from the stands, not to pick a seat.',
+    extra: ['Up to six tickets per transaction in one category, one transaction per email, ID and phone number. Tickets are in the buyer’s name, as on their ID.'] }),
   {
     id: 'evt-nancy-ajram', venue: 'istora-nancy',
     title: 'Nancy Ajram', subtitle: 'Live in Jakarta',
-    dateISO: '2027-01-30T00:00', time: 'TBA', doors: 'TBA', ends: '', age: '',
+    dateISO: '2027-01-30T15:00', time: 'TBA', doors: '15:00', ends: '22:00', age: '',
     host: 'TBA', hostNote: 'Promoter',
     blurb: 'Nancy Ajram returns to Istora Senayan after her first Jakarta show in 2025. Festival stands in front of the stage; VIP chairs on the floor behind the sound desk, Diamond facing the stage, Platinum and Gold along the sides.',
     about: [
       'Festival is standing from the stage back to the sound desk; VIP is numbered chairs on the floor behind it. Diamond is the stand facing the stage, Platinum the first tier and Gold the second tier along both sides.',
-      'Prices as announced by the promoter, before the government tax, the platform fee and other fees. Sold on nancyajramjakarta.com and Traveloka, not on tiket.com.',
+      'Prices as announced by the promoter, before the government tax, the platform fee and other fees. Sold on nancyajramjakarta.com and Traveloka, not on tiket.com. Traveloka lists the gates open at 15:00 and the event running to 22:00 WIB; on 21 November 2026 it offered VIP, Diamond, Festival and Platinum, Gold no longer.',
       MODEL,
     ],
     runs: [],
@@ -364,6 +386,8 @@ export const EVENTS = [
     theme: 'nancy',
     // The singer and her band.
     lineup: [{ role: 'vocals', female: true }, { role: 'keys' }, { role: 'keys' }, { role: 'guitar' }, { role: 'bass' }, { role: 'drums' }],
+    // Gold was no longer offered on Traveloka on 21 November 2026.
+    soldOut: ['gold'],
     place: ISTORA,
     sale: { opens: '2026-03-16T10:00', seller: 'traveloka', tiket: false },
     official: { name: 'Traveloka', url: 'https://www.traveloka.com/en-id/activities/indonesia/product/nancy-ajram-live-in-jakarta-2027-tickets-8745573405209' },
@@ -378,7 +402,7 @@ export const EVENTS = [
     about: [
       'Festival is free standing on the whole floor, round the runway and the B-stage, back to the sound desk and the delay towers. The Early Entry Package (Rp 4.9M) is a Festival ticket with early entry and a gift.',
       'CAT 1 is the first tier facing the stage behind the sound desk, CAT 2 the rest of the first tier, CAT 3 the middle tier and CAT 5 the upper tier. CAT 4, CAT 6 and CAT 7 are the blocks beside the stage in the first, middle and upper tiers, sold as restricted view.',
-      'Prices as announced by the promoter, before the 10% tax, the 6% platform fee and the convenience fee. Sold only on maroon5jakarta2027.com.',
+      'Prices as announced by the promoter, before the 10% tax, the 6% platform fee and the convenience fee. tiket.com is the official ticketing partner (maroon5jakarta2027.com links to it); on 21 November 2026 its general sale page offered the Early Entry Package and Festival. Up to six tickets per account; no under-14s or anyone under 140 cm on the Festival floor, and no under-3s at all.',
       MODEL,
     ],
     runs: [],
@@ -387,14 +411,14 @@ export const EVENTS = [
     // Six-piece: lead vocals, two guitars, bass, keys, drums.
     lineup: [{ role: 'vocals' }, { role: 'guitar' }, { role: 'guitar' }, { role: 'bass' }, { role: 'keys' }, { role: 'drums' }],
     place: JIS,
-    sale: { opens: '2026-08-29T10:00', tiket: null },
+    sale: { opens: '2026-08-29T10:00', tiket: true },
     official: { name: 'tiket.com', url: 'https://www.tiket.com/en-id/to-do/maroon5asia2027-generalonsale' },
     photo: 'event-stadium-end-1', image: 'maroon5-jakarta-live',
   },
   {
     id: 'evt-thescript-jakarta', venue: 'ina-script',
     title: 'The Script', subtitle: 'Man in the Arena Tour 2027',
-    dateISO: '2027-04-03T00:00', time: 'TBA', doors: 'TBA', ends: '', age: '',
+    dateISO: '2027-04-03T19:15', time: '19:15', doors: 'TBA', ends: '22:00', age: '',
     host: 'Color Asia Live', hostNote: 'Promoter',
     blurb: 'The Script bring the Man in the Arena tour to Indonesia Arena, with The Calling as very special guest. Golden Festival stands round a catwalk from the stage, Festival behind it.',
     about: [
@@ -408,6 +432,8 @@ export const EVENTS = [
     theme: 'script',
     // Lead vocals, two guitars, bass, keys and drums.
     lineup: [{ role: 'vocals' }, { role: 'guitar' }, { role: 'guitar' }, { role: 'bass' }, { role: 'keys' }, { role: 'drums' }],
+    // Sold out on TipTip on 21 November 2026.
+    soldOut: ['festival', 'bronze', 'silver', 'gold'],
     place: INA_ARENA,
     sale: { opens: '2026-08-22T10:00', seller: 'tiptip', tiket: false },
     official: { name: 'TipTip', url: 'https://info.tiptip.id/thescriptjkt2027' },
@@ -429,6 +455,8 @@ export const EVENTS = [
     theme: 'm2m',
     // The duo, one on guitar, with their band.
     lineup: [{ role: 'vocals-guitar', female: true }, { role: 'vocals', female: true }, { role: 'guitar' }, { role: 'bass' }, { role: 'keys' }, { role: 'drums' }],
+    // No longer offered on Loket.com on 21 November 2026.
+    soldOut: ['cat4a', 'cat4b'],
     place: TENNIS,
     sale: { opens: '2026-10-26T11:00', seller: 'loket', tiket: false },
     official: { name: 'Loket.com', url: 'https://m2minjakarta.com/' },
@@ -444,7 +472,7 @@ export const EVENTS = [
     blurb: 'Simple Plan celebrate 25 years with The Bigger Than You Think! Tour at Tennis Indoor Senayan, a setlist from every era of the band, with LØLØ as special guest. CAT 1 and CAT 2 stand on the floor; CAT 3 faces the stage and CAT 4 A and B run along the sides.',
     about: [
       'From the promoter’s seating plan: CAT 1 is free standing at the front (Rp 1.65M) and CAT 2 free standing behind it, round the sound desk (Rp 950K). CAT 3 is numbered seats in the stand facing the stage (Rp 1.95M); CAT 4 A and CAT 4 B numbered seats along the two sides (Rp 1.45M). Seat numbers are given by the system within each category.',
-      'Prices as announced by the promoter, before tax and the admin fee. Sold on Loket.com through simpleplanindonesia.com, not on tiket.com: it has the live price and stock. The Surabaya show (28 Nov, Jatim Expo) is on the same site.',
+      'Prices as announced by the promoter, before tax and the admin fee. Sold on Loket.com through simpleplanindonesia.com, not on tiket.com. The Jakarta show was sold out on 21 November 2026; the Surabaya show (28 Nov, Jatim Expo) is on the same site.',
       MODEL,
     ],
     runs: [],
@@ -459,12 +487,19 @@ export const EVENTS = [
     theme: 'm2m',
     // Five-piece pop-punk: lead vocals, two guitars, bass, drums.
     lineup: [{ role: 'vocals' }, { role: 'guitar' }, { role: 'guitar' }, { role: 'bass' }, { role: 'drums' }],
+    // Sold out: the promoter's site and Loket.com, 21 November 2026.
+    soldOut: ['cat3', 'cat1', 'cat4a', 'cat4b', 'cat2'],
     place: TENNIS,
     sale: { opens: '2026-05-05T10:00', seller: 'loket', tiket: false },
     official: { name: 'Loket.com', url: 'https://simpleplanindonesia.com/' },
     photo: 'event-concert-1', image: 'simpleplan-jakarta',
   },
-  SHOW({ id: 'evt-boynextdoor-jakarta', image: 'boynextdoor-jakarta', time: '19:00', theme: 'enhypen', title: 'BOYNEXTDOOR', subtitle: "TOUR 'KNOCK ON Vol.2' in Jakarta", dateISO: '2026-12-05T19:00', place: ICE_BSD, venue: 'concert',
+  SHOW({ id: 'evt-boynextdoor-jakarta', tickets: [
+      { name: 'ONEDOOR VIP A', price: 3944000, note: 'Standing · incl. tax and fee' }, { name: 'ONEDOOR VIP B', price: 3944000, note: 'Standing · incl. tax and fee' },
+      { name: 'ORANGE A', price: 3190000, note: 'Standing · incl. tax and fee', sold: true }, { name: 'ORANGE B', price: 3190000, note: 'Standing · incl. tax and fee' },
+      { name: 'PINK A', price: 2146000, note: 'Standing · incl. tax and fee', sold: true }, { name: 'PINK B', price: 2146000, note: 'Standing · incl. tax and fee' },
+      { name: 'CAT 1', price: 3190000, note: 'Numbered seat · incl. tax and fee' }, { name: 'CAT 2', price: 2726000, note: 'Numbered seat · incl. tax and fee' },
+    ], image: 'boynextdoor-jakarta', time: '19:00', theme: 'enhypen', title: 'BOYNEXTDOOR', subtitle: "TOUR 'KNOCK ON Vol.2' in Jakarta", dateISO: '2026-12-05T19:00', place: ICE_BSD, venue: 'concert',
     host: 'PK Entertainment', from: 2146000, sale: { seller: 'tiket', tiket: true }, url: 'https://www.tiket.com/en-id/to-do/boynextdoor-tour-knock-on-vol2',
     blurb: "BOYNEXTDOOR bring their first world tour, 'KNOCK ON Vol.2', to ICE BSD City Hall 5–6. Standing pens on the floor, ONEDOOR VIP at the front; CAT 1 and CAT 2 are numbered seats.",
     prices: 'From tiket.com: ONEDOOR VIP A and B (standing) Rp 3,944,000; ORANGE A and B (standing) Rp 3,190,000; PINK A and B (standing) Rp 2,146,000; CAT 1 (numbered seating) Rp 3,190,000; CAT 2 (numbered seating) Rp 2,726,000. Prices include the 10% tax and the 6% platform fee. ORANGE A and PINK A were sold out on 20 November 2026.',
@@ -475,7 +510,10 @@ export const EVENTS = [
     branding: { home: 'PERSIJA', away: 'BALI UTD' },
     standInNote: 'The 3D venue is our generic football stadium, not GBK’s own stands: use it for a feel of the view from the side or behind the goal, not to pick a seat.',
     extra: ['Tickets are sold by the club on persija.id (sign in under Tickets), usually in the week before the match. Prices and stands had not been announced on 20 November 2026.'] }),
-  SHOW({ id: 'evt-janice-tjen-live', image: 'janice-tjen-live', type: 'sport', theme: 'nancy', title: 'Janice Tjen Live', subtitle: 'Game. Set. Celebrate.', dateISO: '2026-12-12T13:00', time: '13:00', place: TENNIS, venue: 'tennis',
+  SHOW({ id: 'evt-janice-tjen-live', tickets: [
+      { name: 'Platinum', price: 7000000, sold: true }, { name: 'VIP Seats', price: 3960000, sold: true },
+      { name: 'Courtside', price: 2700000 }, { name: 'CAT 1', price: 830000 }, { name: 'CAT 2', price: 600000 },
+    ], image: 'janice-tjen-live', type: 'sport', theme: 'nancy', title: 'Janice Tjen Live', subtitle: 'Game. Set. Celebrate.', dateISO: '2026-12-12T13:00', time: '13:00', place: TENNIS, venue: 'tennis',
     host: 'Tatler Indonesia', hostNote: 'Organiser · Tatler Sports', from: 600000, sale: { seller: 'loket' }, url: 'https://www.loket.com/event/janice-tjen-live-game-set-celebrate_w8U1',
     blurb: 'Indonesia’s top-ranked tennis player Janice Tjen comes home for an exhibition match against Thailand’s Mananchaya Sawangkaew at Tennis Indoor Senayan.',
     branding: { mark: 'JANICE TJEN', sub: 'GAME · SET · CELEBRATE', hall: 'TENNIS INDOOR SENAYAN', title: 'JANICE TJEN LIVE · JAKARTA' },
@@ -487,13 +525,17 @@ export const EVENTS = [
     branding: { home: 'PERSIJA', away: 'MADURA UTD' },
     standInNote: 'The 3D venue is our generic football stadium, not GBK’s own stands: use it for a feel of the view from the side or behind the goal, not to pick a seat.',
     extra: ['Tickets are sold by the club on persija.id (sign in under Tickets), usually in the week before the match. Prices and stands had not been announced on 20 November 2026.'] }),
-  SHOW({ id: 'evt-dune-part-three', image: 'dune-part-three', type: 'cinema', theme: 'bocelli', title: 'Dune: Part Three', subtitle: 'In cinemas', dateISO: '2026-12-18T00:00', until: '2027-01-15T00:00', place: XXI, venue: 'cinema',
+  SHOW({ id: 'evt-dune-part-three', image: 'dune-part-three', type: 'cinema', theme: 'bocelli', title: 'Dune: Part Three', subtitle: 'In cinemas', dateISO: '2026-12-16T00:00', until: '2027-01-15T00:00', place: XXI, venue: 'cinema',
     host: 'Warner Bros. Pictures', hostNote: 'Studio · directed by Denis Villeneuve', sale: { seller: 'xxi' }, url: 'https://21cineplex.com/dune-part-three,139921,26DPTE.htm',
-    blurb: 'Denis Villeneuve’s Dune: Part Three, with Timothée Chalamet, Zendaya, Florence Pugh and Robert Pattinson, opens worldwide on 18 December 2026.',
+    blurb: 'Denis Villeneuve’s Dune: Part Three, with Timothée Chalamet, Zendaya, Jason Momoa, Florence Pugh and Robert Pattinson, opens in Indonesian cinemas on 16 December 2026.',
     prices: 'Ticket prices depend on the cinema, the studio (regular, IMAX, premiere) and the day; XXI shows them with the showtimes in the M-Tix app and on 21cineplex.com.',
     standInNote: 'The 3D view is our cinema studio (rows A to N, sweetboxes at the back), not a particular XXI studio: use it to compare a front, middle or back row.',
-    extra: ['Cinema XXI listed it as coming soon on 20 November 2026; the Indonesian opening day is confirmed when XXI opens the showtimes. We keep it on the list until mid-January.'] }),
-  SHOW({ id: 'evt-jkt48-15th', image: 'jkt48-15th', theme: 'maroon5', title: 'JKT48', subtitle: 'AYO SENYUMLAH · 15th Anniversary Concert', dateISO: '2026-12-19T18:30', time: '18:30', place: GRAHA_UNESA, venue: 'concert',
+    extra: ['Cinema XXI listed it as coming soon on 21 November 2026, and the Indonesian poster gives 16 December; showtimes and seats open on M-Tix closer to the day. We keep it on the list until mid-January.'] }),
+  SHOW({ id: 'evt-jkt48-15th', tickets: [
+      { name: 'CAT 1', price: 3500000, note: 'Presale only, with soundcheck and photo', sold: true }, { name: 'CAT 2', price: 2200000, note: 'With group photo', sold: true },
+      { name: 'CAT 3', price: 1200000, sold: true }, { name: 'CAT 4', price: 1000000 }, { name: 'CAT 5', price: 750000, sold: true },
+      { name: 'CAT 6', price: 550000, sold: true }, { name: 'CAT 7', price: 450000, sold: true },
+    ], image: 'jkt48-15th', theme: 'maroon5', title: 'JKT48', subtitle: 'AYO SENYUMLAH · 15th Anniversary Concert', dateISO: '2026-12-19T18:30', time: '18:30', place: GRAHA_UNESA, venue: 'concert',
     host: 'JKT48', hostNote: 'Organiser', from: 450000, sale: { opens: '2026-11-16T12:00', seller: 'loket' }, url: 'https://www.loket.com/event/jkt48-ayosenyumlah-concert',
     blurb: 'JKT48 mark fifteen years, and their 28th single “Ayo Senyumlah”, with an anniversary concert at Graha UNESA in Surabaya, 18:30 to 20:30 WIB.',
     prices: 'From Loket.com (general sale): CAT 3 Rp 1,200,000, CAT 4 Rp 1,000,000, CAT 5 Rp 750,000, CAT 6 Rp 550,000, CAT 7 Rp 450,000. On 20 November 2026 only CAT 4 was still available.',

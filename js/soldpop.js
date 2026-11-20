@@ -16,12 +16,12 @@ function soldText(a) {
   const seller = sellerOf(e), cat = a.dataset.outCat;
   if (cat) {
     if (!soldOut(e, cat)) return null;
-    const name = venue.catById[cat]?.name || 'This category';
+    const name = venue.catById[cat]?.name || e.tickets?.find(t => t.id === cat)?.name || 'This category';
     return { title: `${name} tickets are sold out`, text: `${seller} lists ${name} as sold out for ${e.title}. The promoter sometimes releases more, so it can be worth a look.` };
   }
-  const gone = venue.categories.filter(c => soldOut(e, c.id));
+  const cats = e.tickets || venue.categories, gone = cats.filter(c => soldOut(e, c.id));
   if (!gone.length) return null;
-  if (gone.length === venue.categories.length) return { title: 'Tickets are sold out', text: `${seller} lists every category of ${e.title} as sold out. The promoter sometimes releases more, so it can be worth a look.` };
+  if (gone.length === cats.length) return { title: 'Tickets are sold out', text: `${seller} lists every category of ${e.title} as sold out. The promoter sometimes releases more, so it can be worth a look.` };
   const names = gone.map(c => c.name);
   const list = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : names[0];
   return { title: `${list} ${gone.length > 1 ? 'are' : 'is'} sold out`, text: `On ${seller}, ${list} ${gone.length > 1 ? 'are' : 'is'} sold out for ${e.title}. The other categories are still on sale.` };

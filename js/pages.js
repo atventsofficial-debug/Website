@@ -416,7 +416,8 @@ export function renderEvent(id) {
   render3dPanel(e, venue);
 
   $('#ev-tickets-note').textContent = `${e.about.find(p => p.startsWith('Prices as announced')) || 'Prices as announced by the promoter.'} Each ticket opens the ${typeOf(e) === 'concert' ? 'concert' : 'event'} on ${sellerOf(e)}.`;
-  $('#ev-cats').innerHTML = venue.categories.map((c, i) => catTicket(e, c, { dark: i === 0, meta: live ? undefined : '<span>This concert has taken place.</span>' })).join('');
+  // A stand-in show lists the promoter's own categories, when we have them.
+  $('#ev-cats').innerHTML = (e.tickets || venue.categories).map((c, i) => catTicket(e, c, { dark: i === 0, meta: live ? undefined : '<span>This concert has taken place.</span>' })).join('');
 
   const gap = gapText(e);
   $('#ev-runs-sec').hidden = !e.runs.length;

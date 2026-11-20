@@ -66,7 +66,9 @@ test('concerts link to their seller and price every category; demos cover every 
     // Shows on a stand-in layout have no per-category prices yet; the rest price every category.
     if (e.standIn) assert.ok(v.categories.every(c => c.price == null) && (e.from == null || e.from > 0), `${e.id}: stand-in prices`);
     else assert.ok(v.categories.every(c => c.price > 0), `${e.id}: every category has its announced price`);
-    for (const c of e.soldOut || []) assert.ok(v.catById[c], `${e.id}: sold-out category ${c} exists`);
+    // A sold-out mark names a category of the layout or, on a stand-in, of the promoter's own list.
+    for (const c of e.soldOut || []) assert.ok(v.catById[c] || e.tickets?.some(t => t.id === c), `${e.id}: sold-out category ${c} exists`);
+    for (const t of e.tickets || []) assert.ok(e.standIn && t.price > 0, `${e.id}: promoter tickets ${t.name}`);
   }
   // A demo for every generic layout; the real venues are only seen with their show.
   assert.deepEqual(DEMOS.map(d => d.venue).sort(), VENUE_KEYS.filter(k => !REAL_KEYS.includes(k)).sort());
