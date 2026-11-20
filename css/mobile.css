@@ -51,7 +51,7 @@
 }
 
 @media (max-width: 760px) {
-  :root { --bar-h: 58px; --tab-h: 62px; --gut: 16px; }
+  :root { --bar-h: 58px; --tab-h: 80px; --gut: 16px; }   /* tab bar: 64 px and 8 px under it, 8 over */
   html { scroll-padding-top: 72px; }
   body { padding-bottom: calc(var(--tab-h) + env(safe-area-inset-bottom)); -webkit-tap-highlight-color: transparent; }
   body.is-focus { padding-bottom: 0; }
@@ -71,16 +71,20 @@
   .hero { padding-top: calc(var(--bar-h) + 12px); }
 
   /* ---------- tab bar ---------- */
-  .tabbar { position: fixed; z-index: 50; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); height: calc(var(--tab-h) + env(safe-area-inset-bottom)); padding: 0 4px env(safe-area-inset-bottom); background: rgba(14, 12, 12, 0.98); border-top: 1px solid var(--line); }
-  .tabbar > * { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-width: 0; padding: 0; border: 0; background: none; color: var(--dim); font: 600 10.5px/1 var(--font); letter-spacing: 0.01em; white-space: nowrap; cursor: pointer; transition: color .15s; }
-  .tabbar > * > svg { width: 22px; height: 22px; }
-  .tabbar > :active { scale: 0.94; }
-  .tabbar [aria-current="page"], .tabbar [aria-expanded="true"] { color: var(--text); }
-  .tabbar a[aria-current="page"]:not(.tab-main)::before { content: ""; position: absolute; top: 0; left: 50%; width: 22px; height: 2px; margin-left: -11px; border-radius: 0 0 2px 2px; background: var(--coral); }
-  .tab-main { color: var(--text); }
-  .tab-main b { display: grid; place-items: center; width: 48px; height: 32px; border-radius: 12px; background: var(--coral); color: #fff; box-shadow: 0 6px 16px -6px var(--glow); }
-  .tab-main b svg { width: 20px; height: 20px; }
-  .tab-badge { position: absolute; top: 7px; left: calc(50% + 6px); margin: 0; }
+  /* The tab bar floats: a dark pill over the page, clear of the screen's edges and its home
+     bar, with the icons alone and a lighter pill behind the page you are on. The names stay
+     for screen readers. Solid colour, no blur (see the top of this file). */
+  .tabbar { position: fixed; z-index: 50; left: 12px; right: 12px; bottom: calc(8px + env(safe-area-inset-bottom)); display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: center; height: 64px; padding: 0 6px; border-radius: 999px; background: rgba(30, 27, 27, 0.96); border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 12px 32px -10px rgba(0, 0, 0, 0.75); }
+  .tabbar > * { position: relative; display: grid; place-items: center; height: 52px; min-width: 0; padding: 0; border: 0; border-radius: 999px; background: none; color: rgba(244, 240, 238, 0.62); cursor: pointer; transition: color .15s, background-color .2s; }
+  .tabbar > * > span:not(.badge) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .tabbar > * > svg, .tab-main b svg { width: 26px; height: 26px; }
+  .tabbar > :active { scale: 0.92; }
+  .tabbar [aria-current="page"], .tabbar [aria-expanded="true"] { color: #fff; background: rgba(255, 255, 255, 0.12); }
+  .tabbar:has([aria-expanded="true"]) [aria-current="page"] { color: rgba(244, 240, 238, 0.62); background: none; }   /* one lit pill: the open menu's */
+  .tab-main { color: var(--coral); }
+  .tab-main b { display: grid; place-items: center; }
+  .tab-main[aria-current="page"] { color: var(--coral); }
+  .tab-badge { position: absolute; top: 6px; left: calc(50% + 4px); margin: 0; background: #ff3040; }
   body.is-focus .tabbar, body[data-view="seats"] .tabbar { display: none; }
 
   /* ---------- More: the menu as a sheet above the tab bar ---------- */
