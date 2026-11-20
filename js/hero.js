@@ -3,7 +3,7 @@
 // screens (herophoto.js), and a card at the bottom gives the facts and the way to buy. Slides move on by themselves
 // (with a pause button), or with the arrows, the tabs, a swipe or the arrow keys.
 import { formatFee } from './rules.js';
-import { placeOf, minPrice, allSoldOut, sellerOf, onTiket, saleInfo } from './events.js';
+import { placeOf, minPrice, sellerOf, onTiket, saleInfo } from './events.js';
 import { formatRpShort } from './layouts.js';
 import { IMAGES, cover, srcsetOf } from './media.js';
 import { whenOf } from './when.js';
@@ -53,7 +53,6 @@ function card(e, n) {
   const nights = datesOf(e).filter(upcoming), live = nights.length > 0;
   const dates = live ? nights : [e];
   const from = Math.min(...dates.map(x => minPrice(x.id) ?? Infinity));
-  const gone = dates.every(allSoldOut);
   const art = IMAGES[e.image];
   const seller = sellerOf(e), sale = saleInfo(e);
   // The countdown runs to the opening of the ticket sale; once open, the card says since when.
@@ -62,7 +61,7 @@ function card(e, n) {
       : `<p class="hs-price hs-sale"><small>Ticket sale</small><b>${sale ? `Open since ${esc(sale.date)}` : 'Open now'}</b></p>`;
   return `<article class="hs-card" role="group" aria-roledescription="slide" aria-label="${n + 1} of ${hero.list.length}: ${esc(e.title)}">
     <div class="hs-body"><div class="hs-info">
-      <p class="eyebrow">${!live ? 'Taken place' : gone ? `Sold out on ${esc(seller)}` : `On sale on ${esc(seller)}`} · ${esc(v.city)}</p>
+      <p class="eyebrow">${!live ? 'Taken place' : `On sale on ${esc(seller)}`} · ${esc(v.city)}</p>
       <h2 class="hs-title">${esc(e.title)}</h2>
       <p class="hs-sub">${esc(e.subtitle.replace(/ · Day \d+$/, ''))}</p>
       <ul class="hs-facts">
@@ -73,7 +72,7 @@ function card(e, n) {
     </div>
     <div class="hs-buy">
       ${saleBox}
-      <p class="hs-price"><small>${gone ? 'Sold out, as listed' : from < Infinity ? `From, on ${esc(seller)}` : 'Tickets on'}</small><b>${from < Infinity ? formatRpShort(from) : esc(seller)}</b></p>
+      <p class="hs-price"><small>${from < Infinity ? `From, on ${esc(seller)}` : 'Tickets on'}</small><b>${from < Infinity ? formatRpShort(from) : esc(seller)}</b></p>
       <div class="row-btns">
         ${live ? `<a class="btn btn-coral" href="#unlock-${esc(e.id)}"><span class="hs-wide">See my seat in 3D</span><span class="hs-narrow">My seat in 3D</span> ${icon('i-arrow')}</a>` : ''}
         <a class="btn btn-line" href="#event-${esc(e.id)}"><span class="hs-wide">Concert details</span><span class="hs-narrow">Details</span></a>

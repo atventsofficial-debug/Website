@@ -3,6 +3,7 @@
 import { getEvent, isConcert, demoFor } from './events.js';
 import { LocalStore, ApiStore, PayStore } from './store.js';
 import { bindBuyLinks, importPass, passes } from './passes.js';
+import { bindSoldOut } from './soldpop.js';
 import { validAffiliate, formatFee, PAYMENT_ID } from './rules.js';
 import { stopEventHero, renderHome, renderConcerts, renderEvent, renderUnlock, renderPaid, renderFootage, renderPasses, renderFaq, bindPassButtons, navCount } from './pages.js';
 import { startHero, stopHero } from './hero.js';
@@ -65,6 +66,7 @@ async function boot() {
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && menuOpen()) { setMenu(false); burger.focus(); } });
   document.addEventListener('pointerdown', e => { if (menuOpen() && !e.target.closest('#menu, #burger, [data-tab="more"]')) setMenu(false); });
   setInterval(tickCountdowns, 1000);
+  bindSoldOut();
   bindBuyLinks();
   bindPassButtons();
   if ($('#foot-alert')) bindSubscribe($('#foot-alert'), { kind: 'newsletter', done: 'You’re on the list. The next big concert lands in your inbox.' }, $('#foot-alert-msg'));

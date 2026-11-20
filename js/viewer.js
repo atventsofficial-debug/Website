@@ -215,7 +215,7 @@ function renderCats() {
   const v = state.venue, own = tourPass()?.cat;
   $('#cats').innerHTML = v.categories.map(c => `
     <button class="cat-pill${own && c.id !== own ? ' is-off' : ''}${own === c.id ? ' is-own' : ''}" type="button" data-cat="${c.id}" aria-pressed="${state.filter === c.id}"${own && c.id !== own ? ' aria-disabled="true"' : ''}>
-      <b><i class="cat-dot" style="background:${esc(c.color)}"></i>${esc(c.name)}</b><span>${v.meta.soldOut?.includes(c.id) ? 'Sold out' : esc(priceText(c))}</span>
+      <b><i class="cat-dot" style="background:${esc(c.color)}"></i>${esc(c.name)}</b><span>${esc(priceText(c))}</span>
     </button>`).join('');
 }
 
@@ -282,9 +282,8 @@ function fillSeatCard(seat) {
   st.className = `sc-status${mine || friend ? ' is-mine' : locked ? ' is-locked' : ''}`;
   $('#sc-close').hidden = !locked;
   if (locked) {
-    const gone = e.soldOut?.includes(seat.cat);
     $('#sc-dist').textContent = friend ? `Your friend sits here. Unlock a seat near them for ${formatFee()} to see their view.`
-      : `${gone ? `${cat.name} is sold out, as listed. ` : ''}Have a ticket here? Unlock the view from your seat for ${formatFee()}.`;
+      : `Have a ticket here? Unlock the view from your seat for ${formatFee()}.`;
     $('#sc-actions').innerHTML = p?.status === 'confirmed'
       ? `<a class="btn btn-coral" href="#tour-${esc(p.id)}">Start my seat tour ${icon('i-arrow')}</a>`
       : p?.status === 'checking' ? `<a class="btn btn-line" href="#passes">${icon('i-clock')}Waiting for payment</a>`

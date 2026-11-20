@@ -101,8 +101,6 @@ body[data-view="seats"] .frame { display: none; }
 .tag-coral { background: var(--coral); color: #fff; }
 .tag-white { background: #fff; color: var(--ink); }
 .tag-dark { background: rgba(20, 18, 18, 0.9); color: var(--text); }
-/* Sold out, whole or in part: red, apart from the brand's orange. */
-.tag-sold { background: #d7191f; color: #fff; }
 .tag-line { border: 1px solid var(--line-2); color: var(--text); background: rgba(20, 18, 18, 0.6); }
 .pill { display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 18px; border-radius: 999px; border: 1.5px solid var(--line-2); background: transparent; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: background .2s, border-color .2s, color .2s; }
 .pill span { font: 700 11px/1 var(--font); color: var(--muted); }
@@ -2491,3 +2489,25 @@ body { font-family: var(--font); font-feature-settings: "cv11", "ss01"; }
 @keyframes cap-flash { 0% { opacity: .85; } 100% { opacity: 0; } }
 @keyframes cap-blink { 50% { opacity: 0; } }
 .cap-top { z-index: 2; }
+
+/* ---------- the sold-out note (js/soldpop.js) ----------
+   Opens over the page when a fan clicks through to the seller for tickets it lists as sold
+   out. A card in the middle on wide screens, a sheet from the bottom on phones. */
+.soldpop { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; padding: 20px; background: rgba(0, 0, 0, 0.62); }
+.soldpop[hidden] { display: none; }
+.soldpop-card { position: relative; width: min(440px, 100%); padding: 28px 26px 24px; border-radius: 22px; background: #1f1c1c; border: 1px solid rgba(255, 255, 255, 0.12); box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.8); color: var(--text); animation: soldpop-in .22s cubic-bezier(.2, .9, .3, 1); }
+.soldpop-card h2 { margin: 10px 0 8px; font: 700 22px/1.2 var(--font); letter-spacing: -0.01em; }
+.soldpop-card > p:not(.eyebrow) { margin: 0; font-size: 14.5px; line-height: 1.5; color: rgba(244, 240, 238, 0.78); }
+.soldpop-card .soldpop-3d { display: flex; gap: 10px; align-items: flex-start; margin-top: 16px; padding: 12px 14px; border-radius: 14px; background: rgba(236, 84, 70, 0.12); color: var(--text); }
+.soldpop-3d svg { flex: none; width: 18px; height: 18px; margin-top: 2px; color: var(--coral); }
+.soldpop-actions { display: grid; gap: 10px; margin-top: 20px; }
+.soldpop-actions .btn { width: 100%; height: 50px; }
+.soldpop-x { position: absolute; top: 14px; right: 14px; display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 50%; background: rgba(255, 255, 255, 0.08); color: var(--text); cursor: pointer; }
+.soldpop-x svg { width: 16px; height: 16px; }
+html.has-soldpop { overflow: hidden; }
+@keyframes soldpop-in { from { opacity: 0; transform: translateY(12px); } }
+@media (max-width: 760px) {
+  .soldpop { place-items: end stretch; padding: 0; }
+  .soldpop-card { width: 100%; padding: 24px var(--gut, 16px) calc(20px + env(safe-area-inset-bottom)); border-radius: 22px 22px 0 0; border-bottom: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .soldpop-card { animation: none; } }

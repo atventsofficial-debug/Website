@@ -37,8 +37,11 @@ export function buyUrl(e, sub = subFor(e.id)) {
 }
 
 // Attributes for a link out to tiket.com. `sponsored` tells search engines it is an affiliate link.
-// A link to another seller carries no click id: no click, no claim form after it.
-export const buyAttrs = e => !onTiket(e) ? ' target="_blank" rel="noopener"' : ` target="_blank" rel="noopener sponsored" data-buy="${esc(e.id)}" data-sub="${subFor(e.id)}"`;
+// A link to another seller carries no click id: no click, no claim form after it. Every link
+// names its concert (and the category, from a category ticket), so the sold-out note
+// (js/soldpop.js) can step in before the fan leaves for the seller.
+const outAttrs = (e, cat) => ` data-out="${esc(e.id)}"${cat ? ` data-out-cat="${esc(cat)}"` : ''}`;
+export const buyAttrs = (e, cat = '') => (!onTiket(e) ? ' target="_blank" rel="noopener"' : ` target="_blank" rel="noopener sponsored" data-buy="${esc(e.id)}" data-sub="${subFor(e.id)}"`) + outAttrs(e, cat);
 export const buyLink = (e, label, cls = 'btn btn-coral') => `<a class="${cls}" href="${esc(buyUrl(e))}"${buyAttrs(e)}>${onTiket(e) ? label : label.replace(/tiket\.com/g, esc(sellerOf(e)))}</a>`;
 
 const localClicks = () => read(CLICKS, localClicks.mem);

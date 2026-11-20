@@ -3,7 +3,7 @@
 // viewer in viewer.js.
 import { formatRpShort, crowdSeats, REAL_KEYS } from './layouts.js';
 import { loadScene3d } from './viewer.js';
-import { EVENTS, PLACES, CITY, LISTED, getEvent, eventMeta, placeOf, timeKnown, minPrice, soldOut, allSoldOut, isConcert, demoFor, onTiket, sellerOf, saleInfo, EVENT_TYPES, typeOf } from './events.js';
+import { EVENTS, PLACES, CITY, LISTED, getEvent, eventMeta, placeOf, timeKnown, minPrice, allSoldOut, isConcert, demoFor, onTiket, sellerOf, saleInfo, EVENT_TYPES, typeOf } from './events.js';
 import { cardImg, eventImg, placeCover, posterFig, posterImg, thumbImg } from './media.js';
 import { picker } from './picker.js';
 import { whenOf, startOf, venueClock, gapText } from './when.js';
@@ -114,19 +114,16 @@ function titleLines(t) {
 
 // The home page's cards are concert passes: the poster behind, the logo and the date and
 // venue in the top corners, the name just above the perforation, and the price where a
-// ticket prints it. `run` makes one pass stand for every coming date of the show; a show
-// with nothing left to sell says so in red, like a date or a category that sold out. The
-// whole pass opens its page.
+// ticket prints it. `run` makes one pass stand for every coming date of the show. Cards carry
+// no sold-out marks: what Atvents sells, the 3D seat view, never sells out. Concert tickets
+// that the seller has run out of are said in a note when the fan clicks through to the
+// seller (js/soldpop.js). The whole pass opens its page.
 function ticketCard(e, opts = {}) {
   const v = placeOf(e);
   const dates = opts.run ? datesOf(e).filter(x => x === e || upcoming(x)) : [e];
-  const gone = dates.filter(allSoldOut).length, all = gone === dates.length;
   const live = dates.find(x => !allSoldOut(x)) || e, from = minPrice(live.id), name = titleLines(e.title);
   const tags = [];
   if (dates.some(x => activePass(x.id))) tags.push(`<span class="tag tag-coral">${icon('i-eye')}3D pass</span>`);
-  if (all) tags.push('<span class="tag tag-sold">Sold out</span>');
-  else if (gone) tags.push(`<span class="tag tag-sold">${plural(gone, 'date')} sold out</span>`);
-  else if (live.soldOut?.length) tags.push(`<span class="tag tag-sold">${esc(getEvent(live.id).catById[live.soldOut[0]].name)} sold out</span>`);
   return `<article class="ev tkt">
     <div class="tkt-bg">${cardImg(e, `${v.name}, ${v.city}`)}</div>
     <div class="tkt-in">
@@ -135,7 +132,7 @@ function ticketCard(e, opts = {}) {
         <p class="tkt-when"><b>${datesText(dates)}</b><span>${esc(v.name)}, ${keep(esc(v.city))}</span></p>
       </div>
       ${tags.length ? `<p class="tkt-tags">${tags.join('')}</p>` : ''}
-      <h3 class="tkt-title" style="--em:${name.em.toFixed(2)}"><a class="ev-link" href="#event-${e.id}">${name.lines.map(esc).join('<br> ')}${all ? '<span class="sr-only">, sold out</span>' : ''}</a></h3>
+      <h3 class="tkt-title" style="--em:${name.em.toFixed(2)}"><a class="ev-link" href="#event-${e.id}">${name.lines.map(esc).join('<br> ')}</a></h3>
       <div class="tkt-cut" aria-hidden="true"></div>
       <div class="tkt-foot">
         <div class="tkt-code"><small>Concert pass</small><i class="barcode"></i></div>
@@ -165,13 +162,13 @@ function kicker(sub) {
   return `<p class="hero-kicker"><span class="w-fill">${esc(w.slice(0, cut).join(' '))}</span> <span class="w-ol">${esc(w.slice(cut).join(' '))}</span></p>`;
 }
 
-// A category as a white entrance ticket. The whole ticket is the link out to tiket.com.
+// A category as a white entrance ticket. The whole ticket is the link out to tiket.com. A
+// category the seller has sold out of looks the same: the note comes on the click (js/soldpop.js).
 function catTicket(e, c, { dark = false, meta } = {}) {
-  const gone = soldOut(e, c.id);
   return entranceTicket({
-    ev: e.title, sub: c.name, code: code(c), price: c.price, href: esc(buyUrl(e)), attrs: buyAttrs(e),
-    buy: gone ? 'Sold out' : 'Buy', dark, out: gone, date: whenOf(e).pill, city: cityCode(e), na: c.note,
-    meta: meta ?? (gone ? `<span class="tk-hot">Sold out, as listed. ${esc(sellerOf(e))} may release more.</span>` : onTiket(e) ? '<span>Opens tiket.com · 3D seat view included</span>' : `<span>Opens ${esc(sellerOf(e))} · not sold on tiket.com</span>`),
+    ev: e.title, sub: c.name, code: code(c), price: c.price, href: esc(buyUrl(e)), attrs: buyAttrs(e, c.id),
+    buy: 'Buy', dark, date: whenOf(e).pill, city: cityCode(e), na: c.note,
+    meta: meta ?? (onTiket(e) ? '<span>Opens tiket.com · 3D seat view included</span>' : `<span>Opens ${esc(sellerOf(e))} · not sold on tiket.com</span>`),
   });
 }
 
@@ -226,11 +223,7 @@ export function concertNews(now = Date.now()) {
     if (sale?.soon) items.push({ e, at: now + 1, tag: 'Sale soon', text: `Tickets for ${e.title} go on sale ${sale.date} on ${sellerOf(e)}.` });
     else if (sale && now - sale.ms < 45 * DAY) items.push({ e, at: sale.ms, tag: 'On sale', text: `${e.title}: tickets on sale on ${sellerOf(e)} since ${sale.date}. ${dates}, ${v.name}.` });
     if (start - now < 31 * DAY) items.push({ e, at: now, tag: start - now < 8 * DAY ? 'This week' : 'Coming up', text: `${e.title} plays ${v.name}, ${dates}.${timeKnown(e) ? ` Show starts ${whenOf(e).time}.` : ' Times still to be announced.'}` });
-    if (allSoldOut(e)) items.push({ e, at: sale ? sale.ms : now - 60 * DAY, tag: 'Sold out', text: `${e.title} is sold out on ${sellerOf(e)}, as listed.` });
-    else {
-      const gone = getEvent(e.id).categories.filter(c => soldOut(e, c.id));
-      if (gone.length) items.push({ e, at: (sale ? sale.ms : now - 60 * DAY) - 1, tag: 'Selling fast', text: `${e.title}: ${gone.map(c => c.name).join(', ')} sold out. Other categories still on ${sellerOf(e)}.` });
-    }
+    // No sold-out news: it reads as if the 3D seat view were gone. The seller's stock is said on the way out (js/soldpop.js).
   }
   return items.sort((a, b) => b.at - a.at);
 }
@@ -350,10 +343,10 @@ export function renderEvent(id) {
         ${poster}
         <div class="ev-info">
           <a class="back-link" href="#concerts">${icon('i-back')}All events</a>
-          <div class="tags"><span class="tag tag-coral">Concert</span><span class="tag tag-white">${dm.dow} ${dm.day} ${dm.mon}</span>${allSoldOut(e) ? '<span class="tag tag-sold">Sold out</span>' : ''}${pass ? `<span class="tag tag-line">${icon('i-eye')}3D pass on this device</span>` : ''}</div>
+          <div class="tags"><span class="tag tag-coral">Concert</span><span class="tag tag-white">${dm.dow} ${dm.day} ${dm.mon}</span>${pass ? `<span class="tag tag-line">${icon('i-eye')}3D pass on this device</span>` : ''}</div>
           <p class="ev-blurb">${esc(e.blurb)}</p>
           ${live && saleInfo(e) ? `<p class="ev-sale">${icon('i-cal')}<span>${esc(saleInfo(e).line)}</span></p>` : ''}
-          ${others.length ? `<p class="ev-dates">Also on ${others.map(x => `<a class="pill" href="#event-${x.id}">${esc(whenOf(x).block.dow)} ${whenOf(x).block.day} ${whenOf(x).block.mon}${allSoldOut(x) ? ' <span>sold out</span>' : ''}</a>`).join('')}</p>` : ''}
+          ${others.length ? `<p class="ev-dates">Also on ${others.map(x => `<a class="pill" href="#event-${x.id}">${esc(whenOf(x).block.dow)} ${whenOf(x).block.day} ${whenOf(x).block.mon}</a>`).join('')}</p>` : ''}
           ${live ? `<p class="ev-official">${icon('i-link')}<span>Tickets are sold by ${esc(sellerOf(e))}, the official seller. The 3D view from your seat is sold here for ${formatFee()} and opens as soon as you pay.</span></p>`
             : '<p class="ev-official">This concert has taken place. Its 3D venue stays open to look round.</p>'}
           <div class="row-btns">${pass?.status === 'confirmed' ? `<a class="btn btn-coral" href="#tour-${esc(pass.id)}">Start my seat tour ${icon('i-arrow')}</a>` : live ? `<a class="btn btn-coral" href="#unlock-${id}">Unlock my seat view · ${formatFee()} ${icon('i-arrow')}</a>` : ''}${live ? buyLink(e, `Tickets on tiket.com ${out}`, 'btn btn-line') : ''}${pass?.status === 'confirmed' ? '' : `<a class="btn btn-line" href="#seats-${id}">Look round in 3D</a>`}</div>
