@@ -305,17 +305,29 @@
 
 }
 
-/* ---------- home on a phone: "On sale now" as rows, like Choose your event; All events at the far right ---------- */
+/* ---------- "On sale now" on the home page and the Events page on a phone: rows with the poster at the left; All events at the far right ---------- */
 @media (max-width: 760px) {
   #view-home .sec-side { display: flex; justify-content: flex-end; width: auto; max-width: none; margin-left: auto; }
-  #home-events .tkt { grid-template-columns: 108px minmax(0, 1fr); align-items: center; gap: 12px; padding: 8px 12px 8px 8px; }
-  #home-events .tkt-bg { grid-area: 1 / 1; border-radius: 8px; overflow: hidden; }
-  #home-events .tkt-in { grid-area: 1 / 2; padding: 0; gap: 3px; }
-  #home-events .tkt .tkt-title { font-size: 15px; line-height: 1.25; }
-  #home-events .tkt-when b { font-size: 10.5px; }
-  #home-events .tkt-when span { font-size: 12px; }
-  #home-events .tkt-price b { font-size: 14px; }
-  #home-events .tkt-price small { font-size: 11px; }
+  :is(#home-events, #concerts-grid) .tkt { grid-template-columns: 108px minmax(0, 1fr); align-items: center; gap: 12px; padding: 8px 12px 8px 8px; }
+  :is(#home-events, #concerts-grid) .tkt-bg { grid-area: 1 / 1; border-radius: 8px; overflow: hidden; }
+  :is(#home-events, #concerts-grid) .tkt-in { grid-area: 1 / 2; padding: 0; gap: 3px; }
+  :is(#home-events, #concerts-grid) .tkt .tkt-title { font-size: 15px; line-height: 1.25; }
+  :is(#home-events, #concerts-grid) .tkt-when b { font-size: 10.5px; }
+  :is(#home-events, #concerts-grid) .tkt-when span { font-size: 12px; }
+  :is(#home-events, #concerts-grid) .tkt-price b { font-size: 14px; }
+  :is(#home-events, #concerts-grid) .tkt-price small { font-size: 11px; }
+}
+
+/* ---------- Events page: the type of event in a dropdown next to the search ----------
+   The button keeps its width whatever the name (long ones end in an ellipsis), and the list
+   shows about six kinds before it scrolls, so a long list of kinds never runs down the page. */
+#concerts-type .dd-btn { max-width: 220px; }
+#concerts-type .dd-v { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#concerts-type .dd-list { max-height: 264px; }
+#concerts-type .dd-pop { min-width: max(100%, 220px); }
+@media (max-width: 760px) {
+  #concerts-type .dd-btn { max-width: 150px; }
+  #view-concerts .ev-tools { margin-bottom: 18px; }
 }
 
 /* ---------- home hero, the flat arena (phones): a clean swap between slides ---------- */
