@@ -3,8 +3,8 @@
 // viewer in viewer.js.
 import { formatRpShort, crowdSeats, REAL_KEYS } from './layouts.js';
 import { loadScene3d } from './viewer.js';
-import { EVENTS, PLACES, CITY, LISTED, getEvent, eventMeta, placeOf, timeKnown, minPrice, allSoldOut, isConcert, demoFor, onTiket, sellerOf, saleInfo, EVENT_TYPES, typeOf } from './events.js';
-import { cardImg, eventImg, placeCover, posterFig, posterImg, thumbImg } from './media.js';
+import { EVENTS, CITY, LISTED, getEvent, eventMeta, placeOf, timeKnown, minPrice, allSoldOut, isConcert, demoFor, onTiket, sellerOf, saleInfo, EVENT_TYPES, typeOf } from './events.js';
+import { cardImg, eventImg, kindCover, posterFig, posterImg, thumbImg } from './media.js';
 import { picker } from './picker.js';
 import { whenOf, startOf, venueClock, gapText } from './when.js';
 import { waTiles } from './fans.js';
@@ -181,6 +181,16 @@ function catTicket(e, c, { dark = false, meta } = {}) {
 
 // ---------------------------------------------------------------- home
 
+// The kinds of event on the home page, one card each. `types` are typeOf values; `demo` the
+// layout whose render stands in when nothing of that kind is on sale.
+const KINDS = [
+  { key: 'concert', name: 'Concerts', title: 'Concerts', one: 'concert', types: ['concert'], what: 'Arenas and stadiums', demo: 'concert' },
+  { key: 'sports', name: 'Sport', title: 'Football & sport', one: 'match', many: 'matches', types: ['football', 'sport', 'combat'], what: 'Pitches, courts and rings', demo: 'stadium' },
+  { key: 'cinema', name: 'Cinema', title: 'Cinema', one: 'film', types: ['cinema'], what: 'Studios, row by row', demo: 'cinema' },
+  { key: 'festival', name: 'Festivals', title: 'Festivals', one: 'festival', types: ['festival'], what: 'Open-air stages and festival floors', demo: 'stadium-end' },
+];
+const KIND_TYPES = Object.fromEntries(KINDS.map(k => [k.key, k.types]));
+
 let homeBound = false;
 
 export function renderHome() {
@@ -197,17 +207,21 @@ export function renderHome() {
       <span class="pill-link">Concert alerts ${icon('i-arrow')}</span>
     </a>`;
 
-  // A venue whose shows have all taken place leaves the list with them.
-  $('#home-venues').innerHTML = PLACES.filter(p => p.events.some(upcoming)).map((p, i) => {
-    const shows = p.events.filter(upcoming), first = shows[0];
-    const from = Math.min(...shows.map(e => minPrice(e.id) ?? Infinity));
-    return `<a class="venue" href="#seats-${first.id}">
-      <div class="venue-cover">${placeCover(p, first, `${p.name}, ${p.city}`)}</div>
+  // One card per kind of event we cover, each opening the list filtered to it. A kind with
+  // nothing on sale yet still shows, with its 3D venue and the alerts.
+  const shows = oncePerShow(onSale());
+  $('#home-venues').innerHTML = KINDS.map((k, i) => {
+    const list = shows.filter(e => k.types.includes(typeOf(e)));
+    const first = list.find(e => e.image) || list[0] || null;
+    const from = Math.min(...list.map(e => minPrice(e.id) ?? Infinity));
+    const venues = new Set(list.map(e => placeOf(e).name)).size;
+    return `<a class="venue" href="${list.length ? `#events-${k.key}` : '#news-form'}">
+      <div class="venue-cover">${kindCover(first, k.demo, k.name)}</div>
       <div class="venue-body">
-        <span class="venue-n">0${i + 1} · ${esc(p.city)}</span>
-        <h3>${esc(p.name)}</h3>
-        <p>${esc(demoFor(first.venue)?.title || (REAL_KEYS.includes(first.venue) ? 'From the promoter’s plan' : 'Venue'))} · ${plural(getEvent(first.id).seats.length, 'seat')} modelled</p>
-        <div class="venue-foot"><span>${shows.length ? plural(shows.length, 'concert') : 'No concerts on sale yet'}${from < Infinity ? ` · from <b>${formatRpShort(from)}</b>` : ''}</span><span class="go">${icon('i-arrow')}</span></div>
+        <span class="venue-n">0${i + 1} · ${esc(k.name)}</span>
+        <h3>${esc(k.title)}</h3>
+        <p>${esc(k.what)}${venues ? ` · ${plural(venues, 'venue')} in 3D` : ''}</p>
+        <div class="venue-foot"><span>${list.length ? plural(list.length, k.one, k.many) : 'Coming soon · get the alerts'}${from < Infinity ? ` · from <b>${formatRpShort(from)}</b>` : ''}</span><span class="go">${icon('i-arrow')}</span></div>
       </div></a>`;
   }).join('');
 
@@ -275,17 +289,24 @@ let typePicker = null;
 export function renderConcerts() {
   if (!typePicker) {
     $('#concerts-q').addEventListener('input', e => { listQuery.q = e.target.value; renderConcerts(); });
-    typePicker = picker($('#concerts-type'), { name: 'Type of event', label: 'Type', onPick: v => { listQuery.type = v; renderConcerts(); } });
+    typePicker = picker($('#concerts-type'), { name: 'Type of event', label: 'Type', onPick: v => { listQuery.type = v; history.replaceState(null, '', '#events'); renderConcerts(); } });
   }
+  // #events-<kind> (a home page card) opens the list filtered to that kind.
+  const fromHash = location.hash.match(/^#events-(\w+)/)?.[1];
+  if (fromHash) listQuery.type = fromHash;
   const q = listQuery.q.trim().toLowerCase();
   const match = e => !q || [EVENT_TYPES[typeOf(e)], e.title, e.subtitle, e.host, placeOf(e).name, placeOf(e).city].join(' ').toLowerCase().includes(q);
   const all = onSale();
   // The dropdown offers only the kinds of event on sale now, with a count each. Its list
   // scrolls after a few rows, so more kinds never make it run down the page.
+  // "All sport" joins football, tennis and fights when more than one of them is on sale.
+  const isType = (t, e) => t === 'all' || (KIND_TYPES[t] || [t]).includes(typeOf(e));
   const kinds = Object.keys(EVENT_TYPES).map(t => [t, all.filter(e => typeOf(e) === t).length]).filter(([, n]) => n);
-  if (listQuery.type !== 'all' && !kinds.some(([t]) => t === listQuery.type)) listQuery.type = 'all';
-  typePicker.set([['all', all.length], ...kinds].map(([t, n]) => ({ value: t, label: t === 'all' ? 'All events' : EVENT_TYPES[t], note: String(n) })), listQuery.type);
-  const list = all.filter(e => listQuery.type === 'all' || typeOf(e) === listQuery.type).filter(match).sort(byDate);
+  const sportKinds = kinds.filter(([t]) => KIND_TYPES.sports.includes(t));
+  if (sportKinds.length > 1) kinds.splice(kinds.indexOf(sportKinds[0]), 0, ['sports', all.filter(e => isType('sports', e)).length]);
+  if (listQuery.type !== 'all' && !kinds.some(([t]) => t === listQuery.type)) listQuery.type = sportKinds.length === 1 && listQuery.type === 'sports' ? sportKinds[0][0] : 'all';
+  typePicker.set([['all', all.length], ...kinds].map(([t, n]) => ({ value: t, label: t === 'all' ? 'All events' : t === 'sports' ? 'All sport' : EVENT_TYPES[t], note: String(n) })), listQuery.type);
+  const list = all.filter(e => isType(listQuery.type, e)).filter(match).sort(byDate);
   $('#concerts-count').textContent = `${plural(all.length, 'event')} on sale, as listed in ${LISTED}. Prices as announced; tiket.com has the live price.`;
   $('#concerts-grid').innerHTML = list.length ? list.map(e => ticketCard(e)).join('')
     : `<div class="empty-state"><h3>Nothing matches.</h3><p>${q ? `No event matches “${esc(listQuery.q.trim())}”.` : 'No concerts on sale right now.'} New shows are added as they go on sale: get the concert alerts on the home page to hear first.</p>${q ? '<button class="btn btn-line" type="button" id="concerts-clear">Clear the search</button>' : ''}</div>`;
