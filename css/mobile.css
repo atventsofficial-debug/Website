@@ -408,10 +408,7 @@
   .s3d-foot { margin: 8px 2px 0; font-size: 13px; line-height: 1.5; color: var(--muted); }
   .s3d-foot svg { width: 13px; height: 13px; margin: 0 3px -2px 2px; }
 
-  /* The tab bar: every icon has its name under it, the middle tab (the seat view) drawn
-     like the others. */
+  /* The tab bar: the middle tab keeps its coral seat, as before, with its name under it. */
+  .tabbar .tab-main { gap: 3px; }
   .tab-main b { display: contents; }
-  .tab-main b svg { width: 23px; height: 23px; }
-  .tabbar .tab-main { color: rgba(244, 240, 238, 0.62); }
-  .tabbar .tab-main[aria-current="page"] { background: rgba(255, 255, 255, 0.12); color: #fff; }
 }
