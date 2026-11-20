@@ -807,6 +807,66 @@ export function buildCinema(ctx, venue) {
   ctx.onTick(t => { movie.uniforms.uTime.value = t; });
 }
 
+// A hard court with its run-off, lines, net and umpire's chair, along x. 23.77 x 10.97 m
+// inside a 36.6 x 18.3 m surround; the logo is painted behind each baseline.
+function tennisCourt(scene, brand) {
+  const L = 23.77, Wd = 10.97, S = 8.23, SL = 6.4;
+  const tex = canvasTex(2048, 1024, (g, w, h) => {
+    const k = w / 36.6, X = x => w / 2 + x * k, Z = z => h / 2 + z * k;
+    g.fillStyle = '#2c5f8a'; g.fillRect(0, 0, w, h);
+    g.fillStyle = '#2f7fb6'; g.fillRect(X(-L / 2), Z(-Wd / 2), L * k, Wd * k);
+    g.strokeStyle = '#ffffff'; g.lineWidth = 0.05 * k;
+    g.strokeRect(X(-L / 2), Z(-Wd / 2), L * k, Wd * k);
+    g.strokeRect(X(-L / 2), Z(-S / 2), L * k, S * k);
+    g.beginPath();
+    g.moveTo(X(-SL), Z(-S / 2)); g.lineTo(X(-SL), Z(S / 2));
+    g.moveTo(X(SL), Z(-S / 2)); g.lineTo(X(SL), Z(S / 2));
+    g.moveTo(X(-SL), Z(0)); g.lineTo(X(SL), Z(0));
+    g.moveTo(X(-L / 2), Z(0)); g.lineTo(X(-L / 2 + 0.15), Z(0));
+    g.moveTo(X(L / 2), Z(0)); g.lineTo(X(L / 2 - 0.15), Z(0));
+    g.stroke();
+    g.fillStyle = 'rgba(255,255,255,0.85)'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.font = `500 ${0.9 * k}px "Urbanist", "Helvetica Neue", Arial, sans-serif`;
+    for (const sgn of [-1, 1]) { g.save(); g.translate(X(sgn * (L / 2 + 3.2)), Z(0)); g.rotate(sgn * Math.PI / 2); g.fillText(brand.mark, 0, 0); g.restore(); }
+  });
+  const court = new THREE.Mesh(new THREE.PlaneGeometry(36.6, 18.3), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.75 }));
+  court.rotation.x = -Math.PI / 2;
+  court.position.y = 0.02;
+  court.receiveShadow = true;
+  scene.add(court);
+  // The net between two posts, a little outside the doubles lines.
+  const postMat = new THREE.MeshStandardMaterial({ color: '#1d2a36', roughness: 0.5, metalness: 0.4 });
+  for (const z of [-6.4, 6.4]) {
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.07, 10), postMat);
+    post.position.set(0, 0.535, z);
+    post.castShadow = true;
+    scene.add(post);
+  }
+  const mesh = canvasTex(64, 64, (g, w, h) => {
+    g.clearRect(0, 0, w, h);
+    g.strokeStyle = 'rgba(20,20,22,1)'; g.lineWidth = 3;
+    g.strokeRect(0, 0, w, h);
+  }, { repeat: [120, 9] });
+  const net = new THREE.Mesh(new THREE.PlaneGeometry(12.8, 0.95), new THREE.MeshStandardMaterial({ map: mesh, alphaTest: 0.3, side: THREE.DoubleSide, color: '#222' }));
+  net.rotation.y = Math.PI / 2;
+  net.position.set(0, 0.5, 0);
+  scene.add(net);
+  const tape = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 12.8), new THREE.MeshStandardMaterial({ color: '#f4f4f2', roughness: 0.6 }));
+  tape.position.set(0, 0.96, 0);
+  scene.add(tape);
+  // The umpire's chair at the net, on the south side, and the players' benches.
+  const dark = new THREE.MeshStandardMaterial({ color: '#16232f', roughness: 0.6 });
+  const chair = new THREE.Mesh(new THREE.BoxGeometry(0.8, 2.2, 0.8), dark);
+  chair.position.set(0, 1.1, 7.2);
+  chair.castShadow = true;
+  scene.add(chair);
+  for (const x of [-1.8, 1.8]) {
+    const bench = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.5, 0.6), dark);
+    bench.position.set(x, 0.25, 7.4);
+    scene.add(bench);
+  }
+}
+
 // ------------------------------------------------------------------ combat
 
 export function buildCombat(ctx, venue) {
@@ -836,63 +896,67 @@ export function buildCombat(ctx, venue) {
   for (let i = -3; i <= 3; i++) for (let j = -3; j <= 3; j++) if (Math.abs(i) > 1 || Math.abs(j) > 1) lampPts.push([i * lampStep, lampY, j * lampStep]);
   scene.add(instanceAlong(compact ? new THREE.CylinderGeometry(0.26, 0.34, 0.3, 12) : new THREE.CylinderGeometry(0.45, 0.6, 0.6, 12), lampMat, lampPts));
 
-  // Octagon: printed canvas, skirt, padded posts and chain-link fence.
-  const mat = canvasTex(1024, 1024, (g, w, h) => {
-    g.fillStyle = '#c8c6be'; g.fillRect(0, 0, w, h);
-    g.strokeStyle = '#d6d3cb'; g.lineWidth = 3;
-    g.beginPath(); g.arc(w / 2, h / 2, 330, 0, Math.PI * 2); g.stroke();
-    g.fillStyle = '#16171a'; g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.font = '300 92px "Urbanist", "Helvetica Neue", Arial, sans-serif';
-    g.fillText(brand.mark, w / 2, h / 2 - 34);
-    g.font = '500 34px "Urbanist", "Helvetica Neue", Arial, sans-serif';
-    g.fillText(spaced(brand.sub), w / 2, h / 2 + 46);
-    g.font = '500 26px Arial'; g.fillStyle = '#9a978f';
-    for (let i = 0; i < 8; i++) { g.save(); g.translate(w / 2, h / 2); g.rotate(i * Math.PI / 4 + Math.PI / 8); g.fillText(brand.hall, 0, -410); g.restore(); }
-  });
-  const base = new THREE.Mesh(new THREE.CylinderGeometry(5.35, 5.5, 1.1, 8), new THREE.MeshStandardMaterial({ color: '#111114', roughness: 0.6 }));
-  base.rotation.y = Math.PI / 8;
-  base.position.y = 0.55;
-  base.castShadow = base.receiveShadow = true;
-  scene.add(base);
-  const top = new THREE.Mesh(new THREE.CircleGeometry(5.3, 8), new THREE.MeshStandardMaterial({ map: mat, roughness: 0.85 }));
-  top.rotation.x = -Math.PI / 2;
-  top.rotation.z = Math.PI / 8;
-  top.position.y = 1.11;
-  top.receiveShadow = true;
-  scene.add(top);
-  const link = canvasTex(64, 64, (g, w, h) => {
-    g.clearRect(0, 0, w, h);
-    g.strokeStyle = 'rgba(25,25,28,1)'; g.lineWidth = 4;
-    g.beginPath(); g.moveTo(0, h / 2); g.lineTo(w / 2, 0); g.lineTo(w, h / 2); g.lineTo(w / 2, h); g.closePath(); g.stroke();
-  }, { repeat: [26, 10] });
-  const fenceMat = new THREE.MeshStandardMaterial({ map: link, alphaTest: 0.4, side: THREE.DoubleSide, metalness: 0.6, roughness: 0.4, color: '#2a2a2e' });
-  const padMat = new THREE.MeshStandardMaterial({ color: '#111113', roughness: 0.55 });
-  const r = 5.2;
-  for (let i = 0; i < 8; i++) {
-    const a = (i / 8) * Math.PI * 2 + Math.PI / 8, a2 = a + Math.PI / 4;
-    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 2.1, 10), padMat);
-    post.position.set(Math.cos(a) * r, 2.15, Math.sin(a) * r);
-    post.castShadow = true;
-    scene.add(post);
-    const mid = new THREE.Vector3((Math.cos(a) + Math.cos(a2)) * r / 2, 2.15, (Math.sin(a) + Math.sin(a2)) * r / 2);
-    const len = 2 * r * Math.sin(Math.PI / 8);
-    const panel = new THREE.Mesh(new THREE.PlaneGeometry(len, 1.85), fenceMat);
-    panel.position.copy(mid);
-    panel.lookAt(0, 2.15, 0);
-    panel.castShadow = true;
-    scene.add(panel);
-    const pad = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, len, 10), padMat);
-    pad.position.set(mid.x, 3.15, mid.z);
-    pad.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(Math.cos(a2) - Math.cos(a), 0, Math.sin(a2) - Math.sin(a)).normalize());
-    scene.add(pad);
-  }
-  // Judges' tables.
-  for (const [x, z, ry] of [[0, 6.4, 0], [6.4, 0, Math.PI / 2], [-6.4, 0, -Math.PI / 2]]) {
-    const t = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.8, 0.7), new THREE.MeshStandardMaterial({ color: '#1a1a1d', roughness: 0.6 }));
-    t.position.set(x, 0.4, z);
-    t.rotation.y = ry;
-    t.castShadow = true;
-    scene.add(t);
+  // A tennis court (venue.court) in place of the cage; else the octagon.
+  if (venue.court === 'tennis') tennisCourt(scene, brand);
+  else {
+    // Octagon: printed canvas, skirt, padded posts and chain-link fence.
+    const mat = canvasTex(1024, 1024, (g, w, h) => {
+      g.fillStyle = '#c8c6be'; g.fillRect(0, 0, w, h);
+      g.strokeStyle = '#d6d3cb'; g.lineWidth = 3;
+      g.beginPath(); g.arc(w / 2, h / 2, 330, 0, Math.PI * 2); g.stroke();
+      g.fillStyle = '#16171a'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.font = '300 92px "Urbanist", "Helvetica Neue", Arial, sans-serif';
+      g.fillText(brand.mark, w / 2, h / 2 - 34);
+      g.font = '500 34px "Urbanist", "Helvetica Neue", Arial, sans-serif';
+      g.fillText(spaced(brand.sub), w / 2, h / 2 + 46);
+      g.font = '500 26px Arial'; g.fillStyle = '#9a978f';
+      for (let i = 0; i < 8; i++) { g.save(); g.translate(w / 2, h / 2); g.rotate(i * Math.PI / 4 + Math.PI / 8); g.fillText(brand.hall, 0, -410); g.restore(); }
+    });
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(5.35, 5.5, 1.1, 8), new THREE.MeshStandardMaterial({ color: '#111114', roughness: 0.6 }));
+    base.rotation.y = Math.PI / 8;
+    base.position.y = 0.55;
+    base.castShadow = base.receiveShadow = true;
+    scene.add(base);
+    const top = new THREE.Mesh(new THREE.CircleGeometry(5.3, 8), new THREE.MeshStandardMaterial({ map: mat, roughness: 0.85 }));
+    top.rotation.x = -Math.PI / 2;
+    top.rotation.z = Math.PI / 8;
+    top.position.y = 1.11;
+    top.receiveShadow = true;
+    scene.add(top);
+    const link = canvasTex(64, 64, (g, w, h) => {
+      g.clearRect(0, 0, w, h);
+      g.strokeStyle = 'rgba(25,25,28,1)'; g.lineWidth = 4;
+      g.beginPath(); g.moveTo(0, h / 2); g.lineTo(w / 2, 0); g.lineTo(w, h / 2); g.lineTo(w / 2, h); g.closePath(); g.stroke();
+    }, { repeat: [26, 10] });
+    const fenceMat = new THREE.MeshStandardMaterial({ map: link, alphaTest: 0.4, side: THREE.DoubleSide, metalness: 0.6, roughness: 0.4, color: '#2a2a2e' });
+    const padMat = new THREE.MeshStandardMaterial({ color: '#111113', roughness: 0.55 });
+    const r = 5.2;
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2 + Math.PI / 8, a2 = a + Math.PI / 4;
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 2.1, 10), padMat);
+      post.position.set(Math.cos(a) * r, 2.15, Math.sin(a) * r);
+      post.castShadow = true;
+      scene.add(post);
+      const mid = new THREE.Vector3((Math.cos(a) + Math.cos(a2)) * r / 2, 2.15, (Math.sin(a) + Math.sin(a2)) * r / 2);
+      const len = 2 * r * Math.sin(Math.PI / 8);
+      const panel = new THREE.Mesh(new THREE.PlaneGeometry(len, 1.85), fenceMat);
+      panel.position.copy(mid);
+      panel.lookAt(0, 2.15, 0);
+      panel.castShadow = true;
+      scene.add(panel);
+      const pad = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, len, 10), padMat);
+      pad.position.set(mid.x, 3.15, mid.z);
+      pad.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(Math.cos(a2) - Math.cos(a), 0, Math.sin(a2) - Math.sin(a)).normalize());
+      scene.add(pad);
+    }
+    // Judges' tables.
+    for (const [x, z, ry] of [[0, 6.4, 0], [6.4, 0, Math.PI / 2], [-6.4, 0, -Math.PI / 2]]) {
+      const t = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.8, 0.7), new THREE.MeshStandardMaterial({ color: '#1a1a1d', roughness: 0.6 }));
+      t.position.set(x, 0.4, z);
+      t.rotation.y = ry;
+      t.castShadow = true;
+      scene.add(t);
+    }
   }
 
   // Square lighting truss over the cage with downlights.
@@ -932,8 +996,9 @@ export function buildCombat(ctx, venue) {
   // Centre-hung scoreboard.
   const sb = textTexture(1024, 576, (g, w, h) => {
     g.fillStyle = 'rgba(255,255,255,0.95)'; g.textAlign = 'center';
-    g.font = '300 96px "Urbanist", Arial, sans-serif'; g.fillText('ROUND 2', w / 2, 210);
-    g.font = '500 150px "Urbanist", Arial, sans-serif'; g.fillText('3:42', w / 2, 400);
+    const [top, big] = venue.court === 'tennis' ? ['SET 2', '4 – 3'] : ['ROUND 2', '3:42'];
+    g.font = '300 96px "Urbanist", Arial, sans-serif'; g.fillText(top, w / 2, 210);
+    g.font = '500 150px "Urbanist", Arial, sans-serif'; g.fillText(big, w / 2, 400);
     g.font = '500 34px Arial'; g.fillStyle = 'rgba(255,255,255,0.6)'; g.fillText(brand.title, w / 2, 500);
   });
   const sbMat = screenMaterial({ a: '#08090c', b: '#2a1012', c: '#ff6b6b', tex: sb, pixel: 70 });
@@ -951,16 +1016,19 @@ export function buildCombat(ctx, venue) {
   scene.add(cube);
 
   const wallMat = new THREE.MeshStandardMaterial({ color: '#3a3b40', map: grime(), roughness: 0.9, side: THREE.DoubleSide });
-  scene.add(new THREE.Mesh(ribbon({ rx: 15, rz: 15, p: 0.55, y0: 0, y1: 1.6 }), wallMat));
-  scene.add(new THREE.Mesh(ribbon({ rx: 15, rz: 15, p: 0.55, y0: 1.6, y1: 2.5 }), mats.glass()));
+  // The walls follow the bowl: round for a cage, longer than wide round a tennis court.
+  const lw = venue.walls?.lower || { rx: 15, rz: 15 }, uw = venue.walls?.upper || { rx: 29.4, rz: 29.4 };
+  const wp = venue.walls ? 0.6 : 0.55;
+  scene.add(new THREE.Mesh(ribbon({ rx: lw.rx, rz: lw.rz, p: wp, y0: 0, y1: 1.6 }), wallMat));
+  scene.add(new THREE.Mesh(ribbon({ rx: lw.rx, rz: lw.rz, p: wp, y0: 1.6, y1: 2.5 }), mats.glass()));
   // The ad band runs along the upper tier's front, or in a studio along the wall behind the stand.
-  const band = compact ? { r: 20.4, y0: 4.2, y1: 5.0 } : { r: 29.35, y0: 9.1, y1: 9.9 };
+  const band = compact ? { rx: 20.4, rz: 20.4, y0: 4.2, y1: 5.0 } : { rx: uw.rx - 0.05, rz: uw.rz - 0.05, y0: 9.1, y1: 9.9 };
   if (compact) scene.add(new THREE.Mesh(ribbon({ rx: 20.45, rz: 20.45, p: 0.55, y0: 0, y1: 7 }), wallMat));
-  else scene.add(new THREE.Mesh(ribbon({ rx: 29.4, rz: 29.4, p: 0.55, y0: 7, y1: 10.2 }), wallMat));
-  const bandTex = bandTexture([brand.title, brand.hall, 'LIVE ON ATVENTS', 'MAIN CARD'], { fg: '#f4f1ea', accent: '#e23a3a' });
+  else scene.add(new THREE.Mesh(ribbon({ rx: uw.rx, rz: uw.rz, p: wp, y0: 7, y1: 10.2 }), wallMat));
+  const bandTex = bandTexture([brand.title, brand.hall, 'LIVE ON ATVENTS', venue.court ? 'CENTRE COURT' : 'MAIN CARD'], { fg: '#f4f1ea', accent: '#e23a3a' });
   bandTex.repeat.set(compact ? 3 : 5, 1);
-  scene.add(new THREE.Mesh(ribbon({ rx: band.r, rz: band.r, p: 0.55, y0: band.y0, y1: band.y1, uRepeat: 1 }), new THREE.MeshBasicMaterial({ map: bandTex, toneMapped: false, side: THREE.DoubleSide })));
-  if (!compact) scene.add(new THREE.Mesh(ribbon({ rx: 29.4, rz: 29.4, p: 0.55, y0: 10.2, y1: 11.1 }), mats.glass()));
+  scene.add(new THREE.Mesh(ribbon({ rx: band.rx, rz: band.rz, p: wp, y0: band.y0, y1: band.y1, uRepeat: 1 }), new THREE.MeshBasicMaterial({ map: bandTex, toneMapped: false, side: THREE.DoubleSide })));
+  if (!compact) scene.add(new THREE.Mesh(ribbon({ rx: uw.rx, rz: uw.rz, p: wp, y0: 10.2, y1: 11.1 }), mats.glass()));
 
   ctx.onTick((t, dt) => {
     sbMat.uniforms.uTime.value = t;

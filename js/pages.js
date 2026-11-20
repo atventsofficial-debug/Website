@@ -77,6 +77,7 @@ export function dotMap(v, { byCat = !!v.zoneColors } = {}) {
   // Stadium concerts: the pitch in outline, the stage (sizes as in venues3d.js) in colour.
   const focus = v.show === 'round' ? `${rect(0, 0, 105, 68, 4, 'pitch')}<circle cx="${px(0)}" cy="${pz(0)}" r="${(9.8 * k).toFixed(1)}" class="focus"/>`
     : v.show === 'end' ? `${rect(0, 0, 105, 68, 4, 'pitch')}${rect(-48, 0, 16, 52, 2, 'focus')}`
+      : v.court === 'tennis' ? rect(fx, fz, 23.77, 10.97, 1, 'focus')
       : v.kind === 'combat' ? `<circle cx="${px(fx)}" cy="${pz(fz)}" r="${(4.5 * k).toFixed(1)}" class="focus"/>`
         : v.kind === 'stadium' ? rect(fx, fz, 105, 68, 4, 'focus')
           : v.kind === 'cinema' ? `<rect x="${(+px(fx) - 4.8 * k).toFixed(1)}" y="${(+pz(fz) - 2).toFixed(1)}" width="${(9.6 * k).toFixed(1)}" height="4" rx="2" class="focus"/>`

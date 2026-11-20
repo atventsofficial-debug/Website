@@ -23,6 +23,11 @@ export const IMAGES = {
   'enhypen-bloodsaga': { src: 'assets/events/enhypen-bloodsaga-official.webp', alt: "ENHYPEN World Tour 'Blood Saga' poster", credit: 'Poster · BELIFT LAB, via indonesia.travel', pos: '50% 40%' },
   'westlife-25': { src: 'assets/events/westlife-25-official.webp', alt: 'Westlife 25 anniversary tour poster', credit: 'Poster · via indonesia.travel', pos: '50% 50%' },
   'nancy-ajram': { src: 'assets/events/nancy-ajram-official.webp', alt: 'Nancy Ajram Live in Jakarta poster', credit: 'Poster · via indonesia.travel', pos: '25% 50%' },
+  'boynextdoor-jakarta': { src: 'assets/events/boynextdoor-jakarta.webp', alt: "BOYNEXTDOOR TOUR 'KNOCK ON Vol.2' in Jakarta poster", credit: 'Poster · PK Entertainment, via tiket.com', pos: '50% 50%' },
+  'simpleplan-jakarta': { src: 'assets/events/simpleplan-jakarta.webp', alt: 'Simple Plan The Bigger Than You Think! Tour Jakarta poster', credit: 'Poster · Akselerasi Entertainment, via simpleplanindonesia.com', pos: '50% 50%' },
+  'janice-tjen-live': { w: 480, src: 'assets/events/janice-tjen-live.webp', alt: 'Janice Tjen Live: Game. Set. Celebrate. poster', credit: 'Poster · Tatler Indonesia, via Loket.com', pos: '50% 30%' },
+  'dune-part-three': { w: 480, src: 'assets/events/dune-part-three.webp', alt: 'Dune: Part Three Indonesian poster', credit: 'Poster · Warner Bros. Pictures, via Cinema XXI', pos: '50% 40%' },
+  'jkt48-15th': { src: 'assets/events/jkt48-15th.webp', alt: 'JKT48 AYO SENYUMLAH 15th Anniversary Concert poster with the seating plan', credit: 'Poster · JKT48, via Loket.com', pos: '35% 50%' },
   'thescript-arena': { src: 'assets/events/thescript-arena-official.webp', alt: 'The Script on stage', credit: 'Photo · via indonesia.travel', pos: '55% 50%' },
 
   // Stand-in artwork made by Atvents until the promoter's poster is out. Swap in the official
@@ -41,6 +46,7 @@ const RENDERS = {
   'stadium-end': ['assets/covers/stadium-end-1.webp', 'assets/covers/stadium-end-2.webp'],
   'stadium-round': ['assets/covers/stadium-round-1.webp', 'assets/covers/stadium-round-2.webp'],
   'combat-studio': ['assets/covers/combat-studio-1.webp', 'assets/covers/combat-studio-2.webp'],
+  tennis: ['assets/covers/tennis-1.webp', 'assets/covers/tennis-2.webp'],
   // Venues drawn from the promoter's plan (realvenues.js), in their categories' colours.
   'madya-end': ['assets/covers/madya-end-1.webp', 'assets/covers/madya-end-2.webp'],
   'jis-mcr': ['assets/covers/jis-mcr-1.webp', 'assets/covers/jis-mcr-2.webp'],

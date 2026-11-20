@@ -148,6 +148,42 @@ function combatStudio() {
   };
 }
 
+// A tennis centre court indoors (as at Tennis Indoor Senayan): the court runs along x, with
+// courtside rows on the floor along both sidelines and two tiers round a squared-off bowl.
+// The court with its run-off is 36.6 x 18.3 m, so the lower tier starts 20 m out along the
+// court and 12.6 m out to the sides. `court` tells the 3D builder to draw a court, not a cage.
+const tennisBowl = { cx: 0, cz: 0, p: 0.6, from: deg(-22.5 + 90), to: deg(337.5 + 90), sections: 12, even: true, aisle: 1.1 };
+export const TENNIS_WALLS = { lower: { rx: 19.5, rz: 12.1 }, upper: { rx: 32.4, rz: 24.4 } };
+function tennis() {
+  const seats = [];
+  const side = { cat: 'court', rows: 3, cols: 36, sx: 0.58, sz: 0.95 };
+  gridRows(seats, { ...side, sec: 'CS-N', secName: 'Courtside North', x0: 0, z0: -9.7, dir: [0, 1] });
+  gridRows(seats, { ...side, sec: 'CS-S', secName: 'Courtside South', x0: 0, z0: 9.7, dir: [0, -1] });
+  bowl(seats, { ...tennisBowl, rx0: 20, rz0: 12.6, rows: 12, gap: 0.9, rise: 0.45, baseY: 1.4, cat: 'lower', tier: 1,
+    name: s => ({ code: `L${s + 1}`, label: `Lower ${s + 1}` }) });
+  bowl(seats, { ...tennisBowl, rx0: 33, rz0: 25, rows: 9, gap: 0.92, rise: 0.56, baseY: 10.2, cat: 'upper', tier: 2,
+    name: s => ({ code: `U${s + 1}`, label: `Upper ${s + 1}` }) });
+  return {
+    key: 'tennis',
+    kind: 'combat',
+    court: 'tennis',
+    walls: TENNIS_WALLS,
+    label: 'Tennis centre court',
+    event: { title: 'Nusantara Open, Centre Court', venue: 'Satria Hall, Surabaya' },
+    focus: [0, 1, 0],
+    overview: { pos: [0, 40, 46], target: [0, 0, 0], min: 15, max: 100 },
+    seatStyle: 'shell',
+    seatColor: '#2b2d33',
+    occupancy: { court: 0.75, lower: 0.6, upper: 0.45 },
+    categories: [
+      { id: 'court', name: 'Courtside', price: 2700000, color: '#f5c451' },
+      { id: 'lower', name: 'Lower Tier', price: 830000, color: '#ff7a6b' },
+      { id: 'upper', name: 'Upper Tier', price: 600000, color: '#56b6ff' },
+    ],
+    seats,
+  };
+}
+
 function stadium() {
   const seats = [];
   // t = 90° is the main (west) stand nearest the default camera.
@@ -355,7 +391,7 @@ function stadiumTottenham() {
   };
 }
 
-const builders = { concert, cinema, combat, 'combat-studio': combatStudio, stadium, 'stadium-end': stadiumEnd, 'stadium-round': stadiumRound, 'stadium-tottenham': stadiumTottenham, ...REAL_BUILDERS };
+const builders = { concert, cinema, combat, 'combat-studio': combatStudio, tennis, stadium, 'stadium-end': stadiumEnd, 'stadium-round': stadiumRound, 'stadium-tottenham': stadiumTottenham, ...REAL_BUILDERS };
 export const VENUE_KEYS = Object.keys(builders);
 // The real venues, each laid out for one show; the rest are the generic layouts the demos use.
 export const REAL_KEYS = Object.keys(REAL_BUILDERS);
