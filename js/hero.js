@@ -3,7 +3,7 @@
 // screens (herophoto.js), and a card at the bottom gives the facts and the way to buy. Slides move on by themselves
 // (with a pause button), or with the arrows, the tabs, a swipe or the arrow keys.
 import { formatFee } from './rules.js';
-import { placeOf, minPrice, sellerOf, onTiket, saleInfo } from './events.js';
+import { placeOf, minPrice, sellerOf, onTiket, saleInfo, typeOf } from './events.js';
 import { formatRpShort } from './layouts.js';
 import { IMAGES, cover, srcsetOf } from './media.js';
 import { whenOf } from './when.js';
@@ -25,10 +25,12 @@ const light = () => matchMedia('(max-width: 760px), (pointer: coarse)').matches;
 // or switched tabs).
 const hero = { list: [], key: '', i: 0, run: null, bound: false, held: new Set() };
 
-// One slide per show, the featured one first; a show with several nights is one slide.
+// One slide per concert, the featured one first; a show with several nights is one slide.
+// Matches, fights and films stay off it: the hero is a concert arena with the show on its screens.
 function shows() {
-  const first = featured();
-  const rest = onSale().filter((e, i, all) => e.title !== first.title && all.findIndex(x => x.title === e.title) === i);
+  const concerts = onSale().filter(e => typeOf(e) === 'concert');
+  const first = typeOf(featured()) === 'concert' ? featured() : concerts[0] || featured();
+  const rest = concerts.filter((e, i, all) => e.title !== first.title && all.findIndex(x => x.title === e.title) === i);
   return [first, ...rest].slice(0, 6);
 }
 

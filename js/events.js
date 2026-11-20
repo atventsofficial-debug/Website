@@ -13,6 +13,7 @@ export const CITY = {
   Jakarta: { country: 'ID', tz: 'Asia/Jakarta', code: 'JKT' },
   Bandung: { country: 'ID', tz: 'Asia/Jakarta', code: 'BDG' },
   Surabaya: { country: 'ID', tz: 'Asia/Jakarta', code: 'SUB' },
+  Tangerang: { country: 'ID', tz: 'Asia/Jakarta', code: 'TNG' },
   London: { country: 'GB', tz: 'Europe/London', code: 'LON' },
 };
 
@@ -41,6 +42,9 @@ const MADYA = { name: 'Stadion Madya GBK', art: 'madya', seatColor: '#e8eaed', c
 const ISTORA = { name: 'Istora Senayan GBK', art: 'istora', seatColor: { mix: ['#6c7075', '#979ba0', '#c0c3c7'] }, city: 'Jakarta', address: 'Kompleks Gelora Bung Karno, Senayan, Jakarta Pusat', transit: 'MRT Istora Mandiri station', capacity: '' };
 const BASKET = { name: 'Basket Hall GBK', art: 'basket-hall', city: 'Jakarta', address: 'Kompleks Gelora Bung Karno, Senayan, Jakarta Pusat', transit: 'MRT Istora Mandiri station', capacity: '' };
 const TENNIS = { name: 'Tennis Indoor GBK', art: 'tennis-indoor', city: 'Jakarta', address: 'Kompleks Gelora Bung Karno, Senayan, Jakarta Pusat', transit: 'MRT Istora Mandiri station', capacity: '' };
+const ICE_BSD = { name: 'ICE BSD City, Hall 5–6', art: 'jiexpo', city: 'Tangerang', address: 'Jl. BSD Grand Boulevard, Pagedangan, Tangerang, Banten', transit: '', capacity: '' };
+const GRAHA_UNESA = { name: 'Graha UNESA', art: 'jiexpo', city: 'Surabaya', address: 'Universitas Negeri Surabaya, Lidah Wetan, Surabaya', transit: '', capacity: '' };
+const XXI = { name: 'Cinema XXI', art: 'jiexpo', city: 'Jakarta', address: 'XXI cinemas across Indonesia', transit: '', capacity: '' };
 const INA_ARENA = { name: 'Indonesia Arena', art: 'indonesia-arena', seatColor: '#8a8e94', seatStyle: 'flipup', city: 'Jakarta', address: 'Kompleks Gelora Bung Karno, Senayan, Jakarta Pusat', transit: 'MRT Istora Mandiri station', capacity: '' };
 
 // Shows announced for the next six months whose seating plan we have not modelled yet.
@@ -54,6 +58,9 @@ const SELLERS = {
   loket: { name: 'Loket.com', url: 'https://www.loket.com/' },
   tiptip: { name: 'TipTip', url: 'https://tiptip.id/' },
   traveloka: { name: 'Traveloka', url: 'https://www.traveloka.com/en-id/activities' },
+  tiket: { name: 'tiket.com', url: 'https://www.tiket.com/en-id/to-do' },
+  persija: { name: 'persija.id', url: 'https://www.persija.id/tickets' },
+  xxi: { name: 'Cinema XXI', url: 'https://21cineplex.com/' },
 };
 export const sellerOf = e => e?.official?.name || 'tiket.com';
 export const onTiket = e => sellerOf(e) === 'tiket.com';
@@ -71,23 +78,28 @@ export function saleInfo(e, now = Date.now()) {
   return { ms, soon, date, line: soon ? `Ticket sale opens ${date} on ${sellerOf(e)}.` : `Ticket sale opened ${date} on ${sellerOf(e)}.` };
 }
 const STANDIN = 'The seating plan for this show has not been published, so the 3D venue uses a stand-in layout. Use it for a feel of the venue, not to pick a seat.';
-const SHOW = ({ id, image, theme, title, subtitle, dateISO, place, venue, host = 'TBA', hostNote = 'Promoter', from = null, range = '', soldOutAll = false, blurb, extra = [], sale = {}, url = '' }) => {
+// `type` sets the list filter (EVENT_TYPES below); a match, a fight or a film runs on the
+// matching demo layout as its stand-in. `prices` is the promoter's own price list in words,
+// `standInNote` replaces the stand-in sentence, `until` keeps a film on the lists through its run.
+const SHOW = ({ id, image, theme, title, subtitle, dateISO, time = 'TBA', place, venue, type, host = 'TBA', hostNote = 'Promoter', from = null, range = '', prices = '', soldOutAll = false, blurb, extra = [], sale = {}, url = '', branding, standInNote = STANDIN, until, age = '' }) => {
   const cats = getVenue(venue).categories.map(c => ({ ...c, price: null }));
   const seller = SELLERS[sale.seller] || { name: 'tiket.com', url: TIKET(title) };
   const official = url ? { ...seller, url } : seller;
+  const onTiketCom = official.name === 'tiket.com';
   return {
-    id, venue, title, subtitle, dateISO, time: 'TBA', doors: 'TBA', ends: '', age: '',
+    id, venue, title, subtitle, dateISO, time, doors: 'TBA', ends: '', age,
+    ...(type ? { type } : {}), ...(until ? { until } : {}),
     host, hostNote, blurb, cats, from, standIn: true,
     // When general sale opens, and whether tiket.com is a confirmed seller (null: not known yet).
-    sale: { tiket: sale.seller ? false : null, ...sale },
+    sale: { tiket: onTiketCom && sale.seller ? true : sale.seller ? false : null, ...sale },
     about: [
       ...extra,
-      range ? `Tickets announced from ${range}. Prices per category are on ${official.name}.` : 'Ticket prices have not been announced yet.',
-      STANDIN,
-      official.name === 'tiket.com' ? PRICES : `Prices as announced by the promoter. Sold on ${official.name}, not on tiket.com: ${official.name} has the live price and stock.`,
+      prices || (range ? `Tickets announced from ${range}. Prices per category are on ${official.name}.` : 'Ticket prices have not been announced yet.'),
+      standInNote,
+      onTiketCom ? PRICES : `Prices as announced by the promoter. Sold on ${official.name}, not on tiket.com: ${official.name} has the live price and stock.`,
     ],
     runs: [],
-    branding: { wall: title.toUpperCase(), sub: subtitle.toUpperCase(), band: [title.toUpperCase(), subtitle.toUpperCase(), place.name.toUpperCase(), place.city.toUpperCase()] },
+    branding: branding || { wall: title.toUpperCase(), sub: subtitle.toUpperCase(), band: [title.toUpperCase(), subtitle.toUpperCase(), place.name.toUpperCase(), place.city.toUpperCase()] },
     theme,
     place,
     official,
@@ -422,6 +434,70 @@ export const EVENTS = [
     official: { name: 'Loket.com', url: 'https://m2minjakarta.com/' },
     photo: 'event-concert-1', image: 'm2m-two',
   },
+
+  // Added 20 November 2026, each read off the seller's or promoter's own event page that day.
+  {
+    id: 'evt-simpleplan-jakarta', venue: 'tennis-m2m',
+    title: 'Simple Plan', subtitle: 'The Bigger Than You Think! Tour',
+    dateISO: '2026-11-27T00:00', time: 'TBA', doors: 'TBA', ends: '', age: '',
+    host: 'Akselerasi Entertainment', hostNote: 'Promoter, with TSP & Co. and Midas Promotions',
+    blurb: 'Simple Plan celebrate 25 years with The Bigger Than You Think! Tour at Tennis Indoor Senayan, a setlist from every era of the band, with LØLØ as special guest. CAT 1 and CAT 2 stand on the floor; CAT 3 faces the stage and CAT 4 A and B run along the sides.',
+    about: [
+      'From the promoter’s seating plan: CAT 1 is free standing at the front (Rp 1.65M) and CAT 2 free standing behind it, round the sound desk (Rp 950K). CAT 3 is numbered seats in the stand facing the stage (Rp 1.95M); CAT 4 A and CAT 4 B numbered seats along the two sides (Rp 1.45M). Seat numbers are given by the system within each category.',
+      'Prices as announced by the promoter, before tax and the admin fee. Sold on Loket.com through simpleplanindonesia.com, not on tiket.com: it has the live price and stock. The Surabaya show (28 Nov, Jatim Expo) is on the same site.',
+      MODEL,
+    ],
+    runs: [],
+    cats: [
+      { id: 'cat3', name: 'CAT 3', price: 1950000, color: '#7cb342', note: 'Numbered seats facing the stage' },
+      { id: 'cat1', name: 'CAT 1', price: 1650000, color: '#d84a3a', note: 'Free standing at the front' },
+      { id: 'cat4a', name: 'CAT 4 A', price: 1450000, color: '#a0642e' },
+      { id: 'cat4b', name: 'CAT 4 B', price: 1450000, color: '#a0642e' },
+      { id: 'cat2', name: 'CAT 2', price: 950000, color: '#f2c14e', note: 'Free standing, round the sound desk' },
+    ],
+    branding: { wall: 'SIMPLE PLAN', sub: 'THE BIGGER THAN YOU THINK! TOUR', band: ['SIMPLE PLAN', 'BIGGER THAN YOU THINK!', 'TENNIS INDOOR SENAYAN', 'JAKARTA'] },
+    theme: 'm2m',
+    // Five-piece pop-punk: lead vocals, two guitars, bass, drums.
+    lineup: [{ role: 'vocals' }, { role: 'guitar' }, { role: 'guitar' }, { role: 'bass' }, { role: 'drums' }],
+    place: TENNIS,
+    sale: { opens: '2026-05-05T10:00', seller: 'loket', tiket: false },
+    official: { name: 'Loket.com', url: 'https://simpleplanindonesia.com/' },
+    photo: 'event-concert-1',
+  },
+  SHOW({ id: 'evt-boynextdoor-jakarta', theme: 'enhypen', title: 'BOYNEXTDOOR', subtitle: "TOUR 'KNOCK ON Vol.2' in Jakarta", dateISO: '2026-12-05T00:00', place: ICE_BSD, venue: 'concert',
+    host: 'PK Entertainment', from: 2146000, sale: { seller: 'tiket', tiket: true }, url: 'https://www.tiket.com/en-id/to-do/boynextdoor-tour-knock-on-vol2',
+    blurb: "BOYNEXTDOOR bring their first world tour, 'KNOCK ON Vol.2', to ICE BSD City Hall 5–6. Standing pens on the floor, ONEDOOR VIP at the front; CAT 1 and CAT 2 are numbered seats.",
+    prices: 'From tiket.com: ONEDOOR VIP A and B (standing) Rp 3,944,000; ORANGE A and B (standing) Rp 3,190,000; PINK A and B (standing) Rp 2,146,000; CAT 1 (numbered seating) Rp 3,190,000; CAT 2 (numbered seating) Rp 2,726,000. Prices include the 10% tax and the 6% platform fee. ORANGE A and PINK A were sold out on 20 November 2026.',
+    extra: ['Sold only on tiket.com, up to six tickets per transaction. Wristband redemption is announced by the promoter (@pkentertainment.id, bndinjakarta.com). No under-12s in the standing pens.'] }),
+  SHOW({ id: 'evt-persija-baliutd', type: 'football', theme: 'gnr', title: 'Persija Jakarta vs Bali United', subtitle: 'BRI Super League 2026/27', dateISO: '2026-12-12T19:00', time: '19:00', place: GBK, venue: 'stadium',
+    host: 'Persija Jakarta', hostNote: 'Home club', sale: { seller: 'persija' }, url: 'https://www.persija.id/matches/persija-jakarta-vs-bali-united-fc-2026-12-12',
+    blurb: 'Persija host Bali United at Gelora Bung Karno Main Stadium in the BRI Super League, kick-off 19:00 WIB.',
+    branding: { home: 'PERSIJA', away: 'BALI UTD' },
+    standInNote: 'The 3D venue is our generic football stadium, not GBK’s own stands: use it for a feel of the view from the side or behind the goal, not to pick a seat.',
+    extra: ['Tickets are sold by the club on persija.id (sign in under Tickets), usually in the week before the match. Prices and stands had not been announced on 20 November 2026.'] }),
+  SHOW({ id: 'evt-janice-tjen-live', type: 'sport', theme: 'nancy', title: 'Janice Tjen Live', subtitle: 'Game. Set. Celebrate.', dateISO: '2026-12-12T13:00', time: '13:00', place: TENNIS, venue: 'combat',
+    host: 'Tatler Indonesia', hostNote: 'Organiser · Tatler Sports', from: 600000, sale: { seller: 'loket' }, url: 'https://www.loket.com/event/janice-tjen-live-game-set-celebrate_w8U1',
+    blurb: 'Indonesia’s top-ranked tennis player Janice Tjen comes home for an exhibition match against Thailand’s Mananchaya Sawangkaew at Tennis Indoor Senayan.',
+    branding: { mark: 'JANICE TJEN', sub: 'GAME · SET · CELEBRATE', hall: 'TENNIS INDOOR SENAYAN', title: 'JANICE TJEN LIVE · JAKARTA' },
+    prices: 'From Loket.com: Platinum Rp 7,000,000 and VIP Seats Rp 3,960,000 (both sold out), Courtside Rp 2,700,000, CAT 1 Rp 830,000, CAT 2 Rp 600,000. Gates and programme from 13:00 to 21:00 WIB.',
+    standInNote: 'The 3D venue is our centre-court arena with seats on four sides, not the plan of Tennis Indoor: use it for a feel of courtside and the stands, not to pick a seat.' }),
+  SHOW({ id: 'evt-persija-madura', type: 'football', theme: 'gnr', title: 'Persija Jakarta vs Madura United', subtitle: 'BRI Super League 2026/27', dateISO: '2026-12-16T15:30', time: '15:30', place: GBK, venue: 'stadium',
+    host: 'Persija Jakarta', hostNote: 'Home club', sale: { seller: 'persija' }, url: 'https://www.persija.id/matches/persija-jakarta-vs-madura-united-fc-2026-12-16',
+    blurb: 'Persija host Madura United at Gelora Bung Karno Main Stadium in the BRI Super League, kick-off 15:30 WIB.',
+    branding: { home: 'PERSIJA', away: 'MADURA UTD' },
+    standInNote: 'The 3D venue is our generic football stadium, not GBK’s own stands: use it for a feel of the view from the side or behind the goal, not to pick a seat.',
+    extra: ['Tickets are sold by the club on persija.id (sign in under Tickets), usually in the week before the match. Prices and stands had not been announced on 20 November 2026.'] }),
+  SHOW({ id: 'evt-dune-part-three', type: 'cinema', theme: 'bocelli', title: 'Dune: Part Three', subtitle: 'In cinemas', dateISO: '2026-12-18T00:00', until: '2027-01-15T00:00', place: XXI, venue: 'cinema',
+    host: 'Warner Bros. Pictures', hostNote: 'Studio · directed by Denis Villeneuve', sale: { seller: 'xxi' }, url: 'https://21cineplex.com/dune-part-three,139921,26DPTE.htm',
+    blurb: 'Denis Villeneuve’s Dune: Part Three, with Timothée Chalamet, Zendaya, Florence Pugh and Robert Pattinson, opens worldwide on 18 December 2026.',
+    prices: 'Ticket prices depend on the cinema, the studio (regular, IMAX, premiere) and the day; XXI shows them with the showtimes in the M-Tix app and on 21cineplex.com.',
+    standInNote: 'The 3D view is our cinema studio (rows A to N, sweetboxes at the back), not a particular XXI studio: use it to compare a front, middle or back row.',
+    extra: ['Cinema XXI listed it as coming soon on 20 November 2026; the Indonesian opening day is confirmed when XXI opens the showtimes. We keep it on the list until mid-January.'] }),
+  SHOW({ id: 'evt-jkt48-15th', theme: 'maroon5', title: 'JKT48', subtitle: 'AYO SENYUMLAH · 15th Anniversary Concert', dateISO: '2026-12-19T18:30', time: '18:30', place: GRAHA_UNESA, venue: 'concert',
+    host: 'JKT48', hostNote: 'Organiser', from: 450000, sale: { opens: '2026-11-16T12:00', seller: 'loket' }, url: 'https://www.loket.com/event/jkt48-ayosenyumlah-concert',
+    blurb: 'JKT48 mark fifteen years, and their 28th single “Ayo Senyumlah”, with an anniversary concert at Graha UNESA in Surabaya, 18:30 to 20:30 WIB.',
+    prices: 'From Loket.com (general sale): CAT 3 Rp 1,200,000, CAT 4 Rp 1,000,000, CAT 5 Rp 750,000, CAT 6 Rp 550,000, CAT 7 Rp 450,000. On 20 November 2026 only CAT 4 was still available.',
+    extra: ['Sold only on Loket.com, up to four tickets per transaction; the e-ticket is exchanged for a wristband. More on jkt48.com.'] }),
 ];
 
 // Demo venues: one per layout, fully open, for the partner page and anyone who wants to try

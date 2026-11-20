@@ -29,7 +29,13 @@ const out = icon('i-out');
 // ---------------------------------------------------------------- the catalogue
 
 // A concert stays on the lists until the day after the show; its own page keeps working.
-export const upcoming = e => startOf(e) + DAY > Date.now();
+// The tag on an event page and what its 3D block looks at, by the kind of event.
+const TYPE_TAG = { football: 'Football', sport: 'Sport', combat: 'Fight night', cinema: 'Cinema', theatre: 'Theatre' };
+const SEE_WHAT = { football: 'pitch', sport: 'court', combat: 'ring', cinema: 'screen' };
+// What the ticket card calls its pass, by the kind of event.
+const PASS_LABEL = { football: 'Match pass', sport: 'Match pass', combat: 'Fight pass', cinema: 'Cinema pass', theatre: 'Show pass' };
+// A film stays on the lists through its run (`until`), a show for a day after it starts.
+export const upcoming = e => (e.until ? Date.parse(e.until) : startOf(e)) + DAY > Date.now();
 export const byDate = (a, b) => startOf(a) - startOf(b);
 export const onSale = () => EVENTS.filter(upcoming).sort(byDate);
 export const featured = () => EVENTS.find(e => e.featured && upcoming(e)) || onSale()[0] || EVENTS[0];
@@ -135,7 +141,7 @@ function ticketCard(e, opts = {}) {
       <h3 class="tkt-title" style="--em:${name.em.toFixed(2)}"><a class="ev-link" href="#event-${e.id}">${name.lines.map(esc).join('<br> ')}</a></h3>
       <div class="tkt-cut" aria-hidden="true"></div>
       <div class="tkt-foot">
-        <div class="tkt-code"><small>Concert pass</small><i class="barcode"></i></div>
+        <div class="tkt-code"><small>${PASS_LABEL[typeOf(e)] || 'Concert pass'}</small><i class="barcode"></i></div>
         <p class="tkt-price">${priceTag(live, from)}</p>
       </div>
     </div></article>`;
@@ -167,7 +173,7 @@ function kicker(sub) {
 function catTicket(e, c, { dark = false, meta } = {}) {
   return entranceTicket({
     ev: e.title, sub: c.name, code: code(c), price: c.price, href: esc(buyUrl(e)), attrs: buyAttrs(e, c.id),
-    buy: 'Buy', dark, date: whenOf(e).pill, city: cityCode(e), na: c.note,
+    buy: 'Buy', dark, date: whenOf(e).pill, city: cityCode(e), na: c.note || (c.price == null ? `Price on ${sellerOf(e)}` : ''),
     meta: meta ?? (onTiket(e) ? '<span>Opens tiket.com · 3D seat view included</span>' : `<span>Opens ${esc(sellerOf(e))} · not sold on tiket.com</span>`),
   });
 }
@@ -344,7 +350,7 @@ export function renderEvent(id) {
         ${poster}
         <div class="ev-info">
           <a class="back-link" href="#concerts">${icon('i-back')}All events</a>
-          <div class="tags"><span class="tag tag-coral">Concert</span><span class="tag tag-white">${dm.dow} ${dm.day} ${dm.mon}</span>${pass ? `<span class="tag tag-line">${icon('i-eye')}3D pass on this device</span>` : ''}</div>
+          <div class="tags"><span class="tag tag-coral">${esc(TYPE_TAG[typeOf(e)] || 'Concert')}</span><span class="tag tag-white">${dm.dow} ${dm.day} ${dm.mon}</span>${pass ? `<span class="tag tag-line">${icon('i-eye')}3D pass on this device</span>` : ''}</div>
           <p class="ev-blurb">${esc(e.blurb)}</p>
           ${live && saleInfo(e) ? `<p class="ev-sale">${icon('i-cal')}<span>${esc(saleInfo(e).line)}</span></p>` : ''}
           ${others.length ? `<p class="ev-dates">Also on ${others.map(x => `<a class="pill" href="#event-${x.id}">${esc(whenOf(x).block.dow)} ${whenOf(x).block.day} ${whenOf(x).block.mon}</a>`).join('')}</p>` : ''}
@@ -388,7 +394,7 @@ export function renderEvent(id) {
 
   render3dPanel(e, venue);
 
-  $('#ev-tickets-note').textContent = `${e.about.find(p => p.startsWith('Prices as announced')) || 'Prices as announced by the promoter.'} Each ticket opens the concert on ${sellerOf(e)}.`;
+  $('#ev-tickets-note').textContent = `${e.about.find(p => p.startsWith('Prices as announced')) || 'Prices as announced by the promoter.'} Each ticket opens the ${typeOf(e) === 'concert' ? 'concert' : 'event'} on ${sellerOf(e)}.`;
   $('#ev-cats').innerHTML = venue.categories.map((c, i) => catTicket(e, c, { dark: i === 0, meta: live ? undefined : '<span>This concert has taken place.</span>' })).join('');
 
   const gap = gapText(e);
@@ -437,7 +443,7 @@ function render3dPanel(e, venue) {
       <a class="ev3d-map" href="#seats-${id}" aria-label="Open the 3D venue">${dotMap(venue, { byCat: true })}<span class="ev3d-go">Open in 3D ${icon('i-arrow')}</span></a>
       <div class="ev3d-side">
         <p class="eyebrow">Your seat, in 3D</p>
-        <h2 class="big big-sm"><span class="fade">See the stage</span> <span class="ol">from your seat</span></h2>
+        <h2 class="big big-sm"><span class="fade">See the ${SEE_WHAT[typeOf(e)] || 'stage'}</span> <span class="ol">from your seat</span></h2>
         ${action}
         <ul class="cat-key">${venue.categories.map(c => `<li><i style="background:${esc(c.color)}"></i><span>${esc(c.name)}</span><b>${c.price == null ? '' : formatRpShort(c.price)}</b></li>`).join('')}</ul>
       </div>

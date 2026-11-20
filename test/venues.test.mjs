@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { getVenue, heroSeat, VENUE_KEYS, REAL_KEYS } from '../js/layouts.js';
-import { getEvent, EVENTS, DEMOS, isConcert, demoFor } from '../js/events.js';
+import { getEvent, EVENTS, DEMOS, isConcert, demoFor, typeOf } from '../js/events.js';
 
 const range = (a, b) => Array.from({ length: b - a + 1 }, (_, i) => `${a + i}`);
 
@@ -85,7 +85,8 @@ test('seat counts in the demo copy match the models', () => {
 });
 
 test('the home page hero sits on each concert’s centre line, as far from the stage as asked', () => {
-  for (const e of EVENTS) {
+  // Only concerts take the home page hero (hero.js); matches, fights and films stay off it.
+  for (const e of EVENTS.filter(x => typeOf(x) === 'concert')) {
     const v = getEvent(e.id), s = heroSeat(v);
     const [fx, , fz] = v.focus;
     // The halls are symmetric about the line through the stage: x = 0, or z = 0 when the
