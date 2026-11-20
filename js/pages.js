@@ -212,11 +212,10 @@ export function renderHome() {
   const shows = oncePerShow(onSale());
   $('#home-venues').innerHTML = KINDS.map((k, i) => {
     const list = shows.filter(e => k.types.includes(typeOf(e)));
-    const first = list.find(e => e.image) || list[0] || null;
     const from = Math.min(...list.map(e => minPrice(e.id) ?? Infinity));
     const venues = new Set(list.map(e => placeOf(e).name)).size;
     return `<a class="venue" href="${list.length ? `#events-${k.key}` : '#news-form'}">
-      <div class="venue-cover">${kindCover(first, k.demo, k.name)}</div>
+      <div class="venue-cover">${kindCover(k.key, `${k.title}: the view from a seat`)}</div>
       <div class="venue-body">
         <span class="venue-n">0${i + 1} · ${esc(k.name)}</span>
         <h3>${esc(k.title)}</h3>

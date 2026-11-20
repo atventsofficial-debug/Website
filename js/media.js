@@ -97,12 +97,11 @@ export function placeCover(place, e, alt) {
     <span class="venue-3d"><img src="${smallOf(map)}" alt="" loading="lazy" decoding="async"><b>3D view</b></span>`;
 }
 
-// A kind of event on the home page: the event's own artwork, with its venue's 3D render
-// inset. `e` null: no event of that kind yet, so the render of `venueKey` alone.
-export function kindCover(e, venueKey, alt) {
-  if (!e) return coverImg(`event-${venueKey}-1`, venueKey, alt);
-  return `${eventImg(e, alt)}
-    <span class="venue-3d"><img src="${smallOf(cover(e.photo, e.venue))}" alt="" loading="lazy" decoding="async"><b>3D view</b></span>`;
+// A kind of event on the home page (pages.js KINDS): a picture from a seat at that kind of
+// venue, one for each kind, in assets/covers/kind/ (with a 640 px copy).
+export function kindCover(key, alt) {
+  const art = `assets/covers/kind/${key}`;
+  return `<img class="cover-img" src="${art}-640.webp" srcset="${art}-640.webp 640w, ${art}.webp 1024w" sizes="(max-width: 640px) 50vw, 320px" alt="${alt.replace(/"/g, '&quot;')}" loading="lazy" decoding="async">`;
 }
 
 // An event's cover: its own artwork when it has some, else the render of its venue.
