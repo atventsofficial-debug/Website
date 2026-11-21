@@ -2586,7 +2586,12 @@ html.has-soldpop { overflow: hidden; }
 @media (max-width: 760px) {
   .ev-bar-in > :not(.ev-bar-go) { display: none !important; }
   .ev-bar-in { grid-template-columns: minmax(0, 1fr) !important; }
-  .ev-bar-go { display: inline-flex; justify-content: center; width: 100%; white-space: nowrap; }
+  /* One coral button across the bar: cube icon, label, and the price in a white pill. */
+  .ev-bar a.ev-bar-go { display: flex; align-items: center; gap: 12px; width: 100%; height: 56px; padding: 0 8px 0 18px; border: 0; border-radius: 999px; background: var(--coral); color: #fff; font: 700 15px/1 var(--font); white-space: nowrap; }
+  .ev-bar-go > svg { flex: none; width: 22px; height: 22px; }
+  .ev-bar-go-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; text-align: left; }
+  .ev-bar-go-p { flex: none; display: inline-flex; align-items: center; height: 40px; padding: 0 14px; border-radius: 999px; background: #fff; color: #141212; font-weight: 800; }
+  .ev-bar-go-p svg { width: 18px; height: 18px; color: var(--coral); }
   .ev-hero .ev-unlock-hero { display: none; }
   .ev-hero .ev-count-info { order: 6; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin: 2px 0 4px; }
   .ev-count-info > small { display: block; }

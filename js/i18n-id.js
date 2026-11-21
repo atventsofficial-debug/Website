@@ -11,6 +11,7 @@ export const EXACT = {
 "For fans": "Untuk Fans",
 "For partners": "Untuk Partner",
 "Unlock 3D": "Buka 3D",
+"Unlock 3D seat view": "Buka Tampilan Kursi 3D",
 "Book a demo": "Jadwalkan Demo",
 "Events": "Event",
 "Unlock a 3D view": "Buka Tampilan 3D",
