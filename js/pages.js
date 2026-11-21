@@ -386,7 +386,7 @@ export function renderEvent(id) {
           ${others.length ? `<p class="ev-dates">Also on ${others.map(x => `<a class="pill" href="#event-${x.id}">${esc(whenOf(x).block.dow)} ${whenOf(x).block.day} ${whenOf(x).block.mon}</a>`).join('')}</p>` : ''}
           ${live ? `<p class="ev-official">${icon('i-link')}<span>Tickets are sold by ${esc(sellerOf(e))}, the official seller. The 3D view from your seat is sold here for ${formatFee()} and opens as soon as you pay.</span></p>`
             : '<p class="ev-official">This concert has taken place. Its 3D venue stays open to look round.</p>'}
-          <div class="row-btns">${pass?.status === 'confirmed' ? `<a class="btn btn-coral" href="#tour-${esc(pass.id)}">Start my seat tour ${icon('i-arrow')}</a>` : live ? `<a class="btn btn-coral" href="#unlock-${id}">Unlock my seat view · ${formatFee()} ${icon('i-arrow')}</a>` : ''}${live ? buyLink(e, `Tickets on tiket.com ${out}`, 'btn btn-line') : ''}${pass?.status === 'confirmed' ? '' : `<a class="btn btn-line" href="#seats-${id}">Look round in 3D</a>`}</div>
+          <div class="row-btns">${pass?.status === 'confirmed' ? `<a class="btn btn-coral" href="#tour-${esc(pass.id)}">Start my seat tour ${icon('i-arrow')}</a>` : live ? `<a class="btn btn-coral" href="#unlock-${id}">Unlock my seat view · ${formatFee()} ${icon('i-arrow')}</a>` : ''}${live ? buyLink(e, `Tickets on tiket.com ${out}`, 'btn btn-line') : ''}${live || pass?.status === 'confirmed' ? '' : `<a class="btn btn-line" href="#seats-${id}">Look round in 3D</a>`}</div>
         </div>
         <div class="ev-actions">
           <div class="row-btns">
@@ -419,7 +419,7 @@ export function renderEvent(id) {
       <span class="ev-date"><b>${dm.day}</b><small>${dm.mon}</small></span>
       <div class="ev-bar-t"><b>${esc(e.title)}</b><span>${esc(e.subtitle)} · ${esc(v.name)}${timeKnown(e) ? ` · ${esc(w.time)}` : ''}</span></div>
       <span class="ev-from">${from == null ? `<small>Tickets on</small><b>${esc(sellerOf(e))}</b>` : `<small>From</small><b>${formatRpShort(from)}</b>`}</span>
-      ${live ? `<a class="btn btn-coral" href="#unlock-${id}">Unlock 3D · ${formatFee()} ${icon('i-arrow')}</a>` : `<a class="btn btn-line" href="#seats-${id}">Look round in 3D</a>`}
+      ${live ? buyLink(e, `Tickets on tiket.com ${out}`, 'btn btn-coral') : ''}
     </div>`;
 
   render3dPanel(e, venue);
@@ -467,11 +467,11 @@ function render3dPanel(e, venue) {
         <li><b>2</b><span>Fill in your seat, your name and your email, and pay ${formatFee()}.</span></li>
         <li><b>3</b><span>Your pass opens at once: the tour takes you to the view from your seat.</span></li>
       </ol>
-      <div class="row-btns"><a class="btn btn-coral" href="#seats-${id}">Look round in 3D ${icon('i-arrow')}</a><a class="btn btn-line" href="#unlock-${id}">${icon('i-lock')}Unlock my view · ${formatFee()}</a></div>`;
+      <div class="row-btns"><a class="btn btn-coral" href="#seats-${id}">Look round in 3D ${icon('i-arrow')}</a></div>`;
   startEventHero(id);
   $('#ev-3d').innerHTML = `
     <div class="ev3d">
-      <a class="ev3d-map" href="#seats-${id}" aria-label="Open the 3D venue">${dotMap(venue, { byCat: true })}<span class="ev3d-go">Open in 3D ${icon('i-arrow')}</span></a>
+      <a class="ev3d-map" href="#seats-${id}" aria-label="Open the 3D venue">${dotMap(venue, { byCat: true })}</a>
       <div class="ev3d-side">
         <p class="eyebrow">Your seat, in 3D</p>
         <h2 class="big big-sm"><span class="fade">See the ${SEE_WHAT[typeOf(e)] || 'stage'}</span> <span class="ol">from your seat</span></h2>
