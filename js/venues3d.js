@@ -711,7 +711,11 @@ export function buildCinema(ctx, venue) {
   if (!areaLights) throw new Error('call prepareVenue("cinema") first');
   ctx.setAtmosphere({ house: '#121012', live: '#040304', exposure: [1.0, 1.1] });
 
-  const W = 18.6, D = 27, H = 10, CZ = -2.5;
+  // A studio from XXI's seat map carries its own room (cinemas.js); the demo has this one.
+  const R = venue.room || {};
+  const W = R.W || 18.6, D = R.D || 27, H = R.H || 10, CZ = R.CZ ?? -2.5;
+  const SW = R.screenW || 16.4, SH = R.screenH || 6.86, SY = R.screenY || 5.3, SZ = R.screenZ ?? -15.6;
+  const back = R.back ?? CZ + D / 2;
   // Acoustic wall panels.
   const panels = canvasTex(512, 256, (g, w, h) => {
     g.fillStyle = '#2a2224'; g.fillRect(0, 0, w, h);
@@ -760,22 +764,22 @@ export function buildCinema(ctx, venue) {
     toneMapped: false,
   });
   ctx.mood(movie.uniforms.uLevel, 'value', 0.45, 1.0);
-  const screen = new THREE.Mesh(new THREE.PlaneGeometry(16.4, 6.86), movie);
-  screen.position.set(0, 5.3, -15.6);
+  const screen = new THREE.Mesh(new THREE.PlaneGeometry(SW, SH), movie);
+  screen.position.set(0, SY, SZ);
   scene.add(screen);
   const mask = new THREE.Mesh(new THREE.PlaneGeometry(W, H), new THREE.MeshStandardMaterial({ color: '#050505', roughness: 1 }));
-  mask.position.set(0, H / 2, -15.7);
+  mask.position.set(0, H / 2, SZ - 0.1);
   scene.add(mask);
   const stage = new THREE.Mesh(new THREE.BoxGeometry(W, 0.9, 1.4), mats.matteBlack());
-  stage.position.set(0, 0.45, -15.1);
+  stage.position.set(0, 0.45, SZ + 0.5);
   scene.add(stage);
   for (const sx of [-1, 1]) {
-    const c = new THREE.Mesh(curtain(2.2, 8.8), new THREE.MeshStandardMaterial({ color: '#5a0d18', roughness: 0.85, side: THREE.DoubleSide }));
-    c.position.set(sx * 8.4, 4.8, -15.3);
+    const c = new THREE.Mesh(curtain(Math.max(1, Math.min(2.2, (W - SW) / 2)), Math.min(8.8, H - 1.2)), new THREE.MeshStandardMaterial({ color: '#5a0d18', roughness: 0.85, side: THREE.DoubleSide }));
+    c.position.set(sx * (W / 2 - Math.max(0.5, Math.min(1.1, (W - SW) / 4))), Math.min(4.8, (H - 0.4) / 2), SZ + 0.3);
     scene.add(c);
   }
-  const screenLight = new THREE.RectAreaLight('#ffc89a', 1, 16, 6.8);
-  screenLight.position.set(0, 5.3, -15.4);
+  const screenLight = new THREE.RectAreaLight('#ffc89a', 1, SW, SH);
+  screenLight.position.set(0, SY, SZ + 0.2);
   screenLight.lookAt(0, 3, 10);
   ctx.mood(screenLight, 'intensity', 0.6, 4.5);
   scene.add(screenLight);
@@ -784,7 +788,7 @@ export function buildCinema(ctx, venue) {
   const red = new THREE.MeshStandardMaterial({ color: '#2a0004', emissive: '#ff1e3c', emissiveIntensity: 2.2 });
   for (const sx of [-1, 1]) for (let i = 0; i < 7; i++) {
     const s = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 7), red);
-    s.position.set(sx * (W / 2 - 0.04), 2.2 + i * 0.95, -11.2);
+    s.position.set(sx * (W / 2 - 0.04), 2.2 + i * 0.95, SZ + Math.min(4.4, D * 0.3));
     s.rotation.x = (i - 3) * 0.05;
     scene.add(s);
   }
@@ -792,7 +796,7 @@ export function buildCinema(ctx, venue) {
   const down = new THREE.MeshStandardMaterial({ color: '#111', emissive: '#ffe6c4', emissiveIntensity: 1 });
   ctx.mood(down, 'emissiveIntensity', 2.5, 0.15);
   const pts = [];
-  for (let i = 0; i < 5; i++) for (let j = 0; j < 6; j++) pts.push([-7 + i * 3.5, H - 0.05, -12 + j * 4.2]);
+  for (let i = 0; i < 5; i++) for (let j = 0; j < 6; j++) pts.push([(i - 2) * (W - 4.6) / 4, H - 0.05, SZ + 3.6 + j * (back - SZ - 5) / 5]);
   scene.add(instanceAlong(new THREE.CylinderGeometry(0.16, 0.16, 0.06, 16), down, pts));
   const houseKey = ctx.addKeyLight({ pos: [3, 18, 8], target: [0, 0, -2], half: 16, house: 1.6, live: 0.0 });
   houseKey.color.set('#ffe9cf');
@@ -802,9 +806,23 @@ export function buildCinema(ctx, venue) {
 
   // Aisle step lights.
   const amber = new THREE.MeshStandardMaterial({ color: '#2a1a05', emissive: '#ffb547', emissiveIntensity: 2 });
-  const steps = [];
-  for (let r = 0; r < 14; r++) for (const x of [-3.95, 3.95, -8.6, 8.6]) steps.push([x, Math.max(0, r - 2) * 0.36 + 0.03, -7.2 + r * 1.12 - 0.55]);
-  scene.add(instanceAlong(new THREE.BoxGeometry(0.5, 0.03, 0.03), amber, steps));
+  const steps = R.steps ? R.steps.slice() : [];
+  if (!R.steps) for (let r = 0; r < 14; r++) for (const x of [-3.95, 3.95, -8.6, 8.6]) steps.push([x, Math.max(0, r - 2) * 0.36 + 0.03, -7.2 + r * 1.12 - 0.55]);
+  if (steps.length) scene.add(instanceAlong(new THREE.BoxGeometry(0.5, 0.03, 0.03), amber, steps));
+  // Stadium risers wall to wall under the raked rows, aisles and cross aisles included.
+  if (R.risers?.length) {
+    const riserMat = new THREE.MeshStandardMaterial({ map: carpet, roughness: 1 });
+    const rs = R.risers, d = rs.length > 1 ? rs[1][0] - rs[0][0] : 1;
+    for (const [z, y] of rs) {
+      if (y <= 0) continue;
+      // The last line's riser runs on to the back wall.
+      const deep = z === rs[rs.length - 1][0] ? Math.max(d, back - z + d / 2) : d;
+      const box = new THREE.Mesh(new THREE.BoxGeometry(W - 0.02, y, deep), riserMat);
+      box.position.set(0, y / 2, z - d / 2 + deep / 2);
+      box.receiveShadow = true;
+      scene.add(box);
+    }
+  }
   // Exit signs.
   const exitTex = textTexture(256, 96, (g, w, h) => {
     g.fillStyle = '#0d7a3e'; g.fillRect(0, 0, w, h);
@@ -812,7 +830,7 @@ export function buildCinema(ctx, venue) {
   });
   for (const sx of [-1, 1]) {
     const e = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.34), new THREE.MeshBasicMaterial({ map: exitTex, toneMapped: false }));
-    e.position.set(sx * (W / 2 - 0.02), 7.4, 7.5);
+    e.position.set(sx * (W / 2 - 0.02), Math.min(7.4, H - 1), back - 2);
     e.rotation.y = -sx * Math.PI / 2;
     scene.add(e);
   }

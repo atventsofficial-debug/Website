@@ -44,6 +44,17 @@ const BASKET = { name: 'Basket Hall GBK', art: 'basket-hall', city: 'Jakarta', a
 const TENNIS = { name: 'Tennis Indoor GBK', art: 'tennis-indoor', city: 'Jakarta', address: 'Kompleks Gelora Bung Karno, Senayan, Jakarta Pusat', transit: 'MRT Istora Mandiri station', capacity: '' };
 const ICE_BSD = { name: 'ICE BSD City, Hall 5–6', art: 'jiexpo', city: 'Tangerang', address: 'Jl. BSD Grand Boulevard, Pagedangan, Tangerang, Banten', transit: '', capacity: '' };
 const GRAHA_UNESA = { name: 'Graha UNESA', art: 'jiexpo', city: 'Surabaya', address: 'Universitas Negeri Surabaya, Lidah Wetan, Surabaya', transit: '', capacity: '' };
+// Cinema XXI's studios at Gandaria City; the 3D studios are drawn from XXI's own seat maps (cinemas.js).
+const GANDARIA = { name: 'Gandaria City XXI', art: 'jiexpo', seatColor: '#9a1325', city: 'Jakarta', address: 'Gandaria City mall, Jl. Sultan Iskandar Muda, Kebayoran Lama, Jakarta Selatan', transit: '', capacity: '' };
+const GANDARIA_IMAX = { ...GANDARIA, name: 'Gandaria City IMAX' };
+const GANDARIA_PREMIERE = { ...GANDARIA, name: 'Gandaria City Premiere' };
+const XXI_MAP = 'The 3D studio is drawn from Cinema XXI’s own seat map for this studio (the seat picker on m.21cineplex.com, 21 November 2026): the same rows, seat numbers and aisles. You pick your seat when you book on m.tix.';
+const XXI_SALE = 'Sold by Cinema XXI on m.21cineplex.com and the m.tix app, not on tiket.com. The price shown is XXI’s for Saturday 21 November 2026; XXI prices change by day, and m.tix shows the price for each showing.';
+const HG = 'The Hunger Games: Sunrise on the Reaping';
+const HG_BLURB = 'Panem, 24 years before The Hunger Games: the reaping for the 50th Games, the Second Quarter Quell. Lionsgate, directed by Francis Lawrence; 2 h 38 min.';
+const HG_URL = 'https://m.21cineplex.com/id/movies/26HGSR';
+const FILM = (o) => ({ doors: 'TBA', ends: '', age: '', type: 'cinema', sale: { seller: 'xxi', tiket: false }, photo: 'event-cinema-1', ...o });
+
 const INA_ARENA = { name: 'Indonesia Arena', art: 'indonesia-arena', seatColor: '#8a8e94', seatStyle: 'flipup', city: 'Jakarta', address: 'Kompleks Gelora Bung Karno, Senayan, Jakarta Pusat', transit: 'MRT Istora Mandiri station', capacity: '' };
 
 // Shows announced for the next six months whose seating plan we have not modelled yet.
@@ -548,6 +559,74 @@ export const EVENTS = [
     official: { name: 'Loket.com', url: 'https://westlifestadiumshowjkt.com/' },
     photo: 'event-stadium-end-1', image: 'westlife-25',
   },
+  FILM({
+    id: 'evt-hunger-games-gandaria', venue: 'xxi-gandaria-s1',
+    title: HG, subtitle: 'Gandaria City XXI · Studio 1 · Reguler 2D',
+    dateISO: '2026-11-21T11:45', time: '11:45', until: '2026-11-22T23:59',
+    host: 'Lionsgate', hostNote: 'Studio · in Cinema XXI',
+    blurb: HG_BLURB,
+    about: [
+      'Studio 1 at Gandaria City XXI: rows P (front) to A (back), no row I or O. An aisle runs four seats in from the left wall and another six seats in from the right; rows D to A have three more seats on the left. 348 seats.',
+      'Reguler 2D, Rp 75,000 on Saturday 21 November 2026.',
+      XXI_SALE, XXI_MAP,
+    ],
+    runs: [['11:45', 'Studio 1 · Reguler 2D', 'Saturday 21 November 2026'], ['14:45', 'Studio 1 · Reguler 2D', ''], ['17:45', 'Studio 1 · Reguler 2D', ''], ['20:45', 'Studio 1 · Reguler 2D', '']],
+    branding: { wall: 'THE HUNGER GAMES', sub: 'SUNRISE ON THE REAPING', band: ['THE HUNGER GAMES', 'SUNRISE ON THE REAPING', 'GANDARIA CITY XXI', 'STUDIO 1'] },
+    theme: 'bocelli', place: GANDARIA,
+    official: { name: 'Cinema XXI', url: HG_URL },
+    image: 'hunger-games-sunrise',
+  }),
+  FILM({
+    id: 'evt-hunger-games-imax-gandaria', venue: 'xxi-gandaria-imax',
+    title: HG, subtitle: 'Gandaria City IMAX · IMAX 2D',
+    dateISO: '2026-11-21T12:00', time: '12:00', until: '2026-11-22T23:59',
+    host: 'Lionsgate', hostNote: 'Studio · in Cinema XXI IMAX',
+    blurb: HG_BLURB,
+    about: [
+      'The IMAX studio at Gandaria City: rows N, M and L in front of a cross aisle, then K to A behind it, raked steeply. K to G are the middle block only; F to B run wall to wall. Row L has a gap either side of the middle, row A a gap in the middle, as on XXI’s map.',
+      'IMAX 2D, Rp 90,000 on Saturday 21 November 2026.',
+      XXI_SALE, XXI_MAP,
+    ],
+    runs: [['12:00', 'IMAX 2D', 'Saturday 21 November 2026'], ['15:00', 'IMAX 2D', ''], ['18:00', 'IMAX 2D', ''], ['21:00', 'IMAX 2D', '']],
+    branding: { wall: 'THE HUNGER GAMES', sub: 'SUNRISE ON THE REAPING · IMAX', band: ['THE HUNGER GAMES', 'IMAX', 'GANDARIA CITY', 'JAKARTA'] },
+    theme: 'bocelli', place: GANDARIA_IMAX,
+    official: { name: 'Cinema XXI', url: HG_URL },
+    image: 'hunger-games-sunrise',
+  }),
+  FILM({
+    id: 'evt-hunger-games-premiere-gandaria', venue: 'xxi-gandaria-premiere',
+    title: HG, subtitle: 'Gandaria City Premiere · Studio 1 · Premiere 2D',
+    dateISO: '2026-11-21T11:50', time: '11:50', until: '2026-11-22T23:59',
+    host: 'Lionsgate', hostNote: 'Studio · in The Premiere',
+    blurb: HG_BLURB,
+    about: [
+      'The Premiere, Studio 1 at Gandaria City: five rows, E (front) to A, each of three pairs of recliners (6–5, 4–3, 2–1 from the left) with wide aisles between the pairs. 30 seats.',
+      'Premiere 2D, Rp 250,000 on Saturday 21 November 2026.',
+      XXI_SALE, XXI_MAP,
+    ],
+    runs: [['11:50', 'Studio 1 · Premiere 2D', 'Saturday 21 November 2026'], ['14:50', 'Studio 1 · Premiere 2D', ''], ['17:50', 'Studio 1 · Premiere 2D', ''], ['20:50', 'Studio 1 · Premiere 2D', '']],
+    branding: { wall: 'THE HUNGER GAMES', sub: 'SUNRISE ON THE REAPING', band: ['THE HUNGER GAMES', 'THE PREMIERE', 'GANDARIA CITY', 'JAKARTA'] },
+    theme: 'bocelli', place: GANDARIA_PREMIERE,
+    official: { name: 'Cinema XXI', url: HG_URL },
+    image: 'hunger-games-sunrise',
+  }),
+  FILM({
+    id: 'evt-godzilla-minus-zero-gandaria', venue: 'xxi-gandaria-s3',
+    title: 'Godzilla Minus Zero', subtitle: 'Gandaria City XXI · Studio 3 · Reguler 2D',
+    dateISO: '2026-11-21T12:55', time: '12:55', until: '2026-11-22T23:59',
+    host: 'Toho', hostNote: 'Studio · in Cinema XXI',
+    blurb: 'Takashi Yamazaki’s follow-up to Godzilla Minus One: two years after the war and Godzilla’s attack, Japan is rebuilding when a new threat rises. 2 h 15 min.',
+    about: [
+      'Studio 3 at Gandaria City XXI: rows N (front) to A (back), no row I. An aisle runs two seats in from the left wall and another four seats in from the right; rows C to A have two more seats on the left. 227 seats.',
+      'Reguler 2D, Rp 75,000 on Saturday 21 November 2026.',
+      XXI_SALE, XXI_MAP,
+    ],
+    runs: [['12:55', 'Studio 3 · Reguler 2D', 'Saturday 21 November 2026'], ['15:30', 'Studio 3 · Reguler 2D', ''], ['18:05', 'Studio 3 · Reguler 2D', ''], ['20:40', 'Studio 3 · Reguler 2D', '']],
+    branding: { wall: 'GODZILLA MINUS ZERO', sub: 'IN CINEMAS', band: ['GODZILLA MINUS ZERO', 'GANDARIA CITY XXI', 'STUDIO 3', 'JAKARTA'] },
+    theme: 'gnr', place: GANDARIA,
+    official: { name: 'Cinema XXI', url: 'https://m.21cineplex.com/id/movies/26GMZO' },
+    image: 'godzilla-minus-zero',
+  }),
 ];
 
 // Demo venues: one per layout, fully open, for the partner page and anyone who wants to try

@@ -5,6 +5,7 @@
 import { superPoint, gridRows, bowl, deg, norm, dryRun } from './seatgeo.js';
 import { SEAT_COUNTS } from './seatcounts.js';
 import { REAL_BUILDERS } from './realvenues.js';
+import { CINEMA_BUILDERS } from './cinemas.js';
 
 export { superPoint };
 
@@ -467,10 +468,10 @@ function gbkWestlife() {
   };
 }
 
-const builders = { concert, cinema, combat, 'combat-studio': combatStudio, tennis, stadium, 'stadium-end': stadiumEnd, 'stadium-round': stadiumRound, 'stadium-tottenham': stadiumTottenham, 'gbk-westlife': gbkWestlife, ...REAL_BUILDERS };
+const builders = { concert, cinema, combat, 'combat-studio': combatStudio, tennis, stadium, 'stadium-end': stadiumEnd, 'stadium-round': stadiumRound, 'stadium-tottenham': stadiumTottenham, 'gbk-westlife': gbkWestlife, ...REAL_BUILDERS, ...CINEMA_BUILDERS };
 export const VENUE_KEYS = Object.keys(builders);
 // The real venues, each laid out for one show; the rest are the generic layouts the demos use.
-export const REAL_KEYS = [...Object.keys(REAL_BUILDERS), 'gbk-westlife'];
+export const REAL_KEYS = [...Object.keys(REAL_BUILDERS), 'gbk-westlife', ...Object.keys(CINEMA_BUILDERS)];
 const cache = {};
 
 export function getVenue(key) {

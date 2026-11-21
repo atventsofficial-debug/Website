@@ -9,7 +9,7 @@
 // category up close, where only the seat on their e-ticket can be picked; (3) the view from
 // that seat. Then a photo or video of that view (capture.js), or the whole venue again.
 import { formatFee } from './rules.js';
-import { getEvent } from './events.js';
+import { getEvent, typeOf } from './events.js';
 import { crowdSeats, formatRpShort, REAL_KEYS } from './layouts.js';
 import { whenOf } from './when.js';
 import { buyLink, activePass, openPass, passes, canView, toggleSeat, STATUS, refresh } from './passes.js';
@@ -175,7 +175,7 @@ export function paintViewer() {
   const v = state.venue;
   if (!v) return;
   const e = v.meta, p = pass(), open = canView(v), w = e.demo ? null : whenOf(e);
-  $('#ev-label').textContent = e.demo ? 'Demo venue' : 'Concert';
+  $('#ev-label').textContent = e.demo ? 'Demo venue' : ({ cinema: 'Cinema', football: 'Football', sport: 'Sport', combat: 'Fight night', theatre: 'Theatre' }[typeOf(e)] || 'Concert');
   $('#ev-title').textContent = e.title;
   $('#ev-when').innerHTML = e.demo ? esc(e.subtitle) : `${esc(w.date)} · ${w.time ? esc(w.time) : 'time TBA'}${w.local ? `<small>${esc(w.local)}</small>` : ''}`;
   $('#ev-venue').textContent = v.event.venue;

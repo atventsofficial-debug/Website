@@ -479,7 +479,8 @@ export class SeatScene {
     // Stepped tiers under raked rows. With zone colours the treads take them too (white
     // material, tinted per instance), so blocks read as on the seller's plan.
     this.steps = null;
-    if (raised.length) {
+    // A studio with its own risers wall to wall (cinemas.js) needs no tread per seat.
+    if (raised.length && !venue.room?.risers) {
       const stepMat = venue.kind === 'cinema'
         ? new THREE.MeshStandardMaterial({ color: '#3a171d', roughness: 1 })
         : mats.concrete();
@@ -626,9 +627,11 @@ export class SeatScene {
   buildLabels(venue) {
     const secs = new Map();
     for (const s of venue.seats) {
-      const a = secs.get(s.sec) || { x: 0, z: 0, y: 0, n: 0, name: s.secName, code: s.sec };
+      // `tag`: one label for sections split only to keep seat numbers without gaps (cinemas.js).
+      const k = s.tag || s.sec;
+      const a = secs.get(k) || { x: 0, z: 0, y: 0, n: 0, name: s.secName, code: k };
       a.x += s.x; a.z += s.z; a.y = Math.max(a.y, s.y); a.n++;
-      secs.set(s.sec, a);
+      secs.set(k, a);
     }
     this.labels = [];
     this.tagView = null;
