@@ -130,7 +130,7 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
 .mode a { display: inline-flex; align-items: center; height: 34px; padding: 0 15px; border-radius: 999px; font-size: 13.5px; font-weight: 600; color: rgba(244, 240, 238, 0.72); white-space: nowrap; transition: background .2s, color .2s; }
 .mode a:hover { color: #fff; }
 .mode a[aria-current] { background: #fff; color: var(--ink); }
-.nav-find { position: relative; flex: 1 1 auto; max-width: 460px; margin: 0 auto; }
+.nav-find { position: relative; flex: 1 1 auto; max-width: 400px; margin: 0 auto 0 var(--s6); }
 .nav-find label { display: flex; align-items: center; gap: 10px; height: 46px; padding: 0 10px 0 16px; border: 1px solid var(--line-2); border-radius: 999px; background: rgba(18, 16, 16, 0.55); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); transition: border-color .2s, background .2s; }
 .nav-find label:focus-within { border-color: var(--coral); background: rgba(18, 16, 16, 0.85); }
 .nav-find svg { width: 17px; height: 17px; flex: none; color: var(--muted); }
