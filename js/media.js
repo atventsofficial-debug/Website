@@ -147,5 +147,7 @@ export function posterImg(e) {
 export function posterFig(e) {
   if (!e.image || !Object.hasOwn(IMAGES, e.image)) return '';
   const c = IMAGES[e.image];
-  return `<figure class="ev-poster"><img src="${c.src}" alt="${c.alt.replace(/"/g, '&quot;')}" decoding="async"><figcaption>${c.credit}</figcaption></figure>`;
+  // On the image, short: the source only. The full credit (owner, author, licence) stays on hover and for screen readers.
+  const src = (c.credit.match(/via (.+)$/) || [, c.credit])[1];
+  return `<figure class="ev-poster"><img src="${c.src}" alt="${c.alt.replace(/"/g, '&quot;')}" decoding="async"><figcaption title="${c.credit.replace(/"/g, '&quot;')}"><span aria-hidden="true">Source: ${src}</span><span class="sr-only">${c.credit}</span></figcaption></figure>`;
 }

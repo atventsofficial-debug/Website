@@ -417,6 +417,7 @@ export function renderEvent(id) {
           <a class="back-link" href="#concerts">${icon('i-back')}All events</a>
           <div class="tags"><span class="tag tag-coral">${esc(TYPE_TAG[typeOf(e)] || 'Concert')}</span><span class="tag tag-white">${dm.dow} ${dm.day} ${dm.mon}</span>${pass ? `<span class="tag tag-line">${icon('i-eye')}3D pass on this device</span>` : ''}</div>
           <p class="ev-blurb">${esc(e.blurb)}</p>
+          ${typeOf(e) !== 'cinema' && startOf(e) > Date.now() ? `<div class="ev-count ev-count-info"><small>Starts in</small>${countdownHtml(new Date(startOf(e)).toISOString())}</div>` : ''}
           ${live && saleInfo(e) ? `<p class="ev-sale">${icon('i-cal')}<span>${esc(saleInfo(e).line)}</span></p>` : ''}
           ${opts.length > 1 ? `<p class="ev-dates ev-opts">Ticket class ${opts.map(x => `<a class="pill" href="#event-${x.id}"${x === e ? ' aria-current="page"' : ''}>${esc(x.option)}<span>${formatRpShort(minPrice(x.id))}</span></a>`).join('')}</p>` : ''}
           ${others.length ? `<p class="ev-dates">Also on ${others.map(x => `<a class="pill" href="#event-${x.id}">${esc(whenOf(x).block.dow)} ${whenOf(x).block.day} ${whenOf(x).block.mon}</a>`).join('')}</p>` : ''}
@@ -461,6 +462,8 @@ export function renderEvent(id) {
         if (at > Date.now()) return `<div class="ev-count"><small>Starts in</small>${countdownHtml(new Date(at).toISOString())}</div>`;
         return live ? '<span class="ev-from"><small>Today</small><b>On now</b></span>' : '';
       })()}
+      ${pass?.status === 'confirmed' ? `<a class="btn btn-coral ev-bar-go" href="#tour-${esc(pass.id)}">Open my seat view ${icon('i-arrow')}</a>`
+        : live ? `<a class="btn btn-coral ev-bar-go" href="#unlock-${id}">Unlock 3D · ${formatFee()} ${icon('i-arrow')}</a>` : ''}
     </div>`;
 
   tickCountdowns();

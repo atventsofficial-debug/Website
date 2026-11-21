@@ -294,7 +294,6 @@
   .ev-hero.has-poster .hero-bar { display: contents; }
   .ev-hero.has-poster .ev-poster { order: -1; justify-self: stretch; width: auto; max-width: none; margin: 0 calc(-1 * var(--gut)) 4px; }
   .ev-hero .ev-poster img { width: 100%; height: auto; aspect-ratio: auto; object-fit: contain; border-radius: 0; box-shadow: none; }
-  .ev-hero .ev-poster figcaption { padding: 0 var(--gut); }
 }
 
 /* ---------- concert page top on a phone: shared tidy-up for every option ---------- */
