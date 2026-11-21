@@ -392,10 +392,85 @@ function stadiumTottenham() {
   };
 }
 
-const builders = { concert, cinema, combat, 'combat-studio': combatStudio, tennis, stadium, 'stadium-end': stadiumEnd, 'stadium-round': stadiumRound, 'stadium-tottenham': stadiumTottenham, ...REAL_BUILDERS };
+
+// Westlife 25: The Anniversary World Tour, GBK Main Stadium, 23 Jan 2027, after the layout on
+// westlifestadiumshowjkt.com (Sound Rhythm and Folago Pro). The stage at the west end; every
+// category is a numbered seat. On the field VIP in the middle in front of the stage, CAT 1 A
+// (left) and B (right) either side of it, CAT 2 A and B behind them either side of the sound
+// desk, with a delay tower in each. In the lower tier CAT 3 A and B face the stage and CAT 4 A
+// and B run along the sides; in the upper tier CAT 5 faces the stage and CAT 6 the sides. The
+// stand straight opposite the stage is restricted view and not sold; the stands behind the
+// stage are closed. A is the audience's left (+z).
+const WESTLIFE_FOH = [4, 0];
+function gbkWestlife() {
+  const seats = [];
+  const half = t => (norm(t) < Math.PI ? 'A' : 'B');
+  const lower = [null, 3, 3, 3, 4, 4, null, null, null, null, null, 4, 4, 3, 3, 3];
+  bowl(seats, { cx: 0, cz: 0, p: 0.5, rx0: 61, rz0: 43, from: deg(-11.25), to: deg(348.75), sections: 16,
+    aisle: 0.012, rows: 14, gap: 0.86, rise: 0.42, baseY: 1.1, spacing: 0.62, tier: 1, skip: [0, 6, 7, 8, 9, 10],
+    name: (s, mid) => ({ code: `${lower[s]}${half(mid)}-${s}`, label: `CAT ${lower[s]} ${half(mid)}, section ${s}`, cat: `cat${lower[s]}${half(mid).toLowerCase()}` }) });
+  const uppers = [[8, 62, 'A5', 2], [66, 122, 'A6', 3], [238, 294, 'B6', 3], [298, 352, 'B5', 2]];
+  for (const [from, to, tag, sections] of uppers) {
+    const side = tag[0], n = tag[1];
+    bowl(seats, { cx: 0, cz: 0, p: 0.5, rx0: 76, rz0: 58, from: deg(from), to: deg(to), sections, aisle: 0.012, rows: 12, gap: 0.92,
+      rise: 0.58, baseY: 9.6, spacing: 0.62, tier: 2,
+      name: s => ({ code: `${n}${side}-U${s + 1}`, label: `CAT ${n} ${side}, upper ${s + 1}`, cat: `cat${n}${side.toLowerCase()}` }) });
+  }
+  // The field, facing the stage (-x): numbered chairs 0.56 m across, rows 0.95 m apart.
+  const chairs = { sx: 0.56, sz: 0.95, dir: [-1, 0] };
+  gridRows(seats, { ...chairs, sec: 'VIP', secName: 'VIP', cat: 'vip', x0: -36, z0: 0, rows: 31, cols: 31 });
+  for (const [side, sgn] of [['A', 1], ['B', -1]]) {
+    gridRows(seats, { ...chairs, sec: `1${side}`, secName: `CAT 1 ${side}`, cat: `cat1${side.toLowerCase()}`, x0: -36, z0: sgn * 17.9, rows: 31, cols: 29 });
+    gridRows(seats, { ...chairs, sec: `2${side}`, secName: `CAT 2 ${side}`, cat: `cat2${side.toLowerCase()}`, x0: -4, z0: sgn * 15.6, rows: 30, cols: 37 });
+  }
+  // The delay towers in CAT 2 A and B.
+  for (let i = seats.length - 1; i >= 0; i--) {
+    const q = seats[i];
+    if (!q.tier && q.x > 8 && Math.abs(Math.abs(q.z) - 15.6) < 1.6 && Math.abs(q.x - 14) < 1.6) seats.splice(i, 1);
+  }
+  // Number the rows the towers cut again from their left end, without the gap.
+  const rows = new Map();
+  for (const q of seats) if (!q.tier && q.sec[0] === '2') {
+    const k = `${q.sec}|${q.row}`;
+    if (!rows.has(k)) rows.set(k, []);
+    rows.get(k).push(q);
+  }
+  for (const list of rows.values()) {
+    list.sort((a, b) => a.num - b.num);
+    list.forEach((q, i) => { q.id = q.id.replace(new RegExp(`${q.num}$`), `${i + 1}`); q.num = i + 1; });
+  }
+  const cat = (id, name, price, color, note) => ({ id, name, price, color, ...(note ? { note } : {}) });
+  return {
+    key: 'gbk-westlife',
+    kind: 'stadium',
+    show: 'end',
+    uppers: uppers.map(([f, t, tag, n]) => [f, t, tag[0] === 'A' ? 'Left' : 'Right', n]),
+    foh: WESTLIFE_FOH,
+    label: 'Gelora Bung Karno, Westlife',
+    event: { title: 'Stadium concert', venue: 'Gelora Bung Karno Main Stadium' },
+    focus: [-50, 6, 0],
+    overview: { pos: [70, 95, 105], target: [-8, 0, 0], min: 40, max: 230 },
+    hero: { along: 42, look: [-50, 9, 0], fov: 54 },
+    seatStyle: 'shell',
+    seatColor: '#b8162b',
+    occupancy: { vip: 1, cat1a: 1, cat1b: 1, cat2a: 1, cat2b: 1, cat3a: 1, cat3b: 1, cat4a: 1, cat4b: 1, cat5a: 1, cat5b: 1, cat6a: 1, cat6b: 1 },
+    categories: [
+      cat('vip', 'VIP Package', 2750000, '#c4473a', 'Field, in the middle in front of the stage'),
+      cat('cat1a', 'CAT 1 A', 2500000, '#c58ad0', 'Field, left of VIP'), cat('cat1b', 'CAT 1 B', 2500000, '#c58ad0', 'Field, right of VIP'),
+      cat('cat2a', 'CAT 2 A', 2250000, '#3a3fc4', 'Field, behind CAT 1 A'), cat('cat2b', 'CAT 2 B', 2250000, '#3a3fc4', 'Field, behind CAT 1 B'),
+      cat('cat3a', 'CAT 3 A', 1850000, '#6e6e72', 'Lower tier facing the stage, left'), cat('cat3b', 'CAT 3 B', 1850000, '#6e6e72', 'Lower tier facing the stage, right'),
+      cat('cat4a', 'CAT 4 A', 1450000, '#8a4e2c', 'Lower tier along the left side'), cat('cat4b', 'CAT 4 B', 1450000, '#8a4e2c', 'Lower tier along the right side'),
+      cat('cat5a', 'CAT 5 A', 1250000, '#5b2f5e', 'Upper tier facing the stage, left'), cat('cat5b', 'CAT 5 B', 1250000, '#5b2f5e', 'Upper tier facing the stage, right'),
+      cat('cat6a', 'CAT 6 A', 850000, '#b8953c', 'Upper tier along the left side'), cat('cat6b', 'CAT 6 B', 850000, '#b8953c', 'Upper tier along the right side'),
+    ],
+    seats,
+  };
+}
+
+const builders = { concert, cinema, combat, 'combat-studio': combatStudio, tennis, stadium, 'stadium-end': stadiumEnd, 'stadium-round': stadiumRound, 'stadium-tottenham': stadiumTottenham, 'gbk-westlife': gbkWestlife, ...REAL_BUILDERS };
 export const VENUE_KEYS = Object.keys(builders);
 // The real venues, each laid out for one show; the rest are the generic layouts the demos use.
-export const REAL_KEYS = Object.keys(REAL_BUILDERS);
+export const REAL_KEYS = [...Object.keys(REAL_BUILDERS), 'gbk-westlife'];
 const cache = {};
 
 export function getVenue(key) {

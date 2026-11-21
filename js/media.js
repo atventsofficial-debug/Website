@@ -23,6 +23,8 @@ export const IMAGES = {
   'enhypen-bloodsaga': { src: 'assets/events/enhypen-bloodsaga-official.webp', alt: "ENHYPEN World Tour 'Blood Saga' poster", credit: 'Poster · BELIFT LAB, via indonesia.travel', pos: '50% 40%' },
   'nancy-ajram': { src: 'assets/events/nancy-ajram-official.webp', alt: 'Nancy Ajram Live in Jakarta poster', credit: 'Poster · via indonesia.travel', pos: '25% 50%' },
   'simpleplan-jakarta': { src: 'assets/events/simpleplan-jakarta.webp', alt: 'Simple Plan The Bigger Than You Think! Tour Jakarta poster', credit: 'Poster · Akselerasi Entertainment, via simpleplanindonesia.com', pos: '50% 50%' },
+  'westlife-25': { src: 'assets/events/westlife-25-official.webp', alt: 'Westlife 25 anniversary tour poster', credit: 'Poster · via indonesia.travel', pos: '50% 50%' },
+  'boynextdoor-jakarta': { src: 'assets/events/boynextdoor-jakarta.webp', alt: "BOYNEXTDOOR TOUR 'KNOCK ON Vol.2' in Jakarta poster", credit: 'Poster · PK Entertainment, via tiket.com', pos: '50% 50%' },
   'jkt48-15th': { src: 'assets/events/jkt48-15th.webp', alt: 'JKT48 AYO SENYUMLAH 15th Anniversary Concert poster with the seating plan', credit: 'Poster · JKT48, via Loket.com', pos: '35% 50%' },
   'thescript-arena': { src: 'assets/events/thescript-arena-official.webp', alt: 'The Script on stage', credit: 'Photo · via indonesia.travel', pos: '55% 50%' },
 

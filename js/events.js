@@ -42,6 +42,7 @@ const MADYA = { name: 'Stadion Madya GBK', art: 'madya', seatColor: '#e8eaed', c
 const ISTORA = { name: 'Istora Senayan GBK', art: 'istora', seatColor: { mix: ['#6c7075', '#979ba0', '#c0c3c7'] }, city: 'Jakarta', address: 'Kompleks Gelora Bung Karno, Senayan, Jakarta Pusat', transit: 'MRT Istora Mandiri station', capacity: '' };
 const BASKET = { name: 'Basket Hall GBK', art: 'basket-hall', city: 'Jakarta', address: 'Kompleks Gelora Bung Karno, Senayan, Jakarta Pusat', transit: 'MRT Istora Mandiri station', capacity: '' };
 const TENNIS = { name: 'Tennis Indoor GBK', art: 'tennis-indoor', city: 'Jakarta', address: 'Kompleks Gelora Bung Karno, Senayan, Jakarta Pusat', transit: 'MRT Istora Mandiri station', capacity: '' };
+const ICE_BSD = { name: 'ICE BSD City, Hall 5–6', art: 'jiexpo', city: 'Tangerang', address: 'Jl. BSD Grand Boulevard, Pagedangan, Tangerang, Banten', transit: '', capacity: '' };
 const GRAHA_UNESA = { name: 'Graha UNESA', art: 'jiexpo', city: 'Surabaya', address: 'Universitas Negeri Surabaya, Lidah Wetan, Surabaya', transit: '', capacity: '' };
 const INA_ARENA = { name: 'Indonesia Arena', art: 'indonesia-arena', seatColor: '#8a8e94', seatStyle: 'flipup', city: 'Jakarta', address: 'Kompleks Gelora Bung Karno, Senayan, Jakarta Pusat', transit: 'MRT Istora Mandiri station', capacity: '' };
 
@@ -481,15 +482,72 @@ export const EVENTS = [
     official: { name: 'Loket.com', url: 'https://simpleplanindonesia.com/' },
     photo: 'event-concert-1', image: 'simpleplan-jakarta',
   },
-  SHOW({ id: 'evt-jkt48-15th', tickets: [
-      { name: 'CAT 1', price: 3500000, note: 'Presale only, with soundcheck and photo', sold: true }, { name: 'CAT 2', price: 2200000, note: 'With group photo', sold: true },
-      { name: 'CAT 3', price: 1200000, sold: true }, { name: 'CAT 4', price: 1000000 }, { name: 'CAT 5', price: 750000, sold: true },
-      { name: 'CAT 6', price: 550000, sold: true }, { name: 'CAT 7', price: 450000, sold: true },
-    ], image: 'jkt48-15th', theme: 'maroon5', title: 'JKT48', subtitle: 'AYO SENYUMLAH · 15th Anniversary Concert', dateISO: '2026-12-19T18:30', time: '18:30', place: GRAHA_UNESA, venue: 'concert',
-    host: 'JKT48', hostNote: 'Organiser', from: 450000, sale: { opens: '2026-11-16T12:00', seller: 'loket' }, url: 'https://www.loket.com/event/jkt48-ayosenyumlah-concert',
-    blurb: 'JKT48 mark fifteen years, and their 28th single “Ayo Senyumlah”, with an anniversary concert at Graha UNESA in Surabaya, 18:30 to 20:30 WIB.',
-    prices: 'From Loket.com (general sale): CAT 3 Rp 1,200,000, CAT 4 Rp 1,000,000, CAT 5 Rp 750,000, CAT 6 Rp 550,000, CAT 7 Rp 450,000. On 20 November 2026 only CAT 4 was still available.',
-    extra: ['Sold only on Loket.com, up to four tickets per transaction; the e-ticket is exchanged for a wristband. More on jkt48.com.'] }),
+  {
+    id: 'evt-boynextdoor-jakarta', venue: 'ice-boynextdoor',
+    title: 'BOYNEXTDOOR', subtitle: "TOUR 'KNOCK ON Vol.2' in Jakarta",
+    dateISO: '2026-12-05T19:00', time: '19:00', doors: 'TBA', ends: '', age: '',
+    host: 'PK Entertainment', hostNote: 'Promoter, with HYBE',
+    blurb: "BOYNEXTDOOR bring their first world tour, 'KNOCK ON Vol.2', to ICE BSD City Hall 5–6: a runway from the stage down the floor, standing pens either side of it, and numbered seats on a stand across the back.",
+    about: [
+      'From the promoter’s seat plan: ONEDOOR VIP A (left) and B (right) stand either side of the runway at the front, ORANGE A and B stand behind them up to the sound desk, PINK A and B stand in a strip along each side. CAT 1 and CAT 2 are numbered seats on the stand at the back, CAT 1 in front.',
+      'Prices on the plan, before the 10% tax and tiket.com’s 6% fee: ONEDOOR VIP Rp 3,400,000, ORANGE Rp 2,750,000, PINK Rp 1,850,000, CAT 1 Rp 2,750,000, CAT 2 Rp 2,350,000 (on tiket.com, with tax and fee: Rp 3,944,000, Rp 3,190,000, Rp 2,146,000, Rp 3,190,000 and Rp 2,726,000). ORANGE A and PINK A were sold out on 20 November 2026.',
+      'Sold only on tiket.com, up to six tickets per transaction. Queue numbers for the standing pens and seat numbers come closer to the day; no under-12s in the standing pens.',
+      PRICES,
+      MODEL,
+    ],
+    runs: [],
+    branding: { wall: 'BOYNEXTDOOR', sub: "KNOCK ON VOL.2", band: ['BOYNEXTDOOR', 'KNOCK ON VOL.2', 'ICE BSD CITY', 'JAKARTA'] },
+    theme: 'enhypen',
+    soldOut: ['orangea', 'pinka'],
+    place: ICE_BSD,
+    sale: { seller: 'tiket', tiket: true },
+    official: { name: 'tiket.com', url: 'https://www.tiket.com/en-id/to-do/boynextdoor-tour-knock-on-vol2' },
+    photo: 'event-concert-1', image: 'boynextdoor-jakarta',
+  },
+  {
+    id: 'evt-jkt48-15th', venue: 'unesa-jkt48',
+    title: 'JKT48', subtitle: 'AYO SENYUMLAH · 15th Anniversary Concert',
+    dateISO: '2026-12-19T18:30', time: '18:30', doors: 'TBA', ends: '20:30', age: '',
+    host: 'JKT48', hostNote: 'Organiser',
+    blurb: 'JKT48 mark fifteen years, and their 28th single “Ayo Senyumlah”, with an anniversary concert at Graha UNESA in Surabaya: a main stage, a runway to an island stage on the floor, and a numbered seat in every category.',
+    about: [
+      'From JKT48’s seat plan: CAT 1 on the floor beside the main stage, CAT 2 along both sides of the runway, CAT 3 round the island stage and CAT 5 round CAT 3; in the stands CAT 4 on both sides near the stage, CAT 6 round the back and CAT 7 above it. Every category is a numbered seat; numbers show on the e-voucher at the latest six days before the show.',
+      'General sale on Loket.com: CAT 3 Rp 1,200,000, CAT 4 Rp 1,000,000, CAT 5 Rp 750,000, CAT 6 Rp 550,000, CAT 7 Rp 450,000; CAT 1 (Rp 3,500,000) and CAT 2 (Rp 2,200,000) went in the members’ presale. Before the 10% tax, 5% service fee and platform fee. On 21 November 2026 only CAT 4 was still available.',
+      'Up to four tickets per transaction. The organiser asks wheelchair users to pick a floor category, not the stands.',
+      'Prices as announced by the organiser. Sold on Loket.com, not on tiket.com: Loket.com has the live price and stock.',
+      MODEL,
+    ],
+    runs: [],
+    branding: { wall: 'JKT48', sub: 'AYO SENYUMLAH', band: ['JKT48', 'AYO SENYUMLAH', '15TH ANNIVERSARY', 'GRAHA UNESA'] },
+    theme: 'maroon5',
+    soldOut: ['cat1', 'cat2', 'cat3', 'cat5', 'cat6', 'cat7'],
+    place: GRAHA_UNESA,
+    sale: { opens: '2026-11-16T12:00', seller: 'loket', tiket: false },
+    official: { name: 'Loket.com', url: 'https://www.loket.com/event/jkt48-ayosenyumlah-concert' },
+    photo: 'event-concert-1', image: 'jkt48-15th',
+  },
+  {
+    id: 'evt-westlife-jakarta', venue: 'gbk-westlife',
+    title: 'Westlife', subtitle: '25: The Anniversary World Tour',
+    dateISO: '2027-01-23T00:00', time: 'TBA', doors: 'TBA', ends: '', age: '',
+    host: 'Sound Rhythm', hostNote: 'Promoter, with Folago Pro',
+    blurb: 'Westlife mark 25 years at Gelora Bung Karno Main Stadium. Every category is a numbered seat, and all of them are sold out.',
+    about: [
+      'From the promoter’s layout: VIP in the middle of the field in front of the stage, CAT 1 A (left) and B (right) either side of it, CAT 2 A and B behind them either side of the sound desk, with a delay tower in each. In the lower tier CAT 3 A and B face the stage and CAT 4 A and B run along the sides; in the upper tier CAT 5 A and B face the stage and CAT 6 A and B the sides. The stand straight opposite the stage is restricted view.',
+      'VIP Package Rp 2,750,000, CAT 1 Rp 2,500,000, CAT 2 Rp 2,250,000, CAT 3 Rp 1,850,000, CAT 4 Rp 1,450,000, CAT 5 Rp 1,250,000, CAT 6 Rp 850,000, before tax and the platform fee. Every category was sold out on 21 November 2026.',
+      'Up to six tickets per transaction in one category, one transaction per email, ID and phone number; tickets are in the buyer’s name. Seat numbers come closer to the day.',
+      'Prices as announced by the promoter. Sold on Loket.com (westlifestadiumshowjkt.com), not on tiket.com.',
+      MODEL,
+    ],
+    runs: [],
+    branding: { wall: 'WESTLIFE', sub: '25 · THE ANNIVERSARY WORLD TOUR', band: ['WESTLIFE', '25 YEARS OF HITS', 'GELORA BUNG KARNO', 'JAKARTA'] },
+    theme: 'westlife',
+    soldOut: ['vip', 'cat1a', 'cat1b', 'cat2a', 'cat2b', 'cat3a', 'cat3b', 'cat4a', 'cat4b', 'cat5a', 'cat5b', 'cat6a', 'cat6b'],
+    place: GBK,
+    sale: { opens: '2026-05-23T10:00', seller: 'loket', tiket: false },
+    official: { name: 'Loket.com', url: 'https://westlifestadiumshowjkt.com/' },
+    photo: 'event-stadium-end-1', image: 'westlife-25',
+  },
 ];
 
 // Demo venues: one per layout, fully open, for the partner page and anyone who wants to try

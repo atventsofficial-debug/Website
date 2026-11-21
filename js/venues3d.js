@@ -513,6 +513,17 @@ export function buildConcert(ctx, venue) {
     const tip = new THREE.Mesh(new THREE.BoxGeometry(walk.w, 0.04, 0.06), lip.material);
     tip.position.set(0, S.h + 0.02, S.front + walk.len);
     scene.add(tip);
+    // A round island stage at its end, where the plan has one.
+    if (walk.island) {
+      const r = walk.island, isl = new THREE.Mesh(new THREE.CylinderGeometry(r, r, S.h, 40), deck.material);
+      isl.position.set(0, S.h / 2, S.front + walk.len + r - 0.5);
+      isl.receiveShadow = isl.castShadow = true;
+      scene.add(isl);
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(r, 0.03, 4, 64), lip.material);
+      ring.rotation.x = Math.PI / 2;
+      ring.position.set(0, S.h + 0.02, S.front + walk.len + r - 0.5);
+      scene.add(ring);
+    }
   }
   // Risers for the band.
   for (const [x, w] of [[-8, 5], [0, 6], [8, 5]]) {
@@ -652,7 +663,8 @@ export function buildConcert(ctx, venue) {
   }
   foh.position.set(0, 0, venue.fohZ ?? 15);   // behind the last floor row (layouts.js, realvenues.js)
   foh.traverse(o => { o.castShadow = o.receiveShadow = true; });
-  scene.add(foh);
+  // A plan without a sound desk on it (fohZ: false) gets none.
+  if (venue.fohZ !== false) scene.add(foh);
 
   // Tier front walls with glass balustrade and a ribbon board on the upper tier.
   const front = new THREE.MeshStandardMaterial({ color: '#3b3c40', map: grime(), roughness: 0.9, side: THREE.DoubleSide });

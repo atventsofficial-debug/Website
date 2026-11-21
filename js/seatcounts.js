@@ -9,6 +9,7 @@ export const SEAT_COUNTS = {
   'stadium-end': 22307,
   'stadium-round': 21390,
   'stadium-tottenham': 23083,
+  'gbk-westlife': 16503,
   'madya-end': 15498,
   'jis-mcr': 26512,
   'ina-5sos': 13862,
@@ -20,4 +21,6 @@ export const SEAT_COUNTS = {
   'basket-nflying': 4322,
   'tennis-m2m': 5007,
   'istora-nancy': 7867,
+  'ice-boynextdoor': 4131,
+  'unesa-jkt48': 5161,
 };

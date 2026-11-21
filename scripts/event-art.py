@@ -26,6 +26,7 @@ The cards as drawn (poster files from the promoters' listings on indonesia.trave
   5sos.webp       5sos-jakarta       --at 0.40 --wide 5sos-jakarta-official
   bigbang.jpg     bigbang-cosmos     --card top --at 0.19 --to 0.56 --wide bigbang-cosmos-official
   enhypen.jpg     enhypen-bloodsaga  --at 0.40 --wide enhypen-bloodsaga-official
+  westlife.jpeg   westlife-25        --at 0.44 --crop 0,0.18,1,0.88 --wide westlife-25-official
   nancy-ajram.jpeg nancy-ajram       --at 0.40 --wide nancy-ajram-official
   the-script.jpeg thescript-arena    --at 0.40 --wide thescript-arena-official
   bts-arirang.webp bts-arirang       --at 0.33 --crop 0,0,1,0.88 --wide bts-arirang-official

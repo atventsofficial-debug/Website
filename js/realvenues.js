@@ -856,5 +856,104 @@ function istoraNancy() {
   });
 }
 
+
+// BOYNEXTDOOR TOUR 'KNOCK ON Vol.2' in Jakarta, 5 Dec 2026, after PK Entertainment's seat plan
+// (on the tiket.com listing): a runway from the stage down the middle of the floor; ONEDOOR
+// VIP A (left) and B (right) standing either side of it at the front, ORANGE A and B standing
+// behind them up to the sound desk, PINK A and B standing in a strip along each side wall;
+// CAT 1 and CAT 2 numbered seats on a raked stand across the back, CAT 1 in front. ICE BSD
+// Hall 5–6 is a flat exhibition hall: the stand is the promoter's temporary riser.
+const ICE_HALL = {
+  cx: 0, cz: 0, p: 0.16,
+  tiers: [{ rx0: 21, rz0: 21, rows: 22, gap: 0.85, rise: 0.38, baseY: 0.6 }],
+  stage: { w: 22, front: -15, h: 1.6, barrier: 24, catwalk: { w: 2.6, len: 15 } },
+  room: { W: 72, D: 76, H: 18, CZ: 4 },
+};
+ICE_HALL.segments = [[deg(60), deg(120)]];
+function iceBoynextdoor() {
+  const hall = ICE_HALL, seats = [];
+  hallStand(seats, hall, 0, ...hall.segments[0], 3, [
+    { code: 'C1', name: 'CAT 1', cat: 'cat1', rows: 11 },
+    { code: 'C2', name: 'CAT 2', cat: 'cat2', rows: 11 },
+  ]);
+  const FOH = { z: 13.5, halfW: 3, halfD: 2.2 };
+  hallFloor(seats, hall, 17.5, (x, z) => {
+    if (Math.abs(x) < FOH.halfW + 1 && Math.abs(z - FOH.z) < FOH.halfD + 1) return null;
+    if (Math.abs(x) < 2.2 && z < hall.stage.front + hall.stage.catwalk.len + 1.2) return null;   // the runway
+    const side = x < 0 ? 'A' : 'B';
+    if (Math.abs(x) > 15) return z > -12 && z < 13 ? { sec: `PK-${side}`, secName: `PINK ${side}`, cat: `pink${side.toLowerCase()}`, standing: true } : null;
+    if (Math.abs(x) > 14) return null;   // the barrier between the pens and the pink strips
+    if (z < -3.5) return { sec: `VIP-${side}`, secName: `ONEDOOR VIP ${side}`, cat: `vip${side.toLowerCase()}`, standing: true };
+    if (z < -2.5) return null;           // the barrier between VIP and ORANGE
+    return { sec: `OR-${side}`, secName: `ORANGE ${side}`, cat: `orange${side.toLowerCase()}`, standing: true };
+  });
+  return hallShow({
+    key: 'ice-boynextdoor', label: 'ICE BSD City Hall 5–6, BOYNEXTDOOR', venueName: 'ICE BSD City', hall, fohZ: FOH.z, seats,
+    view: { overview: { pos: [0, 40, 50], target: [0, 0, 2], min: 15, max: 110 }, hero: { along: 20, look: [0, 4, -18], fov: 58 } },
+    occupancy: { vipa: 0.97, vipb: 0.97, orangea: 0.96, orangeb: 0.95, pinka: 0.94, pinkb: 0.93, cat1: 0.9, cat2: 0.88 },
+    categories: [
+      { id: 'vipa', name: 'ONEDOOR VIP A', price: 3400000, color: '#7f8fe6', note: 'Standing, left of the runway at the front' },
+      { id: 'vipb', name: 'ONEDOOR VIP B', price: 3400000, color: '#7f8fe6', note: 'Standing, right of the runway at the front' },
+      { id: 'orangea', name: 'ORANGE A', price: 2750000, color: '#f2a531', note: 'Standing, behind VIP A' },
+      { id: 'orangeb', name: 'ORANGE B', price: 2750000, color: '#f2a531', note: 'Standing, behind VIP B' },
+      { id: 'cat1', name: 'CAT 1', price: 2750000, color: '#3fd39a', note: 'Numbered seats, front of the back stand' },
+      { id: 'cat2', name: 'CAT 2', price: 2350000, color: '#e2362f', note: 'Numbered seats, back of the stand' },
+      { id: 'pinka', name: 'PINK A', price: 1850000, color: '#ec4fb4', note: 'Standing strip along the left wall' },
+      { id: 'pinkb', name: 'PINK B', price: 1850000, color: '#ec4fb4', note: 'Standing strip along the right wall' },
+    ],
+  });
+}
+
+// JKT48 AYO SENYUMLAH 15th Anniversary Concert, 19 Dec 2026, after JKT48's seat plan (the
+// official poster; categories and prices on Loket.com): a main stage at one end and a runway
+// to a round island stage on the floor. Every category is a numbered seat. On the floor CAT 1
+// beside the stage, CAT 2 along both sides of the runway, CAT 3 round the island stage, CAT 5
+// round CAT 3 on three sides; in the stands CAT 4 on both sides near the stage, CAT 6 round the
+// back and CAT 7 the tier above it.
+const UNESA = {
+  cx: 0, cz: 0, p: 0.2,
+  tiers: [
+    { rx0: 19, rz0: 24, rows: 10, gap: 0.85, rise: 0.45, baseY: 1.2 },
+    { rx0: 28, rz0: 33, rows: 6, gap: 0.9, rise: 0.55, baseY: 6.4 },
+  ],
+  stage: { w: 20, front: -18, h: 1.6, barrier: 22, catwalk: { w: 2.4, len: 11, island: 4.2 } },
+  room: { W: 76, D: 84, H: 22, CZ: 4 },
+};
+UNESA.segments = [[deg(-20), deg(4)], [deg(4), deg(176)], [deg(176), deg(200)]];
+function unesaJkt48() {
+  const hall = UNESA, seats = [];
+  const [right, back, left] = hall.segments;
+  hallStand(seats, hall, 0, ...left, 2, [{ code: '4L', name: 'CAT 4 Left', cat: 'cat4', rows: 10 }]);
+  hallStand(seats, hall, 0, ...back, 5, [{ code: '6', name: 'CAT 6', cat: 'cat6', rows: 10 }]);
+  hallStand(seats, hall, 0, ...right, 2, [{ code: '4R', name: 'CAT 4 Right', cat: 'cat4', rows: 10 }]);
+  hallStand(seats, hall, 1, deg(55), deg(125), 3, [{ code: '7', name: 'CAT 7', cat: 'cat7', rows: 6 }]);
+  const st = hall.stage, walkEnd = st.front + st.catwalk.len, isl = { z: walkEnd + st.catwalk.island - 0.5, r: st.catwalk.island };
+  hallFloor(seats, hall, 21, (x, z) => {
+    const ax = Math.abs(x), half = x < 0 ? 'Left' : 'Right';
+    if (ax < 2.2 && z < walkEnd + 0.8) return null;                    // the runway
+    if (Math.hypot(x, z - isl.z) < isl.r + 1.4) return null;          // round the island stage
+    if (z < -11) return ax < 6.5 ? { sec: `C1-${half[0]}`, secName: `CAT 1 ${half}`, cat: 'cat1' } : ax < 10 ? { sec: `C2F-${half[0]}`, secName: `CAT 2 ${half}`, cat: 'cat2' } : null;
+    if (z < -4) return ax < 10 ? { sec: `C2-${half[0]}`, secName: `CAT 2 ${half}`, cat: 'cat2' } : { sec: `C5S-${half[0]}`, secName: `CAT 5 ${half}`, cat: 'cat5' };
+    if (ax < 11 && z < 12.5) return { sec: `C3-${half[0]}`, secName: `CAT 3 ${half}`, cat: 'cat3' };
+    if (ax < 11.8 && z < 13.3) return null;                            // the aisle round CAT 3
+    return { sec: z < 13.3 ? `C5S-${half[0]}` : `C5-${half[0]}`, secName: z < 13.3 ? `CAT 5 ${half}` : `CAT 5 Back ${half}`, cat: 'cat5' };
+  });
+  return hallShow({
+    key: 'unesa-jkt48', label: 'Graha UNESA, JKT48', venueName: 'Graha UNESA', hall, fohZ: false, seats,
+    view: { overview: { pos: [0, 44, 52], target: [0, 0, 0], min: 15, max: 120 }, hero: { along: 30, look: [0, 4, -20], fov: 58 } },
+    occupancy: { cat1: 0.98, cat2: 0.97, cat3: 0.96, cat4: 0.9, cat5: 0.95, cat6: 0.94, cat7: 0.93 },
+    categories: [
+      { id: 'cat1', name: 'CAT 1', price: 3500000, color: '#e2362f', note: 'Floor beside the main stage; presale only, with soundcheck and group photo' },
+      { id: 'cat2', name: 'CAT 2', price: 2200000, color: '#f2e23a', note: 'Floor along the runway; with group photo' },
+      { id: 'cat3', name: 'CAT 3', price: 1200000, color: '#8a3fe0', note: 'Floor round the island stage' },
+      { id: 'cat4', name: 'CAT 4', price: 1000000, color: '#ef7a3a', note: 'Stands on both sides near the stage' },
+      { id: 'cat5', name: 'CAT 5', price: 750000, color: '#6cc84a', note: 'Floor round CAT 3' },
+      { id: 'cat6', name: 'CAT 6', price: 550000, color: '#5b8ef0', note: 'Stand round the back' },
+      { id: 'cat7', name: 'CAT 7', price: 450000, color: '#ef6fb8', note: 'Upper tier at the back' },
+    ],
+  });
+}
+
 export const REAL_BUILDERS = { 'madya-end': madyaEnd, 'jis-mcr': jisMcr, 'ina-5sos': ina5sos, 'ina-b2m': inaB2m, 'jis-bigbang': jisBigbang, 'jis-maroon5': jisMaroon5, 'jis-enhypen': jisEnhypen, 'ina-script': inaScript,
-  'basket-nflying': basketNflying, 'tennis-m2m': tennisM2m, 'istora-nancy': istoraNancy };
+  'basket-nflying': basketNflying, 'tennis-m2m': tennisM2m, 'istora-nancy': istoraNancy,
+  'ice-boynextdoor': iceBoynextdoor, 'unesa-jkt48': unesaJkt48 };
