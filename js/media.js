@@ -21,15 +21,9 @@ export const IMAGES = {
   '5sos-jakarta': { src: 'assets/events/5sos-jakarta-official.webp', alt: '5 Seconds of Summer, the band', credit: 'Photo · via indonesia.travel', pos: '50% 50%' },
   'bigbang-cosmos': { src: 'assets/events/bigbang-cosmos-official.webp', alt: 'BIGBANG 2026 world tour poster', credit: 'Poster · YG Entertainment, via indonesia.travel', pos: '50% 50%' },
   'enhypen-bloodsaga': { src: 'assets/events/enhypen-bloodsaga-official.webp', alt: "ENHYPEN World Tour 'Blood Saga' poster", credit: 'Poster · BELIFT LAB, via indonesia.travel', pos: '50% 40%' },
-  'westlife-25': { src: 'assets/events/westlife-25-official.webp', alt: 'Westlife 25 anniversary tour poster', credit: 'Poster · via indonesia.travel', pos: '50% 50%' },
   'nancy-ajram': { src: 'assets/events/nancy-ajram-official.webp', alt: 'Nancy Ajram Live in Jakarta poster', credit: 'Poster · via indonesia.travel', pos: '25% 50%' },
-  'boynextdoor-jakarta': { src: 'assets/events/boynextdoor-jakarta.webp', alt: "BOYNEXTDOOR TOUR 'KNOCK ON Vol.2' in Jakarta poster", credit: 'Poster · PK Entertainment, via tiket.com', pos: '50% 50%' },
   'simpleplan-jakarta': { src: 'assets/events/simpleplan-jakarta.webp', alt: 'Simple Plan The Bigger Than You Think! Tour Jakarta poster', credit: 'Poster · Akselerasi Entertainment, via simpleplanindonesia.com', pos: '50% 50%' },
-  'janice-tjen-live': { w: 480, src: 'assets/events/janice-tjen-live.webp', alt: 'Janice Tjen Live: Game. Set. Celebrate. poster', credit: 'Poster · Tatler Indonesia, via Loket.com', pos: '50% 30%' },
   'jkt48-15th': { src: 'assets/events/jkt48-15th.webp', alt: 'JKT48 AYO SENYUMLAH 15th Anniversary Concert poster with the seating plan', credit: 'Poster · JKT48, via Loket.com', pos: '35% 50%' },
-  'dwp-2026': { w: 480, src: 'assets/events/dwp-2026.webp', alt: 'DWP 2026 Jakarta key visual', credit: 'Key visual · Ismaya Live, via Loket.com', pos: '50% 45%' },
-  'hunger-games-sunrise': { w: 480, src: 'assets/events/hunger-games-sunrise.webp', alt: 'The Hunger Games: Sunrise on the Reaping Indonesian poster', credit: 'Poster · Lionsgate, via Cinema XXI', pos: '50% 35%' },
-  'godzilla-minus-zero': { w: 480, src: 'assets/events/godzilla-minus-zero.webp', alt: 'Godzilla Minus Zero Indonesian poster', credit: 'Poster · Toho, via Cinema XXI', pos: '50% 35%' },
   'thescript-arena': { src: 'assets/events/thescript-arena-official.webp', alt: 'The Script on stage', credit: 'Photo · via indonesia.travel', pos: '55% 50%' },
 
   // Until a promoter publishes a poster, the event shows a free-licensed photo of the act (or

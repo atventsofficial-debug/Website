@@ -42,10 +42,7 @@ const MADYA = { name: 'Stadion Madya GBK', art: 'madya', seatColor: '#e8eaed', c
 const ISTORA = { name: 'Istora Senayan GBK', art: 'istora', seatColor: { mix: ['#6c7075', '#979ba0', '#c0c3c7'] }, city: 'Jakarta', address: 'Kompleks Gelora Bung Karno, Senayan, Jakarta Pusat', transit: 'MRT Istora Mandiri station', capacity: '' };
 const BASKET = { name: 'Basket Hall GBK', art: 'basket-hall', city: 'Jakarta', address: 'Kompleks Gelora Bung Karno, Senayan, Jakarta Pusat', transit: 'MRT Istora Mandiri station', capacity: '' };
 const TENNIS = { name: 'Tennis Indoor GBK', art: 'tennis-indoor', city: 'Jakarta', address: 'Kompleks Gelora Bung Karno, Senayan, Jakarta Pusat', transit: 'MRT Istora Mandiri station', capacity: '' };
-const ICE_BSD = { name: 'ICE BSD City, Hall 5–6', art: 'jiexpo', city: 'Tangerang', address: 'Jl. BSD Grand Boulevard, Pagedangan, Tangerang, Banten', transit: '', capacity: '' };
 const GRAHA_UNESA = { name: 'Graha UNESA', art: 'jiexpo', city: 'Surabaya', address: 'Universitas Negeri Surabaya, Lidah Wetan, Surabaya', transit: '', capacity: '' };
-const XXI = { name: 'Cinema XXI', art: 'jiexpo', city: 'Jakarta', address: 'XXI cinemas across Indonesia', transit: '', capacity: '' };
-const GANDARIA_XXI = { name: 'Gandaria City XXI', art: 'jiexpo', city: 'Jakarta', address: 'Gandaria City Level 2, Jl. Sultan Iskandar Muda, Kebayoran Lama, Jakarta Selatan', transit: '', capacity: '' };
 const INA_ARENA = { name: 'Indonesia Arena', art: 'indonesia-arena', seatColor: '#8a8e94', seatStyle: 'flipup', city: 'Jakarta', address: 'Kompleks Gelora Bung Karno, Senayan, Jakarta Pusat', transit: 'MRT Istora Mandiri station', capacity: '' };
 
 // Shows announced for the next six months whose seating plan we have not modelled yet.
@@ -360,16 +357,6 @@ export const EVENTS = [
     official: { name: 'Loket.com', url: 'https://enhypeninjakarta.com/' },
     photo: 'event-stadium-end-1', image: 'enhypen-bloodsaga',
   },
-  SHOW({ id: 'evt-westlife-jakarta', tickets: [
-      { name: 'VIP', price: 2750000, note: 'Numbered seat', sold: true }, { name: 'CAT 1', price: 2500000, note: 'Numbered seat', sold: true },
-      { name: 'CAT 2', price: 2250000, note: 'Numbered seat', sold: true }, { name: 'CAT 3', price: 1850000, note: 'Numbered seat', sold: true },
-      { name: 'CAT 4', price: 1450000, note: 'Numbered seat', sold: true }, { name: 'CAT 5', price: 1250000, note: 'Numbered seat', sold: true },
-      { name: 'CAT 6', price: 850000, note: 'Numbered seat', sold: true },
-    ], theme: 'westlife', sale: { opens: '2026-05-23T10:00', seller: 'loket' }, url: 'https://westlifestadiumshowjkt.com/', image: 'westlife-25', title: 'Westlife', subtitle: '25: The Anniversary World Tour', dateISO: '2027-01-23T00:00', place: GBK, venue: 'stadium-end',
-    host: 'Sound Rhythm', hostNote: 'Promoter, with Folago Pro', soldOutAll: true, blurb: 'Westlife mark 25 years at Gelora Bung Karno Main Stadium. Every category is a numbered seat, and all of them are sold out.',
-    prices: 'From the official ticket page (Loket.com, via westlifestadiumshowjkt.com): VIP Rp 2,750,000, CAT 1 Rp 2,500,000, CAT 2 Rp 2,250,000, CAT 3 Rp 1,850,000, CAT 4 Rp 1,450,000, CAT 5 Rp 1,250,000 and CAT 6 Rp 850,000, all numbered seats, before local tax and the admin fee. Every category was sold out on 21 November 2026.',
-    standInNote: 'The 3D venue is our end-stage stadium, not the promoter’s plan: the real show has no standing floor, only numbered seats from VIP to CAT 6. Use it for a feel of the view from the stands, not to pick a seat.',
-    extra: ['Up to six tickets per transaction in one category, one transaction per email, ID and phone number. Tickets are in the buyer’s name, as on their ID.'] }),
   {
     id: 'evt-nancy-ajram', venue: 'istora-nancy',
     title: 'Nancy Ajram', subtitle: 'Live in Jakarta',
@@ -494,60 +481,6 @@ export const EVENTS = [
     official: { name: 'Loket.com', url: 'https://simpleplanindonesia.com/' },
     photo: 'event-concert-1', image: 'simpleplan-jakarta',
   },
-  SHOW({ id: 'evt-boynextdoor-jakarta', tickets: [
-      { name: 'ONEDOOR VIP A', price: 3944000, note: 'Standing · incl. tax and fee' }, { name: 'ONEDOOR VIP B', price: 3944000, note: 'Standing · incl. tax and fee' },
-      { name: 'ORANGE A', price: 3190000, note: 'Standing · incl. tax and fee', sold: true }, { name: 'ORANGE B', price: 3190000, note: 'Standing · incl. tax and fee' },
-      { name: 'PINK A', price: 2146000, note: 'Standing · incl. tax and fee', sold: true }, { name: 'PINK B', price: 2146000, note: 'Standing · incl. tax and fee' },
-      { name: 'CAT 1', price: 3190000, note: 'Numbered seat · incl. tax and fee' }, { name: 'CAT 2', price: 2726000, note: 'Numbered seat · incl. tax and fee' },
-    ], image: 'boynextdoor-jakarta', time: '19:00', theme: 'enhypen', title: 'BOYNEXTDOOR', subtitle: "TOUR 'KNOCK ON Vol.2' in Jakarta", dateISO: '2026-12-05T19:00', place: ICE_BSD, venue: 'concert',
-    host: 'PK Entertainment', from: 2146000, sale: { seller: 'tiket', tiket: true }, url: 'https://www.tiket.com/en-id/to-do/boynextdoor-tour-knock-on-vol2',
-    blurb: "BOYNEXTDOOR bring their first world tour, 'KNOCK ON Vol.2', to ICE BSD City Hall 5–6. Standing pens on the floor, ONEDOOR VIP at the front; CAT 1 and CAT 2 are numbered seats.",
-    prices: 'From tiket.com: ONEDOOR VIP A and B (standing) Rp 3,944,000; ORANGE A and B (standing) Rp 3,190,000; PINK A and B (standing) Rp 2,146,000; CAT 1 (numbered seating) Rp 3,190,000; CAT 2 (numbered seating) Rp 2,726,000. Prices include the 10% tax and the 6% platform fee. ORANGE A and PINK A were sold out on 20 November 2026.',
-    extra: ['Sold only on tiket.com, up to six tickets per transaction. Wristband redemption is announced by the promoter (@pkentertainment.id, bndinjakarta.com). No under-12s in the standing pens.'] }),
-  SHOW({ id: 'evt-janice-tjen-live', tickets: [
-      { name: 'Platinum', price: 7000000, sold: true }, { name: 'VIP Seats', price: 3960000, sold: true },
-      { name: 'Courtside', price: 2700000 }, { name: 'CAT 1', price: 830000 }, { name: 'CAT 2', price: 600000 },
-    ], image: 'janice-tjen-live', type: 'sport', theme: 'nancy', title: 'Janice Tjen Live', subtitle: 'Game. Set. Celebrate.', dateISO: '2026-12-12T13:00', time: '13:00', place: TENNIS, venue: 'tennis',
-    host: 'Tatler Indonesia', hostNote: 'Organiser · Tatler Sports', from: 600000, sale: { seller: 'loket' }, url: 'https://www.loket.com/event/janice-tjen-live-game-set-celebrate_w8U1',
-    blurb: 'Indonesia’s top-ranked tennis player Janice Tjen comes home for an exhibition match against Thailand’s Mananchaya Sawangkaew at Tennis Indoor Senayan.',
-    branding: { mark: 'JANICE TJEN', sub: 'GAME · SET · CELEBRATE', hall: 'TENNIS INDOOR SENAYAN', title: 'JANICE TJEN LIVE · JAKARTA' },
-    prices: 'From Loket.com: Platinum Rp 7,000,000 and VIP Seats Rp 3,960,000 (both sold out), Courtside Rp 2,700,000, CAT 1 Rp 830,000, CAT 2 Rp 600,000. Gates and programme from 13:00 to 21:00 WIB.',
-    standInNote: 'The 3D venue is our tennis centre court, with courtside rows along both sidelines and two tiers round it, not the promoter’s plan of Tennis Indoor (none has been published): use it for a feel of courtside and the stands, not to pick a seat.' }),
-  SHOW({ id: 'evt-dwp-2026', tickets: [
-      { name: '3-Day GA Early Entry 1', price: 1700000, sold: true }, { name: '3-Day GA Early Entry 2', price: 1900000, sold: true }, { name: '3-Day GA Early Entry 3', price: 2100000 },
-      { name: '3-Day GA Presale 1', price: 1900000, sold: true }, { name: '3-Day GA Presale 2', price: 2100000, sold: true }, { name: '3-Day GA Presale 3', price: 2300000 },
-      { name: '3-Day VIP Presale 1', price: 3900000, sold: true }, { name: '3-Day VIP Presale 2', price: 4200000 },
-      { name: '2-Day GA Early Entry 1', price: 1400000 }, { name: '2-Day GA Early Entry 2', price: 1600000 },
-      { name: '2-Day GA Presale 1', price: 1600000 }, { name: '2-Day GA Presale 2', price: 1800000 },
-      { name: '2-Day VIP Presale 1', price: 2400000 }, { name: '2-Day VIP Presale 2', price: 2600000 },
-      { name: 'Daily GA Early Entry 1', price: 850000, note: 'Day 2 sold out' }, { name: 'Daily GA Early Entry 2', price: 950000 },
-      { name: 'Daily GA Presale 1', price: 950000, note: 'Days 2 and 3 sold out' }, { name: 'Daily GA Presale 2', price: 1050000 },
-      { name: 'Daily VIP Presale 1', price: 1650000, sold: true }, { name: 'Daily VIP Presale 2', price: 1850000 },
-    ], image: 'dwp-2026', type: 'festival', theme: 'bts', title: 'DWP 2026', subtitle: 'Djakarta Warehouse Project · 11–13 Dec', dateISO: '2026-12-11T19:00', until: '2026-12-13T23:59', time: '19:00', place: JIEXPO, venue: 'stadium-end',
-    host: 'Ismaya Live', hostNote: 'Promoter', from: 850000, sale: { seller: 'loket' }, url: 'https://www.loket.com/event/dwp-2026_wVb9',
-    blurb: 'Djakarta Warehouse Project, Indonesia’s biggest dance music festival, returns to JIExpo Kemayoran for three nights, 11 to 13 December 2026, from 19:00 WIB, with the bird-shaped Garuda Land main stage.',
-    branding: { wall: 'DWP 2026', sub: 'JAKARTA · 11–13 DEC', band: ['DWP 2026', 'DJAKARTA WAREHOUSE PROJECT', 'JIEXPO KEMAYORAN', 'ISMAYA LIVE'] },
-    prices: 'From Loket.com (national passes): Daily GA Rp 950,000 to Rp 1,050,000 and Daily VIP Rp 1,650,000 to Rp 1,850,000; 2-Day GA Rp 1,600,000 to Rp 1,800,000 and 2-Day VIP Rp 2,400,000 to Rp 2,600,000; 3-Day GA Rp 1,900,000 to Rp 2,300,000 and 3-Day VIP Rp 3,900,000 to Rp 4,200,000. Early Entry GA passes cost less (daily from Rp 850,000) if you are in before the cut-off. An 11.11 offer started at Rp 756,500. Sold-out tiers as of 21 November 2026 are marked.',
-    standInNote: 'Every DWP ticket is standing: GA and VIP are both standing passes for the whole festival grounds, VIP with the promoter’s VIP areas. There are no numbered seats. The 3D view is our end-stage stadium with a standing floor, not JIExpo: use it for a feel of the crowd and the main stage.',
-    extra: ['Sold on Loket.com. Early Entry passes must be scanned in before the time on the ticket (17:00 for daily passes). Check the age and ID rules on the promoter’s channels before you go.'] }),
-  SHOW({ id: 'evt-hunger-games-sunrise', tickets: [
-      { name: 'Regular · Gandaria City XXI', price: 50000, note: 'Mon–Thu; Fri Rp 60,000; Sat, Sun and holidays Rp 75,000' },
-      { name: 'IMAX · Gandaria City IMAX (Laser)', price: 55000, note: 'Mon–Thu; Fri Rp 70,000; Sat, Sun and holidays Rp 90,000' },
-      { name: 'Premiere · Gandaria City Premiere', price: 150000, note: 'Mon–Thu; Fri Rp 200,000; Sat, Sun and holidays Rp 250,000' },
-    ], image: 'hunger-games-sunrise', type: 'cinema', theme: 'bocelli', title: 'The Hunger Games: Sunrise on the Reaping', subtitle: 'Now in cinemas · IMAX', dateISO: '2026-11-21T11:45', until: '2026-12-31T00:00', time: '11:45', place: GANDARIA_XXI, venue: 'cinema',
-    host: 'Lionsgate', hostNote: 'Studio · directed by Francis Lawrence', from: 50000, sale: { seller: 'xxi' }, url: 'https://21cineplex.com/the-hunger-games-sunrise-on-the-reaping,138277,26HGSR.htm',
-    blurb: 'Panem, 24 years before The Hunger Games: the reaping for the 50th Games, the Second Quarter Quell. With Joseph Zada, Whitney Peak, Mckenna Grace, Jesse Plemons, Elle Fanning and Ralph Fiennes; 158 minutes.',
-    prices: 'Cinema XXI prices at Gandaria City, Jakarta: Regular Rp 50,000 Monday to Thursday, Rp 60,000 Friday and the eve of a holiday, Rp 75,000 at weekends and on holidays; IMAX (Laser) Rp 55,000, Rp 70,000 and Rp 90,000; Premiere Rp 150,000, Rp 200,000 and Rp 250,000. Prices differ by cinema; M-Tix and 21cineplex.com show each one.',
-    standInNote: 'Showing on 21 November at Gandaria City XXI at 11:45, 14:45, 17:45 and 20:45, in IMAX at 12:00, 15:00, 18:00 and 21:00, and in Premiere at 11:50, 14:50, 17:50 and 20:50; also at most XXI cinemas across Indonesia. You pick your seat in M-Tix. The 3D view is our cinema studio (rows A to N), not a particular XXI studio: use it to compare a front, middle or back row.',
-    extra: ['In Indonesian cinemas from 18 November 2026, in regular, Premiere and IMAX 2D studios.'] }),
-  SHOW({ id: 'evt-godzilla-minus-zero', tickets: [
-      { name: 'Regular · Gandaria City XXI', price: 50000, note: 'Mon–Thu; Fri Rp 60,000; Sat, Sun and holidays Rp 75,000' },
-    ], image: 'godzilla-minus-zero', type: 'cinema', theme: 'gnr', title: 'Godzilla Minus Zero', subtitle: 'Now in cinemas', dateISO: '2026-11-21T12:55', until: '2026-12-15T00:00', time: '12:55', place: GANDARIA_XXI, venue: 'cinema',
-    host: 'Toho', hostNote: 'Studio · written and directed by Takashi Yamazaki', from: 50000, sale: { seller: 'xxi' }, url: 'https://21cineplex.com/godzilla-minus-zero,138282,26GMZO.htm',
-    blurb: 'Takashi Yamazaki’s follow-up to Godzilla Minus One: two years after the war and Godzilla’s attack, Japan is rebuilding when a new threat rises. With Ryunosuke Kamiki and Minami Hamabe; 135 minutes.',
-    prices: 'Cinema XXI prices at Gandaria City, Jakarta: Rp 50,000 Monday to Thursday, Rp 60,000 Friday and the eve of a holiday, Rp 75,000 at weekends and on holidays. Prices differ by cinema; M-Tix and 21cineplex.com show each one.',
-    standInNote: 'Showing on 21 November at Gandaria City XXI at 12:55, 15:30, 18:05 and 20:40, and at 22 XXI cinemas in Jakarta. You pick your seat in M-Tix. The 3D view is our cinema studio (rows A to N), not a particular XXI studio: use it to compare a front, middle or back row.',
-    extra: ['In Indonesian cinemas from 4 November 2026.'] }),
   SHOW({ id: 'evt-jkt48-15th', tickets: [
       { name: 'CAT 1', price: 3500000, note: 'Presale only, with soundcheck and photo', sold: true }, { name: 'CAT 2', price: 2200000, note: 'With group photo', sold: true },
       { name: 'CAT 3', price: 1200000, sold: true }, { name: 'CAT 4', price: 1000000 }, { name: 'CAT 5', price: 750000, sold: true },
