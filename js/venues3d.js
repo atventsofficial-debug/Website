@@ -1229,9 +1229,8 @@ function lampGridTexture() {
 function scoreTexture(brand) {
   return textTexture(1024, 400, (g, w, h) => {
     g.fillStyle = 'rgba(255,255,255,0.95)'; g.textAlign = 'center';
-    // A race or a show on a football layout names itself instead of a score.
-    g.font = '500 70px "Urbanist", Arial, sans-serif'; g.fillText(brand.board || `${brand.home}   1 – 0   ${brand.away}`, w / 2, 180);
-    g.font = '400 44px Arial'; g.fillStyle = 'rgba(255,255,255,0.65)'; g.fillText(brand.board ? brand.boardSub || '' : "34'", w / 2, 270);
+    g.font = '500 70px "Urbanist", Arial, sans-serif'; g.fillText(`${brand.home}   1 – 0   ${brand.away}`, w / 2, 180);
+    g.font = '400 44px Arial'; g.fillStyle = 'rgba(255,255,255,0.65)'; g.fillText("34'", w / 2, 270);
   });
 }
 

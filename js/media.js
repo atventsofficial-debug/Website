@@ -26,9 +26,7 @@ export const IMAGES = {
   'boynextdoor-jakarta': { src: 'assets/events/boynextdoor-jakarta.webp', alt: "BOYNEXTDOOR TOUR 'KNOCK ON Vol.2' in Jakarta poster", credit: 'Poster · PK Entertainment, via tiket.com', pos: '50% 50%' },
   'simpleplan-jakarta': { src: 'assets/events/simpleplan-jakarta.webp', alt: 'Simple Plan The Bigger Than You Think! Tour Jakarta poster', credit: 'Poster · Akselerasi Entertainment, via simpleplanindonesia.com', pos: '50% 50%' },
   'janice-tjen-live': { w: 480, src: 'assets/events/janice-tjen-live.webp', alt: 'Janice Tjen Live: Game. Set. Celebrate. poster', credit: 'Poster · Tatler Indonesia, via Loket.com', pos: '50% 30%' },
-  'dune-part-three': { w: 480, src: 'assets/events/dune-part-three.webp', alt: 'Dune: Part Three Indonesian poster', credit: 'Poster · Warner Bros. Pictures, via Cinema XXI', pos: '50% 40%' },
   'jkt48-15th': { src: 'assets/events/jkt48-15th.webp', alt: 'JKT48 AYO SENYUMLAH 15th Anniversary Concert poster with the seating plan', credit: 'Poster · JKT48, via Loket.com', pos: '35% 50%' },
-  'fia-rallycross-indonesia': { src: 'assets/events/fia-rallycross-indonesia.webp', alt: 'FIA Rallycross World Cup Indonesia 2026 key visual', credit: 'Key visual · SARGA Motorsport, via Loket.com', pos: '30% 50%' },
   'dwp-2026': { w: 480, src: 'assets/events/dwp-2026.webp', alt: 'DWP 2026 Jakarta key visual', credit: 'Key visual · Ismaya Live, via Loket.com', pos: '50% 45%' },
   'hunger-games-sunrise': { w: 480, src: 'assets/events/hunger-games-sunrise.webp', alt: 'The Hunger Games: Sunrise on the Reaping Indonesian poster', credit: 'Poster · Lionsgate, via Cinema XXI', pos: '50% 35%' },
   'godzilla-minus-zero': { w: 480, src: 'assets/events/godzilla-minus-zero.webp', alt: 'Godzilla Minus Zero Indonesian poster', credit: 'Poster · Toho, via Cinema XXI', pos: '50% 35%' },
@@ -40,15 +38,11 @@ export const IMAGES = {
   // commons.wikimedia.org/wiki/File:180112_엔플라잉.jpg
   // commons.wikimedia.org/wiki/File:Maroon_5_live_in_Jakarta.jpg
   // commons.wikimedia.org/wiki/File:Marit_Larsen_and_Marion_Raven.jpg
-  // commons.wikimedia.org/wiki/File:Duel-Persija-Lawan-Borneo-010320-app-1.jpg
-  // commons.wikimedia.org/wiki/File:Fabio_Calonego_-_Persija.jpg
   // Swap in the official poster under a new name when it is out.
   'boyz2men-live': { src: 'assets/events/boyz2men-live.webp', alt: 'Boyz II Men performing on stage', credit: 'Photo · Library of Congress Life, CC0, via Wikimedia Commons', pos: '50% 50%' },
   'nflying-band': { src: 'assets/events/nflying-band.webp', alt: 'The members of N.Flying', credit: 'Photo · 뉴스인스타 (NewsInStar), CC BY 3.0, via Wikimedia Commons', pos: '50% 40%' },
   'maroon5-jakarta-live': { src: 'assets/events/maroon5-jakarta-live.webp', alt: 'Maroon 5 live at Jakarta International Stadium', credit: 'Photo · Netaholic13, CC BY-SA 4.0, via Wikimedia Commons', pos: '45% 40%' },
   'm2m-live': { src: 'assets/events/m2m-live.webp', alt: 'Marit Larsen and Marion Raven of M2M performing', credit: 'Photo · Martijn van de Streek and Maxker89, CC BY-SA 2.0, via Wikimedia Commons', pos: '50% 45%' },
-  'persija-match': { src: 'assets/events/persija-match.webp', alt: 'Persija Jakarta in a league match', credit: 'Photo · Adityadandito, CC BY-SA 4.0, via Wikimedia Commons', pos: '50% 55%' },
-  'persija-calonego': { src: 'assets/events/persija-calonego.webp', alt: 'Persija Jakarta defender Fabio Calonego on the pitch', credit: 'Photo · Bogororange, CC0, via Wikimedia Commons', pos: '50% 40%' },
 };
 
 const RENDERS = {

@@ -46,7 +46,6 @@ const ICE_BSD = { name: 'ICE BSD City, Hall 5–6', art: 'jiexpo', city: 'Tanger
 const GRAHA_UNESA = { name: 'Graha UNESA', art: 'jiexpo', city: 'Surabaya', address: 'Universitas Negeri Surabaya, Lidah Wetan, Surabaya', transit: '', capacity: '' };
 const XXI = { name: 'Cinema XXI', art: 'jiexpo', city: 'Jakarta', address: 'XXI cinemas across Indonesia', transit: '', capacity: '' };
 const GANDARIA_XXI = { name: 'Gandaria City XXI', art: 'jiexpo', city: 'Jakarta', address: 'Gandaria City Level 2, Jl. Sultan Iskandar Muda, Kebayoran Lama, Jakarta Selatan', transit: '', capacity: '' };
-const ANCOL_RX = { name: 'Ancol Rallycross Circuit', art: 'jiexpo', city: 'Jakarta', address: 'Taman Impian Jaya Ancol, Jakarta Utara', transit: '', capacity: '' };
 const INA_ARENA = { name: 'Indonesia Arena', art: 'indonesia-arena', seatColor: '#8a8e94', seatStyle: 'flipup', city: 'Jakarta', address: 'Kompleks Gelora Bung Karno, Senayan, Jakarta Pusat', transit: 'MRT Istora Mandiri station', capacity: '' };
 
 // Shows announced for the next six months whose seating plan we have not modelled yet.
@@ -61,7 +60,6 @@ const SELLERS = {
   tiptip: { name: 'TipTip', url: 'https://tiptip.id/' },
   traveloka: { name: 'Traveloka', url: 'https://www.traveloka.com/en-id/activities' },
   tiket: { name: 'tiket.com', url: 'https://www.tiket.com/en-id/to-do' },
-  persija: { name: 'persija.id', url: 'https://www.persija.id/tickets' },
   xxi: { name: 'Cinema XXI', url: 'https://21cineplex.com/' },
 };
 export const sellerOf = e => e?.official?.name || 'tiket.com';
@@ -506,12 +504,6 @@ export const EVENTS = [
     blurb: "BOYNEXTDOOR bring their first world tour, 'KNOCK ON Vol.2', to ICE BSD City Hall 5–6. Standing pens on the floor, ONEDOOR VIP at the front; CAT 1 and CAT 2 are numbered seats.",
     prices: 'From tiket.com: ONEDOOR VIP A and B (standing) Rp 3,944,000; ORANGE A and B (standing) Rp 3,190,000; PINK A and B (standing) Rp 2,146,000; CAT 1 (numbered seating) Rp 3,190,000; CAT 2 (numbered seating) Rp 2,726,000. Prices include the 10% tax and the 6% platform fee. ORANGE A and PINK A were sold out on 20 November 2026.',
     extra: ['Sold only on tiket.com, up to six tickets per transaction. Wristband redemption is announced by the promoter (@pkentertainment.id, bndinjakarta.com). No under-12s in the standing pens.'] }),
-  SHOW({ id: 'evt-persija-baliutd', image: 'persija-match', type: 'football', theme: 'gnr', title: 'Persija Jakarta vs Bali United', subtitle: 'BRI Super League 2026/27', dateISO: '2026-12-12T19:00', time: '19:00', place: GBK, venue: 'stadium',
-    host: 'Persija Jakarta', hostNote: 'Home club', sale: { seller: 'persija' }, url: 'https://www.persija.id/matches/persija-jakarta-vs-bali-united-fc-2026-12-12',
-    blurb: 'Persija host Bali United at Gelora Bung Karno Main Stadium in the BRI Super League, kick-off 19:00 WIB.',
-    branding: { home: 'PERSIJA', away: 'BALI UTD' },
-    standInNote: 'The 3D venue is our generic football stadium, not GBK’s own stands: use it for a feel of the view from the side or behind the goal, not to pick a seat.',
-    extra: ['Tickets are sold by the club on persija.id (sign in under Tickets), usually in the week before the match. Prices and stands had not been announced on 20 November 2026.'] }),
   SHOW({ id: 'evt-janice-tjen-live', tickets: [
       { name: 'Platinum', price: 7000000, sold: true }, { name: 'VIP Seats', price: 3960000, sold: true },
       { name: 'Courtside', price: 2700000 }, { name: 'CAT 1', price: 830000 }, { name: 'CAT 2', price: 600000 },
@@ -521,34 +513,6 @@ export const EVENTS = [
     branding: { mark: 'JANICE TJEN', sub: 'GAME · SET · CELEBRATE', hall: 'TENNIS INDOOR SENAYAN', title: 'JANICE TJEN LIVE · JAKARTA' },
     prices: 'From Loket.com: Platinum Rp 7,000,000 and VIP Seats Rp 3,960,000 (both sold out), Courtside Rp 2,700,000, CAT 1 Rp 830,000, CAT 2 Rp 600,000. Gates and programme from 13:00 to 21:00 WIB.',
     standInNote: 'The 3D venue is our tennis centre court, with courtside rows along both sidelines and two tiers round it, not the promoter’s plan of Tennis Indoor (none has been published): use it for a feel of courtside and the stands, not to pick a seat.' }),
-  SHOW({ id: 'evt-persija-madura', image: 'persija-calonego', type: 'football', theme: 'gnr', title: 'Persija Jakarta vs Madura United', subtitle: 'BRI Super League 2026/27', dateISO: '2026-12-16T15:30', time: '15:30', place: GBK, venue: 'stadium',
-    host: 'Persija Jakarta', hostNote: 'Home club', sale: { seller: 'persija' }, url: 'https://www.persija.id/matches/persija-jakarta-vs-madura-united-fc-2026-12-16',
-    blurb: 'Persija host Madura United at Gelora Bung Karno Main Stadium in the BRI Super League, kick-off 15:30 WIB.',
-    branding: { home: 'PERSIJA', away: 'MADURA UTD' },
-    standInNote: 'The 3D venue is our generic football stadium, not GBK’s own stands: use it for a feel of the view from the side or behind the goal, not to pick a seat.',
-    extra: ['Tickets are sold by the club on persija.id (sign in under Tickets), usually in the week before the match. Prices and stands had not been announced on 20 November 2026.'] }),
-  SHOW({ id: 'evt-dune-part-three', image: 'dune-part-three', type: 'cinema', theme: 'bocelli', title: 'Dune: Part Three', subtitle: 'In cinemas', dateISO: '2026-12-16T00:00', until: '2027-01-15T00:00', place: XXI, venue: 'cinema',
-    host: 'Warner Bros. Pictures', hostNote: 'Studio · directed by Denis Villeneuve', sale: { seller: 'xxi' }, url: 'https://21cineplex.com/dune-part-three,139921,26DPTE.htm',
-    blurb: 'Denis Villeneuve’s Dune: Part Three, with Timothée Chalamet, Zendaya, Jason Momoa, Florence Pugh and Robert Pattinson, opens in Indonesian cinemas on 16 December 2026.',
-    prices: 'Ticket prices depend on the cinema, the studio (regular, IMAX, premiere) and the day; XXI shows them with the showtimes in the M-Tix app and on 21cineplex.com.',
-    standInNote: 'The 3D view is our cinema studio (rows A to N, sweetboxes at the back), not a particular XXI studio: use it to compare a front, middle or back row.',
-    extra: ['Cinema XXI listed it as coming soon on 21 November 2026, and the Indonesian poster gives 16 December; showtimes and seats open on M-Tix closer to the day. We keep it on the list until mid-January.'] }),
-  SHOW({ id: 'evt-fia-rallycross-indonesia', tickets: [
-      { name: 'GA Outfield', price: 350000, note: 'Standing, round the outside of the track' },
-      { name: 'GA Infield', price: 525000, note: 'Standing, inside the circuit' },
-      { name: 'Grandstand A–D Regular', price: 1550000, note: 'Seated, by the jump zone' },
-      { name: 'Grandstand A Wheelchair', price: 1550000, note: 'Wheelchair spaces in Grandstand A' },
-      { name: 'Grandstand E–G Premium', price: 1850000, note: 'Seated, Premium stands E, F and G' },
-      { name: 'VIP Hospitality Deluxe', price: 9050000, note: 'Hospitality box by the joker lap' },
-      { name: 'VIP Hospitality Lifestyle', price: 26000000, note: 'Hospitality in the infield' },
-      { name: 'VIP Hospitality Sarga RX', price: 27500000, note: 'Hospitality on the start straight' },
-    ], image: 'fia-rallycross-indonesia', type: 'sport', theme: 'gnr', title: 'FIA Rallycross World Cup', subtitle: 'Indonesia 2026 · 5–6 Dec', dateISO: '2026-12-05T10:00', until: '2026-12-06T22:00', time: '10:00', place: ANCOL_RX, venue: 'stadium',
-    host: 'SARGA Motorsport', hostNote: 'Organiser · FIA World Rallycross', from: 350000, sale: { seller: 'loket' }, url: 'https://www.loket.com/event/fia-rallycross-world-cup-indonesia-2026_w52',
-    blurb: 'The FIA Rallycross World Cup comes to Indonesia for the first time: two days of racing on a new circuit at Ancol, Jakarta, 5 and 6 December 2026, 10:00 to 22:00 WIB.',
-    branding: { home: 'FIA RX', away: 'JAKARTA', board: 'FIA RALLYCROSS', boardSub: 'INDONESIA 2026' },
-    prices: 'From Loket.com: General Admission Outfield Rp 350,000 and Infield Rp 525,000 (standing); Grandstand A to D Regular Rp 1,550,000 (wheelchair spaces in Grandstand A at the same price); Grandstand E to G Premium Rp 1,850,000; VIP Hospitality Deluxe Rp 9,050,000, Lifestyle Rp 26,000,000 and Sarga RX Rp 27,500,000. Hotel packages from Rp 16,301,300. All on sale on 21 November 2026.',
-    standInNote: 'The promoter’s ticket map: the start and finish straight runs along the bottom, with Premium Grandstands E and G beside it and F by the joker lap; Regular Grandstands A to D line the jump zone and the far straight; GA Infield is the standing area inside the circuit, GA Outfield the standing banks round the outside; VIP Hospitality 3 (Deluxe) sits by the joker lap, 4 (Lifestyle) in the infield and 5 (Sarga RX) on the start straight. The 3D view is our generic stadium, not the circuit: it is only for a feel of a grandstand view.',
-    extra: ['Up to four tickets per transaction. Children 3 and under go free; ages 4 to 12 (up to 163 cm) get a 30% junior discount. Layout and access points may still change, says the organiser.'] }),
   SHOW({ id: 'evt-dwp-2026', tickets: [
       { name: '3-Day GA Early Entry 1', price: 1700000, sold: true }, { name: '3-Day GA Early Entry 2', price: 1900000, sold: true }, { name: '3-Day GA Early Entry 3', price: 2100000 },
       { name: '3-Day GA Presale 1', price: 1900000, sold: true }, { name: '3-Day GA Presale 2', price: 2100000, sold: true }, { name: '3-Day GA Presale 3', price: 2300000 },
