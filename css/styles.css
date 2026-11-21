@@ -130,7 +130,7 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
 .mode a { display: inline-flex; align-items: center; height: 34px; padding: 0 15px; border-radius: 999px; font-size: 13.5px; font-weight: 600; color: rgba(244, 240, 238, 0.72); white-space: nowrap; transition: background .2s, color .2s; }
 .mode a:hover { color: #fff; }
 .mode a[aria-current] { background: #fff; color: var(--ink); }
-.nav-find { position: relative; flex: 1 1 auto; max-width: 400px; margin: 0 auto 0 var(--s6); }
+.nav-find { position: relative; flex: 1 1 auto; max-width: 640px; margin: 0 auto; }
 .nav-find label { display: flex; align-items: center; gap: 10px; height: 46px; padding: 0 10px 0 16px; border: 1px solid var(--line-2); border-radius: 999px; background: rgba(18, 16, 16, 0.55); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); transition: border-color .2s, background .2s; }
 .nav-find label:focus-within { border-color: var(--coral); background: rgba(18, 16, 16, 0.85); }
 .nav-find svg { width: 17px; height: 17px; flex: none; color: var(--muted); }
@@ -149,7 +149,7 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
 .nh-none { padding: 14px 10px; font-size: 14px; color: var(--muted); }
 .nh-all { display: flex; align-items: center; justify-content: space-between; margin-top: 4px; padding: 12px 10px; border-top: 1px solid var(--line); border-radius: 0 0 12px 12px; font-size: 13px; font-weight: 700; }
 .nh-all svg { width: 15px; height: 15px; color: var(--coral); }
-@media (max-width: 1000px) { .nav-find { max-width: 300px; } .nav-find kbd { display: none; } }
+@media (max-width: 1000px) { .nav-find { max-width: 420px; } .nav-find kbd { display: none; } }
 @media (max-width: 760px) { .nav-find { display: none; } }
 .nav-cta { display: flex; align-items: center; justify-content: flex-end; gap: var(--s3); flex: none; }
 
@@ -187,7 +187,7 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
 .menu-links a:nth-child(3) { --d: .13s; }
 .menu-links a:nth-child(4) { --d: .17s; }
 .menu-sub { --d: .22s; }
-.mode-lg { display: none; }
+.mode-lg { display: inline-flex; align-self: flex-start; margin-bottom: var(--s5); }
 .mode-lg a { height: 42px; padding: 0 20px; font-size: 15px; }
 .menu-links { display: flex; flex-direction: column; gap: 4px; }
 .menu-links a { font: 800 clamp(30px, 5vw, 48px)/1.08 var(--display); font-stretch: 125%; text-transform: uppercase; letter-spacing: -0.03em; color: transparent; -webkit-text-stroke: 1.2px var(--text); }
