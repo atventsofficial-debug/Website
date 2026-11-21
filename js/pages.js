@@ -201,16 +201,9 @@ export function renderHome() {
     homeBound = true;
     bindSubscribe($('#news-form'), { kind: 'newsletter', done: 'You’re on the list. The next big concert lands in your inbox.' }, $('#news-msg'));
   }
-  // One row per kind of event, with its name, nearest first: concerts, then festivals, films
-  // and sport when any are on sale. Four show at once; the rest scroll sideways.
-  const near = oncePerShow(onSale());
-  $('#home-events').innerHTML = [KINDS[0], KINDS[3], KINDS[2], KINDS[1]].map(k => {
-    const all = near.filter(e => k.types.includes(typeOf(e))), row = all.slice(0, 12);
-    return row.length ? `<div class="home-row">
-      <div class="home-row-head"><h3>${esc(k.title)}</h3><a class="pill-link" href="#events-${k.key}">See all ${plural(all.length, k.one, k.many)} ${icon('i-arrow')}</a></div>
-      <div class="tkt-grid home-row-cards">${row.map(e => ticketCard(e, { run: true })).join('')}</div>
-    </div>` : '';
-  }).join('');
+  // Three rows of four: the twelve nearest concerts. Films and sport have their own lists.
+  const near = oncePerShow(onSale()).filter(e => typeOf(e) === 'concert').slice(0, 12);
+  $('#home-events').innerHTML = near.map(e => ticketCard(e, { run: true })).join('');
 
   // One card per kind of event we cover, each opening the list filtered to it. A kind with
   // nothing on sale yet still shows, with its 3D venue and the alerts.
