@@ -5,7 +5,7 @@ import { LocalStore, ApiStore, PayStore } from './store.js';
 import { bindBuyLinks, importPass, passes, refresh } from './passes.js';
 import { bindSoldOut } from './soldpop.js';
 import { validAffiliate, formatFee, PAYMENT_ID } from './rules.js';
-import { stopEventHero, renderHome, renderConcerts, renderEvent, renderUnlock, renderPaid, renderFootage, renderPasses, renderFaq, bindPassButtons, navCount } from './pages.js';
+import { stopEventHero, renderHome, renderConcerts, renderEvent, renderUnlock, renderPaid, renderFootage, renderPasses, renderFaq, bindPassButtons, navCount, bindNavSearch } from './pages.js';
 import { startHero, stopHero } from './hero.js';
 import { renderPartners } from './partners.js';
 import { renderAdmin } from './admin.js';
@@ -75,6 +75,7 @@ async function boot() {
   bindSoldOut();
   bindBuyLinks();
   bindPassButtons();
+  bindNavSearch();
   if ($('#foot-alert')) bindSubscribe($('#foot-alert'), { kind: 'newsletter', done: 'You’re on the list. The next big concert lands in your inbox.' }, $('#foot-alert-msg'));
   bindViewer();
   navCount();

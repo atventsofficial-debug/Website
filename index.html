@@ -113,6 +113,10 @@ html:not(.atv-seen) #nav .logo-img{animation:ai-show 0s 2.57s both}
 <header class="nav" id="nav">
   <button class="nav-back" id="nav-back" type="button" aria-label="Back" hidden><svg><use href="#i-back"/></svg></button>
   <a class="logo" id="logo" href="#home" aria-label="Home"><img class="logo-img" src="assets/brand/atvents-logo-web.svg" alt="" width="150" height="30"><span class="sr-only" data-brand>Atvents</span></a>
+  <form class="nav-find" id="nav-find" role="search" data-for="fans" autocomplete="off">
+    <label><svg><use href="#i-search"/></svg><input id="nav-q" type="search" placeholder="Search an artist, team or venue" aria-label="Search events" aria-controls="nav-hits" aria-expanded="false"><kbd>/</kbd></label>
+    <div class="nav-hits" id="nav-hits" role="listbox" hidden></div>
+  </form>
   <div class="nav-cta">
     <nav class="mode mode-nav" aria-label="Choose your side">
       <a href="#home" data-mode="fans">For fans</a>

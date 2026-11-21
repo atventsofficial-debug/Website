@@ -280,6 +280,51 @@ function bindFootageForm() {
 // ---------------------------------------------------------------- concert list
 
 const listQuery = { q: '', type: 'all' };
+// A film is found by its name, studio and class, not a city: it plays in cinemas everywhere.
+const findText = e => [EVENT_TYPES[typeOf(e)], e.title, e.subtitle, e.host, placeOf(e).name, typeOf(e) === 'cinema' ? '' : placeOf(e).city].join(' ').toLowerCase();
+
+// The search in the desktop header: as you type, the six nearest events that match, each
+// opening its page; Enter (or the last row) opens the whole list filtered by the words.
+// "/" anywhere jumps to it. Phones have their own search on the home page.
+export function bindNavSearch() {
+  const form = $('#nav-find'), input = $('#nav-q'), box = $('#nav-hits');
+  if (!form) return;
+  let pick = -1;
+  const rows = () => [...box.querySelectorAll('a')];
+  const close = () => { box.hidden = true; input.setAttribute('aria-expanded', 'false'); pick = -1; };
+  const show = () => {
+    const q = input.value.trim().toLowerCase();
+    if (!q) return close();
+    const hits = oncePerShow(onSale()).filter(e => findText(e).includes(q));
+    box.innerHTML = (hits.length ? hits.slice(0, 6).map(e => `<a class="nh-row" role="option" href="#event-${e.id}">${thumbImg(e)}<span><b>${esc(e.title)}</b><small>${esc(datesText(datesOf(e).filter(x => x === e || upcoming(x))))}${typeOf(e) === 'cinema' ? ' · Cinema XXI' : ` · ${esc(placeOf(e).name)}, ${esc(placeOf(e).city)}`}</small></span><em>${esc(TYPE_TAG[typeOf(e)] || 'Concert')}</em></a>`).join('')
+      : `<p class="nh-none">No event matches “${esc(input.value.trim())}”.</p>`)
+      + `<a class="nh-all" role="option" href="#concerts" data-all>${hits.length ? `See all ${plural(hits.length, 'result')}` : 'See every event'} ${icon('i-arrow')}</a>`;
+    box.hidden = false; input.setAttribute('aria-expanded', 'true'); pick = -1;
+  };
+  const all = () => { listQuery.q = input.value.trim(); listQuery.type = 'all'; const f = $('#concerts-q'); if (f) f.value = listQuery.q; };
+  input.addEventListener('input', show);
+  input.addEventListener('focus', show);
+  input.addEventListener('keydown', ev => {
+    const r = rows();
+    if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') {
+      ev.preventDefault(); if (!r.length) return;
+      pick = (pick + (ev.key === 'ArrowDown' ? 1 : -1) + r.length) % r.length;
+      r.forEach((a, i) => a.classList.toggle('is-on', i === pick));
+    } else if (ev.key === 'Escape') { close(); input.blur(); }
+  });
+  form.addEventListener('submit', ev => {
+    ev.preventDefault();
+    const a = rows()[pick];
+    if (a && !a.hasAttribute('data-all')) location.hash = a.getAttribute('href');
+    else { all(); location.hash = '#concerts'; renderConcerts(); }
+    close(); input.blur();
+  });
+  box.addEventListener('click', ev => { const a = ev.target.closest('a'); if (a?.hasAttribute('data-all')) all(); close(); input.blur(); if (a?.hasAttribute('data-all') && location.hash === '#concerts') renderConcerts(); });
+  document.addEventListener('click', ev => { if (!form.contains(ev.target)) close(); });
+  document.addEventListener('keydown', ev => {
+    if (ev.key === '/' && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName) && !ev.metaKey && !ev.ctrlKey) { ev.preventDefault(); input.focus(); }
+  });
+}
 let typePicker = null;
 
 export function renderConcerts() {
@@ -291,7 +336,7 @@ export function renderConcerts() {
   const fromHash = location.hash.match(/^#events-(\w+)/)?.[1];
   if (fromHash) listQuery.type = fromHash;
   const q = listQuery.q.trim().toLowerCase();
-  const match = e => !q || [EVENT_TYPES[typeOf(e)], e.title, e.subtitle, e.host, placeOf(e).name, placeOf(e).city].join(' ').toLowerCase().includes(q);
+  const match = e => !q || findText(e).includes(q);
   const all = onSale().filter(isCard);
   // The dropdown offers only the kinds of event on sale now, with a count each. Its list
   // scrolls after a few rows, so more kinds never make it run down the page.
