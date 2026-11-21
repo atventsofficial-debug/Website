@@ -1328,6 +1328,9 @@ input, select, textarea { border-radius: 0; }
 .app-side .btn .cat-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; }
 /* how the venue numbers its seats (seatflip.js): one slim row in the panel, and the choices
    in a sheet over the panel, the same on every phone and computer */
+/* the tour's two buttons span the panel, as wide as the numbering row below them */
+.app-side .row-btns:has(> :nth-child(2)) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+.app-side .row-btns:has(> :nth-child(2)) .btn { min-width: 0; padding: 0 12px; }
 .num-trigger { display: flex; align-items: center; gap: 10px; width: 100%; margin-top: 2px; padding: 9px 12px; border: 1px solid var(--line-2); border-radius: 14px; background: rgba(255, 255, 255, 0.03); color: var(--text); font: inherit; text-align: left; cursor: pointer; transition: border-color .15s, background .15s; }
 .num-trigger:hover { border-color: rgba(255, 255, 255, 0.4); background: rgba(255, 255, 255, 0.06); }
 .num-trigger:focus-visible { outline: 2px solid var(--coral); outline-offset: 2px; }
