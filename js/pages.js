@@ -627,13 +627,6 @@ function openEvSheet(list) {
     evSheet.addEventListener('click', ev => {
       if (ev.target === evSheet || ev.target.closest('[data-es-close]') || ev.target.closest('.evsheet-grid a')) setTimeout(closeEvSheet, 0);
     });
-    evSheet.addEventListener('input', ev => {
-      if (!ev.target.matches('.evsheet-find input')) return;
-      const q = ev.target.value.trim().toLowerCase();
-      let shown = 0;
-      evSheet.querySelectorAll('.evsheet-grid li').forEach(li => { const on = !q || li.dataset.q.includes(q); li.hidden = !on; shown += on; });
-      evSheet.querySelector('.evsheet-none').hidden = shown > 0;
-    });
     document.addEventListener('keydown', ev => { if (ev.key === 'Escape') closeEvSheet(); });
     window.addEventListener('hashchange', closeEvSheet);
   }
@@ -641,17 +634,62 @@ function openEvSheet(list) {
     <div class="evsheet-card" role="dialog" aria-modal="true" aria-labelledby="es-title">
       <div class="evsheet-head"><div><h2 id="es-title">Choose your concert</h2><small>${list.length} on sale</small></div>
         <button class="evsheet-x" type="button" data-es-close aria-label="Close">${icon('i-x')}</button></div>
-      ${list.length > 6 ? `<label class="evsheet-find">${icon('i-search')}<input type="search" placeholder="Search a concert or venue" aria-label="Search a concert"></label>` : ''}
+      <label class="evsheet-find">${icon('i-search')}<input type="search" placeholder="Search an event or venue" aria-label="Search an event"></label>
+      ${monthChips(list)}
       <div class="evsheet-body">
-        <ul class="evsheet-grid">${list.map(e => `<li data-q="${esc(`${e.title} ${placeOf(e).name}`.toLowerCase())}"><a href="#unlock-${esc(e.id)}">
-          <span class="evsheet-img">${posterImg(e)}</span><b>${esc(e.title)}</b><small>${esc(whenOf(e).date)}</small><small>${esc(placeOf(e).name)}</small></a></li>`).join('')}</ul>
-        <p class="evsheet-none" hidden>No concert by that name.</p>
+        <ul class="evsheet-grid">${list.map(e => `<li ${pickData(e)}><a href="#unlock-${esc(e.id)}">
+          <span class="evsheet-img">${posterImg(e)}</span><b>${esc(e.title)}</b><small>${esc(whenOf(e).date)}</small><small>${esc(e.option ? `${placeOf(e).name} · ${e.option}` : placeOf(e).name)}</small></a></li>`).join('')}</ul>
+        <p class="uf-none" hidden>No event matches your search.</p>
       </div>
     </div>`;
+  bindPickFilter(evSheet.querySelector('.evsheet-card'), '.evsheet-grid li', Infinity);
   evSheetFrom = document.activeElement;
   evSheet.hidden = false;
   document.documentElement.classList.add('has-evsheet');
   evSheet.querySelector('.evsheet-x').focus();
+}
+
+// "Choose your event" (desktop rows, and the phone's sheet of cards): soonest first, a search
+// box and a chip a month so the list stays short. Rows past the first few wait behind
+// "Show more"; searching or picking a month shows every match.
+const PICK_FIRST = 8;
+const pickMonth = e => e.dateISO.slice(0, 7);
+// Words a fan might type, in English or Indonesian, besides the names.
+const PICK_KIND = { concert: 'concert konser', cinema: 'cinema film bioskop movie', football: 'football sepak bola', sport: 'sport olahraga', combat: 'fight ufc', theatre: 'theatre teater', festival: 'festival' };
+const pickLine = e => [whenOf(e).date, placeOf(e).name, e.option].filter(Boolean).join(' · ');
+const pickData = e => `data-q="${esc([e.title, e.subtitle, e.host, e.option, placeOf(e).name, typeOf(e) === 'cinema' ? '' : placeOf(e).city, PICK_KIND[typeOf(e)]].filter(Boolean).join(' ').toLowerCase())}" data-m="${pickMonth(e)}"`;
+function monthChips(list) {
+  const months = [...new Set(list.map(pickMonth))].sort();
+  if (months.length < 2) return '';
+  const count = k => list.filter(e => pickMonth(e) === k).length;
+  return `<div class="type-chips uf-months" role="group" aria-label="Filter by month">
+    <button type="button" class="type-chip" data-m="" aria-pressed="true">All <small>${list.length}</small></button>
+    ${months.map(k => { const [yy, mm] = k.split('-').map(Number); return `<button type="button" class="type-chip" data-m="${k}" aria-pressed="false">${MON[mm - 1]} ${yy} <small>${count(k)}</small></button>`; }).join('')}</div>`;
+}
+function bindPickFilter(root, rows, first) {
+  if (!root) return;
+  const input = root.querySelector('input[type="search"]'), more = root.querySelector('.uf-more'), none = root.querySelector('.uf-none');
+  let month = '', open = false;
+  const paint = () => {
+    const q = input.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    const hits = [...root.querySelectorAll(rows)].filter(li => {
+      const on = (!month || li.dataset.m === month) && q.every(w => li.dataset.q.includes(w));
+      li.hidden = !on; return on;
+    });
+    // The short list only while nothing narrows it.
+    const cap = open || month || q.length ? Infinity : first;
+    hits.forEach((li, i) => { if (i >= cap) li.hidden = true; });
+    if (none) none.hidden = hits.length > 0;
+    if (more) { more.hidden = hits.length <= cap; more.textContent = `Show ${hits.length - Math.min(cap, hits.length)} more`; }
+  };
+  input?.addEventListener('input', paint);
+  root.querySelectorAll('.uf-months [data-m]').forEach(b => b.addEventListener('click', () => {
+    month = b.dataset.m;
+    root.querySelectorAll('.uf-months [data-m]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    paint();
+  }));
+  more?.addEventListener('click', () => { open = true; paint(); });
+  paint();
 }
 
 export function renderUnlock(eventId) {
@@ -674,14 +712,22 @@ export function renderUnlock(eventId) {
     // Wider screens: the events as rows, one tap opens the form for it. Phones ("My seat 3D",
     // the middle tab) get a page of their own that is not a second Events list: what the seat
     // view is, the three steps, one field to choose the concert, and the fan's own seat views.
-    const list = onSale();
+    // Soonest first. Films showing all week (`until`) follow the dated shows, so a concert
+    // tonight is not buried under a dozen cinema studios.
+    const list = [...onSale().filter(e => !e.until), ...onSale().filter(e => e.until)];
     // Shows still to come first, then the ones that have taken place.
     const mine = passes.all().filter(p => p.status === 'confirmed' && isConcert(p.eventId))
       .sort((a, b) => !upcoming(eventMeta(a.eventId)) - !upcoming(eventMeta(b.eventId)));
     $('#uf-pick').innerHTML = `
       <div class="uf-desk"><div class="uf-head"><h2>Choose your event</h2><small>Then your seat, then pay</small></div>
-      <ul class="uf-pick-list">${list.map(e => `<li><a class="uf-pick-row" href="#unlock-${esc(e.id)}">
-        ${posterImg(e)}<span class="uf-event-text"><b>${esc(e.title)}</b><small>${esc(whenOf(e).date)} · ${esc(placeOf(e).name)}</small></span>${icon('i-arrow')}</a></li>`).join('')}</ul></div>
+      <div class="uf-tools">
+        <label class="search uf-find">${icon('i-search')}<input type="search" placeholder="Search an event or venue" aria-label="Search an event"></label>
+        ${monthChips(list)}
+      </div>
+      <ul class="uf-pick-list">${list.map(e => `<li ${pickData(e)}><a class="uf-pick-row" href="#unlock-${esc(e.id)}">
+        ${posterImg(e)}<span class="uf-event-text"><b>${esc(e.title)}</b><small>${esc(pickLine(e))}</small></span>${icon('i-arrow')}</a></li>`).join('')}</ul>
+      <p class="uf-none" hidden>No event matches your search.</p>
+      <button type="button" class="btn btn-line uf-more" hidden></button></div>
       <div class="s3d-m">
         <figure class="s3d-hero"><img src="assets/tour/seat-640.webp" srcset="assets/tour/seat-640.webp 640w, assets/tour/seat.webp 1200w" sizes="92vw" alt="The stage seen from a seat in 3D" decoding="async">
           <figcaption><span class="s3d-chip">${icon('i-seat')}Seat view in 3D</span><b>See the stage from any seat, before you buy or before the night.</b><small>${formatFee()} · one seat, one concert · opens at once</small></figcaption></figure>
@@ -695,6 +741,7 @@ export function renderUnlock(eventId) {
         <p class="s3d-foot">Just looking? Every concert in ${icon('i-search')}<a class="u" href="#concerts">Events</a> lets you look round its venue from above, free. The 3D view does not include a concert ticket: tickets are sold by the seller on each concert page.</p>
       </div>`;
     $('#s3d-ev').addEventListener('click', () => openEvSheet(list));
+    bindPickFilter($('#uf-pick .uf-desk'), '.uf-pick-list li', PICK_FIRST);
     return;
   }
   const all = onSale();

@@ -290,6 +290,10 @@ export const EXACT = {
 "Choose": "Pilih",
 "Choose your concert": "Pilih konsermu",
 "Choose your event": "Pilih eventmu",
+"Search an event or venue": "Cari event atau venue",
+"Search an event": "Cari event",
+"Filter by month": "Saring per bulan",
+"No event matches your search.": "Tidak ada event yang cocok dengan pencarianmu.",
 "Clips and photos · price to come": "Klip dan foto · harga menyusul",
 "Coming soon · Footage": "Segera hadir · Footage",
 "Concert arena": "Arena konser",
@@ -801,6 +805,7 @@ const DAY = '(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)';
 export const PATTERNS = [
   [/^(\d+) events this day$/, '$1 event di hari ini'],
   [/^\+(\d+) more$/, '+$1 lainnya'],
+  [/^Show (\d+) more$/, 'Tampilkan $1 lagi'],
   [/^Also in (.+)$/, 'Juga di $1'],
   [/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{4})$/, '$1 $2'],
   [/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)$/, '$1'],
