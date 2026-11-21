@@ -4,7 +4,7 @@
 import { formatRpShort, crowdSeats, REAL_KEYS } from './layouts.js';
 import { loadScene3d } from './viewer.js';
 import { EVENTS, CITY, LISTED, getEvent, eventMeta, placeOf, timeKnown, minPrice, allSoldOut, isConcert, demoFor, onTiket, sellerOf, saleInfo, EVENT_TYPES, typeOf, optionsOf, isCard } from './events.js';
-import { cardImg, eventImg, kindCover, posterFig, posterImg, thumbImg } from './media.js';
+import { cardImg, eventImg, kindCover, posterFig, posterImg, thumbImg, coverThumb } from './media.js';
 import { picker } from './picker.js';
 import { whenOf, startOf, venueClock, gapText } from './when.js';
 import { waTiles } from './fans.js';
@@ -270,7 +270,7 @@ function renderCalendar() {
     const evs = out ? [] : byDay.get(key) || [];
     // Each event as a round cover, overlapping when a day has several: three at most, then +N.
     const shown = evs.length > 3 ? evs.slice(0, 3) : evs;
-    const chips = evs.length ? `<span class="cal-avs${evs.length > 1 ? ' is-stack' : ''}">${shown.map(e => `<span class="cal-av" title="${esc(e.title)}">${thumbImg(e) || `<b>${esc(e.title.slice(0, 1))}</b>`}</span>`).join('')}${evs.length > 3 ? `<span class="cal-av cal-av-more">+${evs.length - 3}</span>` : ''}</span>${evs.length === 1 ? `<span class="cal-name">${esc(evs[0].title)}</span>` : ''}` : '';
+    const chips = evs.length ? `<span class="cal-avs${evs.length > 1 ? ' is-stack' : ''}">${shown.map(e => `<span class="cal-av" title="${esc(e.title)}">${coverThumb(e) || `<b>${esc(e.title.slice(0, 1))}</b>`}</span>`).join('')}${evs.length > 3 ? `<span class="cal-av cal-av-more">+${evs.length - 3}</span>` : ''}</span>${evs.length === 1 ? `<span class="cal-name">${esc(evs[0].title)}</span>` : ''}` : '';
     grid += evs.length
       ? `<button class="cal-cell has-ev${key === cal.day ? ' is-sel' : ''}" type="button" data-day="${key}" aria-pressed="${key === cal.day}"><span class="cal-n">${d.getUTCDate()}</span>${chips}<span class="sr-only">${evs.map(e => esc(e.title)).join(', ')}</span></button>`
       : `<div class="cal-cell${out ? ' is-out' : ''}"><span class="cal-n">${d.getUTCDate()}</span></div>`;
@@ -278,10 +278,10 @@ function renderCalendar() {
 
   const sel = byDay.get(cal.day) || [];
   const one = sel.length === 1 ? sel[0] : null;
-  const row = e => `<a class="cal-row" href="#event-${esc(e.id)}">${thumbImg(e)}<span><b>${esc(e.title)}</b><small>${esc(placeOf(e).name)}, ${esc(placeOf(e).city)}</small></span>${icon('i-arrow')}</a>`;
+  const row = e => `<a class="cal-row" href="#event-${esc(e.id)}">${coverThumb(e)}<span><b>${esc(e.title)}</b><small>${esc(placeOf(e).name)}, ${esc(placeOf(e).city)}</small></span>${icon('i-arrow')}</a>`;
   const head = `<div class="cal-date">${calLabel(cal.day)}</div>`;
   const pick = one
-    ? `<div class="cal-one">${thumbImg(one)}<div>${head}<h3>${esc(one.title)}</h3><p>${esc(placeOf(one).name)}, ${esc(placeOf(one).city)}</p></div></div>
+    ? `<div class="cal-one">${coverThumb(one)}<div>${head}<h3>${esc(one.title)}</h3><p>${esc(placeOf(one).name)}, ${esc(placeOf(one).city)}</p></div></div>
        <div class="cal-btns"><a class="btn btn-coral btn-sm" href="#event-${esc(one.id)}">Event details</a><a class="btn btn-line btn-sm" href="#seats-${esc(one.id)}">See in 3D</a></div>`
     : `${head}<h3 class="cal-count">${sel.length} events this day</h3><div class="cal-rows">${sel.map(row).join('')}</div>`;
   root.innerHTML = `
@@ -530,7 +530,7 @@ export function renderEvent(id) {
         return live ? '<span class="ev-from"><small>Today</small><b>On now</b></span>' : '';
       })()}
       ${pass?.status === 'confirmed' ? `<a class="btn btn-coral ev-bar-go" href="#tour-${esc(pass.id)}">Open my seat view ${icon('i-arrow')}</a>`
-        : live ? `<a class="btn btn-coral ev-bar-go" href="#unlock-${id}">Unlock 3D · ${formatFee()} ${icon('i-arrow')}</a>` : ''}
+        : live ? `<a class="btn btn-coral ev-bar-go" href="#unlock-${id}">Unlock 3D seat view · ${formatFee()} ${icon('i-arrow')}</a>` : ''}
     </div>`;
 
   tickCountdowns();

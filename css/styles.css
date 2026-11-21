@@ -2584,8 +2584,11 @@ html.has-soldpop { overflow: hidden; }
 /* Event page: on a phone the sticky bar carries Unlock 3D and the countdown sits in the event info. */
 .ev-bar-go, .ev-count-info { display: none; }
 @media (max-width: 760px) {
-  .ev-bar-go { display: none; }
-  .ev-hero .ev-count-info { display: none !important; order: 6; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin: 2px 0 4px; }
+  .ev-bar-in > :not(.ev-bar-go) { display: none !important; }
+  .ev-bar-in { grid-template-columns: minmax(0, 1fr) !important; }
+  .ev-bar-go { display: inline-flex; justify-content: center; width: 100%; white-space: nowrap; }
+  .ev-hero .ev-unlock-hero { display: none; }
+  .ev-hero .ev-count-info { order: 6; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin: 2px 0 4px; }
   .ev-count-info > small { display: block; }
   .ev-count-info .countdown span { min-width: 60px; }
 }
@@ -2657,3 +2660,7 @@ button.cal-cell:hover { background: rgba(255, 255, 255, 0.03); }
   .cal-av-more { font-size: 9px; }
   .cal-name { display: none; }
 }
+
+.cover-thumb { display: block; width: 100%; height: 100%; object-fit: cover; }
+.cal-av .cover-thumb { border-radius: 0; }
+.cal-one .cover-thumb, .cal-row .cover-thumb { width: 100%; height: auto; aspect-ratio: 5 / 7; border-radius: 10px; }

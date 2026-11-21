@@ -846,6 +846,7 @@ export const PATTERNS = [
   [/^To be announced, starts (.+)$/, 'Menyusul, mulai $1'],
   [/^Now showing · (.+)$/, 'Sedang tayang · $1'],
   [/^Unlock 3D · (.+)$/, 'Buka 3D · $1'],
+  [/^Unlock 3D seat view · (.+)$/, 'Buka Tampilan Kursi 3D · $1'],
   [/^Unlock seat view · (.+)$/, 'Lihat dari Kursimu · $1'],
   [/^Event ended · (.+)$/, 'Event selesai · $1'],
 ];

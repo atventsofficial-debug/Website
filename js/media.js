@@ -143,6 +143,16 @@ export function posterImg(e) {
   return `<img class="uf-poster" src="${c.w ? c.src : `${full}-640.webp`}" srcset="${set}" sizes="(max-width: 760px) 100vw, 160px" alt="" loading="lazy" decoding="async">`;
 }
 
+// A small cover that fills its frame edge to edge (a round avatar, a list thumbnail), from
+// assets/events/thumb/: the picture with any blurred padding cut off, so `cover` never shows
+// a band. A portrait poster is cut to the poster; every other picture is the 3:2 file, kept at `pos`.
+const TALL = new Set(['jkt48-15th', 'hunger-games-sunrise', 'godzilla-minus-zero', 'ramayana-directors-cut', 'gak-ada-matinya', 'seporsi-mie-ayam', 'blue-lock', 'laut-bercerita', 'hamka-awal-mula', 'people-pleaser']);
+export function coverThumb(e, cls = 'cover-thumb') {
+  if (!e?.image || !Object.hasOwn(IMAGES, e.image)) return '';
+  const pos = TALL.has(e.image) ? '50% 30%' : IMAGES[e.image].pos || '50% 50%';
+  return `<img class="${cls}" src="assets/events/thumb/${e.image}.webp" style="object-position:${pos}" alt="" loading="lazy" decoding="async">`;
+}
+
 // The artwork itself, sharp and uncropped, with its credit: on the event page.
 export function posterFig(e) {
   if (!e.image || !Object.hasOwn(IMAGES, e.image)) return '';
