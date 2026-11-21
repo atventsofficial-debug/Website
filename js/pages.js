@@ -201,18 +201,16 @@ export function renderHome() {
     homeBound = true;
     bindSubscribe($('#news-form'), { kind: 'newsletter', done: 'You’re on the list. The next big concert lands in your inbox.' }, $('#news-msg'));
   }
-  // Three rows of four, nearest first: concerts; then more concerts or festivals; then films
-  // or sport. A row short of its kind fills from the next nearest shows.
+  // One row per kind of event, with its name, nearest first: concerts, then festivals, films
+  // and sport when any are on sale. Four show at once; the rest scroll sideways.
   const near = oncePerShow(onSale());
-  const shown = new Set();
-  const take = (types, n = 4) => {
-    const row = near.filter(e => !shown.has(e) && types.includes(typeOf(e))).slice(0, n);
-    row.forEach(e => shown.add(e));
-    return row;
-  };
-  const rows = [take(['concert']), take(['concert', 'festival']), take(['cinema', 'sport', 'football', 'combat'])];
-  for (const row of rows) row.push(...near.filter(e => !shown.has(e)).slice(0, 4 - row.length).map(e => (shown.add(e), e)));
-  $('#home-events').innerHTML = rows.flat().map(e => ticketCard(e, { run: true })).join('');
+  $('#home-events').innerHTML = [KINDS[0], KINDS[3], KINDS[2], KINDS[1]].map(k => {
+    const all = near.filter(e => k.types.includes(typeOf(e))), row = all.slice(0, 12);
+    return row.length ? `<div class="home-row">
+      <div class="home-row-head"><h3>${esc(k.title)}</h3><a class="pill-link" href="#events-${k.key}">See all ${plural(all.length, k.one, k.many)} ${icon('i-arrow')}</a></div>
+      <div class="tkt-grid home-row-cards">${row.map(e => ticketCard(e, { run: true })).join('')}</div>
+    </div>` : '';
+  }).join('');
 
   // One card per kind of event we cover, each opening the list filtered to it. A kind with
   // nothing on sale yet still shows, with its 3D venue and the alerts.
