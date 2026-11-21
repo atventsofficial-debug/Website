@@ -26,5 +26,23 @@
   // MIDTRANS_CLIENT_KEY, GOOGLE_CLIENT_ID and MICROSOFT_CLIENT_ID (README, Payments), and
   // FANBASE_WA, the WhatsApp fan group's invite link that paid passes see (README, Seat mates).
   "keep_vars": true,
-  "observability": { "enabled": true }
+  "observability": { "enabled": true },
+  // The staging copy (README, Staging): `npx wrangler deploy --env staging` makes a second
+  // Worker, website-staging, with its own order book and its own variables, so it never
+  // touches the live site's orders or keys. Give it Midtrans Sandbox keys only. Its Worker
+  // runs before every file, to tell search engines to leave it out (STAGING).
+  "env": {
+    "staging": {
+      "name": "website-staging",
+      "assets": { "directory": "./site", "binding": "ASSETS", "run_worker_first": true },
+      "vars": { "STAGING": "1" },
+      "ratelimits": [
+        { "name": "PAY_LIMIT", "namespace_id": "2001", "simple": { "limit": 30, "period": 60 } },
+        { "name": "STATUS_LIMIT", "namespace_id": "2002", "simple": { "limit": 60, "period": 60 } },
+        { "name": "FANS_LIMIT", "namespace_id": "2003", "simple": { "limit": 40, "period": 60 } }
+      ],
+      "d1_databases": [{ "binding": "DB", "database_name": "atvents-orders-staging" }],
+      "observability": { "enabled": true }
+    }
+  }
 }

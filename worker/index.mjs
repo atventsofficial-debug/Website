@@ -13,6 +13,11 @@
 //   POST /api/passes/<id>/device  { code }: this device gets in, the least used one goes
 //   POST /api/midtrans/notify   Midtrans telling us a payment changed (signed with the server key)
 //   GET  /pay/done              where Midtrans sends the fan back, on to #paid-<id>
+//   POST /api/team/session      { idToken } from Google: a member of the team (ADMIN_EMAILS)
+//                               gets a team key (team.mjs)
+//   GET  /api/team/me           who the team key (header x-team-key) belongs to
+//   POST /api/team/passes       a pass for a member, paid at 0: every 3D view, seat mates
+//                               and the story open as for a fan who paid
 //
 // Midtrans keeps the payment; the order book (orders.mjs, in D1) keeps the buyer's name,
 // email and seat. The pass email (mail.mjs) goes out once Midtrans says the order is paid,
@@ -26,11 +31,12 @@ import { paymentsOf, midtrans, MidtransError, PaymentRefused, chargeOf, payDetai
 import { payMethod, methodsOn } from '../js/paymethods.js';
 import { clientsOf } from '../js/sso.js';
 import { signPass, readPass } from './passkey.mjs';
-import { hasOrders, saveOrder, setStatus, statusOf, takeEmail, returnEmail, orderOf } from './orders.mjs';
+import { hasOrders, saveOrder, setStatus, statusOf, takeEmail, returnEmail, orderOf, saveTeamOrder } from './orders.mjs';
 import { deviceOf, admit, newCode, useCode, maskEmail, CODE_MINUTES } from './devices.mjs';
 import { hasFans, fansList, forgetFans, saveFan, dropFan, dropConcert, KEEP_AFTER } from './fans.mjs';
 import { checkFan, waLinksFor, waOf, SEAT_TAKEN } from '../js/fanrules.js';
 import { mailerOf, passEmail, codeEmail } from './mail.mjs';
+import { googleEmail, onTeam, signTeam, readTeam, teamOf } from './team.mjs';
 
 const MAX_BODY = 4096, NOTIFY_BODY = 16384;
 const PAY_WINDOW = PAY_MINUTES * 6e4;
@@ -68,6 +74,9 @@ export default {
       if (device) return method === 'POST' ? await addDevice(request, env, url, device[1]) : notAllowed('POST');
       if (path === '/api/midtrans/notify') return method === 'POST' ? await notified(request, env) : notAllowed('POST');
       if (path === '/pay/done') return backFromPayment(url);
+      if (path === '/api/team/session') return method === 'POST' ? await teamSession(request, env, url) : notAllowed('POST');
+      if (path === '/api/team/me') return method === 'GET' ? await teamMe(request, env) : notAllowed('GET');
+      if (path === '/api/team/passes') return method === 'POST' ? await teamPass(request, env, url) : notAllowed('POST');
       if (path.startsWith('/api/')) return fail(404, 'Not found');
     } catch (err) {
       // Midtrans' own message, never the key: it is only ever in the Authorization header.
@@ -76,8 +85,14 @@ export default {
         ? fail(502, 'Midtrans did not answer just now. Please try again in a moment.')
         : fail(500, 'Something went wrong. Please try again.');
     }
-    // Not ours: the static site's own answer (its 404).
-    return env.ASSETS ? env.ASSETS.fetch(request) : new Response('Not found', { status: 404 });
+    // Not ours: the static site's own answer (its 404). The staging copy (wrangler.jsonc,
+    // env.staging) runs this Worker before every file, so search engines are told to keep
+    // it out of their results.
+    const res = env.ASSETS ? await env.ASSETS.fetch(request) : new Response('Not found', { status: 404 });
+    if (!env.STAGING) return res;
+    const out = new Response(res.body, res);
+    out.headers.set('x-robots-tag', 'noindex, nofollow');
+    return out;
   },
 };
 
@@ -92,6 +107,10 @@ function config(env) {
     // "Continue with Google / Microsoft" on the form (js/sso.js): the apps' client ids, which
     // are public. A button shows only with its id.
     sso: clientsOf({ google: env.GOOGLE_CLIENT_ID, microsoft: env.MICROSOFT_CLIENT_ID }),
+    // The staging copy: the page always takes Sandbox payments, and says it is staging.
+    ...(env.STAGING ? { staging: true } : {}),
+    // The team sign-in on #admin (team.mjs): on once there is a list and Google's client id.
+    ...(teamOf(env).size > 0 && clientsOf({ google: env.GOOGLE_CLIENT_ID }).google && hasOrders(env) ? { team: true } : {}),
   });
 }
 
@@ -444,6 +463,69 @@ function paidSeen(env, id, set = false, now = Date.now()) {
   if (set) { if (m.size > 20000) m.clear(); m.set(id, now); return true; }
   const at = m.get(id);
   return !!at && now - at < PAID_FOR;
+}
+
+// ---------------------------------------------------------------- the team (team.mjs)
+
+// Google's ID token in, a team key out, for an address on ADMIN_EMAILS only. Every refusal
+// reads the same, so the answer does not tell who is on the list.
+async function teamSession(request, env, url) {
+  const pay = paymentsOf(env), google = clientsOf({ google: env.GOOGLE_CLIENT_ID }).google;
+  if (!pay || !google || !teamOf(env).size) return fail(503, 'Team sign-in is not switched on.');
+  const origin = request.headers.get('origin');
+  if (origin && origin !== url.origin) return fail(403, 'Forbidden');
+  if (await tooMany(env, 'PAY_LIMIT', request)) return slowDown();
+  const d = await readJson(request, 8192);
+  if (d instanceof Response) return d;
+  const email = await googleEmail(d.idToken, google);
+  if (!email || !onTeam(env, email)) {
+    console.log('team sign-in refused');
+    return fail(403, 'This Google account is not on the Atvents team.');
+  }
+  console.log('team sign-in');
+  return json(200, await signTeam(pay.key, email));
+}
+
+const teamFrom = async (env, pay, request) => readTeam(env, pay.key, request.headers.get('x-team-key'));
+
+async function teamMe(request, env) {
+  const pay = paymentsOf(env);
+  if (!pay) return fail(503, 'Team sign-in is not switched on.');
+  const who = await teamFrom(env, pay, request);
+  return who ? json(200, who) : fail(401, 'Sign in again.');
+}
+
+// A pass for a member: the same checks as an order (concert, category, seat), then a row in
+// the order book that is paid at 0 and needs no Midtrans. It opens, everywhere, as any paid
+// pass does.
+async function teamPass(request, env, url) {
+  const pay = paymentsOf(env);
+  if (!pay || !hasOrders(env)) return fail(503, 'Team passes need the order book.');
+  const origin = request.headers.get('origin');
+  if (origin && origin !== url.origin) return fail(403, 'Forbidden');
+  if (await tooMany(env, 'PAY_LIMIT', request)) return slowDown();
+  const who = await teamFrom(env, pay, request);
+  if (!who) return fail(401, 'Sign in again.');
+  const d = await readJson(request);
+  if (d instanceof Response) return d;
+  const eventId = line(d.eventId), cat = line(d.cat), e = concert(eventId);
+  if (!e) return fail(400, 'Choose your concert.', { field: 'eventId' });
+  if (!Object.hasOwn(e.cats, cat)) return fail(400, 'Choose the category on your ticket.', { field: 'cat' });
+  const seat = seatOf(e, cat, line(d.seat));
+  if (!seat) return fail(400, 'Choose your seat.', { field: 'seat' });
+  const name = (line(d.name) || 'Atvents team').slice(0, 80);
+  const id = newOrderId(), createdAt = Date.now();
+  const where = seat.standing ? `${seat.secName}, standing` : `${seat.secName}, row ${seat.row}, seat ${seat.num}`;
+  await saveTeamOrder(env, { id, eventId, title: e.title, cat, seat: seat.id, seatLabel: where, name, email: who.email, origin: url.origin, createdAt });
+  const dev = await deviceOf(request);
+  if (dev) await admit(env, id, dev, createdAt).catch(err => console.error(`order ${id}: device not kept: ${err?.message || err}`));
+  console.log(`team pass: ${id}`);
+  const token = await signPass(pay.key, { id, eventId, cat, seat: seat.id, createdAt });
+  return json(201, {
+    id, token, method: 'team', amount: 0, sandbox: pay.sandbox,
+    status: 'confirmed', eventId, cat, qty: 1, seat: seat.id, name, email: who.email, route: 'paid',
+    createdAt: new Date(createdAt).toISOString(), expiresAt: new Date(createdAt + PAY_WINDOW).toISOString(),
+  });
 }
 
 // Midtrans adds ?order_id=… to the finish address. The page takes it from there.

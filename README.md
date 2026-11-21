@@ -119,6 +119,30 @@ Switching it on, in the Cloudflare dashboard (Workers, `website`, Settings, Vari
 
 Run it locally with `npm run dev` (`wrangler dev`, with the key in `.dev.vars`, which git ignores).
 
+## The team
+
+The owner and the people they name open every 3D pass without paying, to watch the live site and check changes from any phone or laptop (`worker/team.mjs`, `js/team.js`).
+
+- **Who.** `ADMIN_EMAILS` in the Cloudflare dashboard (Workers, `website`, Settings, Variables and Secrets): Google addresses, comma-separated, as the account shows them. Plain text is fine. Taking an address off ends that person's access at once, on every device.
+- **Signing in.** Open `#admin` and press *Masuk dengan Google*. The page sends Google's ID token to `POST /api/team/session`; the Worker checks it itself: Google's signature against its published keys, that it was made for `GOOGLE_CLIENT_ID`, that it is in time and the email verified, and that the address is on the list. Only then it answers with a team key (the email and an end date, 30 days, HMAC-signed with a key derived from the Midtrans server key). The browser keeps it; the Worker checks it, list included, on every use (`x-team-key`), so a key written in by hand opens nothing.
+- **Opening a pass.** Signed in, the device takes live payments even with a Sandbox key (no `#paytest` needed), and the checkout shows *Buka gratis (tim)* above the ways to pay. `POST /api/team/passes` checks the concert, category and seat like an order, then writes a row in the order book that is paid at 0 (`method = 'team'`), with no Midtrans and no pass email. From there it is a paid pass like any other: the seat tour, seat mates, the story, the two-device rule. Team passes are easy to find: `SELECT * FROM orders WHERE method = 'team'`.
+- Needs `GOOGLE_CLIENT_ID`, `ADMIN_EMAILS`, the server key and the order book; without any of them the box does not show and the endpoints answer 503.
+
+## Staging
+
+A second copy of the site, for checking changes before they reach atvents.com: its own Worker (`website-staging`), its own order book (D1 `atvents-orders-staging`) and its own variables, so it never touches live orders or keys. It always takes Sandbox payments (no `#paytest` needed), shows a yellow *STAGING · Sandbox* badge, and tells search engines to leave it out (`x-robots-tag: noindex`, set by the Worker, which runs before every file there). `wrangler.jsonc`, `env.staging`.
+
+Setting it up, once, in the Cloudflare dashboard:
+
+1. **Branch.** Push a `staging` branch to GitHub (from `main`).
+2. **Worker.** Workers & Pages, Create, Import a repository: this repository. Name `website-staging`. Build: production branch `staging`, build command empty (the deploy runs it), deploy command `npx wrangler deploy --env staging`.
+3. **Variables** (the new Worker, Settings, Variables and Secrets): `MIDTRANS_SERVER_KEY` (Secret) and `MIDTRANS_CLIENT_KEY`, both **Sandbox**; `GOOGLE_CLIENT_ID` (the same as the live site); `ADMIN_EMAILS`. `RESEND_API_KEY` only if staging should send pass emails too.
+4. **Address.** The Worker, Settings, Domains & Routes, Add, Custom domain: `staging.atvents.com`. Cloudflare makes the DNS record and the certificate.
+5. **Google.** Google Cloud console, Credentials, the Atvents OAuth client: add `https://staging.atvents.com` to the JavaScript origins and `https://staging.atvents.com/auth` to the redirect URIs.
+6. **Locked (recommended).** Zero Trust, Access, Applications, Add, Self-hosted: `staging.atvents.com`, a policy *Allow* with the team's emails (One-time PIN or Google login). Then only the team can open staging at all.
+
+Working with it: changes go to `staging` first; check them on staging.atvents.com; when they are right, merge `staging` into `main`, which deploys the live site. Locally, `npx wrangler dev --env staging` runs the staging copy with `.dev.vars`.
+
 ## Turning on the affiliate link
 
 Once the affiliate program approves the site, build a tiket.com deeplink in the network's link builder and put these placeholders in it:

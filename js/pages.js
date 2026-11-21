@@ -848,6 +848,7 @@ function showWays(form) {
     </div>
     <div class="co-cols">
       <div class="co-main">
+        ${teamBlock()}
         <div class="pm-groups">${PAY_GROUPS.map(g => wayGroup(g, ways.filter(m => m.group === g.id))).join('')}</div>
         ${payNotes('co-main-notes')}
       </div>
@@ -855,6 +856,28 @@ function showWays(form) {
     </div>`;
   // After the router's own scroll to the top of the page.
   requestAnimationFrame(() => sheet.scrollIntoView({ block: 'start' }));
+}
+
+// A member of the team (js/team.js), signed in on #admin: the pass opens without paying.
+const teamBlock = () => {
+  const t = state.store.teamKey;
+  return t ? `<div class="co-team"><p><b>Akses tim</b> · ${esc(t.email)}<small>Pass ini terbuka tanpa bayar dan tanpa Midtrans.</small></p>
+    <button class="btn btn-coral" type="button" id="pay-team">Buka gratis (tim) ${icon('i-arrow')}</button><p class="co-error" id="team-pay-error" role="alert" hidden></p></div>` : '';
+};
+async function teamOpen(form, btn) {
+  const data = unlock.data, err = $('#team-pay-error');
+  if (!data) return closePay(form);
+  btn.disabled = true;
+  err.hidden = true;
+  try {
+    const p = await state.store.teamPass({ eventId: data.eventId, cat: data.cat, seat: data.seat, name: data.name });
+    holdPass(p);
+    location.hash = `#paid-${p.id}`;
+  } catch (e) {
+    err.textContent = e.status === 401 ? 'Sesi tim habis. Masuk lagi di halaman Admin.' : e.message || 'Tidak bisa membuka pass. Coba lagi.';
+    err.hidden = false;
+    btn.disabled = false;
+  }
 }
 
 // A group of ways: open for the wallets and the banks, and for a way already chosen. Folded,
@@ -1248,6 +1271,8 @@ function bindUnlock(form) {
     if (t.closest('[data-back]')) { unlock.payment = null; closePay(form); return; }
     if (t.closest('#pay-ways')) { unlock.payment = null; showWays(form); return; }
     if (t.closest('#pay-demo')) { paid(form); return; }
+    const team = t.closest('#pay-team');
+    if (team) { if (!team.disabled) teamOpen(form, team); return; }
     const go = t.closest('#pay-go');
     if (go) { if (!go.disabled) goPay(form, go); return; }
     const copy = t.closest('[data-copy]');

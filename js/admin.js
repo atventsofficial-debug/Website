@@ -5,6 +5,7 @@ import { eventMeta, getEvent } from './events.js';
 import { parseConversions, MAX_REPORT_ROWS } from './rules.js';
 import { STATUS } from './passes.js';
 import { $, esc, icon, state, toast } from './ui.js';
+import { teamKey, teamSignIn, teamCheck, forgetTeam } from './team.js';
 
 const n = x => (x || 0).toLocaleString('en-US');
 const day = iso => (iso ? new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '');
@@ -19,7 +20,48 @@ const plural = (k, one, many = `${one}s`) => `${n(k)} ${k === 1 ? one : many}`;
 const emptyRow = (cols, text) => `<tr><td colspan="${cols}" class="empty"><span>${text}</span></td></tr>`;
 let report = null;   // a conversion report read and waiting to be imported
 
+// The team's box on top of the admin (js/team.js), on the Worker once ADMIN_EMAILS and
+// Google's client id are set: sign in with Google, and every 3D pass opens without paying.
+const teamBound = { done: false };
+async function renderTeam() {
+  const box = $('#team-box'), c = state.payCfg, google = c?.sso?.google;
+  box.hidden = !c?.team || !google;
+  if (box.hidden) return;
+  const t = teamKey();
+  const where = c.staging ? '<p class="fine"><b>Staging</b>: pembayaran di sini selalu Midtrans Sandbox, tidak ada uang yang berpindah.</p>' : '';
+  box.innerHTML = t
+    ? `<h2>Akses tim</h2><p>Masuk sebagai <b>${esc(t.email)}</b>. Semua 3D pass terbuka tanpa bayar: pilih konser dan kursi di <a class="u" href="#unlock">Unlock 3D</a>, lalu tekan <b>Buka gratis (tim)</b> di halaman pembayaran. Seat mates dan share story ikut terbuka.</p>${where}
+       <div class="row-btns"><a class="btn btn-coral" href="#unlock">Buka 3D pass ${icon('i-arrow')}</a><button class="btn btn-line" type="button" id="team-out">Keluar</button></div>`
+    : `<h2>Akses tim</h2><p>Untuk pemilik dan tim Atvents: masuk dengan akun Google yang terdaftar, lalu semua 3D pass terbuka tanpa bayar di perangkat ini.</p>${where}
+       <div class="row-btns"><button class="btn btn-coral" type="button" id="team-in"><svg><use href="#i-google"/></svg>Masuk dengan Google</button></div>
+       <p class="form-error" id="team-error" role="alert" hidden></p>`;
+  if (!teamBound.done) {
+    teamBound.done = true;
+    box.addEventListener('click', async ev => {
+      if (ev.target.closest('#team-out')) { forgetTeam(); location.reload(); return; }
+      const btn = ev.target.closest('#team-in');
+      if (!btn) return;
+      const err = $('#team-error');
+      err.hidden = true;
+      btn.disabled = true;
+      try {
+        await teamSignIn(state.payCfg.sso.google);
+        // The page starts again with live (Sandbox) payments and the team's button.
+        location.reload();
+      } catch (e) {
+        err.textContent = e?.reason === 'blocked' ? 'Browser memblokir jendela login. Izinkan pop-up untuk situs ini.'
+          : e?.status === 403 ? 'Akun Google ini belum terdaftar di tim Atvents.' : e?.reason === 'failed' ? 'Login Google tidak berhasil. Coba lagi.' : (e?.message || 'Login tidak berhasil. Coba lagi.');
+        err.hidden = false;
+        btn.disabled = false;
+      }
+    });
+  }
+  // Taken off the list since: the key goes, and the box asks to sign in again.
+  if (t && !(await teamCheck())) renderTeam();
+}
+
 export async function renderAdmin() {
+  renderTeam();
   const body = $('#admin-body'), st = state.store;
   $('#admin-mode').textContent = st.mode === 'server'
     ? 'Live data from the server.'

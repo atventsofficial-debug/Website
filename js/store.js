@@ -3,6 +3,7 @@
 // hosting), with the same rules as the server. PayStore is LocalStore with real payments,
 // through the site's Worker (worker/) and Midtrans. ApiStore talks to server/server.mjs.
 import { clientsOf } from './sso.js';
+import { teamKey } from './team.js';
 import { checkFan, SEAT_TAKEN } from './fanrules.js';
 import { checkClick, checkClaim, checkSubscription, checkLead, checkConversions, passStatus, PASS_STATUSES, TAKEN, ACCESS_FEE, PAYMENT_ID } from './rules.js';
 
@@ -205,8 +206,11 @@ export class PayStore extends LocalStore {
   // the page (without it, a card payment goes to Midtrans' payment page), whether the pass
   // email is switched on, the ways to pay switched on (js/paymethods.js), and the client ids
   // for "Continue with Google / Microsoft" (js/sso.js).
-  constructor({ sandbox = false, clientKey = '', mail = false, methods = null, sso = null } = {}) {
+  constructor({ sandbox = false, clientKey = '', mail = false, methods = null, sso = null, staging = false, team = false } = {}) {
     super();
+    // The staging copy (wrangler.jsonc, env.staging), and whether the team sign-in is on.
+    this.staging = !!staging;
+    this.team = !!team;
     this.sandbox = !!sandbox;
     this.clientKey = typeof clientKey === 'string' ? clientKey : '';
     this.mail = !!mail;
@@ -216,6 +220,9 @@ export class PayStore extends LocalStore {
   get mode() { return 'pay'; }
   get live() { return true; }
   pay(d) { return call('api/payments', { method: 'POST', body: d, headers: { 'x-device': deviceId() } }); }
+  // A member of the team (js/team.js): the pass opens without paying.
+  get teamKey() { return this.team ? teamKey() : null; }
+  teamPass(d) { return call('api/team/passes', { method: 'POST', body: d, headers: { 'x-team-key': this.teamKey?.key || '', 'x-device': deviceId() } }); }
   // Another way to pay: the server has Midtrans close this order first.
   cancelPay(id, token) { return call(`api/passes/${encodeURIComponent(id)}/cancel`, { method: 'POST', headers: { 'x-pass-token': token, 'x-device': deviceId() } }); }
   // Seat mates: undefined reads, a profile shows it, null takes it down. A pass from the

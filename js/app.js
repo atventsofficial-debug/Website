@@ -11,6 +11,7 @@ import { renderPartners } from './partners.js';
 import { renderAdmin } from './admin.js';
 import { openViewer, closeViewer, bindViewer, paintViewer, loadScene3d } from './viewer.js';
 import { mobileRoute } from './mobile.js';
+import { teamKey } from './team.js';
 import { $, $$, state, on, toast, tickCountdowns, captureCampaign, fitGiants, bindSubscribe, pageToTop } from './ui.js';
 
 // Two sides of the site. The route decides which one shows; the toggle in the nav switches.
@@ -46,7 +47,12 @@ async function boot() {
     if (r.ok && (r.headers.get('content-type') || '').includes('json')) {
       const c = await r.json();
       // The Worker on Cloudflare: real payments, everything else in this browser.
-      if (c.mode === 'pay') { if (!c.sandbox || payTest()) state.store = new PayStore(c); }
+      // Sandbox payments open on the staging copy, after #paytest, and for the team.
+      if (c.mode === 'pay') {
+        state.payCfg = c;
+        if (!c.sandbox || c.staging || payTest() || (c.team && teamKey())) state.store = new PayStore(c);
+        if (c.staging) stagingBadge();
+      }
       else {
         if (validAffiliate(c.affiliateLink)) state.cfg.affiliateLink = c.affiliateLink;
         state.store = new ApiStore('');
@@ -82,6 +88,15 @@ async function boot() {
   // With live payments, every paid pass on this device is checked with the Worker before it
   // opens (passes.js): the wallet alone opens nothing.
   if (state.store.live) passes.all().filter(p => p.status === 'verifying').forEach(p => refresh(p));
+}
+
+// On the staging copy, a badge in the corner, so it is never taken for the live site.
+function stagingBadge() {
+  const b = document.createElement('a');
+  b.className = 'staging-badge';
+  b.href = '#admin';
+  b.textContent = 'STAGING · Sandbox';
+  document.body.append(b);
 }
 
 // ---------------------------------------------------------------- routing

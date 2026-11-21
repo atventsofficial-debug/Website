@@ -112,3 +112,14 @@ export async function orderOf(env, id) {
   if (!d) return null;
   return d.prepare('SELECT id, event_id, title, name, email, status FROM orders WHERE id = ?').bind(id).first();
 }
+
+// A pass for a member of the team (team.mjs): paid at 0, by nobody, so it opens like any
+// paid pass. No pass email goes out (emailed_at is set): the member is on the page already.
+export async function saveTeamOrder(env, o, now = Date.now()) {
+  const d = await db(env);
+  if (!d) return false;
+  await d.prepare(`INSERT INTO orders (id, event_id, title, cat, seat, seat_label, name, email, amount, method, status, origin, created_at, paid_at, emailed_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 'team', 'confirmed', ?, ?, ?, ?)`)
+    .bind(o.id, o.eventId, o.title, o.cat, o.seat, o.seatLabel, o.name, o.email, o.origin, o.createdAt, now, now).run();
+  return true;
+}

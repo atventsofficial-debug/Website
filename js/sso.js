@@ -103,7 +103,8 @@ export function signIn(provider, clientId) {
       if (!d || d.type !== CHANNEL || d.state !== state) return;
       stop();
       const who = d.error ? null : claimsOf(d.token, { provider, clientId, nonce });
-      if (who) resolve(who); else reject(new SignInError('failed'));
+      // The token itself goes along for the team sign-in (js/team.js), which the Worker checks.
+      if (who) resolve({ ...who, token: d.token }); else reject(new SignInError('failed'));
     };
     // The window answers by the channel between this site's pages, and to its opener when it
     // still knows it (the site's opener policy can cut that link).

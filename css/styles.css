@@ -2530,3 +2530,16 @@ html.has-soldpop { overflow: hidden; }
 .host-plan .plan-gets b { font: 600 14px/1.3 var(--display); font-stretch: 100%; letter-spacing: -0.01em; text-transform: none; color: #fff; }
 .host-plan .plan-gets span { color: rgba(245, 242, 238, 0.66); }
 .host-plan .plan-fine { margin-top: 4px; font-size: 12px; color: rgba(245, 242, 238, 0.5); }
+
+/* The team (js/team.js): its box on #admin, its button on the checkout, and the staging badge. */
+.team-box { margin-bottom: var(--s5); padding: var(--s5); }
+.team-box h2 { margin: 0 0 var(--s2); font-size: 1.15rem; }
+.team-box p { margin: 0 0 var(--s3); color: var(--muted); max-width: 70ch; }
+.team-box p b { color: var(--text); }
+.team-box .btn svg { width: 18px; height: 18px; margin-right: var(--s2); }
+.co-team { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s3); margin-bottom: var(--s4); padding: var(--s4); border: 1px dashed var(--coral); border-radius: var(--r-sm); }
+.co-team p { margin: 0; }
+.co-team small { display: block; color: var(--muted); }
+.co-team .co-error { flex-basis: 100%; }
+.staging-badge { position: fixed; left: 12px; bottom: 12px; z-index: 9999; padding: 6px 10px; border-radius: 999px; background: #f5c518; color: #141212; font: 700 11px/1 var(--mono); letter-spacing: .06em; text-decoration: none; box-shadow: 0 2px 10px rgba(0,0,0,.4); }
+@media (max-width: 760px) { .staging-badge { bottom: auto; top: 8px; left: 50%; transform: translateX(-50%); } }
