@@ -201,14 +201,18 @@ export function renderHome() {
     homeBound = true;
     bindSubscribe($('#news-form'), { kind: 'newsletter', done: 'You’re on the list. The next big concert lands in your inbox.' }, $('#news-msg'));
   }
-  const list = oncePerShow(onSale());
-  $('#home-events').innerHTML = list.map(e => ticketCard(e, { run: true })).join('') + `
-    <a class="ev ev-alerts tkt-alerts" href="#news-form">
-      <span class="feat-ic">${icon('i-bell')}</span>
-      <h3>More concerts coming</h3>
-      <p>Get the date, the prices and the 3D venue the day a big show goes on sale.</p>
-      <span class="pill-link">Concert alerts ${icon('i-arrow')}</span>
-    </a>`;
+  // Three rows of four, nearest first: concerts; then more concerts or festivals; then films
+  // or sport. A row short of its kind fills from the next nearest shows.
+  const near = oncePerShow(onSale());
+  const shown = new Set();
+  const take = (types, n = 4) => {
+    const row = near.filter(e => !shown.has(e) && types.includes(typeOf(e))).slice(0, n);
+    row.forEach(e => shown.add(e));
+    return row;
+  };
+  const rows = [take(['concert']), take(['concert', 'festival']), take(['cinema', 'sport', 'football', 'combat'])];
+  for (const row of rows) row.push(...near.filter(e => !shown.has(e)).slice(0, 4 - row.length).map(e => (shown.add(e), e)));
+  $('#home-events').innerHTML = rows.flat().map(e => ticketCard(e, { run: true })).join('');
 
   // One card per kind of event we cover, each opening the list filtered to it. A kind with
   // nothing on sale yet still shows, with its 3D venue and the alerts.
