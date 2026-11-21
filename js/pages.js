@@ -3,7 +3,7 @@
 // viewer in viewer.js.
 import { formatRpShort, crowdSeats, REAL_KEYS } from './layouts.js';
 import { loadScene3d } from './viewer.js';
-import { EVENTS, CITY, LISTED, getEvent, eventMeta, placeOf, timeKnown, minPrice, allSoldOut, isConcert, demoFor, onTiket, sellerOf, saleInfo, EVENT_TYPES, typeOf } from './events.js';
+import { EVENTS, CITY, LISTED, getEvent, eventMeta, placeOf, timeKnown, minPrice, allSoldOut, isConcert, demoFor, onTiket, sellerOf, saleInfo, EVENT_TYPES, typeOf, optionsOf, isCard } from './events.js';
 import { cardImg, eventImg, kindCover, posterFig, posterImg, thumbImg } from './media.js';
 import { picker } from './picker.js';
 import { whenOf, startOf, venueClock, gapText } from './when.js';
@@ -40,7 +40,10 @@ export const byDate = (a, b) => startOf(a) - startOf(b);
 export const onSale = () => EVENTS.filter(upcoming).sort(byDate);
 export const featured = () => EVENTS.find(e => e.featured && upcoming(e)) || onSale()[0] || EVENTS[0];
 // All dates of one show (BTS plays three nights), soonest first.
-export const datesOf = e => EVENTS.filter(x => x.title === e.title).sort(byDate);
+// Other dates of the show; another ticket class of the same showing is not another date.
+export const datesOf = e => (optionsOf(e).length > 1 ? [e] : EVENTS.filter(x => x.title === e.title)).sort(byDate);
+// The lowest price over a showing's ticket classes.
+const fromOf = e => { const p = optionsOf(e).map(x => minPrice(x.id)).filter(x => x != null); return p.length ? Math.min(...p) : null; };
 
 // Times not yet announced by the promoter read "to be announced", never a guess.
 const doorsKnown = e => timeKnown(e) && e.doors !== 'TBA';
@@ -128,7 +131,7 @@ function titleLines(t) {
 function ticketCard(e, opts = {}) {
   const v = placeOf(e);
   const dates = opts.run ? datesOf(e).filter(x => x === e || upcoming(x)) : [e];
-  const live = dates.find(x => !allSoldOut(x)) || e, from = minPrice(live.id), name = titleLines(e.title);
+  const live = dates.find(x => !allSoldOut(x)) || e, from = fromOf(live), name = titleLines(e.title);
   const tags = [];
   if (dates.some(x => activePass(x.id))) tags.push(`<span class="tag tag-coral">${icon('i-eye')}3D pass</span>`);
   return `<article class="ev tkt">
@@ -136,7 +139,7 @@ function ticketCard(e, opts = {}) {
     <div class="tkt-in">
       <div class="tkt-top">
         <span class="tkt-brand">${icon('i-mark')}<span>atvents<small>3D seat view</small></span></span>
-        <p class="tkt-when"><b>${datesText(dates)}</b><span>${esc(v.name)}, ${keep(esc(v.city))}</span></p>
+        <p class="tkt-when"><b>${datesText(dates)}</b>${typeOf(e) === 'cinema' ? '' : `<span>${esc(v.name)}, ${keep(esc(v.city))}</span>`}</p>
       </div>
       ${tags.length ? `<p class="tkt-tags">${tags.join('')}</p>` : ''}
       <h3 class="tkt-title" style="--em:${name.em.toFixed(2)}"><a class="ev-link" href="#event-${e.id}">${name.lines.map(esc).join('<br> ')}</a></h3>
@@ -149,7 +152,7 @@ function ticketCard(e, opts = {}) {
 }
 
 // One card a show, soonest first, for the home page and "more concerts".
-const oncePerShow = list => list.filter((e, i, all) => all.findIndex(x => x.title === e.title) === i);
+const oncePerShow = list => list.filter((e, i, all) => all.findIndex(x => x.title === e.title) === i).map(e => (isCard(e) ? e : optionsOf(e)[0]));
 
 // Big hero title: shrink long names so they stay on one line on desktop. Phones wrap the
 // title, so there the longest word sets the size.
@@ -295,7 +298,7 @@ export function renderConcerts() {
   if (fromHash) listQuery.type = fromHash;
   const q = listQuery.q.trim().toLowerCase();
   const match = e => !q || [EVENT_TYPES[typeOf(e)], e.title, e.subtitle, e.host, placeOf(e).name, placeOf(e).city].join(' ').toLowerCase().includes(q);
-  const all = onSale();
+  const all = onSale().filter(isCard);
   // The dropdown offers only the kinds of event on sale now, with a count each. Its list
   // scrolls after a few rows, so more kinds never make it run down the page.
   // "All sport" joins football, tennis and fights when more than one of them is on sale.
@@ -355,6 +358,7 @@ export function renderEvent(id) {
   const live = upcoming(e), from = minPrice(id), pass = activePass(id);
   const url = `${location.origin}${location.pathname}#event-${id}`;
   const others = datesOf(e).filter(x => x.id !== id && upcoming(x));
+  const opts = optionsOf(e);
   const poster = posterFig(e);
   $('#ev-hero').classList.toggle('has-poster', !!poster);
   $('#ev-hero').innerHTML = `
@@ -374,6 +378,7 @@ export function renderEvent(id) {
           <div class="tags"><span class="tag tag-coral">${esc(TYPE_TAG[typeOf(e)] || 'Concert')}</span><span class="tag tag-white">${dm.dow} ${dm.day} ${dm.mon}</span>${pass ? `<span class="tag tag-line">${icon('i-eye')}3D pass on this device</span>` : ''}</div>
           <p class="ev-blurb">${esc(e.blurb)}</p>
           ${live && saleInfo(e) ? `<p class="ev-sale">${icon('i-cal')}<span>${esc(saleInfo(e).line)}</span></p>` : ''}
+          ${opts.length > 1 ? `<p class="ev-dates ev-opts">Ticket class ${opts.map(x => `<a class="pill" href="#event-${x.id}"${x === e ? ' aria-current="page"' : ''}>${esc(x.option)}<span>${formatRpShort(minPrice(x.id))}</span></a>`).join('')}</p>` : ''}
           ${others.length ? `<p class="ev-dates">Also on ${others.map(x => `<a class="pill" href="#event-${x.id}">${esc(whenOf(x).block.dow)} ${whenOf(x).block.day} ${whenOf(x).block.mon}</a>`).join('')}</p>` : ''}
           ${live ? `<p class="ev-official">${icon('i-link')}<span>Tickets are sold by ${esc(sellerOf(e))}, the official seller. The 3D view from your seat is sold here for ${formatFee()} and opens as soon as you pay.</span></p>`
             : '<p class="ev-official">This concert has taken place. Its 3D venue stays open to look round.</p>'}

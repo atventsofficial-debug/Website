@@ -560,7 +560,7 @@ export const EVENTS = [
     photo: 'event-stadium-end-1', image: 'westlife-25',
   },
   FILM({
-    id: 'evt-hunger-games-gandaria', venue: 'xxi-gandaria-s1',
+    id: 'evt-hunger-games-gandaria', option: 'Reguler 2D', venue: 'xxi-gandaria-s1',
     title: HG, subtitle: 'Gandaria City XXI · Studio 1 · Reguler 2D',
     dateISO: '2026-11-21T11:45', time: '11:45', until: '2026-11-22T23:59',
     host: 'Lionsgate', hostNote: 'Studio · in Cinema XXI',
@@ -577,7 +577,7 @@ export const EVENTS = [
     image: 'hunger-games-sunrise',
   }),
   FILM({
-    id: 'evt-hunger-games-imax-gandaria', venue: 'xxi-gandaria-imax',
+    id: 'evt-hunger-games-imax-gandaria', option: 'IMAX 2D', venue: 'xxi-gandaria-imax',
     title: HG, subtitle: 'Gandaria City IMAX · IMAX 2D',
     dateISO: '2026-11-21T12:00', time: '12:00', until: '2026-11-22T23:59',
     host: 'Lionsgate', hostNote: 'Studio · in Cinema XXI IMAX',
@@ -594,7 +594,7 @@ export const EVENTS = [
     image: 'hunger-games-sunrise',
   }),
   FILM({
-    id: 'evt-hunger-games-premiere-gandaria', venue: 'xxi-gandaria-premiere',
+    id: 'evt-hunger-games-premiere-gandaria', option: 'The Premiere', venue: 'xxi-gandaria-premiere',
     title: HG, subtitle: 'Gandaria City Premiere · Studio 1 · Premiere 2D',
     dateISO: '2026-11-21T11:50', time: '11:50', until: '2026-11-22T23:59',
     host: 'Lionsgate', hostNote: 'Studio · in The Premiere',
@@ -611,7 +611,7 @@ export const EVENTS = [
     image: 'hunger-games-sunrise',
   }),
   FILM({
-    id: 'evt-godzilla-minus-zero-gandaria', venue: 'xxi-gandaria-s3',
+    id: 'evt-godzilla-minus-zero-gandaria', option: 'Reguler 2D', venue: 'xxi-gandaria-s3',
     title: 'Godzilla Minus Zero', subtitle: 'Gandaria City XXI · Studio 3 · Reguler 2D',
     dateISO: '2026-11-21T12:55', time: '12:55', until: '2026-11-22T23:59',
     host: 'Toho', hostNote: 'Studio · in Cinema XXI',
@@ -673,6 +673,13 @@ export const placeOf = e => e.place;
 // What kind of event it is, for the list's filter. Every show so far is a concert; a match or
 // a fight night sets `type` on its entry ('football', 'combat', ...).
 export const EVENT_TYPES = { concert: 'Concerts', football: 'Football', combat: 'UFC & fights', sport: 'Sports', theatre: 'Theatre', cinema: 'Cinema', festival: 'Festivals' };
+// Ticket classes of one showing (a film's Reguler, IMAX and Premiere studios):
+// events sharing a `group` list as one card; the page offers each `option` with its own 3D
+// studio. The first in EVENTS is the card.
+// Every film is one card, whatever the cinema or class: its group is its title.
+const groupOf = e => e?.group || (e?.type === 'cinema' ? `film:${e.title}` : null);
+export const optionsOf = e => (groupOf(e) ? EVENTS.filter(x => groupOf(x) === groupOf(e)) : [e]);
+export const isCard = e => !groupOf(e) || optionsOf(e)[0] === e;
 export const typeOf = e => (e.type && EVENT_TYPES[e.type] ? e.type : 'concert');
 export const timeKnown = e => e.time !== 'TBA';
 
