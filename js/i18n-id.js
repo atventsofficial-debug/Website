@@ -882,9 +882,8 @@ export const PATTERNS = [
   [/^Unlock 3D seat view · (.+)$/, 'Buka Tampilan Kursi 3D · $1'],
   [/^Unlock seat view · (.+)$/, 'Lihat dari Kursimu · $1'],
   [/^Event ended · (.+)$/, 'Event selesai · $1'],
-  [/^([123])\/3 · The venue$/, '$1/3 · Venue'],
-  [/^([123])\/3 · Your category$/, '$1/3 · Kategorimu'],
-  [/^([123])\/3 · Your seat$/, '$1/3 · Kursimu'],
+  [/^([12])\/2 · Your category$/, '$1/2 · Kategorimu'],
+  [/^([12])\/2 · Your seat$/, '$1/2 · Kursimu'],
   [/^Your seat follows the latest numbering from (.+), but plans can change on the day\. If yours is different, set it here\.$/, 'Kursimu mengikuti urutan nomor terbaru dari $1, tapi denah bisa berubah di hari H. Kalau beda, atur di sini.'],
   [/^You put your seat where you know it is\. Your ticket still reads (.+)\.$/, 'Kursimu kamu tunjuk sendiri. Di tiket tetap tertulis $1.'],
 ];

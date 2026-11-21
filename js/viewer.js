@@ -358,7 +358,7 @@ export function bindViewer() {
     if (act === 'cat' || act === 'seat') state.tour.numOpen = false;
     if (act === 'cat') tourCat(tourPass()?.cat);
     if (act === 'seat') { const s = tourSeat(); if (s) tourPick(s); }
-    if (act === 'again') startTour();
+    if (act === 'again') startTour({ whole: true });
     if (act === 'capture') import('./capture.js').then(m => m.startCapture(state.scene, { title: state.venue?.meta?.title, seat: seatText(ticketSeat()) })).catch(() => toast('The camera could not start. Please try again.'));
     if (act === 'numopen' || act === 'numclose') setNumOpen(act === 'numopen');
     if (act === 'mini') { state.tour.mini = !state.tour.mini; paintTour(); $('#app-side [data-tour="mini"]')?.focus(); }
@@ -426,19 +426,23 @@ export function bindViewer() {
 
 // ---------------------------------------------------------------- the seat tour
 
-const STEPS = ['The venue', 'Your category', 'Your seat'];
+const STEPS = ['Your category', 'Your seat'];
 
-function startTour() {
+// The tour has two steps: the fan's category (step 2 here), then their seat (step 3). It opens
+// on the category; `whole` shows the whole venue from above, the category still marked.
+function startTour({ whole = false } = {}) {
   const sc = state.scene, p = tourPass();
   if (!sc || !p) return;
-  state.tour.step = 1;
+  state.tour.step = 2;
   state.tour.numOpen = false;
-  state.filter = null;
-  sc.setFilter(null);
+  state.tour.picking = false;
+  state.filter = p.cat;
+  sc.setFilter(p.cat);
   sc.setMine(markedIds());
-  sc.setCrowd(state.crowd);
+  sc.setCrowd(false);   // empty stands, so the category's colour and the coral seat read clearly
   if (sc.mode === 'seat') sc.backToOverview();
-  else sc.resetView();
+  else if (whole) sc.resetView();
+  else sc.frameCategory(p.cat, { seat: tourSeat() });
   paintViewer();
 }
 
@@ -493,14 +497,12 @@ function setNumbering(key, value) {
   paintViewer();
 }
 
-// One step back: from the seat to the category, from tapping a seat to the category, from
-// the category to the whole venue.
+// One step back: from the seat to the category, or from tapping a seat to the category.
 function tourBack() {
   const t = state.tour;
   if (!t) return;
   if (t.step === 3) state.scene?.backToOverview();   // setMode puts the tour on step 2
   else if (t.step === 2 && t.picking) { t.picking = false; paintTour(); }
-  else if (t.step === 2) startTour();
 }
 
 // The sheet with the numbering choices, over the panel. Focus goes into it, and back to the
@@ -593,11 +595,11 @@ function paintTour() {
   }
   // A slim head in place of a stepper: back one step on the left, fold the panel away on the
   // right. Folded, the panel is only this head, so the venue fills the screen.
-  const mini = !!state.tour.mini, canBack = step > 1;
+  const mini = !!state.tour.mini, canBack = step > 2 || !!state.tour.picking;
   const where = step === 1 ? v.place.name : step === 2 && state.tour.picking ? 'Tap your seat' : step === 2 ? cat.name : 'Your view';
   const bar = `<div class="tour-head">
       ${canBack ? `<button class="th-btn" type="button" data-tour="prev" aria-label="Back to the step before" title="Back to the step before">${icon('i-back')}</button>` : ''}
-      <span class="th-step">${mini ? `<b>${esc(where)}</b>` : `${step}/3 · ${STEPS[step - 1]}`}</span>
+      <span class="th-step">${mini ? `<b>${esc(where)}</b>` : `${step - 1}/2 · ${STEPS[step - 2]}`}</span>
       <button class="th-btn th-min" type="button" data-tour="mini" aria-expanded="${!mini}" aria-label="${mini ? 'Show the panel' : 'Minimise the panel'}" title="${mini ? 'Show the panel' : 'Minimise the panel'}">${icon('i-down')}</button>
     </div>`;
   if (mini) {
@@ -617,7 +619,6 @@ function paintTour() {
       <p class="fine">Tap the seat you know is yours, in <b>${esc(s.secName)}</b>. Pinch or scroll to zoom in.</p>
       <div class="row-btns"><button class="btn btn-line btn-sm" type="button" data-tour="pickcancel">Cancel</button></div>`
     : step === 2 ? `
-      <h2>${esc(cat.name)}</h2>
       <p>Your seat is marked in coral: <b>${esc(seatText(s))}</b>. Tap it to sit down.</p>
       <div class="row-btns"><button class="btn btn-coral btn-sm" type="button" data-tour="seat">Sit in my seat ${icon('i-arrow')}</button><button class="btn btn-line btn-sm" type="button" data-tour="again">${icon('i-back')}Whole venue</button></div>
       ${numberingControls(p, s)}`
