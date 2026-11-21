@@ -2640,3 +2640,6 @@ button.cal-cell:hover { background: rgba(255, 255, 255, 0.03); }
   .cal-dot { display: block; width: 6px; height: 6px; border-radius: 50%; background: var(--coral); }
   .cal-side { padding: 14px; }
 }
+
+/* On a phone the sticky bar carries Unlock 3D, so the hero does not repeat it. */
+@media (max-width: 760px) { .ev-hero .ev-unlock-hero { display: none; } .ev-hero .ev-info .row-btns .btn:first-child { height: 46px; } }

@@ -494,7 +494,7 @@ export function renderEvent(id) {
           ${others.length ? `<p class="ev-dates">Also on ${others.map(x => `<a class="pill" href="#event-${x.id}">${esc(whenOf(x).block.dow)} ${whenOf(x).block.day} ${whenOf(x).block.mon}</a>`).join('')}</p>` : ''}
           ${live ? `<p class="ev-official">${icon('i-link')}<span>Tickets are sold by ${esc(sellerOf(e))}, the official seller. The 3D view from your seat is sold here for ${formatFee()} and opens as soon as you pay.</span></p>`
             : '<p class="ev-official">This concert has taken place. Its 3D venue stays open to look round.</p>'}
-          <div class="row-btns">${pass?.status === 'confirmed' ? `<a class="btn btn-coral" href="#tour-${esc(pass.id)}">Open my seat view ${icon('i-arrow')}</a>` : live ? `<a class="btn btn-coral" href="#unlock-${id}">Unlock seat view · ${formatFee()} ${icon('i-arrow')}</a>` : ''}${live ? buyLink(e, `Tickets on tiket.com ${out}`, 'btn btn-line') : ''}${live || pass?.status === 'confirmed' ? '' : `<a class="btn btn-line" href="#seats-${id}">Look round in 3D</a>`}</div>
+          <div class="row-btns">${pass?.status === 'confirmed' ? `<a class="btn btn-coral" href="#tour-${esc(pass.id)}">Open my seat view ${icon('i-arrow')}</a>` : live ? `<a class="btn btn-coral ev-unlock-hero" href="#unlock-${id}">Unlock seat view · ${formatFee()} ${icon('i-arrow')}</a>` : ''}${live ? buyLink(e, `Tickets on tiket.com ${out}`, 'btn btn-line') : ''}${live || pass?.status === 'confirmed' ? '' : `<a class="btn btn-line" href="#seats-${id}">Look round in 3D</a>`}</div>
         </div>
         <div class="ev-actions">
           <div class="row-btns">
