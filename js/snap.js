@@ -5,6 +5,8 @@
 //
 // The script comes only from Midtrans' host for the environment the Worker names; the
 // site's CSP (server/http.mjs, static build) allows exactly these two hosts.
+import { lang } from './i18n.js';
+
 const HOST = { sandbox: 'https://app.sandbox.midtrans.com', production: 'https://app.midtrans.com' };
 
 let loading = null;
@@ -44,7 +46,7 @@ export function embedSnap(snap, token, embedId, { onSuccess, onPending, onError,
   const live = fn => (...a) => { if (open === mine) fn?.(...a); };
   snap.embed(token, {
     embedId,
-    language: /^id\b/i.test(navigator.language || '') ? 'id' : 'en',
+    language: lang,
     onSuccess: live(onSuccess), onPending: live(onPending), onError: live(onError), onClose: live(onClose),
   });
 }

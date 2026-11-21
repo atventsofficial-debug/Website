@@ -1,4 +1,5 @@
-// English and Indonesian. The site is written in English; with Indonesian chosen, every text
+// English and Indonesian. The site is written in English but opens in Indonesian unless the
+// visitor picked English on the toggle (kept in localStorage). With Indonesian chosen, every text
 // on the page (and the placeholders, labels and titles) is swapped for its Indonesian line
 // from js/i18n-id.js as it appears, whatever renders it. Lines that carry names, dates or
 // prices are matched by pattern. Switching back to English reloads the page as written.
@@ -7,7 +8,7 @@ import { EXACT, PATTERNS } from './i18n-id.js';
 const KEY = 'atvents-lang';
 export const lang = (() => {
   try { const v = localStorage.getItem(KEY); if (v === 'en' || v === 'id') return v; } catch {}
-  return /^(id|in)\b/i.test(navigator.language || '') ? 'id' : 'en';
+  return 'id';
 })();
 
 export function setLang(v) {
