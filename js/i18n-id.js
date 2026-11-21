@@ -1,12 +1,14 @@
 // Indonesian lines for js/i18n.js, keyed by the English text as it shows on the page.
 // Generated from the translation sheet; names, venues and film titles stay as they are.
 export const EXACT = {
-"Seat numbering": "Penomoran kursi",
-"Set your way": "Diatur sendiri",
-"The venue’s numbering": "Sesuai venue",
-"Our estimate": "Perkiraan kami",
-"You tapped your seat": "Kursi kamu tunjuk sendiri",
-"Seats at the venue numbered another way? Set it here and your seat moves to match.": "Urutan nomor kursi di venue berbeda? Atur di sini, kursimu ikut pindah.",
+"Seat position is an estimate": "Posisi kursi masih perkiraan",
+"From the promoter’s seating plan": "Dari denah kursi promotor",
+"From the venue’s latest info": "Dari info terbaru venue",
+"Adjusted by you": "Sudah kamu sesuaikan",
+"You tapped your seat yourself": "Kamu tunjuk sendiri",
+"Adjust": "Sesuaikan",
+"If your seat is elsewhere": "Kalau posisi kursimu berbeda",
+"We place your seat from the promoter’s plan. Numbering at the venue can differ, and plans can change on the day. If yours is different, set it here.": "Posisi ini kami ambil dari denah promotor. Urutan nomor di venue bisa beda, dan denah bisa berubah di hari H. Kalau beda, atur di sini.",
 "Seat 1": "Kursi 1",
 "Odd, even": "Ganjil, genap",
 "Row A": "Baris A",
@@ -876,6 +878,6 @@ export const PATTERNS = [
   [/^Unlock 3D seat view · (.+)$/, 'Buka Tampilan Kursi 3D · $1'],
   [/^Unlock seat view · (.+)$/, 'Lihat dari Kursimu · $1'],
   [/^Event ended · (.+)$/, 'Event selesai · $1'],
-  [/^Numbered the way (.+) counts\. Different on your ticket\? Change it here\.$/, 'Nomor mengikuti urutan $1. Di tiketmu berbeda? Ubah di sini.'],
+  [/^Your seat follows the latest numbering from (.+), but plans can change on the day\. If yours is different, set it here\.$/, 'Kursimu mengikuti urutan nomor terbaru dari $1, tapi denah bisa berubah di hari H. Kalau beda, atur di sini.'],
   [/^You put your seat where you know it is\. Your ticket still reads (.+)\.$/, 'Kursimu kamu tunjuk sendiri. Di tiket tetap tertulis $1.'],
 ];

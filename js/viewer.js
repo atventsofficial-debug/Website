@@ -524,12 +524,12 @@ function frameBlock() {
 function numberingControls(p, s) {
   if (s.standing) return '';
   const v = state.venue, n = numberingOf(v, p), from = numberingSource(v, p);
-  const status = from === 'pick' ? 'You tapped your seat'
-    : from === 'fan' && !isDefault(n) ? 'Set your way'
-      : from === 'event' ? 'The venue’s numbering' : 'Our estimate';
+  const status = from === 'pick' ? 'You tapped your seat yourself'
+    : from === 'fan' && !isDefault(n) ? 'Adjusted by you'
+      : from === 'event' ? 'From the venue’s latest info' : 'From the promoter’s seating plan';
   const own = from === 'pick' || (from === 'fan' && !isDefault(n));
   return `<button class="num-trigger${own ? ' is-own' : ''}" type="button" data-tour="numopen" aria-expanded="false">
-      ${icon('i-seat', 'nt-ic')}<span class="nt-text"><b>Seat numbering</b><small>${status}</small></span><span class="nt-go">Change</span>
+      ${icon('i-seat', 'nt-ic')}<span class="nt-text"><b>Seat position is an estimate</b><small>${status}</small></span><span class="nt-go">Adjust</span>
     </button>`;
 }
 
@@ -541,14 +541,14 @@ function numberingSheet(p, s) {
       <div class="fine num-lead">You put your seat where you know it is. Your ticket still reads ${esc(seatText(s))}.</div>
       <div class="num-foot"><button class="link" type="button" data-tour="unpick">Go back to the seat numbers</button></div>`
     : `
-      <div class="fine num-lead">${from === 'event' ? `Numbered the way ${esc(v.place.name)} counts. Different on your ticket? Change it here.` : 'Seats at the venue numbered another way? Set it here and your seat moves to match.'}</div>
+      <div class="fine num-lead">${from === 'event' ? `Your seat follows the latest numbering from ${esc(v.place.name)}, but plans can change on the day. If yours is different, set it here.` : 'We place your seat from the promoter’s plan. Numbering at the venue can differ, and plans can change on the day. If yours is different, set it here.'}</div>
       <div class="num-row" role="group" aria-label="Where seat 1 is"><span>Seat 1</span>${opt('seats', 'left', 'Left end')}${opt('seats', 'right', 'Right end')}</div>
       <div class="num-row" role="group" aria-label="Odd and even numbers from the middle of the row"><span>Odd, even</span>${opt('seats', 'odd-left', 'Odd left', '1, 3, 5 to the left of the middle; 2, 4, 6 to the right')}${opt('seats', 'odd-right', 'Odd right', '1, 3, 5 to the right of the middle; 2, 4, 6 to the left')}</div>
       <div class="num-row" role="group" aria-label="Where row A is"><span>Row A</span>${opt('rows', 'front', 'Front')}${opt('rows', 'back', 'Back', '', 'Belakang')}</div>
       <div class="num-row" role="group" aria-label="Row letters"><span>Letters</span>${opt('letters', 'all', 'A to Z')}${opt('letters', 'no-io', 'No I or O', 'The rows go H, J and N, P')}</div>
       <div class="num-foot"><span>Still not right?</span> <button class="link" type="button" data-tour="pickseat">Tap your seat yourself</button></div>`;
   return `<div class="num-sheet" role="group" aria-labelledby="num-title">
-      <div class="num-head"><b id="num-title" tabindex="-1">Seat numbering</b><button class="btn btn-coral btn-sm num-done" type="button" data-tour="numclose">Done</button></div>
+      <div class="num-head"><b id="num-title" tabindex="-1">If your seat is elsewhere</b><button class="btn btn-coral btn-sm num-done" type="button" data-tour="numclose">Done</button></div>
       ${body}
     </div>`;
 }
