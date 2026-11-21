@@ -2584,9 +2584,8 @@ html.has-soldpop { overflow: hidden; }
 /* Event page: on a phone the sticky bar carries Unlock 3D and the countdown sits in the event info. */
 .ev-bar-go, .ev-count-info { display: none; }
 @media (max-width: 760px) {
-  .ev-bar .ev-count, .ev-bar .ev-from { display: none; }
-  .ev-bar-go { display: inline-flex; white-space: nowrap; }
-  .ev-hero .ev-count-info { order: 6; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin: 2px 0 4px; }
+  .ev-bar-go { display: none; }
+  .ev-hero .ev-count-info { display: none !important; order: 6; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin: 2px 0 4px; }
   .ev-count-info > small { display: block; }
   .ev-count-info .countdown span { min-width: 60px; }
 }
@@ -2642,4 +2641,3 @@ button.cal-cell:hover { background: rgba(255, 255, 255, 0.03); }
 }
 
 /* On a phone the sticky bar carries Unlock 3D, so the hero does not repeat it. */
-@media (max-width: 760px) { .ev-hero .ev-unlock-hero { display: none; } .ev-hero .ev-info .row-btns .btn:first-child { height: 46px; } }
