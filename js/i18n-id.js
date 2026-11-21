@@ -1,6 +1,10 @@
 // Indonesian lines for js/i18n.js, keyed by the English text as it shows on the page.
 // Generated from the translation sheet; names, venues and film titles stay as they are.
 export const EXACT = {
+"Back to the step before": "Kembali ke langkah sebelumnya",
+"Minimise the panel": "Kecilkan panel",
+"Show the panel": "Tampilkan panel",
+"Your view": "Pandanganmu",
 "See other seat position options": "Lihat opsi posisi seat lain",
 "From the promoter’s seating plan": "Dari denah kursi promotor",
 "From the venue’s latest info": "Dari info terbaru venue",
@@ -878,6 +882,9 @@ export const PATTERNS = [
   [/^Unlock 3D seat view · (.+)$/, 'Buka Tampilan Kursi 3D · $1'],
   [/^Unlock seat view · (.+)$/, 'Lihat dari Kursimu · $1'],
   [/^Event ended · (.+)$/, 'Event selesai · $1'],
+  [/^([123])\/3 · The venue$/, '$1/3 · Venue'],
+  [/^([123])\/3 · Your category$/, '$1/3 · Kategorimu'],
+  [/^([123])\/3 · Your seat$/, '$1/3 · Kursimu'],
   [/^Your seat follows the latest numbering from (.+), but plans can change on the day\. If yours is different, set it here\.$/, 'Kursimu mengikuti urutan nomor terbaru dari $1, tapi denah bisa berubah di hari H. Kalau beda, atur di sini.'],
   [/^You put your seat where you know it is\. Your ticket still reads (.+)\.$/, 'Kursimu kamu tunjuk sendiri. Di tiket tetap tertulis $1.'],
 ];

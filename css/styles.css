@@ -1331,6 +1331,17 @@ input, select, textarea { border-radius: 0; }
 /* the tour's two buttons span the panel, as wide as the numbering row below them */
 .app-side .row-btns:has(> :nth-child(2)) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
 .app-side .row-btns:has(> :nth-child(2)) .btn { min-width: 0; padding: 0 12px; }
+/* the tour's head: back one step, where the fan is, and fold the panel away */
+.tour-head { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 32px; }
+.th-step { flex: 1; min-width: 0; font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app-side .th-step b { font-size: 14px; font-weight: 700; color: var(--text); }
+.th-btn { flex: none; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border-radius: 50%; border: 1px solid var(--line-2); background: transparent; color: var(--text); cursor: pointer; transition: border-color .15s, background .15s; }
+.th-btn svg { width: 15px; height: 15px; }
+.th-btn:hover { border-color: rgba(255, 255, 255, 0.45); background: rgba(255, 255, 255, 0.06); }
+.th-btn:focus-visible { outline: 2px solid var(--coral); outline-offset: 2px; }
+.th-min svg { transition: transform .2s; }
+.app-side.is-mini { padding-top: 10px; padding-bottom: 10px; }
+.app-side.is-mini .th-min svg { transform: rotate(180deg); }
 .num-trigger { display: flex; align-items: center; gap: 10px; width: 100%; margin-top: 2px; padding: 9px 12px; border: 1px solid var(--line-2); border-radius: 14px; background: rgba(255, 255, 255, 0.03); color: var(--text); font: inherit; text-align: left; cursor: pointer; transition: border-color .15s, background .15s; }
 .num-trigger:hover { border-color: rgba(255, 255, 255, 0.4); background: rgba(255, 255, 255, 0.06); }
 .num-trigger:focus-visible { outline: 2px solid var(--coral); outline-offset: 2px; }

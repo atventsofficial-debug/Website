@@ -185,6 +185,7 @@ export function paintViewer() {
         : `${icon('i-lock')}<span>View from above · seat views locked</span>`;
   $('#app-chip').className = `app-chip${open || state.tour ? ' is-open' : ''}`;
   document.body.classList.toggle('in-tour', !!state.tour);
+  $('#app-side').classList.remove('is-mini');
   if (state.tour) { paintTour(); return; }
   $('#app-side').innerHTML = e.demo ? `
       <p class="eyebrow">Demo venue</p>
@@ -360,6 +361,8 @@ export function bindViewer() {
     if (act === 'again') startTour();
     if (act === 'capture') import('./capture.js').then(m => m.startCapture(state.scene, { title: state.venue?.meta?.title, seat: seatText(ticketSeat()) })).catch(() => toast('The camera could not start. Please try again.'));
     if (act === 'numopen' || act === 'numclose') setNumOpen(act === 'numopen');
+    if (act === 'mini') { state.tour.mini = !state.tour.mini; paintTour(); $('#app-side [data-tour="mini"]')?.focus(); }
+    if (act === 'prev') tourBack();
     if (act === 'pickseat') { state.tour.numOpen = false; startPicking(); }
     if (act === 'pickcancel') { state.tour.picking = false; paintTour(); }
     if (act === 'unpick') setNumbering('pick', '');
@@ -490,6 +493,16 @@ function setNumbering(key, value) {
   paintViewer();
 }
 
+// One step back: from the seat to the category, from tapping a seat to the category, from
+// the category to the whole venue.
+function tourBack() {
+  const t = state.tour;
+  if (!t) return;
+  if (t.step === 3) state.scene?.backToOverview();   // setMode puts the tour on step 2
+  else if (t.step === 2 && t.picking) { t.picking = false; paintTour(); }
+  else if (t.step === 2) startTour();
+}
+
 // The sheet with the numbering choices, over the panel. Focus goes into it, and back to the
 // row that opened it.
 function setNumOpen(on) {
@@ -571,13 +584,30 @@ function paintTour() {
   if (!p || !s) return;
   const cat = v.catById[p.cat], step = state.tour.step, e = v.meta;
   if (state.tour.numOpen && step >= 2 && !state.tour.picking && !s.standing) {
+    $('#app-side').classList.remove('is-mini');
     $('#app-side').innerHTML = numberingSheet(p, s);
     if (state.tour.numIn) { $('#app-side .num-sheet').classList.add('is-in'); state.tour.numIn = false; }
     renderCats();
     state.scene?.setMine(markedIds());
     return;
   }
-  const bar = `<ol class="tour-steps">${STEPS.map((t, i) => `<li class="${i + 1 < step ? 'is-done' : i + 1 === step ? 'is-on' : ''}"${i + 1 === step ? ' aria-current="step"' : ''}><b>${i + 1 < step ? icon('i-check') : i + 1}</b><span>${t}</span></li>`).join('')}</ol>`;
+  // A slim head in place of a stepper: back one step on the left, fold the panel away on the
+  // right. Folded, the panel is only this head, so the venue fills the screen.
+  const mini = !!state.tour.mini, canBack = step > 1;
+  const where = step === 1 ? v.place.name : step === 2 && state.tour.picking ? 'Tap your seat' : step === 2 ? cat.name : 'Your view';
+  const bar = `<div class="tour-head">
+      ${canBack ? `<button class="th-btn" type="button" data-tour="prev" aria-label="Back to the step before" title="Back to the step before">${icon('i-back')}</button>` : ''}
+      <span class="th-step">${mini ? `<b>${esc(where)}</b>` : `${step}/3 · ${STEPS[step - 1]}`}</span>
+      <button class="th-btn th-min" type="button" data-tour="mini" aria-expanded="${!mini}" aria-label="${mini ? 'Show the panel' : 'Minimise the panel'}" title="${mini ? 'Show the panel' : 'Minimise the panel'}">${icon('i-down')}</button>
+    </div>`;
+  if (mini) {
+    $('#app-side').innerHTML = bar;
+    $('#app-side').classList.add('is-mini');
+    renderCats();
+    state.scene?.setMine(markedIds());
+    return;
+  }
+  $('#app-side').classList.remove('is-mini');
   const body = step === 1 ? `
       <h2>${esc(v.place.name)}</h2>
       <p>This is the whole venue for ${esc(e.title)}. Your ticket is <b>${esc(cat.name)}</b>: tap it below, or tap one of its seats.</p>
