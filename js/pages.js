@@ -321,6 +321,7 @@ export function concertNews(now = Date.now()) {
 }
 
 function renderNews() {
+  if (!$('#home-news')) return;
   const list = concertNews().slice(0, 8);
   $('#home-news').innerHTML = list.map(n => `<li><a href="#event-${n.e.id}">
       <span class="nl-tag${n.tag === 'Sale soon' || n.tag === 'This week' ? ' is-hot' : ''}">${esc(n.tag)}</span>

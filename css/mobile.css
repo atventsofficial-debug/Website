@@ -130,7 +130,7 @@
   .sec-side p { font-size: 14px; }
 
   /* ---------- home: hero, search, on sale, updates, three steps ---------- */
-  #view-home > .sec:not(#on-sale):not(#news):not(#calendar):not(#how) { display: none; }
+  #view-home > .sec:not(#on-sale):not(#calendar):not(#how) { display: none; }
   .hero-show { --stage-h: clamp(270px, 42svh, 380px); }
   .hs-card { padding: 14px; }
   .hs-title { font-size: clamp(26px, 7.6vw, 32px); }
@@ -143,8 +143,6 @@
   #view-home .sec-side { flex: none; margin-left: auto; }
   #view-home .sec-head .big { flex: none; font-size: 25px; white-space: nowrap; }
   .ev-alerts { display: none; }
-  #home-news li:nth-child(n + 4) { display: none; }
-  #news .sec-side { display: none; }
   .how-line li { padding-bottom: 16px; }
   .how-line li p { font-size: 13.5px; }
   .tl-cta { flex-direction: column; align-items: stretch; gap: 12px; }
