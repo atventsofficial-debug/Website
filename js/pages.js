@@ -568,9 +568,6 @@ export function renderEvent(id) {
 
   $('#ev-faq').innerHTML = faqHtml(FAQ_FANS, ['price', 'unlock', 'seller', 'tour', 'official']);
 
-  const more = [...others, ...oncePerShow(onSale().filter(x => x.title !== e.title))].slice(0, 4);
-  $('#ev-more-sec').hidden = !more.length;
-  $('#ev-more').innerHTML = more.map(x => ticketCard(x, { run: x.title !== e.title })).join('');
 }
 
 // "Your seat, in 3D": the plan in category colours, and what this device can do with it.

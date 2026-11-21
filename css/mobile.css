@@ -199,7 +199,6 @@
   #view-event > .sec:has(#ev-faq) { display: none; }
   .host-card { display: none; }
   .about-text p:nth-of-type(n + 3) { display: none; }
-  #ev-more .tkt:nth-child(n + 4) { display: none; }
   /* Categories: one clean row each (name and price on top, the seller and Buy below).
      The stub and body boxes step aside so their notches and split colours go too. */
   .tk-grid, .tk-grid:has(> :nth-child(2):last-child), .tk-grid:has(> :nth-child(4):last-child) { grid-template-columns: minmax(0, 1fr); gap: 8px; }
