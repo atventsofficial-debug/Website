@@ -45,6 +45,8 @@ const TENNIS = { name: 'Tennis Indoor GBK', art: 'tennis-indoor', city: 'Jakarta
 const ICE_BSD = { name: 'ICE BSD City, Hall 5–6', art: 'jiexpo', city: 'Tangerang', address: 'Jl. BSD Grand Boulevard, Pagedangan, Tangerang, Banten', transit: '', capacity: '' };
 const GRAHA_UNESA = { name: 'Graha UNESA', art: 'jiexpo', city: 'Surabaya', address: 'Universitas Negeri Surabaya, Lidah Wetan, Surabaya', transit: '', capacity: '' };
 const XXI = { name: 'Cinema XXI', art: 'jiexpo', city: 'Jakarta', address: 'XXI cinemas across Indonesia', transit: '', capacity: '' };
+const GANDARIA_XXI = { name: 'Gandaria City XXI', art: 'jiexpo', city: 'Jakarta', address: 'Gandaria City Level 2, Jl. Sultan Iskandar Muda, Kebayoran Lama, Jakarta Selatan', transit: '', capacity: '' };
+const ANCOL_RX = { name: 'Ancol Rallycross Circuit', art: 'jiexpo', city: 'Jakarta', address: 'Taman Impian Jaya Ancol, Jakarta Utara', transit: '', capacity: '' };
 const INA_ARENA = { name: 'Indonesia Arena', art: 'indonesia-arena', seatColor: '#8a8e94', seatStyle: 'flipup', city: 'Jakarta', address: 'Kompleks Gelora Bung Karno, Senayan, Jakarta Pusat', transit: 'MRT Istora Mandiri station', capacity: '' };
 
 // Shows announced for the next six months whose seating plan we have not modelled yet.
@@ -531,6 +533,57 @@ export const EVENTS = [
     prices: 'Ticket prices depend on the cinema, the studio (regular, IMAX, premiere) and the day; XXI shows them with the showtimes in the M-Tix app and on 21cineplex.com.',
     standInNote: 'The 3D view is our cinema studio (rows A to N, sweetboxes at the back), not a particular XXI studio: use it to compare a front, middle or back row.',
     extra: ['Cinema XXI listed it as coming soon on 21 November 2026, and the Indonesian poster gives 16 December; showtimes and seats open on M-Tix closer to the day. We keep it on the list until mid-January.'] }),
+  SHOW({ id: 'evt-fia-rallycross-indonesia', tickets: [
+      { name: 'GA Outfield', price: 350000, note: 'Standing, round the outside of the track' },
+      { name: 'GA Infield', price: 525000, note: 'Standing, inside the circuit' },
+      { name: 'Grandstand A–D Regular', price: 1550000, note: 'Seated, by the jump zone' },
+      { name: 'Grandstand A Wheelchair', price: 1550000, note: 'Wheelchair spaces in Grandstand A' },
+      { name: 'Grandstand E–G Premium', price: 1850000, note: 'Seated, Premium stands E, F and G' },
+      { name: 'VIP Hospitality Deluxe', price: 9050000, note: 'Hospitality box by the joker lap' },
+      { name: 'VIP Hospitality Lifestyle', price: 26000000, note: 'Hospitality in the infield' },
+      { name: 'VIP Hospitality Sarga RX', price: 27500000, note: 'Hospitality on the start straight' },
+    ], image: 'fia-rallycross-indonesia', type: 'sport', theme: 'gnr', title: 'FIA Rallycross World Cup', subtitle: 'Indonesia 2026 · 5–6 Dec', dateISO: '2026-12-05T10:00', until: '2026-12-06T22:00', time: '10:00', place: ANCOL_RX, venue: 'stadium',
+    host: 'SARGA Motorsport', hostNote: 'Organiser · FIA World Rallycross', from: 350000, sale: { seller: 'loket' }, url: 'https://www.loket.com/event/fia-rallycross-world-cup-indonesia-2026_w52',
+    blurb: 'The FIA Rallycross World Cup comes to Indonesia for the first time: two days of racing on a new circuit at Ancol, Jakarta, 5 and 6 December 2026, 10:00 to 22:00 WIB.',
+    branding: { home: 'FIA RX', away: 'JAKARTA', board: 'FIA RALLYCROSS', boardSub: 'INDONESIA 2026' },
+    prices: 'From Loket.com: General Admission Outfield Rp 350,000 and Infield Rp 525,000 (standing); Grandstand A to D Regular Rp 1,550,000 (wheelchair spaces in Grandstand A at the same price); Grandstand E to G Premium Rp 1,850,000; VIP Hospitality Deluxe Rp 9,050,000, Lifestyle Rp 26,000,000 and Sarga RX Rp 27,500,000. Hotel packages from Rp 16,301,300. All on sale on 21 November 2026.',
+    standInNote: 'The promoter’s ticket map: the start and finish straight runs along the bottom, with Premium Grandstands E and G beside it and F by the joker lap; Regular Grandstands A to D line the jump zone and the far straight; GA Infield is the standing area inside the circuit, GA Outfield the standing banks round the outside; VIP Hospitality 3 (Deluxe) sits by the joker lap, 4 (Lifestyle) in the infield and 5 (Sarga RX) on the start straight. The 3D view is our generic stadium, not the circuit: it is only for a feel of a grandstand view.',
+    extra: ['Up to four tickets per transaction. Children 3 and under go free; ages 4 to 12 (up to 163 cm) get a 30% junior discount. Layout and access points may still change, says the organiser.'] }),
+  SHOW({ id: 'evt-dwp-2026', tickets: [
+      { name: '3-Day GA Early Entry 1', price: 1700000, sold: true }, { name: '3-Day GA Early Entry 2', price: 1900000, sold: true }, { name: '3-Day GA Early Entry 3', price: 2100000 },
+      { name: '3-Day GA Presale 1', price: 1900000, sold: true }, { name: '3-Day GA Presale 2', price: 2100000, sold: true }, { name: '3-Day GA Presale 3', price: 2300000 },
+      { name: '3-Day VIP Presale 1', price: 3900000, sold: true }, { name: '3-Day VIP Presale 2', price: 4200000 },
+      { name: '2-Day GA Early Entry 1', price: 1400000 }, { name: '2-Day GA Early Entry 2', price: 1600000 },
+      { name: '2-Day GA Presale 1', price: 1600000 }, { name: '2-Day GA Presale 2', price: 1800000 },
+      { name: '2-Day VIP Presale 1', price: 2400000 }, { name: '2-Day VIP Presale 2', price: 2600000 },
+      { name: 'Daily GA Early Entry 1', price: 850000, note: 'Day 2 sold out' }, { name: 'Daily GA Early Entry 2', price: 950000 },
+      { name: 'Daily GA Presale 1', price: 950000, note: 'Days 2 and 3 sold out' }, { name: 'Daily GA Presale 2', price: 1050000 },
+      { name: 'Daily VIP Presale 1', price: 1650000, sold: true }, { name: 'Daily VIP Presale 2', price: 1850000 },
+    ], image: 'dwp-2026', type: 'festival', theme: 'bts', title: 'DWP 2026', subtitle: 'Djakarta Warehouse Project · 11–13 Dec', dateISO: '2026-12-11T19:00', until: '2026-12-13T23:59', time: '19:00', place: JIEXPO, venue: 'stadium-end',
+    host: 'Ismaya Live', hostNote: 'Promoter', from: 850000, sale: { seller: 'loket' }, url: 'https://www.loket.com/event/dwp-2026_wVb9',
+    blurb: 'Djakarta Warehouse Project, Indonesia’s biggest dance music festival, returns to JIExpo Kemayoran for three nights, 11 to 13 December 2026, from 19:00 WIB, with the bird-shaped Garuda Land main stage.',
+    branding: { wall: 'DWP 2026', sub: 'JAKARTA · 11–13 DEC', band: ['DWP 2026', 'DJAKARTA WAREHOUSE PROJECT', 'JIEXPO KEMAYORAN', 'ISMAYA LIVE'] },
+    prices: 'From Loket.com (national passes): Daily GA Rp 950,000 to Rp 1,050,000 and Daily VIP Rp 1,650,000 to Rp 1,850,000; 2-Day GA Rp 1,600,000 to Rp 1,800,000 and 2-Day VIP Rp 2,400,000 to Rp 2,600,000; 3-Day GA Rp 1,900,000 to Rp 2,300,000 and 3-Day VIP Rp 3,900,000 to Rp 4,200,000. Early Entry GA passes cost less (daily from Rp 850,000) if you are in before the cut-off. An 11.11 offer started at Rp 756,500. Sold-out tiers as of 21 November 2026 are marked.',
+    standInNote: 'Every DWP ticket is standing: GA and VIP are both standing passes for the whole festival grounds, VIP with the promoter’s VIP areas. There are no numbered seats. The 3D view is our end-stage stadium with a standing floor, not JIExpo: use it for a feel of the crowd and the main stage.',
+    extra: ['Sold on Loket.com. Early Entry passes must be scanned in before the time on the ticket (17:00 for daily passes). Check the age and ID rules on the promoter’s channels before you go.'] }),
+  SHOW({ id: 'evt-hunger-games-sunrise', tickets: [
+      { name: 'Regular · Gandaria City XXI', price: 50000, note: 'Mon–Thu; Fri Rp 60,000; Sat, Sun and holidays Rp 75,000' },
+      { name: 'IMAX · Gandaria City IMAX (Laser)', price: 55000, note: 'Mon–Thu; Fri Rp 70,000; Sat, Sun and holidays Rp 90,000' },
+      { name: 'Premiere · Gandaria City Premiere', price: 150000, note: 'Mon–Thu; Fri Rp 200,000; Sat, Sun and holidays Rp 250,000' },
+    ], image: 'hunger-games-sunrise', type: 'cinema', theme: 'bocelli', title: 'The Hunger Games: Sunrise on the Reaping', subtitle: 'Now in cinemas · IMAX', dateISO: '2026-11-21T11:45', until: '2026-12-31T00:00', time: '11:45', place: GANDARIA_XXI, venue: 'cinema',
+    host: 'Lionsgate', hostNote: 'Studio · directed by Francis Lawrence', from: 50000, sale: { seller: 'xxi' }, url: 'https://21cineplex.com/the-hunger-games-sunrise-on-the-reaping,138277,26HGSR.htm',
+    blurb: 'Panem, 24 years before The Hunger Games: the reaping for the 50th Games, the Second Quarter Quell. With Joseph Zada, Whitney Peak, Mckenna Grace, Jesse Plemons, Elle Fanning and Ralph Fiennes; 158 minutes.',
+    prices: 'Cinema XXI prices at Gandaria City, Jakarta: Regular Rp 50,000 Monday to Thursday, Rp 60,000 Friday and the eve of a holiday, Rp 75,000 at weekends and on holidays; IMAX (Laser) Rp 55,000, Rp 70,000 and Rp 90,000; Premiere Rp 150,000, Rp 200,000 and Rp 250,000. Prices differ by cinema; M-Tix and 21cineplex.com show each one.',
+    standInNote: 'Showing on 21 November at Gandaria City XXI at 11:45, 14:45, 17:45 and 20:45, in IMAX at 12:00, 15:00, 18:00 and 21:00, and in Premiere at 11:50, 14:50, 17:50 and 20:50; also at most XXI cinemas across Indonesia. You pick your seat in M-Tix. The 3D view is our cinema studio (rows A to N), not a particular XXI studio: use it to compare a front, middle or back row.',
+    extra: ['In Indonesian cinemas from 18 November 2026, in regular, Premiere and IMAX 2D studios.'] }),
+  SHOW({ id: 'evt-godzilla-minus-zero', tickets: [
+      { name: 'Regular · Gandaria City XXI', price: 50000, note: 'Mon–Thu; Fri Rp 60,000; Sat, Sun and holidays Rp 75,000' },
+    ], image: 'godzilla-minus-zero', type: 'cinema', theme: 'gnr', title: 'Godzilla Minus Zero', subtitle: 'Now in cinemas', dateISO: '2026-11-21T12:55', until: '2026-12-15T00:00', time: '12:55', place: GANDARIA_XXI, venue: 'cinema',
+    host: 'Toho', hostNote: 'Studio · written and directed by Takashi Yamazaki', from: 50000, sale: { seller: 'xxi' }, url: 'https://21cineplex.com/godzilla-minus-zero,138282,26GMZO.htm',
+    blurb: 'Takashi Yamazaki’s follow-up to Godzilla Minus One: two years after the war and Godzilla’s attack, Japan is rebuilding when a new threat rises. With Ryunosuke Kamiki and Minami Hamabe; 135 minutes.',
+    prices: 'Cinema XXI prices at Gandaria City, Jakarta: Rp 50,000 Monday to Thursday, Rp 60,000 Friday and the eve of a holiday, Rp 75,000 at weekends and on holidays. Prices differ by cinema; M-Tix and 21cineplex.com show each one.',
+    standInNote: 'Showing on 21 November at Gandaria City XXI at 12:55, 15:30, 18:05 and 20:40, and at 22 XXI cinemas in Jakarta. You pick your seat in M-Tix. The 3D view is our cinema studio (rows A to N), not a particular XXI studio: use it to compare a front, middle or back row.',
+    extra: ['In Indonesian cinemas from 4 November 2026.'] }),
   SHOW({ id: 'evt-jkt48-15th', tickets: [
       { name: 'CAT 1', price: 3500000, note: 'Presale only, with soundcheck and photo', sold: true }, { name: 'CAT 2', price: 2200000, note: 'With group photo', sold: true },
       { name: 'CAT 3', price: 1200000, sold: true }, { name: 'CAT 4', price: 1000000 }, { name: 'CAT 5', price: 750000, sold: true },

@@ -28,6 +28,10 @@ export const IMAGES = {
   'janice-tjen-live': { w: 480, src: 'assets/events/janice-tjen-live.webp', alt: 'Janice Tjen Live: Game. Set. Celebrate. poster', credit: 'Poster · Tatler Indonesia, via Loket.com', pos: '50% 30%' },
   'dune-part-three': { w: 480, src: 'assets/events/dune-part-three.webp', alt: 'Dune: Part Three Indonesian poster', credit: 'Poster · Warner Bros. Pictures, via Cinema XXI', pos: '50% 40%' },
   'jkt48-15th': { src: 'assets/events/jkt48-15th.webp', alt: 'JKT48 AYO SENYUMLAH 15th Anniversary Concert poster with the seating plan', credit: 'Poster · JKT48, via Loket.com', pos: '35% 50%' },
+  'fia-rallycross-indonesia': { src: 'assets/events/fia-rallycross-indonesia.webp', alt: 'FIA Rallycross World Cup Indonesia 2026 key visual', credit: 'Key visual · SARGA Motorsport, via Loket.com', pos: '30% 50%' },
+  'dwp-2026': { w: 480, src: 'assets/events/dwp-2026.webp', alt: 'DWP 2026 Jakarta key visual', credit: 'Key visual · Ismaya Live, via Loket.com', pos: '50% 45%' },
+  'hunger-games-sunrise': { w: 480, src: 'assets/events/hunger-games-sunrise.webp', alt: 'The Hunger Games: Sunrise on the Reaping Indonesian poster', credit: 'Poster · Lionsgate, via Cinema XXI', pos: '50% 35%' },
+  'godzilla-minus-zero': { w: 480, src: 'assets/events/godzilla-minus-zero.webp', alt: 'Godzilla Minus Zero Indonesian poster', credit: 'Poster · Toho, via Cinema XXI', pos: '50% 35%' },
   'thescript-arena': { src: 'assets/events/thescript-arena-official.webp', alt: 'The Script on stage', credit: 'Photo · via indonesia.travel', pos: '55% 50%' },
 
   // Until a promoter publishes a poster, the event shows a free-licensed photo of the act (or
