@@ -534,8 +534,8 @@ export function renderEvent(id) {
         if (at > Date.now()) return `<div class="ev-count"><small>Starts in</small>${countdownHtml(new Date(at).toISOString())}</div>`;
         return live ? '<span class="ev-from"><small>Today</small><b>On now</b></span>' : '';
       })()}
-      ${pass?.status === 'confirmed' ? `<a class="btn btn-coral ev-bar-go" href="#tour-${esc(pass.id)}">${icon('i-cube')}<span class="ev-bar-go-t">Open my seat view</span><span class="ev-bar-go-p">${icon('i-arrow')}</span></a>`
-        : live ? `<a class="btn btn-coral ev-bar-go" href="#unlock-${id}">${icon('i-cube')}<span class="ev-bar-go-t">Unlock 3D seat view</span><span class="ev-bar-go-p">${formatFee()}</span></a>` : ''}
+      ${pass?.status === 'confirmed' ? `<a class="btn btn-coral ev-bar-go" href="#tour-${esc(pass.id)}"><span class="ev-bar-go-t">Open my seat view</span><span class="ev-bar-go-p">${icon('i-arrow')}</span></a>`
+        : live ? `<a class="btn btn-coral ev-bar-go" href="#unlock-${id}"><span class="ev-bar-go-t">Unlock 3D seat view</span><span class="ev-bar-go-p">${formatFee()}</span></a>` : ''}
     </div>`;
 
   tickCountdowns();
