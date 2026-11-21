@@ -230,8 +230,8 @@ export function renderHome() {
 
 // ---------------------------------------------------------------- events calendar
 
-// Every dated event (films have no single date) on a month grid. A day shows up to two
-// events and "+N more"; picking it lists all of them beside the grid, then the rest of the month.
+// Every dated event (films have no single date) on a month of picture tiles; picking a day
+// lists all of its events beside the grid.
 const CAL_DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const CAL_MON = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const cal = { month: '', day: '' };
@@ -254,41 +254,46 @@ function renderCalendar() {
   const list = calEvents();
   const byDay = new Map();
   for (const e of list) byDay.set(dayOf(e), [...(byDay.get(dayOf(e)) || []), e]);
-  const months = [...new Set(list.map(e => dayOf(e).slice(0, 7)))];
+  const months = [...new Set(list.map(e => dayOf(e).slice(0, 7)))].sort();
   if (!months.length) { root.innerHTML = '<p class="cal-empty">No dated events on sale right now.</p>'; return; }
   if (!months.includes(cal.month)) cal.month = months[0];
   const inMonth = [...byDay.keys()].filter(d => d.startsWith(cal.month)).sort();
   if (!inMonth.includes(cal.day)) cal.day = inMonth[0];
 
+  // Each day is a tile. A day with events is filled with the first event's cover, its other
+  // events as small round covers in the corner (two at most, then +N) and the title below.
   const [y, m] = cal.month.split('-').map(Number);
   const first = new Date(Date.UTC(y, m - 1, 1)), lead = (first.getUTCDay() + 6) % 7;
   const daysIn = new Date(Date.UTC(y, m, 0)).getUTCDate();
   const cells = Math.ceil((lead + daysIn) / 7) * 7;
+  const av = e => `<span class="cal-av">${coverThumb(e) || `<b>${esc(e.title.slice(0, 1))}</b>`}</span>`;
   let grid = '';
   for (let i = 0; i < cells; i++) {
     const d = new Date(Date.UTC(y, m - 1, 1 - lead + i)), key = d.toISOString().slice(0, 10), out = d.getUTCMonth() !== m - 1;
     const evs = out ? [] : byDay.get(key) || [];
-    // Each event as a round cover, overlapping when a day has several: three at most, then +N.
-    const shown = evs.length > 3 ? evs.slice(0, 3) : evs;
-    const chips = evs.length ? `<span class="cal-avs${evs.length > 1 ? ' is-stack' : ''}">${shown.map(e => `<span class="cal-av" title="${esc(e.title)}">${coverThumb(e) || `<b>${esc(e.title.slice(0, 1))}</b>`}</span>`).join('')}${evs.length > 3 ? `<span class="cal-av cal-av-more">+${evs.length - 3}</span>` : ''}</span>${evs.length === 1 ? `<span class="cal-name">${esc(evs[0].title)}</span>` : ''}` : '';
-    grid += evs.length
-      ? `<button class="cal-cell has-ev${key === cal.day ? ' is-sel' : ''}" type="button" data-day="${key}" aria-pressed="${key === cal.day}"><span class="cal-n">${d.getUTCDate()}</span>${chips}<span class="sr-only">${evs.map(e => esc(e.title)).join(', ')}</span></button>`
-      : `<div class="cal-cell${out ? ' is-out' : ''}"><span class="cal-n">${d.getUTCDate()}</span></div>`;
+    if (!evs.length) { grid += `<div class="cal-cell${out ? ' is-out' : ''}"><span class="cal-n">${d.getUTCDate()}</span></div>`; continue; }
+    const rest = evs.slice(1), shown = rest.length > 2 ? rest.slice(0, 2) : rest;
+    const stack = rest.length ? `<span class="cal-avs">${shown.map(av).join('')}${rest.length > 2 ? `<span class="cal-av cal-av-more">+${rest.length - 2}</span>` : ''}</span>` : '';
+    grid += `<button class="cal-cell has-ev${key === cal.day ? ' is-sel' : ''}" type="button" data-day="${key}" aria-pressed="${key === cal.day}">
+      <span class="cal-bg">${coverThumb(evs[0])}</span><span class="cal-n">${d.getUTCDate()}</span>${stack}
+      <span class="cal-name"><span>${esc(evs[0].title)}</span>${evs.length > 1 ? `<em>+${evs.length - 1}</em>` : ''}</span>
+      <span class="sr-only">${evs.map(e => esc(e.title)).join(', ')}</span></button>`;
   }
 
+  // Beside the grid, every event of the chosen day with its round cover.
   const sel = byDay.get(cal.day) || [];
+  const row = e => `<a class="cal-row" href="#event-${esc(e.id)}">${av(e)}<span><b>${esc(e.title)}</b><small>${esc(placeOf(e).name)}, ${esc(placeOf(e).city)}</small></span>${icon('i-arrow')}</a>`;
   const one = sel.length === 1 ? sel[0] : null;
-  const row = e => `<a class="cal-row" href="#event-${esc(e.id)}">${coverThumb(e)}<span><b>${esc(e.title)}</b><small>${esc(placeOf(e).name)}, ${esc(placeOf(e).city)}</small></span>${icon('i-arrow')}</a>`;
-  const head = `<div class="cal-date">${calLabel(cal.day)}</div>`;
-  const pick = one
-    ? `<div class="cal-one">${coverThumb(one)}<div>${head}<h3>${esc(one.title)}</h3><p>${esc(placeOf(one).name)}, ${esc(placeOf(one).city)}</p></div></div>
-       <div class="cal-btns"><a class="btn btn-coral btn-sm" href="#event-${esc(one.id)}">Event details</a><a class="btn btn-line btn-sm" href="#seats-${esc(one.id)}">See in 3D</a></div>`
-    : `${head}<h3 class="cal-count">${sel.length} events this day</h3><div class="cal-rows">${sel.map(row).join('')}</div>`;
   root.innerHTML = `
     <div class="cal-tabs" role="tablist">${months.map(k => { const [yy, mm] = k.split('-').map(Number); return `<button type="button" role="tab" data-month="${k}" aria-selected="${k === cal.month}">${MON[mm - 1]} ${yy}</button>`; }).join('')}</div>
     <div class="cal-body">
       <div class="cal-grid"><div class="cal-dow">${CAL_DOW.map(d => `<span>${d}</span>`).join('')}</div><div class="cal-days">${grid}</div></div>
-      <aside class="cal-side">${pick}</aside>
+      <aside class="cal-side">
+        <div class="cal-date">${calLabel(cal.day)}</div>
+        <h3 class="cal-count">${sel.length === 1 ? '1 event this day' : `${sel.length} events this day`}</h3>
+        <div class="cal-rows">${sel.map(row).join('')}</div>
+        ${one ? `<div class="cal-btns"><a class="btn btn-coral btn-sm" href="#event-${esc(one.id)}">Event details</a><a class="btn btn-line btn-sm" href="#seats-${esc(one.id)}">See in 3D</a></div>` : ''}
+      </aside>
     </div>`;
   root.querySelectorAll('[data-month]').forEach(b => b.addEventListener('click', () => { cal.month = b.dataset.month; cal.day = ''; renderCalendar(); }));
   root.querySelectorAll('[data-day]').forEach(b => b.addEventListener('click', () => { cal.day = b.dataset.day; renderCalendar(); }));

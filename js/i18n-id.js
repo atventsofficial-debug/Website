@@ -295,6 +295,7 @@ export const EXACT = {
 "Continue with Google / Microsoft": "Lanjut dengan Google / Microsoft",
 "Days 2 to 6": "Hari ke-2 sampai ke-6",
 "Details": "Detail",
+"1 event this day": "1 event di hari ini",
 "Do you sell concert tickets?": "Apakah kalian menjual tiket konser?",
 "Does it replace our ticketing system?": "Apakah ini menggantikan sistem tiket kami?",
 "Embed in checkout, site and e-tickets": "Pasang di checkout, situs, dan e-tiket",
