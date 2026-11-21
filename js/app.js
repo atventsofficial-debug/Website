@@ -11,6 +11,7 @@ import { renderPartners } from './partners.js';
 import { renderAdmin } from './admin.js';
 import { openViewer, closeViewer, bindViewer, paintViewer, loadScene3d } from './viewer.js';
 import { mobileRoute } from './mobile.js';
+import { startI18n } from './i18n.js';
 import { teamKey } from './team.js';
 import { $, $$, state, on, toast, tickCountdowns, captureCampaign, fitGiants, bindSubscribe, pageToTop } from './ui.js';
 
@@ -76,6 +77,7 @@ async function boot() {
   bindBuyLinks();
   bindPassButtons();
   bindNavSearch();
+  startI18n();
   if ($('#foot-alert')) bindSubscribe($('#foot-alert'), { kind: 'newsletter', done: 'You’re on the list. The next big concert lands in your inbox.' }, $('#foot-alert-msg'));
   bindViewer();
   navCount();
