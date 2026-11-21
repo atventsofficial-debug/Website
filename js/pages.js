@@ -384,7 +384,7 @@ export function renderEvent(id) {
           ${others.length ? `<p class="ev-dates">Also on ${others.map(x => `<a class="pill" href="#event-${x.id}">${esc(whenOf(x).block.dow)} ${whenOf(x).block.day} ${whenOf(x).block.mon}</a>`).join('')}</p>` : ''}
           ${live ? `<p class="ev-official">${icon('i-link')}<span>Tickets are sold by ${esc(sellerOf(e))}, the official seller. The 3D view from your seat is sold here for ${formatFee()} and opens as soon as you pay.</span></p>`
             : '<p class="ev-official">This concert has taken place. Its 3D venue stays open to look round.</p>'}
-          <div class="row-btns">${pass?.status === 'confirmed' ? `<a class="btn btn-coral" href="#tour-${esc(pass.id)}">Start my seat tour ${icon('i-arrow')}</a>` : live ? `<a class="btn btn-coral" href="#unlock-${id}">Unlock my seat view · ${formatFee()} ${icon('i-arrow')}</a>` : ''}${live ? buyLink(e, `Tickets on tiket.com ${out}`, 'btn btn-line') : ''}${live || pass?.status === 'confirmed' ? '' : `<a class="btn btn-line" href="#seats-${id}">Look round in 3D</a>`}</div>
+          <div class="row-btns">${pass?.status === 'confirmed' ? `<a class="btn btn-coral" href="#tour-${esc(pass.id)}">Open my seat view ${icon('i-arrow')}</a>` : live ? `<a class="btn btn-coral" href="#unlock-${id}">Unlock seat view · ${formatFee()} ${icon('i-arrow')}</a>` : ''}${live ? buyLink(e, `Tickets on tiket.com ${out}`, 'btn btn-line') : ''}${live || pass?.status === 'confirmed' ? '' : `<a class="btn btn-line" href="#seats-${id}">Look round in 3D</a>`}</div>
         </div>
         <div class="ev-actions">
           <div class="row-btns">
@@ -465,7 +465,7 @@ function render3dPanel(e, venue) {
   const mine = pass ? venue.catById[pass.cat] : null;
   const action = pass
     ? `<p class="ev3d-pass"><span class="pass-pill is-${pass.status}">${STATUS[pass.status].label}</span><span>Your 3D pass for ${esc(mine?.name || 'this concert')}. ${esc(STATUS[pass.status].note)}</span></p>
-       <div class="row-btns">${pass.status === 'confirmed' ? `<a class="btn btn-coral" href="#tour-${esc(pass.id)}">Start my seat tour ${icon('i-arrow')}</a>` : `<a class="btn btn-coral" href="#seats-${id}">Look round in 3D ${icon('i-arrow')}</a>`}<a class="btn btn-line" href="#passes">My 3D passes</a></div>`
+       <div class="row-btns">${pass.status === 'confirmed' ? `<a class="btn btn-coral" href="#tour-${esc(pass.id)}">Open my seat view ${icon('i-arrow')}</a>` : `<a class="btn btn-coral" href="#seats-${id}">Look round in 3D ${icon('i-arrow')}</a>`}<a class="btn btn-line" href="#passes">My 3D passes</a></div>`
     : `<ol class="mini-steps">
         <li><b>1</b><span>Look round the venue from above. Free, for everyone.</span></li>
         <li><b>2</b><span>Fill in your seat, your name and your email, and pay ${formatFee()}.</span></li>
@@ -1343,7 +1343,7 @@ function showUnlocked(p, { emailed = false } = {}) {
         <p class="eyebrow">Pass ${esc(p.id)}</p>
         <h2 class="big"><span class="fade">You’re</span> <span class="ol">in</span></h2>
         <p class="lede">Paid. Your seat view for ${esc(e.title)} is open. Take the tour to your seat.</p>
-        <div class="row-btns"><a class="btn btn-coral" href="#tour-${esc(p.id)}">Start my seat tour ${icon('i-arrow')}</a>${p.seat ? `<button class="btn btn-line" type="button" data-story-pass="${esc(p.id)}">${icon('i-share', 'lead')}<span>Post my seat to story</span></button>` : ''}<a class="btn btn-line" href="#passes">My 3D passes</a></div>
+        <div class="row-btns"><a class="btn btn-coral" href="#tour-${esc(p.id)}">Open my seat view ${icon('i-arrow')}</a>${p.seat ? `<button class="btn btn-line" type="button" data-story-pass="${esc(p.id)}">${icon('i-share', 'lead')}<span>Post my seat to story</span></button>` : ''}<a class="btn btn-line" href="#passes">My 3D passes</a></div>
         ${wa ? `<div class="unlock-wa"><p class="fine">Meet other fans going to ${esc(e.title)} before the show.</p>${wa}</div>` : ''}
         ${emailed ? `<p class="unlock-mail">${icon('i-mail')}<span>The pass link is on its way to <b>${esc(p.email)}</b>. Open it on any phone or laptop to see your seat there too.</span></p>` : ''}
         ${p.token ? `<p class="fine">On another phone or laptop? <button class="link" type="button" data-copy-pass="${esc(p.id)}">Copy the pass link</button> and open it there. Keep it to yourself: the link opens your pass.</p>` : ''}
@@ -1383,7 +1383,7 @@ function passCard(p, { actions = true } = {}) {
       </dl>
       ${actions ? `<div class="row-btns">
         ${p.status === 'rejected' ? `${ended ? '' : `<a class="btn btn-coral btn-sm" href="#unlock-${p.eventId}">Unlock again</a>`}<a class="btn btn-line btn-sm" href="#contact">Write to us</a>`
-          : p.status === 'confirmed' ? `<a class="btn btn-coral btn-sm" href="#tour-${esc(p.id)}">Start my seat tour ${icon('i-arrow')}</a>${p.seat ? `<button class="btn btn-line btn-sm" type="button" data-story-pass="${esc(p.id)}">${icon('i-share')}Story</button>` : ''}`
+          : p.status === 'confirmed' ? `<a class="btn btn-coral btn-sm" href="#tour-${esc(p.id)}">Open my seat view ${icon('i-arrow')}</a>${p.seat ? `<button class="btn btn-line btn-sm" type="button" data-story-pass="${esc(p.id)}">${icon('i-share')}Story</button>` : ''}`
             : `<a class="btn btn-line btn-sm" href="#seats-${p.eventId}">Look round the venue ${icon('i-arrow')}</a>`}
         ${p.token && p.status !== 'device' ? `<button class="btn btn-line btn-sm" type="button" data-copy-pass="${esc(p.id)}">${icon('i-link')}Copy pass link</button>` : ''}
       </div>${p.status === 'device' ? otpForm(p) : ''}${waButtons(p) ? `<div class="pass-wa">${waButtons(p)}</div>` : ''}

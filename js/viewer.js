@@ -195,7 +195,7 @@ export function paintViewer() {
       <p class="eyebrow">Your 3D pass</p>
       <h2>Your seat is ready</h2>
       <p>Your pass is paid and open. Take the tour from the whole venue to your category, then to the view from your seat.</p>
-      <div class="row-btns"><a class="btn btn-coral btn-sm" href="#tour-${esc(p.id)}">Start my seat tour ${icon('i-arrow')}</a></div>
+      <div class="row-btns"><a class="btn btn-coral btn-sm" href="#tour-${esc(p.id)}">Open my seat view ${icon('i-arrow')}</a></div>
       ${matesBlock(p, { cats: v.catById })}`
       : p?.status === 'verifying' ? `
       <p class="eyebrow">${icon('i-clock')}Checking your pass</p>
@@ -297,9 +297,9 @@ function fillSeatCard(seat) {
     $('#sc-dist').textContent = friend ? `Your friend sits here. Unlock a seat near them for ${formatFee()} to see their view.`
       : `Have a ticket here? Unlock the view from your seat for ${formatFee()}.`;
     $('#sc-actions').innerHTML = p?.status === 'confirmed'
-      ? `<a class="btn btn-coral" href="#tour-${esc(p.id)}">Start my seat tour ${icon('i-arrow')}</a>`
+      ? `<a class="btn btn-coral" href="#tour-${esc(p.id)}">Open my seat view ${icon('i-arrow')}</a>`
       : p?.status === 'checking' ? `<a class="btn btn-line" href="#passes">${icon('i-clock')}Waiting for payment</a>`
-        : `<a class="btn btn-coral" href="#unlock-${e.id}">Unlock 3D · ${formatFee()} ${icon('i-arrow')}</a>${buyLink(e, `Tickets ${out}`, 'btn btn-line')}`;
+        : `<a class="btn btn-coral" href="#unlock-${e.id}">Unlock seat view · ${formatFee()} ${icon('i-arrow')}</a>${buyLink(e, `Tickets ${out}`, 'btn btn-line')}`;
     if (p?.status === 'confirmed') $('#sc-dist').textContent = 'Your pass is open. The tour takes you to your seat.';
     return;
   }
