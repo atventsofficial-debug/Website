@@ -143,8 +143,6 @@
   #view-home .sec-side { flex: none; margin-left: auto; }
   #view-home .sec-head .big { flex: none; font-size: 25px; white-space: nowrap; }
   .ev-alerts { display: none; }
-  .how-line li { padding-bottom: 16px; }
-  .how-line li p { font-size: 13.5px; }
   .tl-cta { flex-direction: column; align-items: stretch; gap: 12px; }
   .tl-cta .btn { justify-content: center; }
 
