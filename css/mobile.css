@@ -8,7 +8,7 @@
    No backdrop blur and no drop-shadow filters here: on a phone they are repainted on every
    scrolled frame, and solid colours look the same at this size. */
 
-.tabbar, .nav-back, .m-find { display: none; }
+.tabbar, .nav-back { display: none; }
 
 /* The 3D view, at every size (js/viewer.js, #t-min): one button at the top right hides the
    panels over the venue (the concert card, categories, the side panel and the seat card,
@@ -135,8 +135,6 @@
   .hs-card { padding: 14px; }
   .hs-title { font-size: clamp(26px, 7.6vw, 32px); }
   .hs-credit { display: none; }
-  .m-find { display: flex; align-items: center; gap: 10px; height: 48px; margin: 6px var(--gut) 0; padding: 0 16px; border: 1px solid var(--line-2); border-radius: 14px; background: var(--panel); color: var(--muted); font-size: 15px; }
-  .m-find svg { width: 18px; height: 18px; color: var(--text); }
   #on-sale { padding-top: 26px; }
   #view-home .sec-head { display: flex; align-items: baseline; justify-content: space-between; }
   #view-home .sec-side p { display: none; }
