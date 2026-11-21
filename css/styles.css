@@ -1337,7 +1337,7 @@ input, select, textarea { border-radius: 0; }
 .app-side .nt-text b { font-size: 13px; font-weight: 600; line-height: 1.2; }
 .nt-text small { font-size: 12px; line-height: 1.2; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .num-trigger.is-own .nt-text small { color: var(--coral-2); }
-.nt-go { flex: none; font-size: 12px; font-weight: 600; color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
+.num-trigger .nt-go { flex: none; width: 18px; height: 18px; color: var(--text); }
 .num-sheet { width: 100%; display: flex; flex-direction: column; gap: 10px; }
 .num-sheet.is-in { animation: num-up .22s ease-out; }
 @keyframes num-up { from { opacity: 0; transform: translateY(10px); } }

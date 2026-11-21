@@ -1,7 +1,7 @@
 // Indonesian lines for js/i18n.js, keyed by the English text as it shows on the page.
 // Generated from the translation sheet; names, venues and film titles stay as they are.
 export const EXACT = {
-"Seat position is an estimate": "Posisi kursi masih perkiraan",
+"See other seat position options": "Lihat opsi posisi seat lain",
 "From the promoter’s seating plan": "Dari denah kursi promotor",
 "From the venue’s latest info": "Dari info terbaru venue",
 "Adjusted by you": "Sudah kamu sesuaikan",

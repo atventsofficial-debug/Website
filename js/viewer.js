@@ -529,7 +529,7 @@ function numberingControls(p, s) {
       : from === 'event' ? 'From the venue’s latest info' : 'From the promoter’s seating plan';
   const own = from === 'pick' || (from === 'fan' && !isDefault(n));
   return `<button class="num-trigger${own ? ' is-own' : ''}" type="button" data-tour="numopen" aria-expanded="false">
-      ${icon('i-seat', 'nt-ic')}<span class="nt-text"><b>Seat position is an estimate</b><small>${status}</small></span><span class="nt-go">Adjust</span>
+      ${icon('i-seat', 'nt-ic')}<span class="nt-text"><b>See other seat position options</b><small>${status}</small></span>${icon('i-arrow', 'nt-go')}
     </button>`;
 }
 
