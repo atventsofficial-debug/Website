@@ -1326,24 +1326,35 @@ input, select, textarea { border-radius: 0; }
 .cat-pill.is-own:not([aria-pressed="true"]) { border-color: var(--coral); }
 .in-tour .cat-pill .cat-dot { margin-right: 6px; }
 .app-side .btn .cat-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; }
-/* how the venue numbers its seats (seatflip.js) */
-.numbering { width: 100%; padding-top: var(--s3); border-top: 1px solid var(--line); }
-.numbering summary { cursor: pointer; font-size: 13px; color: var(--muted); list-style: none; }
-.numbering summary::-webkit-details-marker { display: none; }
-.numbering summary::after { content: ' +'; color: var(--text); }
-.numbering[open] summary { margin-bottom: 8px; }
-.numbering[open] summary::after { content: ' –'; }
-.numbering summary:focus-visible { outline: 2px solid var(--coral); outline-offset: 2px; border-radius: 4px; }
-.numbering .num-row + .num-row { margin-top: 8px; }
-.num-row { display: grid; grid-template-columns: 64px minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
-.num-opt { height: 34px; padding: 0 10px; border-radius: 999px; border: 1.5px solid var(--line-2); background: transparent; color: var(--text); font: 600 13px/1 var(--font); cursor: pointer; transition: background .2s, color .2s, border-color .2s; }
+/* how the venue numbers its seats (seatflip.js): one slim row in the panel, and the choices
+   in a sheet over the panel, the same on every phone and computer */
+.num-trigger { display: flex; align-items: center; gap: 10px; width: 100%; margin-top: 2px; padding: 9px 12px; border: 1px solid var(--line-2); border-radius: 14px; background: rgba(255, 255, 255, 0.03); color: var(--text); font: inherit; text-align: left; cursor: pointer; transition: border-color .15s, background .15s; }
+.num-trigger:hover { border-color: rgba(255, 255, 255, 0.4); background: rgba(255, 255, 255, 0.06); }
+.num-trigger:focus-visible { outline: 2px solid var(--coral); outline-offset: 2px; }
+.num-trigger .nt-ic { flex: none; width: 18px; height: 18px; color: var(--muted); }
+.num-trigger.is-own .nt-ic { color: var(--coral); }
+.nt-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.app-side .nt-text b { font-size: 13px; font-weight: 600; line-height: 1.2; }
+.nt-text small { font-size: 12px; line-height: 1.2; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.num-trigger.is-own .nt-text small { color: var(--coral-2); }
+.nt-go { flex: none; font-size: 12px; font-weight: 600; color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
+.num-sheet { width: 100%; display: flex; flex-direction: column; gap: 10px; }
+.num-sheet.is-in { animation: num-up .22s ease-out; }
+@keyframes num-up { from { opacity: 0; transform: translateY(10px); } }
+@media (prefers-reduced-motion: reduce) { .num-sheet.is-in { animation: none; } }
+.num-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.app-side .num-head b { font-size: 16px; font-weight: 700; }
+.num-lead { font-size: 13px; line-height: 1.4; color: var(--muted); }
+.num-row { display: grid; grid-template-columns: 86px minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+.num-opt { height: 34px; padding: 0 6px; white-space: nowrap; border-radius: 999px; border: 1.5px solid var(--line-2); background: transparent; color: var(--text); font: 600 13px/1 var(--font); cursor: pointer; transition: background .2s, color .2s, border-color .2s; }
 .num-opt:hover { border-color: rgba(255, 255, 255, 0.45); }
 .num-opt[aria-pressed="true"] { background: #fff; color: var(--ink); border-color: #fff; }
 .num-opt:focus-visible { outline: 2px solid var(--coral); outline-offset: 2px; }
-.num-pick { margin: 10px 0 0; font-size: 13px; color: var(--muted); }
-.numbering.is-pick p { margin: 0 0 6px; font-size: 13px; color: var(--muted); }
-.numbering .link { color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
-.numbering .link:hover { color: var(--coral); }
+.num-foot { font-size: 13px; color: var(--muted); }
+.num-sheet .link { font-size: 13px; font-weight: 600; text-transform: none; letter-spacing: 0; color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
+.num-sheet .link:hover { color: var(--coral); }
+.num-done { flex: none; height: 34px; padding: 0 16px; font-size: 13px; }
+#num-title:focus { outline: none; }
 
 /* ---------- admin: the review queue ---------- */
 .review-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 460px), 1fr)); gap: var(--s4); }

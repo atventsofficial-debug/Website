@@ -354,15 +354,17 @@ export function bindViewer() {
   $('#t-reset').addEventListener('click', () => { closePeek(); if (state.tour) startTour(); else state.scene?.resetView(); });
   $('#app-side').addEventListener('click', e => {
     const act = e.target.closest('[data-tour]')?.dataset.tour;
+    if (act === 'cat' || act === 'seat') state.tour.numOpen = false;
     if (act === 'cat') tourCat(tourPass()?.cat);
     if (act === 'seat') { const s = tourSeat(); if (s) tourPick(s); }
     if (act === 'again') startTour();
     if (act === 'capture') import('./capture.js').then(m => m.startCapture(state.scene, { title: state.venue?.meta?.title, seat: seatText(ticketSeat()) })).catch(() => toast('The camera could not start. Please try again.'));
-    if (act === 'pickseat') startPicking();
+    if (act === 'numopen' || act === 'numclose') setNumOpen(act === 'numopen');
+    if (act === 'pickseat') { state.tour.numOpen = false; startPicking(); }
     if (act === 'pickcancel') { state.tour.picking = false; paintTour(); }
     if (act === 'unpick') setNumbering('pick', '');
     const num = e.target.closest('[data-num]')?.dataset.num;
-    if (num) setNumbering(...num.split(':'));
+    if (num) { setNumbering(...num.split(':')); $(`#app-side [data-num="${CSS.escape(num)}"]`)?.focus(); }
     if (act === 'back') state.scene?.backToOverview();
   });
   bindMates($('#app-side'), { pass: matesPass, repaint: paintViewer });
@@ -377,7 +379,7 @@ export function bindViewer() {
     if (act === 'edit') { closeFanCard(); $('#app-side [data-mates="edit"]')?.click(); }
     if (e.target.closest('a[href^="#unlock-"]')) closeFanCard();
   });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeFanCard(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeFanCard(); if (state.tour?.numOpen) setNumOpen(false); } });
   $('#sc-close').addEventListener('click', closePeek);
   $('#zoom').addEventListener('click', e => {
     const d = e.target.closest('[data-zoom]')?.dataset.zoom;
@@ -427,6 +429,7 @@ function startTour() {
   const sc = state.scene, p = tourPass();
   if (!sc || !p) return;
   state.tour.step = 1;
+  state.tour.numOpen = false;
   state.filter = null;
   sc.setFilter(null);
   sc.setMine(markedIds());
@@ -487,6 +490,16 @@ function setNumbering(key, value) {
   paintViewer();
 }
 
+// The sheet with the numbering choices, over the panel. Focus goes into it, and back to the
+// row that opened it.
+function setNumOpen(on) {
+  if (!state.tour) return;
+  state.tour.numOpen = on;
+  state.tour.numIn = on;
+  paintTour();
+  $(on ? '#num-title' : '#app-side .num-trigger')?.focus();
+}
+
 // Point at the seat: back to the ticket's block from above, where a tap on one of its seats
 // makes that the fan's seat (tourPick).
 function startPicking() {
@@ -504,29 +517,40 @@ function frameBlock() {
 // How the venue counts: where seat 1 is (an end, or odd and even from the middle out), where
 // row A is, and whether the rows skip I and O. Last, the fan can point at the seat. Not for
 // standing tickets, which have no row or number.
+//
+// The same on every phone and computer: one slim row in the panel says how the seats are
+// numbered now, and opens a sheet over the panel with the choices, so the stepper and the
+// main buttons keep the room.
 function numberingControls(p, s) {
   if (s.standing) return '';
   const v = state.venue, n = numberingOf(v, p), from = numberingSource(v, p);
-  if (from === 'pick') {
-    return `<div class="numbering is-pick">
-      <p class="fine">You put your seat where you know it is. Your ticket still reads ${esc(seatText(s))}.</p>
-      <button class="link" type="button" data-tour="unpick">Go back to the seat numbers</button>
-    </div>`;
-  }
-  const opt = (key, value, label, hint = '') => `<button type="button" class="num-opt" data-num="${key}:${value}" aria-pressed="${n[key] === value}"${hint ? ` title="${hint}"` : ''}>${label}</button>`;
-  const summary = from === 'fan' && !isDefault(n) ? 'Numbering set your way'
-    : from === 'event' ? `Numbered the way ${esc(v.place.name)} counts. Different on your ticket?`
-      : 'Seat numbers run another way at the venue?';
-  // Folded away until wanted, so on a phone the panel leaves the view clear; open while the
-  // fan has set it their way.
-  return `<details class="numbering"${from === 'fan' && !isDefault(n) ? ' open' : ''}>
-      <summary>${summary}</summary>
+  const status = from === 'pick' ? 'You tapped your seat'
+    : from === 'fan' && !isDefault(n) ? 'Set your way'
+      : from === 'event' ? 'The venue’s numbering' : 'Our estimate';
+  const own = from === 'pick' || (from === 'fan' && !isDefault(n));
+  return `<button class="num-trigger${own ? ' is-own' : ''}" type="button" data-tour="numopen" aria-expanded="false">
+      ${icon('i-seat', 'nt-ic')}<span class="nt-text"><b>Seat numbering</b><small>${status}</small></span><span class="nt-go">Change</span>
+    </button>`;
+}
+
+// The choices, shown in the panel in place of the step while the fan sets them.
+function numberingSheet(p, s) {
+  const v = state.venue, n = numberingOf(v, p), from = numberingSource(v, p);
+  const opt = (key, value, label, hint = '', id = '') => `<button type="button" class="num-opt" data-num="${key}:${value}" aria-pressed="${n[key] === value}"${hint ? ` title="${hint}"` : ''}${id ? ` data-id="${id}"` : ''}>${label}</button>`;
+  const body = from === 'pick' ? `
+      <div class="fine num-lead">You put your seat where you know it is. Your ticket still reads ${esc(seatText(s))}.</div>
+      <div class="num-foot"><button class="link" type="button" data-tour="unpick">Go back to the seat numbers</button></div>`
+    : `
+      <div class="fine num-lead">${from === 'event' ? `Numbered the way ${esc(v.place.name)} counts. Different on your ticket? Change it here.` : 'Seats at the venue numbered another way? Set it here and your seat moves to match.'}</div>
       <div class="num-row" role="group" aria-label="Where seat 1 is"><span>Seat 1</span>${opt('seats', 'left', 'Left end')}${opt('seats', 'right', 'Right end')}</div>
       <div class="num-row" role="group" aria-label="Odd and even numbers from the middle of the row"><span>Odd, even</span>${opt('seats', 'odd-left', 'Odd left', '1, 3, 5 to the left of the middle; 2, 4, 6 to the right')}${opt('seats', 'odd-right', 'Odd right', '1, 3, 5 to the right of the middle; 2, 4, 6 to the left')}</div>
-      <div class="num-row" role="group" aria-label="Where row A is"><span>Row A</span>${opt('rows', 'front', 'Front')}${opt('rows', 'back', 'Back')}</div>
+      <div class="num-row" role="group" aria-label="Where row A is"><span>Row A</span>${opt('rows', 'front', 'Front')}${opt('rows', 'back', 'Back', '', 'Belakang')}</div>
       <div class="num-row" role="group" aria-label="Row letters"><span>Letters</span>${opt('letters', 'all', 'A to Z')}${opt('letters', 'no-io', 'No I or O', 'The rows go H, J and N, P')}</div>
-      <p class="num-pick">Still not right? <button class="link" type="button" data-tour="pickseat">Tap your seat yourself</button></p>
-    </details>`;
+      <div class="num-foot"><span>Still not right?</span> <button class="link" type="button" data-tour="pickseat">Tap your seat yourself</button></div>`;
+  return `<div class="num-sheet" role="group" aria-labelledby="num-title">
+      <div class="num-head"><b id="num-title" tabindex="-1">Seat numbering</b><button class="btn btn-coral btn-sm num-done" type="button" data-tour="numclose">Done</button></div>
+      ${body}
+    </div>`;
 }
 
 // What the view from the seat rests on: the block is the promoter's, the row and number
@@ -546,6 +570,13 @@ function paintTour() {
   const p = tourPass(), v = state.venue, s = ticketSeat();
   if (!p || !s) return;
   const cat = v.catById[p.cat], step = state.tour.step, e = v.meta;
+  if (state.tour.numOpen && step >= 2 && !state.tour.picking && !s.standing) {
+    $('#app-side').innerHTML = numberingSheet(p, s);
+    if (state.tour.numIn) { $('#app-side .num-sheet').classList.add('is-in'); state.tour.numIn = false; }
+    renderCats();
+    state.scene?.setMine(markedIds());
+    return;
+  }
   const bar = `<ol class="tour-steps">${STEPS.map((t, i) => `<li class="${i + 1 < step ? 'is-done' : i + 1 === step ? 'is-on' : ''}"${i + 1 === step ? ' aria-current="step"' : ''}><b>${i + 1 < step ? icon('i-check') : i + 1}</b><span>${t}</span></li>`).join('')}</ol>`;
   const body = step === 1 ? `
       <h2>${esc(v.place.name)}</h2>
