@@ -1618,9 +1618,8 @@ body { counter-reset: sec; }
 .big .ol { color: var(--dimtext); }
 .big-xl .fade { background: linear-gradient(180deg, #fff 30%, rgba(255, 255, 255, 0.5) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
 
-/* Section labels: the site on the right. No section numbers ("01 /") on any page. */
-.view:not([hidden]) .sec-head::before { content: none; }
-.view:not([hidden]) .sec-head::after { content: "Atvents / 3D seat view"; text-transform: none; letter-spacing: 0; font-size: 11.5px; }
+/* Section labels: none. No section numbers ("01 /") and no site label on any page. */
+.view:not([hidden]) .sec-head::before, .view:not([hidden]) .sec-head::after { content: none; }
 .view:not([hidden]) .sec-head { border-top-color: rgba(255, 255, 255, 0.08); }
 .sec-side p { color: #bdbdbd; font-size: 16px; line-height: 1.45; }
 

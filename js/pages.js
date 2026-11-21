@@ -236,7 +236,8 @@ const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct
 const dayMon = ms => { const d = new Date(ms); return `${d.getDate()} ${MON[d.getMonth()]}`; };
 export function concertNews(now = Date.now()) {
   const items = [];
-  for (const e of oncePerShow(onSale())) {
+  // Concerts only: films and other kinds have their own lists.
+  for (const e of oncePerShow(onSale()).filter(e => typeOf(e) === 'concert')) {
     const sale = saleInfo(e, now), start = startOf(e), v = placeOf(e), n = datesOf(e).length;
     const dates = n > 1 ? `${n} dates from ${whenOf(e).date}` : whenOf(e).date;
     if (sale?.soon) items.push({ e, at: now + 1, tag: 'Sale soon', text: `Tickets for ${e.title} go on sale ${sale.date} on ${sellerOf(e)}.` });
