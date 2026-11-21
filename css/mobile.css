@@ -130,7 +130,7 @@
   .sec-side p { font-size: 14px; }
 
   /* ---------- home: hero, search, on sale, updates, three steps ---------- */
-  #view-home > .sec:not(#on-sale):not(#news):not(#how) { display: none; }
+  #view-home > .sec:not(#on-sale):not(#news):not(#calendar):not(#how) { display: none; }
   .hero-show { --stage-h: clamp(270px, 42svh, 380px); }
   .hs-card { padding: 14px; }
   .hs-title { font-size: clamp(26px, 7.6vw, 32px); }

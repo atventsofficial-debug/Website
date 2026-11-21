@@ -224,7 +224,78 @@ export function renderHome() {
 
   $('#home-faq').innerHTML = faqHtml(FAQ_FANS, ['price', 'unlock', 'pay', 'seller', 'footage']);
   renderNews();
+  renderCalendar();
   bindFootageForm();
+}
+
+// ---------------------------------------------------------------- events calendar
+
+// Every dated event (films have no single date) on a month grid. A day shows up to two
+// events and "+N more"; picking it lists all of them beside the grid, then the rest of the month.
+const CAL_DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const CAL_MON = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const cal = { month: '', day: '' };
+const dayOf = e => e.dateISO.slice(0, 10);
+function calEvents() {
+  const seen = new Set();
+  return onSale().filter(e => typeOf(e) !== 'cinema').filter(e => {
+    const k = `${e.title}|${dayOf(e)}`;
+    if (seen.has(k)) return false;
+    seen.add(k); return true;
+  });
+}
+const calLabel = day => {
+  const d = new Date(`${day}T12:00:00Z`);
+  return `${['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][d.getUTCDay()]} ${d.getUTCDate()} ${MON[d.getUTCMonth()].toUpperCase()} ${d.getUTCFullYear()}`;
+};
+function renderCalendar() {
+  const root = $('#home-cal');
+  if (!root) return;
+  const list = calEvents();
+  const byDay = new Map();
+  for (const e of list) byDay.set(dayOf(e), [...(byDay.get(dayOf(e)) || []), e]);
+  const months = [...new Set(list.map(e => dayOf(e).slice(0, 7)))];
+  if (!months.length) { root.innerHTML = '<p class="cal-empty">No dated events on sale right now.</p>'; return; }
+  if (!months.includes(cal.month)) cal.month = months[0];
+  const inMonth = [...byDay.keys()].filter(d => d.startsWith(cal.month)).sort();
+  if (!inMonth.includes(cal.day)) cal.day = inMonth[0];
+
+  const [y, m] = cal.month.split('-').map(Number);
+  const first = new Date(Date.UTC(y, m - 1, 1)), lead = (first.getUTCDay() + 6) % 7;
+  const daysIn = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const cells = Math.ceil((lead + daysIn) / 7) * 7;
+  let grid = '';
+  for (let i = 0; i < cells; i++) {
+    const d = new Date(Date.UTC(y, m - 1, 1 - lead + i)), key = d.toISOString().slice(0, 10), out = d.getUTCMonth() !== m - 1;
+    const evs = out ? [] : byDay.get(key) || [];
+    const chips = evs.slice(0, evs.length > 2 ? 2 : 2).map(e => `<span class="cal-chip">${esc(e.title)}</span>`).join('') + (evs.length > 2 ? `<span class="cal-more">+${evs.length - 2} more</span>` : '');
+    grid += evs.length
+      ? `<button class="cal-cell has-ev${key === cal.day ? ' is-sel' : ''}" type="button" data-day="${key}" aria-pressed="${key === cal.day}"><span class="cal-n">${d.getUTCDate()}</span>${chips}<i class="cal-dot" aria-hidden="true"></i></button>`
+      : `<div class="cal-cell${out ? ' is-out' : ''}"><span class="cal-n">${d.getUTCDate()}</span></div>`;
+  }
+
+  const sel = byDay.get(cal.day) || [];
+  const one = sel.length === 1 ? sel[0] : null;
+  const row = e => `<a class="cal-row" href="#event-${esc(e.id)}">${thumbImg(e)}<span><b>${esc(e.title)}</b><small>${esc(placeOf(e).name)}, ${esc(placeOf(e).city)}</small></span>${icon('i-arrow')}</a>`;
+  const head = `<div class="cal-date">${calLabel(cal.day)}</div>`;
+  const pick = one
+    ? `<div class="cal-one">${thumbImg(one)}<div>${head}<h3>${esc(one.title)}</h3><p>${esc(placeOf(one).name)}, ${esc(placeOf(one).city)}</p></div></div>
+       <div class="cal-btns"><a class="btn btn-coral btn-sm" href="#event-${esc(one.id)}">Event details</a><a class="btn btn-line btn-sm" href="#seats-${esc(one.id)}">See in 3D</a></div>`
+    : `${head}<h3 class="cal-count">${sel.length} events this day</h3><div class="cal-rows">${sel.map(row).join('')}</div>`;
+  const rest = inMonth.filter(d => d !== cal.day).flatMap(d => byDay.get(d));
+  const restHtml = rest.length ? `<div class="cal-also">Also in ${CAL_MON[m - 1]}</div>${rest.map(e => {
+    const d = new Date(`${dayOf(e)}T12:00:00Z`);
+    return `<button class="cal-item" type="button" data-day="${dayOf(e)}"><span class="cal-item-d"><b>${d.getUTCDate()}</b><small>${CAL_DOW[(d.getUTCDay() + 6) % 7]}</small></span><span><b>${esc(e.title)}</b><small>${esc(placeOf(e).name)}</small></span></button>`;
+  }).join('')}` : '';
+
+  root.innerHTML = `
+    <div class="cal-tabs" role="tablist">${months.map(k => { const [yy, mm] = k.split('-').map(Number); return `<button type="button" role="tab" data-month="${k}" aria-selected="${k === cal.month}">${MON[mm - 1]} ${yy}</button>`; }).join('')}</div>
+    <div class="cal-body">
+      <div class="cal-grid"><div class="cal-dow">${CAL_DOW.map(d => `<span>${d}</span>`).join('')}</div><div class="cal-days">${grid}</div></div>
+      <aside class="cal-side">${pick}${restHtml}</aside>
+    </div>`;
+  root.querySelectorAll('[data-month]').forEach(b => b.addEventListener('click', () => { cal.month = b.dataset.month; cal.day = ''; renderCalendar(); }));
+  root.querySelectorAll('[data-day]').forEach(b => b.addEventListener('click', () => { cal.day = b.dataset.day; renderCalendar(); }));
 }
 
 // ---------------------------------------------------------------- concert updates

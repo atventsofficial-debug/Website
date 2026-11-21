@@ -1,6 +1,9 @@
 // Indonesian lines for js/i18n.js, keyed by the English text as it shows on the page.
 // Generated from the translation sheet; names, venues and film titles stay as they are.
 export const EXACT = {
+"See in 3D": "Lihat 3D",
+"No dated events on sale right now.": "Belum ada event yang dijual saat ini.",
+"Every event by date. Pick a month; each day shows what is on.": "Semua event berdasarkan tanggal. Pilih bulan, lalu klik tanggal untuk lihat acaranya.",
 "Unlock 3D ·": "Buka 3D ·",
 "Ask us": "Tanya kami",
 "ticketing · venues · promoters · travel": "tiket · venue · promotor · travel",
@@ -774,7 +777,7 @@ export const EXACT = {
 "Unlock seat view ·": "Lihat dari Kursimu ·",
 "Unlock seat view": "Lihat dari Kursimu",
 "Events calendar": "Kalender event",
-"Every event by date. Pick a month; each day shows what is on.": "Semua event berdasarkan tanggal. Pilih bulan; setiap hari menampilkan acaranya.",
+"Every event by date. Pick a month; each day shows what is on.": "Semua event berdasarkan tanggal. Pilih bulan, lalu klik tanggal untuk lihat acaranya.",
 "Event ended": "Event selesai",
 "Get the alerts": "Aktifkan Notifikasi"
 };
@@ -790,6 +793,12 @@ const DAY = '(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)';
 // [regex, replacement]. A string replacement has its $n groups passed through the date words;
 // a function gets the match as String.replace gives it.
 export const PATTERNS = [
+  [/^(\d+) events this day$/, '$1 event di hari ini'],
+  [/^\+(\d+) more$/, '+$1 lainnya'],
+  [/^Also in (.+)$/, 'Juga di $1'],
+  [/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{4})$/, '$1 $2'],
+  [/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)$/, '$1'],
+  [/^(SUN|MON|TUE|WED|THU|FRI|SAT) (\d+) ([A-Z]{3}) (\d{4})$/, '$1 $2 $3 $4'],
   [/^Rp ([\d.]+)M$/, (_, n) => `Rp ${n.replace('.', ',')} jt`],
   [/^Rp ([\d.]+)K$/, (_, n) => `Rp ${n} rb`],
   [/^(.*)\bDay (\d)\b(.*)$/, (_, a, n, b) => `${a}Hari ${n}${b}`],

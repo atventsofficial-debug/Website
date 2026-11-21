@@ -47,7 +47,8 @@ function doText(n) {
   const p = n.parentElement;
   if (!p || p.closest('script,style,[data-no-i18n]')) return;
   if (done.get(n) === n.nodeValue) return;
-  const out = t(n.nodeValue);
+  // An element can carry its own Indonesian in data-id, where word order differs.
+  const out = p.dataset.id != null && n.nodeValue.trim() ? n.nodeValue.replace(/\S.*\S|\S/s, p.dataset.id) : t(n.nodeValue);
   if (out != null) { n.nodeValue = out; done.set(n, out); }
 }
 const ATTRS = ['placeholder', 'aria-label', 'title', 'alt'];
