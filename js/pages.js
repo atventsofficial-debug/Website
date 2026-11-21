@@ -268,9 +268,11 @@ function renderCalendar() {
   for (let i = 0; i < cells; i++) {
     const d = new Date(Date.UTC(y, m - 1, 1 - lead + i)), key = d.toISOString().slice(0, 10), out = d.getUTCMonth() !== m - 1;
     const evs = out ? [] : byDay.get(key) || [];
-    const chips = evs.slice(0, evs.length > 2 ? 2 : 2).map(e => `<span class="cal-chip">${esc(e.title)}</span>`).join('') + (evs.length > 2 ? `<span class="cal-more">+${evs.length - 2} more</span>` : '');
+    // Each event as a round cover, overlapping when a day has several: three at most, then +N.
+    const shown = evs.length > 3 ? evs.slice(0, 3) : evs;
+    const chips = evs.length ? `<span class="cal-avs${evs.length > 1 ? ' is-stack' : ''}">${shown.map(e => `<span class="cal-av" title="${esc(e.title)}">${thumbImg(e) || `<b>${esc(e.title.slice(0, 1))}</b>`}</span>`).join('')}${evs.length > 3 ? `<span class="cal-av cal-av-more">+${evs.length - 3}</span>` : ''}</span>${evs.length === 1 ? `<span class="cal-name">${esc(evs[0].title)}</span>` : ''}` : '';
     grid += evs.length
-      ? `<button class="cal-cell has-ev${key === cal.day ? ' is-sel' : ''}" type="button" data-day="${key}" aria-pressed="${key === cal.day}"><span class="cal-n">${d.getUTCDate()}</span>${chips}<i class="cal-dot" aria-hidden="true"></i></button>`
+      ? `<button class="cal-cell has-ev${key === cal.day ? ' is-sel' : ''}" type="button" data-day="${key}" aria-pressed="${key === cal.day}"><span class="cal-n">${d.getUTCDate()}</span>${chips}<span class="sr-only">${evs.map(e => esc(e.title)).join(', ')}</span></button>`
       : `<div class="cal-cell${out ? ' is-out' : ''}"><span class="cal-n">${d.getUTCDate()}</span></div>`;
   }
 
@@ -282,17 +284,11 @@ function renderCalendar() {
     ? `<div class="cal-one">${thumbImg(one)}<div>${head}<h3>${esc(one.title)}</h3><p>${esc(placeOf(one).name)}, ${esc(placeOf(one).city)}</p></div></div>
        <div class="cal-btns"><a class="btn btn-coral btn-sm" href="#event-${esc(one.id)}">Event details</a><a class="btn btn-line btn-sm" href="#seats-${esc(one.id)}">See in 3D</a></div>`
     : `${head}<h3 class="cal-count">${sel.length} events this day</h3><div class="cal-rows">${sel.map(row).join('')}</div>`;
-  const rest = inMonth.filter(d => d !== cal.day).flatMap(d => byDay.get(d));
-  const restHtml = rest.length ? `<div class="cal-also">Also in ${CAL_MON[m - 1]}</div>${rest.map(e => {
-    const d = new Date(`${dayOf(e)}T12:00:00Z`);
-    return `<button class="cal-item" type="button" data-day="${dayOf(e)}"><span class="cal-item-d"><b>${d.getUTCDate()}</b><small>${CAL_DOW[(d.getUTCDay() + 6) % 7]}</small></span><span><b>${esc(e.title)}</b><small>${esc(placeOf(e).name)}</small></span></button>`;
-  }).join('')}` : '';
-
   root.innerHTML = `
     <div class="cal-tabs" role="tablist">${months.map(k => { const [yy, mm] = k.split('-').map(Number); return `<button type="button" role="tab" data-month="${k}" aria-selected="${k === cal.month}">${MON[mm - 1]} ${yy}</button>`; }).join('')}</div>
     <div class="cal-body">
       <div class="cal-grid"><div class="cal-dow">${CAL_DOW.map(d => `<span>${d}</span>`).join('')}</div><div class="cal-days">${grid}</div></div>
-      <aside class="cal-side">${pick}${restHtml}</aside>
+      <aside class="cal-side">${pick}</aside>
     </div>`;
   root.querySelectorAll('[data-month]').forEach(b => b.addEventListener('click', () => { cal.month = b.dataset.month; cal.day = ''; renderCalendar(); }));
   root.querySelectorAll('[data-day]').forEach(b => b.addEventListener('click', () => { cal.day = b.dataset.day; renderCalendar(); }));
