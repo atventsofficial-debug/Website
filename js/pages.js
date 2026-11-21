@@ -397,7 +397,7 @@ export function renderEvent(id) {
         </div>
       </div>
       <dl class="ev-specs">
-        <div><dt>When</dt><dd>${esc(w.date)}<small>${timeKnown(e) ? esc([doorsKnown(e) && `Doors ${clock(e, e.doors)}`, `Start ${w.time}`, e.ends && `ends ${clock(e, e.ends)}`].filter(Boolean).join(' · ')) : 'Times to be announced by the promoter'}</small>${w.local ? `<small>${esc(w.local)}</small>` : ''}</dd></div>
+        <div><dt>When</dt><dd>${esc(w.date)}<small>${timeKnown(e) ? esc([doorsKnown(e) && `Doors ${clock(e, e.doors)}`, `Start ${w.time}`, e.ends && `ends ${clock(e, e.ends)}`].filter(Boolean).join(' · ')) : typeOf(e) === 'cinema' ? 'Now showing: times for each cinema on m.tix' : 'Times to be announced by the promoter'}</small>${w.local ? `<small>${esc(w.local)}</small>` : ''}</dd></div>
         <div><dt>Where</dt><dd>${esc(v.name)}<small>${esc(v.address)}</small></dd></div>
         <div><dt>Promoter</dt><dd>${esc(e.host)}<small>${esc(e.hostNote)}</small></dd></div>
       </dl>

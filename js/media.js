@@ -28,6 +28,13 @@ export const IMAGES = {
   'jkt48-15th': { src: 'assets/events/jkt48-15th.webp', alt: 'JKT48 AYO SENYUMLAH 15th Anniversary Concert poster with the seating plan', credit: 'Poster · JKT48, via Loket.com', pos: '35% 50%' },
   'hunger-games-sunrise': { w: 480, src: 'assets/events/hunger-games-sunrise.webp', alt: 'The Hunger Games: Sunrise on the Reaping Indonesian poster', credit: 'Poster · Lionsgate, via Cinema XXI', pos: '50% 35%' },
   'godzilla-minus-zero': { w: 480, src: 'assets/events/godzilla-minus-zero.webp', alt: 'Godzilla Minus Zero Indonesian poster', credit: 'Poster · Toho, via Cinema XXI', pos: '50% 35%' },
+  'ramayana-directors-cut': { w: 480, src: 'assets/events/ramayana-directors-cut.webp', alt: 'Ramayana: Rise of a Legend poster', credit: 'Poster · via Cinema XXI', pos: '50% 35%' },
+  'gak-ada-matinya': { w: 480, src: 'assets/events/gak-ada-matinya.webp', alt: 'Gak Ada Matinya poster', credit: 'Poster · via Cinema XXI', pos: '50% 35%' },
+  'seporsi-mie-ayam': { w: 480, src: 'assets/events/seporsi-mie-ayam.webp', alt: 'Seporsi Mie Ayam Sebelum Mati poster', credit: 'Poster · via Cinema XXI', pos: '50% 35%' },
+  'blue-lock': { w: 480, src: 'assets/events/blue-lock.webp', alt: 'Blue Lock live-action film poster', credit: 'Poster · via Cinema XXI', pos: '50% 35%' },
+  'laut-bercerita': { w: 480, src: 'assets/events/laut-bercerita.webp', alt: 'Laut Bercerita poster', credit: 'Poster · Pal 8 Pictures via Cinema XXI', pos: '50% 30%' },
+  'hamka-awal-mula': { w: 480, src: 'assets/events/hamka-awal-mula.webp', alt: 'Hamka: Awal Mula Vol. 3 poster', credit: 'Poster · Falcon Pictures via Cinema XXI', pos: '50% 45%' },
+  'people-pleaser': { w: 480, src: 'assets/events/people-pleaser.webp', alt: 'People Pleaser: Si Paling Gak Enakan poster', credit: 'Poster · via Cinema XXI', pos: '50% 35%' },
   'thescript-arena': { src: 'assets/events/thescript-arena-official.webp', alt: 'The Script on stage', credit: 'Photo · via indonesia.travel', pos: '55% 50%' },
 
   // Until a promoter publishes a poster, the event shows a free-licensed photo of the act (or

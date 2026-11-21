@@ -23,8 +23,7 @@ export const SEAT_COUNTS = {
   'istora-nancy': 7867,
   'ice-boynextdoor': 4131,
   'unesa-jkt48': 5161,
-  'xxi-gandaria-s1': 348,
-  'xxi-gandaria-s3': 227,
-  'xxi-gandaria-imax': 380,
-  'xxi-gandaria-premiere': 30,
+  'xxi-reguler': 174,
+  'xxi-imax': 380,
+  'xxi-premiere': 30,
 };

@@ -75,34 +75,26 @@ function studio({ key, label, venueName, sec, secName, cat, catName, price, colo
   };
 }
 
-// Gandaria City XXI, Studio 1 (Reguler 2D): rows P (front) to A (back), no I or O; an
-// aisle four seats in from the left wall and one six seats in from the right. Rows A to D
-// have three more seats on the left.
-function gandariaS1() {
-  const letters = ['P', 'N', 'M', 'L', 'K', 'J', 'H', 'G', 'F', 'E', 'D', 'C', 'B', 'A'];
-  const rows = letters.map((r, line) => [r, line, line < 10 ? [[3, 6], [8, 21], [23, 28]] : [[0, 6], [8, 21], [23, 28]]]);
+// The three classes of a Cinema XXI studio, each on a plan XXI uses (studios differ from one
+// cinema to the next; these are XXI's own maps of one studio of each class, Gandaria City,
+// Jakarta, 21 November 2026).
+//
+// Reguler 2D, as Studios 4 and 5 at Gandaria City: rows M (front) to A (back); an aisle two
+// seats in from the left wall and another four seats in from the right; rows C to A have two
+// more seats on the left. 174 seats.
+function reguler() {
+  const letters = ['M', 'L', 'K', 'J', 'H', 'G', 'F', 'E', 'D', 'C', 'B', 'A'];
+  const rows = letters.map((r, line) => [r, line, line < 9 ? [[2, 3], [5, 12], [14, 17]] : [[0, 3], [5, 12], [14, 17]]]);
   return studio({
-    key: 'xxi-gandaria-s1', label: 'Gandaria City XXI, Studio 1', venueName: 'Gandaria City XXI',
-    sec: 'S1', secName: 'Studio 1', cat: 'reguler', catName: 'Reguler 2D', price: 75000, color: '#56b6ff',
-    rows, num: c => (c >= 23 ? 29 - c : c >= 8 ? 28 - c : 27 - c), occupancy: 0.55,
+    key: 'xxi-reguler', label: 'Cinema XXI, Reguler 2D studio', venueName: 'Cinema XXI',
+    sec: 'R', secName: 'Studio', cat: 'reguler', catName: 'Reguler 2D', price: 75000, color: '#56b6ff',
+    rows, num: c => (c >= 14 ? 18 - c : c >= 5 ? 17 - c : 16 - c), occupancy: 0.5,
   });
 }
 
-// Gandaria City XXI, Studio 3 (Reguler 2D): rows N (front) to A (back); rows A to C have
-// two more seats on the left.
-function gandariaS3() {
-  const letters = ['N', 'M', 'L', 'K', 'J', 'H', 'G', 'F', 'E', 'D', 'C', 'B', 'A'];
-  const rows = letters.map((r, line) => [r, line, line < 10 ? [[2, 3], [5, 15], [17, 20]] : [[0, 3], [5, 15], [17, 20]]]);
-  return studio({
-    key: 'xxi-gandaria-s3', label: 'Gandaria City XXI, Studio 3', venueName: 'Gandaria City XXI',
-    sec: 'S3', secName: 'Studio 3', cat: 'reguler', catName: 'Reguler 2D', price: 75000, color: '#56b6ff',
-    rows, num: c => (c >= 17 ? 21 - c : c >= 5 ? 20 - c : 19 - c), occupancy: 0.45,
-  });
-}
-
-// Gandaria City IMAX, Studio 1 (IMAX 2D): rows N, M and L in front of a cross aisle, then
+// IMAX, as the IMAX studio at Gandaria City: rows N, M and L in front of a cross aisle, then
 // K to A; K to G are the middle block only. Gaps in L and A are on XXI's map too.
-function gandariaImax() {
+function imax() {
   const L = 'IMAX-L', R = 'IMAX-R', CL = 'IMAX-CL', CR = 'IMAX-CR';
   const full = [[0, 3, L], [5, 29], [31, 34, R]];
   const rows = [
@@ -114,28 +106,23 @@ function gandariaImax() {
     ['A', 13, [[0, 3, L], [5, 12, CL], [22, 29, CR], [31, 34, R]]],
   ];
   return studio({
-    key: 'xxi-gandaria-imax', label: 'Gandaria City IMAX', venueName: 'Gandaria City IMAX',
+    key: 'xxi-imax', label: 'Cinema XXI, IMAX studio', venueName: 'Cinema XXI IMAX',
     sec: 'IMAX', secName: 'IMAX', cat: 'imax', catName: 'IMAX 2D', price: 90000, color: '#f5c451',
     rows, num: c => (c >= 31 ? 35 - c : c >= 5 ? 34 - c : 33 - c),
     rowD: 1.05, rise: 0.42, flat: 3, front: 6, screenW: 20, screenH: 10.6, occupancy: 0.7,
   });
 }
 
-// Gandaria City Premiere, Studio 1 (Premiere 2D): five rows, E (front) to A, of three
-// pairs of recliners with wide aisles between them.
-function gandariaPremiere() {
+// The Premiere, as Studios 1 and 2 at Gandaria City: five rows, E (front) to A, of three
+// pairs of recliners with aisles between them.
+function premiere() {
   const rows = ['E', 'D', 'C', 'B', 'A'].map((r, line) => [r, line, [[0, 1], [3, 4], [6, 7]]]);
   return studio({
-    key: 'xxi-gandaria-premiere', label: 'Gandaria City Premiere, Studio 1', venueName: 'Gandaria City Premiere',
-    sec: 'P1', secName: 'The Premiere', cat: 'premiere', catName: 'Premiere 2D', price: 250000, color: '#ff86b4',
+    key: 'xxi-premiere', label: 'Cinema XXI, The Premiere studio', venueName: 'The Premiere',
+    sec: 'P', secName: 'The Premiere', cat: 'premiere', catName: 'Premiere 2D', price: 250000, color: '#ff86b4',
     rows, num: c => [6, 5, 0, 4, 3, 0, 2, 1][c],
     seatW: 0.95, rowD: 1.9, rise: 0.45, flat: 0, front: 5, screenW: 8, occupancy: 0.6,
   });
 }
 
-export const CINEMA_BUILDERS = {
-  'xxi-gandaria-s1': gandariaS1,
-  'xxi-gandaria-s3': gandariaS3,
-  'xxi-gandaria-imax': gandariaImax,
-  'xxi-gandaria-premiere': gandariaPremiere,
-};
+export const CINEMA_BUILDERS = { 'xxi-reguler': reguler, 'xxi-imax': imax, 'xxi-premiere': premiere };
