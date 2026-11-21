@@ -15,7 +15,7 @@ import { signIn, PROVIDERS } from './sso.js';
 import { PAY_GROUPS, PAY_METHODS, payMethod, payDetails, wayName } from './paymethods.js';
 import { loadSnap, embedSnap, hideSnap } from './snap.js';
 import { FAQ_FANS, faqHtml } from './content.js';
-import { $, $$, esc, icon, state, QUALITY, entranceTicket, share, copyText, bindSubscribe, toast, pageToTop } from './ui.js';
+import { $, $$, esc, icon, state, QUALITY, entranceTicket, share, copyText, bindSubscribe, toast, pageToTop, countdownHtml, tickCountdowns } from './ui.js';
 
 const DAY = 864e5;
 const cityCode = e => CITY[placeOf(e).city]?.code || '';
@@ -416,10 +416,16 @@ export function renderEvent(id) {
   $('#ev-bar').innerHTML = `<div class="ev-bar-in">
       <span class="ev-date"><b>${dm.day}</b><small>${dm.mon}</small></span>
       <div class="ev-bar-t"><b>${esc(e.title)}</b><span>${esc(e.subtitle)} · ${esc(v.name)}${timeKnown(e) ? ` · ${esc(w.time)}` : ''}</span></div>
-      <span class="ev-from">${from == null ? `<small>Tickets on</small><b>${esc(sellerOf(e))}</b>` : `<small>From</small><b>${formatRpShort(from)}</b>`}</span>
-      ${live ? buyLink(e, `Tickets on tiket.com ${out}`, 'btn btn-coral') : ''}
+      ${(() => {
+        // The bar counts down to the day of the show; a film says it is showing now.
+        const at = startOf(e);
+        if (typeOf(e) === 'cinema') return live ? `<span class="ev-from"><small>Now showing</small><b>${esc(sellerOf(e))}</b></span>` : '';
+        if (at > Date.now()) return `<div class="ev-count"><small>Starts in</small>${countdownHtml(new Date(at).toISOString())}</div>`;
+        return live ? '<span class="ev-from"><small>Today</small><b>On now</b></span>' : '';
+      })()}
     </div>`;
 
+  tickCountdowns();
   render3dPanel(e, venue);
 
   $('#ev-tickets-note').textContent = `${e.about.find(p => p.startsWith('Prices as announced')) || 'Prices as announced by the promoter.'} Each ticket opens the ${typeOf(e) === 'concert' ? 'concert' : 'event'} on ${sellerOf(e)}.`;

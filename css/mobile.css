@@ -315,11 +315,11 @@
 }
 
 @media (max-width: 760px) {
-  /* Title, chips, a short blurb, two buttons (Unlock stays in the bottom bar), facts as a list. */
+  /* Title, chips, a short blurb, two buttons (stacked; the bottom bar counts down to the show), facts as a list. */
   .ev-hero .ev-blurb { order: 4; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
   .ev-hero .ev-sale { order: 5; }
   .ev-hero .ev-info .row-btns { order: 6; }
-  .ev-hero .ev-info .row-btns .btn-coral[href^="#unlock-"] { display: none; }
+  .ev-hero .ev-info .row-btns { grid-template-columns: 1fr; }
   .ev-hero .ev-dates { order: 5; }
   .ev-hero .ev-specs { order: 7; display: block; border: 1px solid var(--line-2); border-radius: 14px; overflow: hidden; }
   .ev-hero .ev-specs div { display: grid; grid-template-columns: 84px minmax(0, 1fr); border: 0; border-radius: 0; background: transparent; }

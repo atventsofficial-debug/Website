@@ -602,6 +602,12 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
 .ev-bar .ev-date { width: 48px; height: 50px; }
 .ev-bar-t b { display: block; font: 800 17px/1.1 var(--display); font-stretch: 108%; letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ev-bar-t span { display: block; font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ev-count { display: flex; align-items: center; gap: var(--s3); }
+.ev-count > small { font: 700 11px/1.2 var(--display); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.ev-count .countdown span { min-width: 48px; padding: 6px 4px 5px; }
+.ev-count .countdown b { font-size: 18px; }
+@media (min-width: 761px) { .ev-info { max-width: 540px; } .ev-info .row-btns { flex-wrap: nowrap; } .ev-info .row-btns .btn { white-space: nowrap; } }
+@media (max-width: 760px) { .ev-count > small { display: none; } }
 .ev-from small { display: block; font: 700 9px/1 var(--display); font-stretch: 112%; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
 .ev-from b { font: 900 22px/1.1 var(--display); font-stretch: 112%; letter-spacing: -0.03em; white-space: nowrap; }
 
