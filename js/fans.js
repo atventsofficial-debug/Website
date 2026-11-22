@@ -49,7 +49,7 @@ export function resetMates() {
 export const LIVE_EVERY = 8000;
 const MAX_EVERY = 60000, IDLE = 10 * 6e4;
 let live = null;
-const sameFans = (a, b) => ['fans', 'others', 'me'].every(k => JSON.stringify(a?.[k] || null) === JSON.stringify(b?.[k] || null));
+const sameFans = (a, b) => a === b || ['fans', 'others', 'me'].every(k => JSON.stringify(a?.[k] || null) === JSON.stringify(b?.[k] || null));
 const jitter = ms => Math.round(ms * (0.8 + Math.random() * 0.4));
 
 // What the next wait is after one ask: back to normal when it worked, longer when not.

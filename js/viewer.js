@@ -46,14 +46,19 @@ const matesPass = () => {
 };
 // The seat mates' tags over their seats, set again only when they change.
 let tagKey = '';
+const dataIds = new WeakMap();
+let dataSeq = 0;
+const dataId = d => (d ? (dataIds.get(d) || (dataIds.set(d, ++dataSeq), dataSeq)) : 0);
 function paintTags() {
   const sc = state.scene, p = matesPass();
   if (!sc?.scene || !sc.venue) return;
-  const list = p ? mateTags(state.tour ? tourSeat()?.id : p.seats?.[0] || p.seat) : [];
-  const key = `${state.venue?.eventId}|${list.map(f => `${f.seat}:${f.name}:${f.instagram}:${f.mine ? 1 : 0}:${f.locked ? 1 : 0}`).join(',')}`;
+  // A cheap key (the list the Worker sent, by identity, and where the fan sits), so a full
+  // venue's thousands of markers are not listed again on every repaint of the panel.
+  const own = p ? (state.tour ? tourSeat()?.id : p.seats?.[0] || p.seat) : '';
+  const key = `${state.venue?.eventId}|${p?.id || ''}|${own}|${dataId(mates.data)}|${mates.passId}`;
   if (key === tagKey) return;
   tagKey = key;
-  sc.setFans(list);
+  sc.setFans(p ? mateTags(own) : []);
 }
 function paintMates() {
   const p = matesPass();

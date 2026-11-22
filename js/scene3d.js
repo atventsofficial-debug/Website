@@ -665,9 +665,30 @@ export class SeatScene {
       if (i !== undefined) rows.push({ f, s: this.venue.seats[i] });
     }
     if (!rows.length) return;
-    const geo = new THREE.OctahedronGeometry(0.32, 0);
+    const geo = new THREE.OctahedronGeometry(0.3, 0);
     geo.scale(1, 1.7, 1);
     const mat = new THREE.MeshBasicMaterial({ toneMapped: false });
+    // Each marker floats over the fan's head, turning and bobbing (each a little out of step
+    // with its neighbours), and keeps a modest size close to the camera so the rows in front
+    // never hide the stage. The marker under the pointer grows and glows.
+    const U = this.fanU ||= { uTime: { value: 0 }, uHover: { value: -1 } };
+    mat.onBeforeCompile = sh => {
+      Object.assign(sh.uniforms, U);
+      sh.vertexShader = sh.vertexShader
+        .replace('#include <common>', '#include <common>\nuniform float uTime;\nuniform float uHover;\nvarying float vHot;\nvarying float vShade;')
+        .replace('#include <begin_vertex>', `#include <begin_vertex>
+          vHot = 1.0 - step(0.5, abs(float(gl_InstanceID) - uHover));
+          vec3 fc = (modelMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+          float ph = fc.x * 0.73 + fc.z * 0.51;
+          float a = uTime * 1.3 + ph, ca = cos(a), sa = sin(a);
+          transformed.xz = mat2(ca, -sa, sa, ca) * transformed.xz;
+          vShade = 0.72 + 0.28 * clamp(dot(normalize(mat2(ca, -sa, sa, ca) * normal.xz), vec2(0.6, 0.8)), -1.0, 1.0);
+          transformed *= clamp(distance(fc, cameraPosition) * 0.03, 0.3, 1.0) * (1.0 + 0.5 * vHot);
+          transformed.y += sin(uTime * 2.4 + ph) * 0.16;`);
+      sh.fragmentShader = sh.fragmentShader
+        .replace('#include <common>', '#include <common>\nvarying float vHot;\nvarying float vShade;')
+        .replace('#include <opaque_fragment>', '#include <opaque_fragment>\ngl_FragColor.rgb = mix(gl_FragColor.rgb * vShade, vec3(1.0), 0.45 * vHot);');
+    };
     const mesh = new THREE.InstancedMesh(geo, mat, rows.length);
     const m = new THREE.Matrix4(), c = new THREE.Color();
     const GREEN = new THREE.Color('#5fd35a'), ORANGE = new THREE.Color('#c9772f'), MINE = new THREE.Color('#ffffff');
@@ -676,7 +697,8 @@ export class SeatScene {
     this.fanScale = new Float32Array(rows.length);
     const sc = new THREE.Vector3(), q = new THREE.Quaternion(), pos = new THREE.Vector3();
     rows.forEach(({ f, s }, k) => {
-      const y = s.y + (s.standing ? 2.3 : 1.7), b = f.locked ? 0.6 : 1;
+      // Over the head of a fan standing with their arms up.
+      const y = s.y + (s.standing ? STAND_LIFT : 0) + 2.75, b = f.locked ? 0.6 : 1;
       this.fanScale[k] = b;
       mesh.setMatrixAt(k, m.compose(pos.set(s.x, y, s.z), q, sc.setScalar(b)));
       mesh.setColorAt(k, c.copy(f.locked ? ORANGE : f.mine ? MINE : GREEN));
@@ -688,23 +710,41 @@ export class SeatScene {
     mesh.renderOrder = 2;
     this.fanList = rows;
     this.fanMesh = mesh;
-    mesh.userData.k = 1;
     this.scene.add(mesh);
-    if (this.mode === 'seat') this._sizeFans(0.4);
+    U.uHover.value = -1;
+    if (!this._fanTick) {
+      this._fanTick = true;
+      this.onTick(t => { U.uTime.value = t; this._glowAt(t); });
+    }
   }
 
-  // Smaller markers from a seat, so the rows in front do not hide the stage.
-  _sizeFans(k) {
-    const mesh = this.fanMesh;
-    if (!mesh || mesh.userData.k === k) return;
-    const m = new THREE.Matrix4(), sc = new THREE.Vector3(k, k, k), q = new THREE.Quaternion(), p = new THREE.Vector3();
-    for (let i = 0; i < this.fanList.length; i++) {
-      p.fromArray(this.fanPos, i * 3);
-      if (k < 1) p.y -= 0.6;
-      mesh.setMatrixAt(i, m.compose(p, q, sc.setScalar(k * this.fanScale[i])));
+  // The glow behind the marker under the pointer: one soft sprite, following its bob.
+  setFanHover(i) {
+    const U = this.fanU;
+    if (!U || U.uHover.value === i) return;
+    U.uHover.value = i;
+    this.renderer.domElement.style.cursor = i >= 0 ? 'pointer' : '';
+    if (!this.fanGlow) {
+      const cv = document.createElement('canvas');
+      cv.width = cv.height = 64;
+      const g = cv.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+      gr.addColorStop(0, 'rgba(255,255,255,0.9)'); gr.addColorStop(0.35, 'rgba(255,255,255,0.35)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+      this.fanGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, toneMapped: false }));
+      this.fanGlow.renderOrder = 3;
     }
-    mesh.instanceMatrix.needsUpdate = true;
-    mesh.userData.k = k;
+    if (i < 0 || !this.fanList[i]) { this.fanGlow.removeFromParent(); return; }
+    const f = this.fanList[i].f;
+    this.fanGlow.material.color.set(f.locked ? '#ff9a3d' : f.mine ? '#ffffff' : '#7dff73');
+    this.scene.add(this.fanGlow);
+  }
+  _glowAt(t) {
+    const i = this.fanU?.uHover.value, g = this.fanGlow;
+    if (!g?.parent || !(i >= 0) || !this.fanPos) return;
+    const x = this.fanPos[i * 3], y = this.fanPos[i * 3 + 1], z = this.fanPos[i * 3 + 2], b = this.fanScale[i];
+    const near = THREE.MathUtils.clamp(this.camera.position.distanceTo(g.position.set(x, y, z)) * 0.03, 0.3, 1);
+    g.position.y += Math.sin(t * 2.4 + x * 0.73 + z * 0.51) * 0.16 * b;
+    g.scale.setScalar(2.4 * near * b);
   }
 
   // The fan marker under a tap, the same cheap ray test as the seats.
@@ -878,7 +918,9 @@ export class SeatScene {
       requestAnimationFrame(() => {
         this._hoverQueued = false;
         if (!this.scene || drag) return;
-        this.setHover(pick(this._lastMove), this._lastMove);
+        const fi = this.pickFan(ndcOf(this._lastMove));
+        this.setFanHover(fi);
+        this.setHover(fi >= 0 ? -1 : pick(this._lastMove), this._lastMove);
       });
     };
     const onUp = e => {
@@ -893,7 +935,7 @@ export class SeatScene {
       const i = pick(e);
       if (i >= 0) this.cb.onSelect?.(this.venue.seats[i]);
     };
-    const onLeave = () => this.setHover(-1);
+    const onLeave = () => { this.setHover(-1); this.setFanHover(-1); };
     const onWheel = e => {
       if (this.mode !== 'seat') return;
       e.preventDefault();
@@ -1027,7 +1069,6 @@ export class SeatScene {
       },
       done: () => {
         this.mode = 'seat';
-        this._sizeFans(0.4);
         this.settleAt = this.clock.elapsedTime;
         this.look = { yaw: 0, pitch: 0, cy: 0, cp: 0, baseYaw: seatedAng.yaw, basePitch: seatedAng.pitch, fov: SEAT_FOV };
         this.eye = eye;
@@ -1052,7 +1093,6 @@ export class SeatScene {
     this.realColors = false;
     this.refreshColors();
     this.moodTarget = 0;
-    this._sizeFans(1);
     this.mode = 'flying';
     this.cb.onMode?.('leaving');
     const qa = new THREE.Vector3(), qb = new THREE.Vector3();
