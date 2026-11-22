@@ -343,7 +343,7 @@ function stadiumRound() {
 // cross aisle, split down the middle by an aisle; a delay tower stands in the side wedges'
 // aisles. The bowl and upper tiers are the 360 stadium's. Stage numbers (metres, centre
 // (0, 0)) are read by the 3D builder too (venues3d.js roundStage).
-export const BTS_STAGE = { half: 10, lift: 6, arm: { w: 3.6, from: 10, to: 29 }, bHalf: 3.2, towers: [[-40, 0], [40, 0]] };
+export const BTS_STAGE = { half: 10, lift: 6, korean: true, arm: { w: 3.6, from: 10, to: 29 }, bHalf: 3.2, towers: [[-40, 0], [40, 0]] };
 function btsClear(x, z) {
   const { half, arm, bHalf } = BTS_STAGE, gap = 2.2;
   if (Math.abs(x) < half + 2.6 && Math.abs(z) < half + 2.6) return false;

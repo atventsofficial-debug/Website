@@ -2106,6 +2106,93 @@ function floorZones(ctx, venue) {
   ctx.zoneFloors = [...(ctx.zoneFloors || []), ...out];
 }
 
+// A pavilion over the main stage after Gyeonghoeru, the royal banquet hall the ARIRANG stage
+// takes its look from: red-lacquered columns round the towers, a band of dancheong (the
+// painted green and red beams under a Korean roof), and a hipped roof of dark tiles whose
+// eaves sweep up at the corners, with a ridge on top. Built over the truss roof, which still
+// carries the lights and speakers under it.
+function pavilion(ctx, S, R, ROOF) {
+  const { scene } = ctx, H = S.half;
+  const red = new THREE.MeshStandardMaterial({ color: '#8e1b1b', roughness: 0.55 });
+  for (const [sx, sz] of [[1, 1], [-1, 1], [-1, -1], [1, -1]]) {
+    for (const [ax, az] of [[R, H - 3], [H - 3, R]]) {
+      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.7, ROOF - 0.6, 16), red);
+      col.position.set(ax * sx, (ROOF - 0.6) / 2, az * sz);
+      col.castShadow = true;
+      scene.add(col);
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 1.05, 0.6, 16), mats.concrete());
+      base.position.set(ax * sx, 0.3, az * sz);
+      scene.add(base);
+    }
+  }
+  // Dancheong: a frieze round all four sides just under the eaves.
+  const dan = canvasTex(1024, 128, (g, w, h) => {
+    g.fillStyle = '#1f6b52'; g.fillRect(0, 0, w, h);
+    g.fillStyle = '#c23a2b'; g.fillRect(0, h * 0.72, w, h * 0.28);
+    for (let i = 0; i < 16; i++) {
+      const x = (i + 0.5) * w / 16;
+      g.fillStyle = '#f2c14e'; g.beginPath(); g.arc(x, h * 0.38, h * 0.22, 0, Math.PI * 2); g.fill();
+      g.fillStyle = '#2b4c9b'; g.beginPath(); g.arc(x, h * 0.38, h * 0.12, 0, Math.PI * 2); g.fill();
+      g.fillStyle = '#f4f1ea'; g.beginPath(); g.arc(x, h * 0.38, h * 0.05, 0, Math.PI * 2); g.fill();
+    }
+  }, { repeat: [3, 1] });
+  const span = R * 2 + 1.6;
+  for (const [x, z, ry] of [[0, R + 0.8, 0], [0, -R - 0.8, 0], [R + 0.8, 0, Math.PI / 2], [-R - 0.8, 0, Math.PI / 2]]) {
+    const beamM = new THREE.Mesh(new THREE.BoxGeometry(span, 1.4, 0.5), [mats.matteBlack(), mats.matteBlack(), mats.matteBlack(), mats.matteBlack(), new THREE.MeshStandardMaterial({ map: dan, roughness: 0.7 }), new THREE.MeshStandardMaterial({ map: dan, roughness: 0.7 })]);
+    beamM.position.set(x, ROOF + 0.9, z);
+    beamM.rotation.y = ry;
+    scene.add(beamM);
+  }
+  // The eaves: a wide skirt of tiles, flat in the middle of each side and sweeping up to the
+  // corners, the way a Korean roof's line curves.
+  const E = R + 3.5, n = 48;
+  const eave = new THREE.PlaneGeometry(E * 2, E * 2, n, n);
+  eave.rotateX(-Math.PI / 2);
+  const pos = eave.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), z = pos.getZ(i);
+    const m = Math.max(Math.abs(x), Math.abs(z)) / E;
+    const corner = (Math.abs(x) / E) * (Math.abs(z) / E);
+    pos.setY(i, (1 - m) * 2.4 + Math.pow(corner, 3) * 2.8);
+  }
+  eave.computeVertexNormals();
+  const tiles = canvasTex(256, 256, (g, w, h) => {
+    g.fillStyle = '#2d2f33'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 16; i++) { g.fillStyle = i % 2 ? '#3a3c41' : '#25272b'; g.fillRect(i * w / 16, 0, w / 32, h); }
+  }, { repeat: [24, 24] });
+  const roofMat = new THREE.MeshStandardMaterial({ map: tiles, color: '#9aa0a8', roughness: 0.8, side: THREE.DoubleSide });
+  const skirt = new THREE.Mesh(eave, roofMat);
+  skirt.position.y = ROOF + 1.6;
+  skirt.castShadow = true;
+  scene.add(skirt);
+  // The hipped roof above, and its ridge.
+  const hip = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.5, (R - 1) * Math.SQRT2, 3.6, 4, 1), roofMat);
+  hip.rotation.y = Math.PI / 4;
+  hip.position.y = ROOF + 1.6 + 2.4 + 1.8 - 0.3;
+  hip.castShadow = true;
+  scene.add(hip);
+  const ridge = new THREE.Mesh(new THREE.BoxGeometry(R * 0.72 * 2, 0.7, 0.9), new THREE.MeshStandardMaterial({ color: '#1c1d20', roughness: 0.6 }));
+  ridge.position.y = hip.position.y + 2.0;
+  scene.add(ridge);
+  // LED flags on poles round the stage (the ARIRANG segment's flags), lit on the night.
+  const flagMat = new THREE.MeshBasicMaterial({ toneMapped: false, side: THREE.DoubleSide, map: canvasTex(128, 256, (g, w, h) => {
+    const grd = g.createLinearGradient(0, 0, 0, h); grd.addColorStop(0, '#ffffff'); grd.addColorStop(0.5, '#ff4058'); grd.addColorStop(1, '#2b5bd7');
+    g.fillStyle = grd; g.fillRect(0, 0, w, h);
+  }) });
+  ctx.mood(flagMat.color, 'r', 0.35, 1); ctx.mood(flagMat.color, 'g', 0.35, 1); ctx.mood(flagMat.color, 'b', 0.35, 1);
+  for (const [x, z] of [[-H + 2, H + 0.6], [H - 2, H + 0.6], [-H + 2, -H - 0.6], [H - 2, -H - 0.6], [H + 0.6, -H + 2], [H + 0.6, H - 2], [-H - 0.6, -H + 2], [-H - 0.6, H - 2]]) {
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 7, 8), mats.steel());
+    pole.position.set(x, 1.9 + 3.5, z);
+    scene.add(pole);
+    // Facing out from the stage, hung beside its pole.
+    const l = Math.hypot(x, z), ox = x / l, oz = z / l;
+    const flag = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 2.6), flagMat);
+    flag.position.set(x + oz * 0.6, 1.9 + 5.4, z - ox * 0.6);
+    flag.rotation.y = Math.atan2(ox, oz);
+    scene.add(flag);
+  }
+}
+
 // BTS's 360 stage (venue.stage, layouts.js BTS_STAGE): a square main stage with a round lift,
 // four runways out along the diagonals to end stages with steps down, barriers along them,
 // eight truss towers round the main stage holding a square roof of truss, moving heads and
@@ -2136,7 +2223,20 @@ function roundStage(ctx, venue, { screen, beamAt, steel, theme }) {
   deckTop.rotation.x = -Math.PI / 2;
   deckTop.position.y = TOP + 0.015;
   scene.add(deckTop);
-  const lift = add(new THREE.Mesh(new THREE.CylinderGeometry(S.lift, S.lift, 0.3, 64), new THREE.MeshStandardMaterial({ color: '#1b1a24', roughness: 0.25, metalness: 0.3 })));
+  // The lift, painted with a taegeuk where the show's design has one (S.korean): the red and
+  // blue swirl of the Korean flag, which the ARIRANG stage floor takes up.
+  const liftSide = new THREE.MeshStandardMaterial({ color: '#1b1a24', roughness: 0.25, metalness: 0.3 });
+  const liftTop = S.korean ? new THREE.MeshStandardMaterial({ roughness: 0.35, metalness: 0.1, map: canvasTex(1024, 1024, (g, w) => {
+    const c = w / 2, r = w / 2 - 4;
+    g.fillStyle = '#f4f1ea'; g.fillRect(0, 0, w, w);
+    g.fillStyle = '#c60c30'; g.beginPath(); g.arc(c, c, r, Math.PI, 0); g.fill();
+    g.fillStyle = '#003478'; g.beginPath(); g.arc(c, c, r, 0, Math.PI); g.fill();
+    g.fillStyle = '#c60c30'; g.beginPath(); g.arc(c - r / 2, c, r / 2, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#003478'; g.beginPath(); g.arc(c + r / 2, c, r / 2, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = '#f4f1ea'; g.lineWidth = 10; g.beginPath(); g.arc(c, c, r, 0, Math.PI * 2); g.stroke();
+  }) }) : liftSide;
+  const lift = add(new THREE.Mesh(new THREE.CylinderGeometry(S.lift, S.lift, 0.3, 64), [liftSide, liftTop, liftSide]));
+  if (S.korean) lift.rotation.y = -Math.PI / 4;
   lift.position.y = TOP + 0.05;
   const liftRim = new THREE.Mesh(new THREE.TorusGeometry(S.lift, 0.06, 6, 96), tint);
   liftRim.rotation.x = Math.PI / 2;
@@ -2167,10 +2267,29 @@ function roundStage(ctx, venue, { screen, beamAt, steel, theme }) {
     add(new THREE.Mesh(box(B * 2, TOP, B * 2, bx, TOP / 2, bz), deckMat));
     for (const [x, z, r] of [[bx, bz + B, 0], [bx, bz - B, 0], [bx + B, bz, Math.PI / 2], [bx - B, bz, Math.PI / 2]]) edge(B * 2, x, z, r);
     // Logo-free emblem on the end stage: a lit ring.
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(B * 0.62, 0.05, 6, 64), glowMat);
-    ring.rotation.x = Math.PI / 2;
-    ring.position.set(bx, TOP + 0.03, bz);
-    scene.add(ring);
+    if (S.korean) {
+      // The flag's four trigrams, one on each end stage as on the flag's corners: geon (three
+      // whole bars), gon (three broken), gam (broken, whole, broken), ri (whole, broken, whole).
+      const tri = { '-1,-1': [1, 1, 1], '1,1': [0, 0, 0], '1,-1': [0, 1, 0], '-1,1': [1, 0, 1] }[`${sx},${sz}`];
+      const tex = textTexture(512, 512, (g, w) => {
+        g.fillStyle = '#f4f1ea';
+        tri.forEach((whole, k) => {
+          const y = w * (0.3 + k * 0.2) - w * 0.06;
+          if (whole) g.fillRect(w * 0.18, y, w * 0.64, w * 0.12);
+          else { g.fillRect(w * 0.18, y, w * 0.28, w * 0.12); g.fillRect(w * 0.54, y, w * 0.28, w * 0.12); }
+        });
+      });
+      const mark = new THREE.Mesh(new THREE.PlaneGeometry(B * 1.8, B * 1.8), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, toneMapped: false }));
+      mark.rotation.order = 'YXZ';
+      mark.rotation.set(-Math.PI / 2, ry + Math.PI / 4, 0);
+      mark.position.set(bx, TOP + 0.03, bz);
+      scene.add(mark);
+    } else {
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(B * 0.62, 0.05, 6, 64), glowMat);
+      ring.rotation.x = Math.PI / 2;
+      ring.position.set(bx, TOP + 0.03, bz);
+      scene.add(ring);
+    }
     for (let k = 0; k < 3; k++) {
       const h = TOP * (3 - k) / 4, d = B * Math.SQRT2 + 0.5 + k * 0.5;
       const step = add(new THREE.Mesh(new THREE.BoxGeometry(2.6, h, 0.5), deckMat));
@@ -2238,6 +2357,8 @@ function roundStage(ctx, venue, { screen, beamAt, steel, theme }) {
   hang.forEach((m, i) => arrays.setMatrixAt(i, m));
   arrays.castShadow = true;
   scene.add(arrays);
+
+  if (S.korean) pavilion(ctx, S, R, ROOF);
 
   // The screen cube under the roof.
   const cube = new THREE.Group();
