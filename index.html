@@ -819,9 +819,12 @@ html:not(.atv-seen) #nav .logo-img{animation:ai-show 0s 2.57s both}
 
     <div class="pov-hint mono" id="pov-hint" hidden>DRAG TO LOOK · SCROLL TO ZOOM · CLICK ANOTHER SEAT TO MOVE</div>
     <div class="zoom" id="zoom" hidden>
+      <button class="sq" id="show-btn" type="button" aria-expanded="false" aria-controls="show-panel" aria-label="Show mode" title="Show mode"><svg><use href="#i-lightstick"/></svg></button>
       <button class="sq" data-zoom="-8" aria-label="Zoom in"><svg><use href="#i-plus"/></svg></button>
       <button class="sq" data-zoom="8" aria-label="Zoom out"><svg><use href="#i-minus"/></svg></button>
     </div>
+    <section class="show-panel panel" id="show-panel" aria-label="Show mode" hidden></section>
+    <section class="compare panel" id="compare" aria-label="Compare seats" hidden></section>
     <div class="tooltip" id="tooltip" hidden></div>
     <div class="loading" id="loading"><span class="spinner"></span><span class="mono" id="loading-text">Preparing venue</span></div>
   </div>

@@ -15,6 +15,8 @@ import { whenOf, isOver } from './when.js';
 import { buyLink, activePass, openPass, passes, canView, plusPass, plusOnSale, upgradable, toggleSeat, STATUS, refresh } from './passes.js';
 import { placeSeat, cleanNumbering, isDefault, numberingOf, numberingSource } from './seatflip.js';
 import { $, esc, icon, state, QUALITY, spotStats, share, toast } from './ui.js';
+import { addCompare, bindCompare, bindShow, compareIds, paintCompare, setCompare, showModeFor } from './seatplus.js';
+import { pairOf } from './compare.js';
 import { loadMates, matesBlock, bindMates, mateTags, resetMates, mates, startMatesLive, fanCardHtml, fillMatesList } from './fans.js';
 
 const FOCUS_NAME = { concert: 'stage', cinema: 'screen', combat: 'octagon', stadium: 'centre spot' };
@@ -38,6 +40,7 @@ const tourSeat = () => placeSeat(state.venue, ticketSeat(), numberingOf(state.ve
 const markedIds = () => [
   ...(state.tour ? (state.tour.step >= 2 && tourSeat() ? [tourSeat().id] : []) : pass()?.status === 'confirmed' ? pass()?.seats || [] : []),
   ...(state.shared ? [state.shared] : []),
+  ...compareIds(),
 ];
 // The paid pass whose seat mates the view shows: the tour's, or the concert's open pass.
 const matesPass = () => {
@@ -193,7 +196,11 @@ export async function openViewer(id, { cat, seat, back, tour } = {}) {
   // A tour opens only on a pass the Worker has just said is paid (passes.js).
   if (tour && passes.get(tour)?.status === 'verifying') await refresh(passes.get(tour));
   $('#seats-back').href = tour ? '#passes' : back || (venue.meta.demo ? '#partner-demo' : `#event-${id}`);
-  state.shared = !tour && venue.seatById.has(seat) ? seat : null;
+  // One seat a friend sent, or two to compare (seat~seat).
+  const pair = tour ? [] : pairOf(seat).filter(id => venue.seatById.has(id));
+  state.shared = pair.length === 1 ? pair[0] : null;
+  if (state.venue?.eventId !== id) state.compare = [];
+  if (pair.length === 2) setCompare(pair);
   const p = tour ? passes.get(tour) : null;
   state.tour = p && p.status === 'confirmed' && p.eventId === id && venue.seatById.has(p.seat) ? { id: p.id, step: 1 } : null;
   if (state.tour) cat = null;
@@ -204,6 +211,7 @@ export async function openViewer(id, { cat, seat, back, tour } = {}) {
     state.scene.setFilter(state.filter);
     paintViewer();
     showShared();
+    paintCompare();
     return;
   }
   const loading = $('#loading');
@@ -248,11 +256,14 @@ export async function openViewer(id, { cat, seat, back, tour } = {}) {
   loading.classList.add('gone');
   if (state.tour) startTour();
   showShared();
+  paintCompare();
 }
 
 // Drop the scene when leaving the viewer: it is heavy.
 export function closeViewer() {
   state.tour = null;
+  state.compare = [];
+  paintCompare();
   document.body.classList.remove('in-tour');
   resetMates();
   closeFanCard();
@@ -376,6 +387,7 @@ function setMode(mode, seat) {
   $('#seatcard').hidden = !!state.tour || !(mode === 'turning' || mode === 'seat' || (mode === 'overview' && state.peek));
   $('#pov-hint').hidden = mode !== 'seat';
   $('#zoom').hidden = mode !== 'seat';
+  showModeFor(mode);
 }
 
 // A paid seat pass of this concert, on its way to Plus: every seat, for the difference.
@@ -434,13 +446,15 @@ function fillSeatCard(seat) {
       ? `<a class="btn btn-coral" href="#tour-${esc(p.id)}">Open my seat view ${icon('i-arrow')}</a>${up ? `<a class="btn btn-line" href="#upgrade-${esc(up.id)}">Open every seat · ${formatFee(UPGRADE_FEE)}</a>` : ''}`
       : p?.status === 'checking' ? `<a class="btn btn-line" href="#passes">${icon('i-clock')}Waiting for payment</a>`
         : `<a class="btn btn-coral" href="#unlock-${e.id}">Unlock seat view · ${formatFee()} ${icon('i-arrow')}</a>${buyLink(e, `Tickets ${out}`, 'btn btn-line')}`;
+    $('#sc-actions').insertAdjacentHTML('beforeend', `<button class="btn btn-line" type="button" data-act="compare">${icon('i-compare')}${compareIds().length === 1 && !compareIds().includes(seat.id) ? 'Compare with A' : 'Compare'}</button>`);
     if (p?.status === 'confirmed') $('#sc-dist').textContent = up ? 'Your pass opens your own seat. Upgrade to 3D Pass Plus to sit here too.' : 'Your pass is open. The tour takes you to your seat.';
     return;
   }
   $('#sc-actions').innerHTML = `
     <button class="btn btn-line" type="button" data-act="back">${icon('i-back')}Back to the map</button>
     ${p ? `<button class="btn ${mine ? 'btn-line' : 'btn-coral'}" type="button" data-act="mine" aria-pressed="${mine}">${icon(mine ? 'i-minus' : 'i-check', 'lead')}${mine ? 'Not my seat' : 'This is my seat'}</button>` : ''}
-    <button class="btn btn-line" type="button" data-act="share">${icon('i-share')}Share</button>`;
+    <button class="btn btn-line" type="button" data-act="share">${icon('i-share')}Share</button>
+    <button class="btn btn-line" type="button" data-act="compare">${icon('i-compare')}${compareIds().length === 1 && !compareIds().includes(seat.id) ? 'Compare with A' : 'Compare'}</button>`;
 }
 
 function showTooltip(seat, ev) {
@@ -507,6 +521,8 @@ export function bindViewer() {
     if (act === 'back') state.scene?.backToOverview();
   });
   bindMates($('#app-side'), { pass: matesPass, repaint: paintViewer });
+  bindCompare({ repaint: () => { state.scene?.setMine([...markedIds(), ...(state.peek ? [state.peek.id] : [])]); if (state.viewing || state.peek) fillSeatCard(state.viewing || state.peek); } });
+  bindShow();
   $('#fan-card').addEventListener('click', e => {
     const act = e.target.closest('[data-fancard]')?.dataset.fancard;
     // Closing a lit-up fan's card ends looking at them: colours and panels come back.
@@ -533,8 +549,9 @@ export function bindViewer() {
     if (s) state.scene?.flyToSeat(s);
   });
   $('#sc-actions').addEventListener('click', e => {
-    const act = e.target.closest('[data-act]')?.dataset.act, s = state.viewing;
+    const act = e.target.closest('[data-act]')?.dataset.act, s = state.viewing || state.peek;
     if (act === 'back') state.scene?.backToOverview();
+    if (act === 'compare' && s) { addCompare(s, () => { state.scene?.setMine([...markedIds(), ...(state.peek ? [state.peek.id] : [])]); fillSeatCard(s); }); return; }
     if (!s) return;
     if (act === 'mine' && pass()) {
       toggleSeat(pass(), s.id);   // saves the pass: the 'passes' event paints the panels again

@@ -226,6 +226,9 @@ attribute vec4 aAnim;   // action, phase, tempo, energy
 attribute vec4 aCol;    // shirt, skin, hair, trousers: each an sRGB colour as one 24-bit number
 attribute vec4 aLook;   // hair style + 8 long sleeves + 16 standing + 32 female; light stick hue; lean; heavier
 uniform float uTime; uniform float uLive; uniform float uBpm;
+// Show mode (viewer.js): the light sticks' colour and how much of it, the effect (0 on the
+// beat, 1 steady, 2 a wave round the stage), the share of the crowd holding one up, the stage.
+uniform vec3 uStickCol; uniform float uStickMix; uniform float uStickFx; uniform float uStickAll; uniform vec2 uStage;
 uniform vec3 uPick; uniform float uPickOn; varying float vPicked;
 varying vec3 vCrowdCol; varying vec3 vGlowCol; varying float vRimK; varying float vAO; varying float vSpec;
 mat3 rotX(float a) { float c = cos(a), s = sin(a); return mat3(1., 0., 0., 0., c, s, 0., -s, c); }
@@ -274,6 +277,8 @@ vec3 boneTurn(float b, vec3 n) {
 // Works out the pose and turns the normal; begin_vertex then moves the position the same way.
 const POSE = /* glsl */`
 float act = aAnim.x, ph = aAnim.y, en = aAnim.w;
+// A light-stick ocean: that share of the crowd (never the act on stage) holds one up.
+if (act < 5.5 && act != 2. && fract(ph * 7.31 + 0.17) < uStickAll) act = 2.;
 float flags = aLook.x, style = mod(flags, 8.), sleeves = mod(floor(flags / 8.), 2.);
 float stand = mod(floor(flags / 16.), 2.), fem = floor(flags / 32.), heavy = aLook.w;
 float mat = aTag.x, prop = aTag.y;
@@ -378,7 +383,13 @@ else if (mat == 5.) { vCrowdCol = vec3(0.02); vRimK = 0.; vAO = 1.;
   float flick = 0.75 + 0.25 * sin(uTime * 2.3 + ph * 11.) * sin(uTime * 0.7 + ph * 5.);
   vGlowCol = vec3(0.72, 0.8, 1.0) * 1.25 * flick * on; }
 else if (mat == 6.) { vCrowdCol = vec3(0.1); vRimK = 0.; vAO = 1.;
-  vGlowCol = mix(vec3(1.), hue(aLook.y), 0.7) * (1.5 + 0.7 * max(0., sin(beat * 2. * pi))) * on; }
+  float pulse = 1.5 + 0.7 * max(0., sin(beat * 2. * pi));
+  #ifdef USE_INSTANCING
+  if (uStickFx > 1.5) { vec3 wp = (modelMatrix * instanceMatrix * vec4(0., 0., 0., 1.)).xyz;
+    pulse = 0.35 + 2.1 * pow(0.5 + 0.5 * sin(atan(wp.z - uStage.y, wp.x - uStage.x) * 2. - uTime * 2.4), 3.); }
+  #endif
+  if (uStickFx > 0.5 && uStickFx < 1.5) pulse = 1.85;
+  vGlowCol = mix(mix(vec3(1.), hue(aLook.y), 0.7), uStickCol * 1.15, uStickMix) * pulse * on; }
 else vCrowdCol = vec3(0.035);
 // Performers are lit by the stage's own lights: no stand-in rim light from the stage, and
 // colours scaled for the wash, which on the deck is many times what reaches the floor.
@@ -406,6 +417,7 @@ transformed *= 1. + 0.3 * vPicked;
 export function crowdMaterial(share = null) {
   const uniforms = share ? { ...share.userData.crowd, uPick: { value: new THREE.Vector3() }, uPickOn: { value: 0 } } : {
     uTime: { value: 0 }, uLive: { value: 0 }, uBpm: { value: 118 },
+    uStickCol: { value: new THREE.Color('#ffffff') }, uStickMix: { value: 0 }, uStickFx: { value: 0 }, uStickAll: { value: 0 }, uStage: { value: new THREE.Vector2() },
     uRimDir: { value: new THREE.Vector3(0, 0, -1) }, uRimCol: { value: new THREE.Color('#ffb98a') },
     uPick: { value: new THREE.Vector3() }, uPickOn: { value: 0 },
   };
@@ -434,7 +446,7 @@ export function crowdMaterial(share = null) {
           totalEmissiveRadiance += vec3(0.25, 1.0, 0.3) * vPicked * (1.4 + 0.5 * sin(uTime * 4.0) + fr * 2.5);
         }`);
   };
-  mat.customProgramCacheKey = () => 'atv-crowd-4';
+  mat.customProgramCacheKey = () => 'atv-crowd-5';
   return mat;
 }
 

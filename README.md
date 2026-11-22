@@ -46,6 +46,12 @@ A second pass beside the seat view (`PLUS_FEE` in `js/order.js`, Rp49.000): ever
 - Team passes are Plus passes.
 - The unlock form also carries a note that the 3D is an illustration built from the promoter's plan, and that changes on the day are not ours to answer for; the consent box says so too.
 
+### Compare seats and show mode
+
+`js/compare.js` measures a seat from the venue's own geometry: metres from the eye to the stage, degrees off the venue's centre line (left out for a stage in the round), eye height and the category's price, and a view score out of 100. `compareSeats` says which of two seats sees more, which is the better value, and what each wins on. Any seat card has Compare; the tray (`js/seatplus.js`) holds two seats and anyone can read it, and a link carries the pair (`#seats-<event>@<seat>~<seat>`). Sitting in either from the tray takes Plus (or a demo venue).
+
+Show mode is the button over a seat view: the light sticks round the seat in a colour the fan picks (or the crowd's own), on the beat, steady or in a wave round the stage, a light-stick ocean, and the house lights up or down. The choice is kept in the browser (`atv-show`). The crowd shader reads it from `uStickCol`, `uStickMix`, `uStickFx`, `uStickAll` and `uStage` (`SeatScene.setShow`). It comes with Plus and is open on the demo venues; a seat pass sees the crowd's own sticks and the Plus offer.
+
 ## Seat mates
 
 Fans with a paid 3D pass for the same concert can find each other before the show. In the 3D view and the seat tour, a **Seat mates** block shows:
