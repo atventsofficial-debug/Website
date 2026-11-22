@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The site is one page; its views (#unlock, #partners, ...) are parts of it, which search
+     engines do not list apart, so the page itself is the one address here. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://atvents.com/</loc>
+    <changefreq>daily</changefreq>
+  </url>
+</urlset>

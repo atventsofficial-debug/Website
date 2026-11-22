@@ -1,0 +1,9 @@
+# atvents.com: everything a visitor can open may be crawled. /api/ answers the page's own
+# requests and /auth is the sign-in return page, so they stay out. The staging Worker sends
+# noindex on every answer instead (worker/index.mjs).
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /auth
+
+Sitemap: https://atvents.com/sitemap.xml

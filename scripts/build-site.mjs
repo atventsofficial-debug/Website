@@ -29,7 +29,8 @@ writeSeatCounts(root);
 fs.rmSync(out, { recursive: true, force: true });
 fs.mkdirSync(out);
 fs.cpSync(path.join(root, 'assets'), path.join(out, 'assets'), { recursive: true });
-for (const name of ['favicon.ico', 'site.webmanifest']) fs.cpSync(path.join(root, name), path.join(out, name));
+// robots.txt and sitemap.xml: for Google Search Console and other crawlers.
+for (const name of ['favicon.ico', 'site.webmanifest', 'robots.txt', 'sitemap.xml']) fs.cpSync(path.join(root, name), path.join(out, name));
 
 let html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 // /auth: where Google and Microsoft send the fan back after signing in (js/sso.js).
