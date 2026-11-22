@@ -238,6 +238,7 @@ function setMode(mode, seat) {
     if (mode === 'seat') { state.tour.step = 3; state.tour.picking = false; paintTour(); }
     if (mode === 'overview' && state.tour.step === 3) {
       state.tour.step = 2;
+      state.tour.framed = true;
       state.scene?.setCrowd(false);
       if (state.tour.picking) frameBlock();
       paintTour();
@@ -358,7 +359,9 @@ export function bindViewer() {
     if (act === 'cat' || act === 'seat') state.tour.numOpen = false;
     if (act === 'cat') tourCat(tourPass()?.cat);
     if (act === 'seat') { const s = tourSeat(); if (s) tourPick(s); }
-    if (act === 'again') startTour({ whole: true });
+    if (act === 'again') startTour();
+    if (act === 'framecat') showCat();
+    if (act === 'next') tourNext();
     if (act === 'capture') import('./capture.js').then(m => m.startCapture(state.scene, { title: state.venue?.meta?.title, seat: seatText(ticketSeat()) })).catch(() => toast('The camera could not start. Please try again.'));
     if (act === 'numopen' || act === 'numclose') setNumOpen(act === 'numopen');
     if (act === 'mini') { state.tour.mini = !state.tour.mini; paintTour(); $('#app-side [data-tour="mini"]')?.focus(); }
@@ -429,20 +432,21 @@ export function bindViewer() {
 const STEPS = ['Your category', 'Your seat'];
 
 // The tour has two steps: the fan's category (step 2 here), then their seat (step 3). It opens
-// on the category; `whole` shows the whole venue from above, the category still marked.
-function startTour({ whole = false } = {}) {
+// on the whole venue from above, the category marked; the first button then flies to the
+// category (`framed`), and only then becomes Sit in my seat.
+function startTour() {
   const sc = state.scene, p = tourPass();
   if (!sc || !p) return;
   state.tour.step = 2;
   state.tour.numOpen = false;
   state.tour.picking = false;
+  state.tour.framed = false;
   state.filter = p.cat;
   sc.setFilter(p.cat);
   sc.setMine(markedIds());
   sc.setCrowd(false);   // empty stands, so the category's colour and the coral seat read clearly
-  if (sc.mode === 'seat') sc.backToOverview();
-  else if (whole) sc.resetView();
-  else sc.frameCategory(p.cat, { seat: tourSeat() });
+  if (sc.mode === 'seat') { state.tour.framed = true; sc.backToOverview(); }   // back over the category
+  else sc.resetView();
   paintViewer();
 }
 
@@ -497,12 +501,29 @@ function setNumbering(key, value) {
   paintViewer();
 }
 
-// One step back: from the seat to the category, or from tapping a seat to the category.
+// Fly to the fan's category; the first button becomes Sit in my seat.
+function showCat() {
+  const p = tourPass();
+  if (!p || !state.scene || state.tour.step !== 2) return;
+  state.tour.framed = true;
+  state.scene.frameCategory(p.cat, { seat: tourSeat() });
+  paintTour();
+}
+// One step back: from the seat to the category, from tapping a seat to the category, from
+// the category to the whole venue.
 function tourBack() {
   const t = state.tour;
   if (!t) return;
   if (t.step === 3) state.scene?.backToOverview();   // setMode puts the tour on step 2
   else if (t.step === 2 && t.picking) { t.picking = false; paintTour(); }
+  else if (t.step === 2 && t.framed) startTour();
+}
+// One step on: the whole venue to the category, the category to the seat.
+function tourNext() {
+  const t = state.tour;
+  if (!t || t.step !== 2 || t.picking) return;
+  if (!t.framed) showCat();
+  else { const s = tourSeat(); if (s) tourPick(s); }
 }
 
 // The sheet with the numbering choices, over the panel. Focus goes into it, and back to the
@@ -595,11 +616,13 @@ function paintTour() {
   }
   // A slim head in place of a stepper: back one step on the left, fold the panel away on the
   // right. Folded, the panel is only this head, so the venue fills the screen.
-  const mini = !!state.tour.mini, canBack = step > 2 || !!state.tour.picking;
+  const mini = !!state.tour.mini, t = state.tour;
+  const canBack = step > 2 || !!t.picking || (step === 2 && !!t.framed), canNext = step === 2 && !t.picking;
   const where = step === 1 ? v.place.name : step === 2 && state.tour.picking ? 'Tap your seat' : step === 2 ? cat.name : 'Your view';
   const bar = `<div class="tour-head">
-      ${canBack ? `<button class="th-btn" type="button" data-tour="prev" aria-label="Back to the step before" title="Back to the step before">${icon('i-back')}</button>` : ''}
-      <span class="th-step">${mini ? `<b>${esc(where)}</b>` : `${step - 1}/2 · ${STEPS[step - 2]}`}</span>
+      <button class="th-btn" type="button" data-tour="prev" aria-label="Back to the step before" title="Back to the step before"${canBack ? '' : ' disabled'}>${icon('i-back')}</button>
+      <button class="th-btn" type="button" data-tour="next" aria-label="Next step" title="Next step"${canNext ? '' : ' disabled'}>${icon('i-arrow')}</button>
+      <span class="th-step">${mini ? `<b>${esc(where)}</b>` : ''}</span>
       <button class="th-btn th-min" type="button" data-tour="mini" aria-expanded="${!mini}" aria-label="${mini ? 'Show the panel' : 'Minimise the panel'}" title="${mini ? 'Show the panel' : 'Minimise the panel'}">${icon('i-down')}</button>
     </div>`;
   if (mini) {
@@ -620,7 +643,9 @@ function paintTour() {
       <div class="row-btns"><button class="btn btn-line btn-sm" type="button" data-tour="pickcancel">Cancel</button></div>`
     : step === 2 ? `
       <p>Your seat is marked in coral: <b>${esc(seatText(s))}</b>. Tap it to sit down.</p>
-      <div class="row-btns"><button class="btn btn-coral btn-sm" type="button" data-tour="seat">Sit in my seat ${icon('i-arrow')}</button><button class="btn btn-line btn-sm" type="button" data-tour="again">${icon('i-back')}Whole venue</button></div>
+      <div class="row-btns">${t.framed
+        ? `<button class="btn btn-coral btn-sm" type="button" data-tour="seat">Sit in my seat ${icon('i-seat')}</button>`
+        : `<button class="btn btn-coral btn-sm" type="button" data-tour="framecat">Show my category ${icon('i-pin')}</button>`}<button class="btn btn-line btn-sm" type="button" data-tour="again">${icon('i-venue')}Whole venue</button></div>
       ${numberingControls(p, s)}`
       : `
       <h2>Your view</h2>

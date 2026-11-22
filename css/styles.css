@@ -1337,7 +1337,8 @@ input, select, textarea { border-radius: 0; }
 .app-side .th-step b { font-size: 14px; font-weight: 700; color: var(--text); }
 .th-btn { flex: none; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border-radius: 50%; border: 1px solid var(--line-2); background: transparent; color: var(--text); cursor: pointer; transition: border-color .15s, background .15s; }
 .th-btn svg { width: 15px; height: 15px; }
-.th-btn:hover { border-color: rgba(255, 255, 255, 0.45); background: rgba(255, 255, 255, 0.06); }
+.th-btn:disabled { opacity: .3; cursor: default; }
+.th-btn:not(:disabled):hover { border-color: rgba(255, 255, 255, 0.45); background: rgba(255, 255, 255, 0.06); }
 .th-btn:focus-visible { outline: 2px solid var(--coral); outline-offset: 2px; }
 .th-min svg { transition: transform .2s; }
 .app-side.is-mini { padding-top: 10px; padding-bottom: 10px; }

@@ -1,6 +1,10 @@
 // Indonesian lines for js/i18n.js, keyed by the English text as it shows on the page.
 // Generated from the translation sheet; names, venues and film titles stay as they are.
 export const EXACT = {
+"Sit in my seat": "Duduk di kursiku",
+"Whole venue": "Seluruh venue",
+"Show my category": "Lihat kategoriku",
+"Next step": "Langkah berikutnya",
 "Back to the step before": "Kembali ke langkah sebelumnya",
 "Minimise the panel": "Kecilkan panel",
 "Show the panel": "Tampilkan panel",
