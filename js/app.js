@@ -61,6 +61,8 @@ async function boot() {
     }
   } catch { /* static hosting: demo mode, everything stays in this browser */ }
   state.store ||= new LocalStore();
+  // DEMO ONLY (this branch): the whole venue booked out, js/demo-full.js.
+  if (window.ATV_DEMO) (await import('./demo-full.js')).startDemo();
   $$('[data-brand]').forEach(el => { el.textContent = state.cfg.brand; });
   $$('[data-fee]').forEach(el => { el.textContent = formatFee(); });
   $$('[data-contact]').forEach(el => { const v = state.cfg.contact[el.dataset.contact]; el.textContent = v || ''; const line = el.closest('.contact-line'); if (line) line.hidden = !v; });

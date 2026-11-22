@@ -15,7 +15,7 @@ import { whenOf } from './when.js';
 import { buyLink, activePass, openPass, passes, canView, toggleSeat, STATUS, refresh } from './passes.js';
 import { placeSeat, cleanNumbering, isDefault, numberingOf, numberingSource } from './seatflip.js';
 import { $, esc, icon, state, QUALITY, spotStats, share, toast } from './ui.js';
-import { loadMates, matesBlock, bindMates, mateTags, resetMates, mates, startMatesLive, fanCardHtml } from './fans.js';
+import { loadMates, matesBlock, bindMates, mateTags, resetMates, mates, startMatesLive, fanCardHtml, openFanList, closeFanList } from './fans.js';
 
 const FOCUS_NAME = { concert: 'stage', cinema: 'screen', combat: 'octagon', stadium: 'centre spot' };
 const out = icon('i-out');
@@ -67,6 +67,21 @@ function paintMates() {
 }
 
 // A tap on a seat mate's tag (or their name in the list): their card, not Instagram yet.
+// The whole list of the category's fans (fans.js), each row opening the same card as a tag.
+function openAllFans() {
+  const v = state.venue, p = matesPass(), d = mates.data;
+  if (!v || !p || !d) return;
+  const mine = seatOf(state.tour ? tourSeat()?.id : p.seat);
+  openFanList({
+    fans: d.fans.filter(f => !f.mine),
+    cat: v.catById[p.cat]?.name || '',
+    myBlock: mine?.secName || '',
+    blockOf: id => seatOf(id)?.secName,
+    // The card opens over the page; the list waits behind it and comes back on close.
+    onOpen: f => { const l = $('#fan-list'); if (l) l.hidden = true; openFanCard(f); },
+  });
+}
+
 function openFanCard(f) {
   const v = state.venue, s = seatOf(f.seat), box = $('#fan-card');
   if (!v || !box) return;
@@ -77,6 +92,8 @@ function openFanCard(f) {
 function closeFanCard() {
   const box = $('#fan-card');
   if (box) { box.hidden = true; box.innerHTML = ''; }
+  const list = $('#fan-list');
+  if (list?.hidden) list.hidden = false;
 }
 const seatText = s => (s.standing ? `${s.secName}, standing` : `${s.secName} · Row ${s.row} · Seat ${s.num}`);
 const priceText = c => (c.price == null ? c.note || 'On tiket.com' : formatRpShort(c.price));
@@ -149,6 +166,7 @@ export function closeViewer() {
   state.tour = null;
   document.body.classList.remove('in-tour');
   resetMates();
+  closeFanList();
   closeFanCard();
   import('./capture.js').then(m => m.stopCapture());
   tagKey = '';
@@ -375,6 +393,7 @@ export function bindViewer() {
   });
   bindMates($('#app-side'), { pass: matesPass, repaint: paintViewer });
   $('#app-side').addEventListener('click', e => {
+    if (e.target.closest('[data-mates-all]')) { openAllFans(); return; }
     const seat = e.target.closest('[data-fan-open]')?.dataset.fanOpen;
     const f = seat && (mates.data?.fans || []).find(x => x.seat === seat);
     if (f) openFanCard(f);
@@ -385,7 +404,7 @@ export function bindViewer() {
     if (act === 'edit') { closeFanCard(); $('#app-side [data-mates="edit"]')?.click(); }
     if (e.target.closest('a[href^="#unlock-"]')) closeFanCard();
   });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeFanCard(); if (state.tour?.numOpen) setNumOpen(false); } });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { if ($('#fan-card').hidden) closeFanList(); closeFanCard(); if (state.tour?.numOpen) setNumOpen(false); } });
   $('#sc-close').addEventListener('click', closePeek);
   $('#zoom').addEventListener('click', e => {
     const d = e.target.closest('[data-zoom]')?.dataset.zoom;

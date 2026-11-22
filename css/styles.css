@@ -2374,7 +2374,7 @@ body { font-family: var(--font); font-feature-settings: "cv11", "ss01"; }
 .mates-list small { color: var(--dim); font-size: 11px; white-space: nowrap; }
 @media (max-width: 960px) {
   .mates { gap: 8px; padding-top: var(--s2); }
-  .mates-list { display: none; }
+  .mates-list li { padding: 6px 10px; }
 }
 
 /* WhatsApp: the Atvents community (and a concert's fanbase group), for paid passes. */
@@ -2707,3 +2707,41 @@ button.cal-cell:hover .cal-bg .cover-thumb { transform: scale(1.05); }
   .how-ticket h3 { margin-top: 8px; font-size: 18px; }
   .ht-stub b { font-size: 28px; }
 }
+
+/* Every fan of the category who shows their Instagram (js/fans.js openFanList): a sheet over
+   the page with a search, "my block", and rows drawn as it scrolls. A sheet from the bottom on
+   a phone, a card in the middle on a wide screen. */
+.mates-all { width: 100%; justify-content: center; }
+.fan-list { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: 16px; background: rgba(8, 7, 7, 0.55); }
+.fan-list[hidden] { display: none; }
+.fan-list-in { position: relative; display: flex; flex-direction: column; gap: 10px; width: min(420px, 100%); max-height: min(640px, calc(100dvh - 32px)); padding: 18px 18px 0; overflow-y: auto; overscroll-behavior: contain; border: 1px solid var(--line); border-radius: 20px; background: var(--panel, #151211); color: var(--text); box-shadow: 0 30px 70px -20px rgba(0, 0, 0, 0.7); animation: fc-in .16s ease-out; }
+.fan-list-head { position: sticky; top: -18px; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: -18px -18px 0; padding: 16px 18px 6px; background: var(--panel, #151211); }
+.fan-list-head b { font: 700 16px/1.25 var(--font); letter-spacing: -0.01em; }
+.fan-list-head .fan-card-x { position: static; flex: none; }
+.fan-list-search { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255, 255, 255, 0.04); color: var(--muted); }
+.fan-list-search:focus-within { border-color: var(--coral); }
+.fan-list-search svg { flex: none; width: 16px; height: 16px; }
+.fan-list-search input { flex: 1; min-width: 0; height: 100%; padding: 0; border: 0; background: none; color: var(--text); font: 500 16px var(--font); outline: none; }
+.fan-list-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 12px; background: rgba(255, 255, 255, 0.04); }
+.fan-list-tabs button { min-height: 36px; padding: 0 10px; border: 0; border-radius: 9px; background: none; color: var(--muted); font: 600 13px var(--font); cursor: pointer; }
+.fan-list-tabs button[aria-pressed="true"] { background: rgba(255, 255, 255, 0.1); color: var(--text); }
+.fan-list-count { margin: 2px 0 0; font-size: 12px; color: var(--muted); }
+.fan-list-ul { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.fan-list-ul:empty { display: none; }
+.fan-list-ul li + li { border-top: 1px solid var(--line); }
+.fan-list-ul button { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; align-items: center; gap: 10px; width: 100%; min-height: 52px; padding: 8px 12px; border: 0; background: none; color: var(--text); text-align: left; font: inherit; cursor: pointer; }
+.fan-list-ul button:hover { background: rgba(255, 255, 255, 0.04); }
+.fan-list-ul .mates-who b { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fan-list-ul small { color: var(--dim, #6b625d); font-size: 11px; white-space: nowrap; }
+.fan-list-end { display: block; height: 18px; flex: none; }
+@media (max-width: 760px) {
+  .fan-list { place-items: end stretch; padding: 0; }
+  .fan-list-in { width: 100%; max-height: 86dvh; border-radius: 20px 20px 0 0; border-width: 1px 0 0; padding-bottom: env(safe-area-inset-bottom); }
+}
+
+/* DEMO ONLY (js/demo-full.js): the switch for which category's pass to sit in. */
+.demo-bar { position: fixed; z-index: 90; top: calc(70px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 5px 6px 5px 10px; border-radius: 999px; background: #ffd84a; color: #111; font: 600 12px/1 var(--font); box-shadow: 0 8px 24px -8px rgba(0, 0, 0, .6); white-space: nowrap; }
+.demo-bar b { font-weight: 800; letter-spacing: .06em; }
+.demo-bar select { height: 26px; padding: 0 6px; border: 0; border-radius: 999px; background: #111; color: #fff; font: 600 12px var(--font); }
+.demo-bar .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+body:has(#fan-list:not([hidden])) .demo-bar, body:has(#fan-card:not([hidden])) .demo-bar { display: none; }

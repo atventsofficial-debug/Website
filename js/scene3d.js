@@ -647,34 +647,82 @@ export class SeatScene {
     }
   }
 
-  // Seat mates (js/fans.js): a tag over each seat whose fan shows their Instagram, the
-  // fan's own one marked. `list`: { seat, name, instagram, mine } with seats in this venue.
-  // A tap on a tag is the page's (onFan), so the tag carries no link of its own.
+  // Seat mates (js/fans.js): a floating marker over each seat whose fan shows their
+  // Instagram, green for the fan's category, orange for fans in other categories, bright for
+  // the fan's own seat. Drawn as one instanced mesh, not one page element per fan, so a sold
+  // out venue (tens of thousands of fans) stays light on a phone. A tap is found by pickFan
+  // and handed to the page (onFan).
   setFans(list = []) {
     this.fanTags?.forEach(o => { o.element.remove(); o.removeFromParent(); });
     this.fanTags = [];
-    if (!this.scene || !this.venue) return;
-    const byId = this.venue.seatById;
+    if (this.fanMesh) { this.fanMesh.removeFromParent(); this.fanMesh.geometry.dispose(); this.fanMesh.material.dispose(); this.fanMesh = null; }
+    this.fanList = [];
+    this.fanPos = null;
+    if (!this.scene || !this.venue || !list.length) return;
+    const byId = this.venue.seatById, rows = [];
     for (const f of list) {
       const i = byId.get(f.seat);
-      if (i === undefined) continue;
-      const s = this.venue.seats[i];
-      const el = document.createElement('button');
-      el.type = 'button';
-      // A floating plumbob marks a fan; who it is stays in the card a tap opens.
-      el.className = `fan-tag fan-bob${f.locked ? ' is-locked' : f.mine ? ' is-mine' : ''}`;
-      el.dataset.fan = f.seat;
-      el.setAttribute('aria-label', f.locked ? 'A fan in another category' : f.mine ? 'You' : `${f.name} on Instagram`);
-      el.innerHTML = PLUMBOB;
-      el.addEventListener('pointerdown', e => e.stopPropagation());
-      el.addEventListener('click', e => { e.stopPropagation(); this.cb.onFan?.(f, s); });
-      const obj = new CSS2DObject(el);
-      obj.position.set(s.x, s.y + (s.standing ? 2.3 : 1.7), s.z);
-      obj.userData.fan = true;
-      this.scene.add(obj);
-      this.fanTags.push(obj);
+      if (i !== undefined) rows.push({ f, s: this.venue.seats[i] });
     }
-    if (this.tagView) this.tagView.ok = false;
+    if (!rows.length) return;
+    const geo = new THREE.OctahedronGeometry(0.32, 0);
+    geo.scale(1, 1.7, 1);
+    const mat = new THREE.MeshBasicMaterial({ toneMapped: false });
+    const mesh = new THREE.InstancedMesh(geo, mat, rows.length);
+    const m = new THREE.Matrix4(), c = new THREE.Color();
+    const GREEN = new THREE.Color('#5fd35a'), ORANGE = new THREE.Color('#c9772f'), MINE = new THREE.Color('#ffffff');
+    this.fanPos = new Float32Array(rows.length * 3);
+    // Fans of other categories are smaller and darker, so the fan's own category stands out.
+    this.fanScale = new Float32Array(rows.length);
+    const sc = new THREE.Vector3(), q = new THREE.Quaternion(), pos = new THREE.Vector3();
+    rows.forEach(({ f, s }, k) => {
+      const y = s.y + (s.standing ? 2.3 : 1.7), b = f.locked ? 0.6 : 1;
+      this.fanScale[k] = b;
+      mesh.setMatrixAt(k, m.compose(pos.set(s.x, y, s.z), q, sc.setScalar(b)));
+      mesh.setColorAt(k, c.copy(f.locked ? ORANGE : f.mine ? MINE : GREEN));
+      this.fanPos.set([s.x, y, s.z], k * 3);
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+    mesh.instanceColor.needsUpdate = true;
+    mesh.frustumCulled = false;
+    mesh.renderOrder = 2;
+    this.fanList = rows;
+    this.fanMesh = mesh;
+    mesh.userData.k = 1;
+    this.scene.add(mesh);
+    if (this.mode === 'seat') this._sizeFans(0.4);
+  }
+
+  // Smaller markers from a seat, so the rows in front do not hide the stage.
+  _sizeFans(k) {
+    const mesh = this.fanMesh;
+    if (!mesh || mesh.userData.k === k) return;
+    const m = new THREE.Matrix4(), sc = new THREE.Vector3(k, k, k), q = new THREE.Quaternion(), p = new THREE.Vector3();
+    for (let i = 0; i < this.fanList.length; i++) {
+      p.fromArray(this.fanPos, i * 3);
+      if (k < 1) p.y -= 0.6;
+      mesh.setMatrixAt(i, m.compose(p, q, sc.setScalar(k * this.fanScale[i])));
+    }
+    mesh.instanceMatrix.needsUpdate = true;
+    mesh.userData.k = k;
+  }
+
+  // The fan marker under a tap, the same cheap ray test as the seats.
+  pickFan(ndc) {
+    if (!this.fanPos) return -1;
+    const ray = new THREE.Raycaster();
+    ray.setFromCamera(ndc, this.camera);
+    const o = ray.ray.origin, d = ray.ray.direction, P = this.fanPos;
+    let best = -1, bestT = Infinity;
+    for (let i = 0, n = P.length / 3; i < n; i++) {
+      const px = P[i * 3] - o.x, py = P[i * 3 + 1] - o.y, pz = P[i * 3 + 2] - o.z;
+      const t = px * d.x + py * d.y + pz * d.z;
+      if (t < 0.3 || t > bestT) continue;
+      const dx = px - d.x * t, dy = py - d.y * t, dz = pz - d.z * t;
+      const r = 0.45 + t * 0.004;
+      if (dx * dx + dy * dy + dz * dz < r * r) { bestT = t; best = i; }
+    }
+    return best;
   }
 
   seatColor(i, out) {
@@ -805,10 +853,11 @@ export class SeatScene {
   _bindPointer() {
     const el = this.renderer.domElement;
     let down = null, drag = null;
-    const pick = e => {
+    const ndcOf = e => {
       const r = el.getBoundingClientRect();
-      return this.pickSeat(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1));
+      return new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
     };
+    const pick = e => this.pickSeat(ndcOf(e));
     const onDown = e => {
       down = { x: e.clientX, y: e.clientY, t: performance.now() };
       if (this.mode === 'seat' && !this.anim) {
@@ -839,6 +888,8 @@ export class SeatScene {
       const quick = performance.now() - down.t < 450;
       down = null;
       if (moved > 7 || !quick || this.anim) return;
+      const fi = this.pickFan(ndcOf(e));
+      if (fi >= 0) { const { f, s } = this.fanList[fi]; this.cb.onFan?.(f, s); return; }
       const i = pick(e);
       if (i >= 0) this.cb.onSelect?.(this.venue.seats[i]);
     };
@@ -976,6 +1027,7 @@ export class SeatScene {
       },
       done: () => {
         this.mode = 'seat';
+        this._sizeFans(0.4);
         this.settleAt = this.clock.elapsedTime;
         this.look = { yaw: 0, pitch: 0, cy: 0, cp: 0, baseYaw: seatedAng.yaw, basePitch: seatedAng.pitch, fov: SEAT_FOV };
         this.eye = eye;
@@ -1000,6 +1052,7 @@ export class SeatScene {
     this.realColors = false;
     this.refreshColors();
     this.moodTarget = 0;
+    this._sizeFans(1);
     this.mode = 'flying';
     this.cb.onMode?.('leaving');
     const qa = new THREE.Vector3(), qb = new THREE.Vector3();

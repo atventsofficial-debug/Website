@@ -199,7 +199,8 @@ export function matesBlock(p, { cats = {} } = {}) {
   }
   // Fans of the same category only (the Worker sends no others), a handful: the 3D tags show
   // all. A tap opens the same card as a tag does.
-  const near = others.slice(0, 6);
+  const near = others.slice(0, 5);
+  const all = others.length > near.length ? `<button class="btn btn-line btn-sm mates-all" type="button" data-mates-all>See all ${others.length} fans</button>` : '';
   const list = near.length ? `<ul class="mates-list">${near.map(f => `
       <li><button type="button" data-fan-open="${esc(f.seat)}"><span class="mates-av">${esc([...(f.name || '?')][0].toUpperCase())}</span><span class="mates-who"><b>${esc(f.name)}</b><span>@${esc(f.instagram)}</span></span>${icon('i-arrow')}</button></li>`).join('')}</ul>` : '';
   return `<section class="mates">
@@ -207,6 +208,7 @@ export function matesBlock(p, { cats = {} } = {}) {
       ${mine}
       ${count}
       ${list}
+      ${all}
     </section>`;
 }
 
@@ -264,4 +266,63 @@ export function bindMates(root, { pass, repaint }) {
       if (btn) btn.disabled = false;
     }
   });
+}
+
+// Every fan of the category who shows their Instagram, in a sheet over the page: a search,
+// "my block" only, and the list drawn 40 rows at a time as it scrolls, so a sold out
+// category (a thousand fans and more) stays light. `blockOf(seat)` names a seat's block.
+const PAGE = 40;
+export function openFanList({ fans, cat, myBlock, blockOf, onOpen }) {
+  closeFanList();
+  const box = document.createElement('div');
+  box.className = 'fan-list';
+  box.id = 'fan-list';
+  box.innerHTML = `<div class="fan-list-in" role="dialog" aria-modal="true" aria-labelledby="fan-list-h">
+      <div class="fan-list-head"><b id="fan-list-h">Fans in ${esc(cat)}</b><button class="fan-card-x" type="button" data-fl="close" aria-label="Close">${icon('i-x')}</button></div>
+      <label class="fan-list-search">${icon('i-search')}<input type="search" placeholder="Search a name or @instagram" autocomplete="off" autocapitalize="none" spellcheck="false"></label>
+      <div class="fan-list-tabs" role="group" aria-label="Which fans"><button type="button" data-fl="all" aria-pressed="true">All</button><button type="button" data-fl="block" aria-pressed="false">My block</button></div>
+      <p class="fan-list-count"></p>
+      <ul class="fan-list-ul"></ul>
+      <i class="fan-list-end"></i>
+    </div>`;
+  document.body.appendChild(box);
+  const ul = box.querySelector('.fan-list-ul'), count = box.querySelector('.fan-list-count'), input = box.querySelector('input');
+  const rows = fans.map(f => ({ f, block: blockOf(f.seat) || '', key: `${f.name} ${f.instagram}`.toLowerCase() }));
+  let shown = [], drawn = 0, onlyBlock = false;
+  const row = ({ f, block }) => `<li><button type="button" data-fl-open="${esc(f.seat)}"><span class="mates-av">${esc([...(f.name || '?')][0].toUpperCase())}</span><span class="mates-who"><b>${esc(f.name)}</b><span>@${esc(f.instagram)}</span></span><small>${esc(block)}</small></button></li>`;
+  const more = () => {
+    if (drawn >= shown.length) return;
+    ul.insertAdjacentHTML('beforeend', shown.slice(drawn, drawn + PAGE).map(row).join(''));
+    drawn = Math.min(shown.length, drawn + PAGE);
+  };
+  const filter = () => {
+    const q = input.value.trim().toLowerCase().replace(/^@/, '');
+    shown = rows.filter(x => (!onlyBlock || x.block === myBlock) && (!q || x.key.includes(q)));
+    count.textContent = `${shown.length} fan${shown.length === 1 ? '' : 's'}${onlyBlock ? ` in ${myBlock}` : ''}`;
+    ul.innerHTML = ''; drawn = 0; more();
+  };
+  const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) more(); }, { root: box.querySelector('.fan-list-in'), rootMargin: '300px' });
+  io.observe(box.querySelector('.fan-list-end'));
+  box._io = io;
+  input.addEventListener('input', filter);
+  box.addEventListener('click', e => {
+    const act = e.target.closest('[data-fl]')?.dataset.fl;
+    if (e.target === box || act === 'close') return closeFanList();
+    if (act === 'all' || act === 'block') {
+      onlyBlock = act === 'block';
+      box.querySelectorAll('.fan-list-tabs button').forEach(b => b.setAttribute('aria-pressed', b.dataset.fl === act));
+      filter();
+    }
+    const seat = e.target.closest('[data-fl-open]')?.dataset.flOpen;
+    const f = seat && fans.find(x => x.seat === seat);
+    if (f) onOpen(f);
+  });
+  filter();
+  input.focus({ preventScroll: true });
+}
+export function closeFanList() {
+  const box = document.getElementById('fan-list');
+  if (!box) return;
+  box._io?.disconnect();
+  box.remove();
 }
