@@ -658,6 +658,9 @@ export class SeatScene {
     if (this.fanMesh) { this.fanMesh.removeFromParent(); this.fanMesh.geometry.dispose(); this.fanMesh.material.dispose(); this.fanMesh = null; }
     this.fanList = [];
     this.fanPos = null;
+    this.fanSpot = false;
+    this.fanGlow?.removeFromParent();
+    if (this.fanU) this.fanU.uHover.value = -1;
     if (!this.scene || !this.venue || !list.length) return;
     const byId = this.venue.seatById, rows = [];
     for (const f of list) {
@@ -698,7 +701,7 @@ export class SeatScene {
     const sc = new THREE.Vector3(), q = new THREE.Quaternion(), pos = new THREE.Vector3();
     rows.forEach(({ f, s }, k) => {
       // Over the head of a fan standing with their arms up.
-      const y = s.y + (s.standing ? STAND_LIFT : 0) + 2.75, b = f.locked ? 0.6 : 1;
+      const y = s.y + (s.standing ? STAND_LIFT : 0) + (f.spot ? 4 : 2.75), b = f.spot ? 4 : f.locked ? 0.6 : 1;
       this.fanScale[k] = b;
       mesh.setMatrixAt(k, m.compose(pos.set(s.x, y, s.z), q, sc.setScalar(b)));
       mesh.setColorAt(k, c.copy(f.locked ? ORANGE : f.mine ? MINE : GREEN));
@@ -712,6 +715,9 @@ export class SeatScene {
     this.fanMesh = mesh;
     this.scene.add(mesh);
     U.uHover.value = -1;
+    // The one fan picked from the list: a big marker that glows the whole time.
+    this.fanSpot = rows.length === 1 && !!rows[0].f.spot;
+    if (this.fanSpot) this.setFanHover(0, true);
     if (!this._fanTick) {
       this._fanTick = true;
       this.onTick(t => { U.uTime.value = t; this._glowAt(t); });
@@ -719,9 +725,9 @@ export class SeatScene {
   }
 
   // The glow behind the marker under the pointer: one soft sprite, following its bob.
-  setFanHover(i) {
+  setFanHover(i, force = false) {
     const U = this.fanU;
-    if (!U || U.uHover.value === i) return;
+    if (!U || (this.fanSpot && !force) || (U.uHover.value === i && !force)) return;
     U.uHover.value = i;
     this.renderer.domElement.style.cursor = i >= 0 ? 'pointer' : '';
     if (!this.fanGlow) {
@@ -1124,7 +1130,7 @@ export class SeatScene {
   // one category, from the side of the venue the category is on, close enough to tell its
   // rows apart. `seat`, when given, keeps that seat in the middle of the picture; `sec`
   // frames only that block of it, for a fan pointing at their own seat.
-  frameCategory(cat, { seat = null, sec = null, dur = 1.8 } = {}) {
+  frameCategory(cat, { seat = null, sec = null, dur = 1.8, done = null } = {}) {
     if (!this.scene) return;
     const list = this.venue.seats.filter(s => s.cat === cat && (!sec || s.sec === sec));
     if (!list.length) return;
@@ -1159,7 +1165,7 @@ export class SeatScene {
         this.camera.lookAt(this.controls.target);
         this.camera.updateProjectionMatrix();
       },
-      done: () => { this.controls.enabled = this.interactive; this.controls.update(); },
+      done: () => { this.controls.enabled = this.interactive; this.controls.update(); done?.(); },
     };
   }
 

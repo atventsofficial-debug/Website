@@ -160,7 +160,7 @@ export function waTiles(wa) {
 }
 
 // The panel block: the WhatsApp group, the fan's own profile, and who else shows theirs.
-export function matesBlock(p, { cats = {} } = {}) {
+export function matesBlock(p, { cats = {}, compact = false } = {}) {
   if (!paid(p) || !can()) return '';
   if (mates.passId !== p.id || mates.loading) return `<section class="mates"><h3 class="mates-h">Connect with your section</h3><p class="fine">Finding fans in your section…</p></section>`;
   if (mates.error) return `<section class="mates"><h3 class="mates-h">Connect with your section</h3><p class="fine">${esc(mates.error)} <button class="link" type="button" data-mates="retry">Try again</button></p></section>`;
@@ -172,7 +172,7 @@ export function matesBlock(p, { cats = {} } = {}) {
   const head = `<div class="mates-head">
       <div><h3 class="mates-h">Connect with your section</h3><p class="mates-sub">Meet fans sitting in ${catName} on Instagram before the show.</p></div>
     </div>`;
-  const count = others.length ? `<p class="mates-count"><b>${others.length}</b> fan${others.length === 1 ? '' : 's'} in ${catName} ${others.length === 1 ? 'is' : 'are'} here. Tap a name or a tag on the map to say hi.</p>` : '';
+  const count = others.length ? `<p class="mates-count"><b>${others.length}</b> fan${others.length === 1 ? '' : 's'} in ${catName} ${others.length === 1 ? 'is' : 'are'} here. Tap a name to see where they sit.</p>` : '';
   let mine;
   if (mates.editing) {
     const v = mates.draft || {};
@@ -197,18 +197,18 @@ export function matesBlock(p, { cats = {} } = {}) {
     mine = `<button class="btn mates-add" type="button" data-mates="edit"><span class="mates-ig-sm">${icon('i-ig')}</span>Add my Instagram</button>
       <p class="mates-note">Optional. Only fans in ${catName} can see it, and you can remove it any time.</p>`;
   }
-  // Fans of the same category only (the Worker sends no others), a handful: the 3D tags show
-  // all. A tap opens the same card as a tag does.
-  const near = others.slice(0, 5);
-  const all = others.length > near.length ? `<button class="btn btn-line btn-sm mates-all" type="button" data-mates-all>See all ${others.length} fans</button>` : '';
-  const list = near.length ? `<ul class="mates-list">${near.map(f => `
-      <li><button type="button" data-fan-open="${esc(f.seat)}"><span class="mates-av">${esc([...(f.name || '?')][0].toUpperCase())}</span><span class="mates-who"><b>${esc(f.name)}</b><span>@${esc(f.instagram)}</span></span>${icon('i-arrow')}</button></li>`).join('')}</ul>` : '';
+  // Every fan of the category who shows their Instagram, in a box a few rows tall that
+  // scrolls; the rows are drawn as it scrolls (fillMatesList), so a sold out category stays
+  // light. A tap on a row shows where that fan sits.
+  const list = others.length ? `<label class="fan-list-search mates-search">${icon('i-search')}<input type="search" data-mates-q placeholder="Search a name or @instagram" autocomplete="off" autocapitalize="none" spellcheck="false"></label>
+      <div class="mates-scroll" data-mates-scroll><ul class="fan-list-ul mates-rows"></ul><i class="fan-list-end"></i></div>` : '';
+  // Over the venue, showing a fan from the list: only the list, so the venue stays in view.
+  if (compact) return `<section class="mates is-compact">${list}</section>`;
   return `<section class="mates">
       ${head}
       ${mine}
       ${count}
       ${list}
-      ${all}
     </section>`;
 }
 
@@ -268,61 +268,45 @@ export function bindMates(root, { pass, repaint }) {
   });
 }
 
-// Every fan of the category who shows their Instagram, in a sheet over the page: a search,
-// "my block" only, and the list drawn 40 rows at a time as it scrolls, so a sold out
-// category (a thousand fans and more) stays light. `blockOf(seat)` names a seat's block.
+// Fills the panel's scrolling list of fans: 40 rows at a time as it scrolls, filtered by the
+// search box. The search and the scroll are kept across repaints of the panel. `blockOf(seat)`
+// names a seat's block; `onOpen(fan)` is a tap on a row; `current` is the seat of the fan on
+// show, whose row is marked.
 const PAGE = 40;
-export function openFanList({ fans, cat, myBlock, blockOf, onOpen }) {
-  closeFanList();
-  const box = document.createElement('div');
-  box.className = 'fan-list';
-  box.id = 'fan-list';
-  box.innerHTML = `<div class="fan-list-in" role="dialog" aria-modal="true" aria-labelledby="fan-list-h">
-      <div class="fan-list-head"><b id="fan-list-h">Fans in ${esc(cat)}</b><button class="fan-card-x" type="button" data-fl="close" aria-label="Close">${icon('i-x')}</button></div>
-      <label class="fan-list-search">${icon('i-search')}<input type="search" placeholder="Search a name or @instagram" autocomplete="off" autocapitalize="none" spellcheck="false"></label>
-      <div class="fan-list-tabs" role="group" aria-label="Which fans"><button type="button" data-fl="all" aria-pressed="true">All</button><button type="button" data-fl="block" aria-pressed="false">My block</button></div>
-      <p class="fan-list-count"></p>
-      <ul class="fan-list-ul"></ul>
-      <i class="fan-list-end"></i>
-    </div>`;
-  document.body.appendChild(box);
-  const ul = box.querySelector('.fan-list-ul'), count = box.querySelector('.fan-list-count'), input = box.querySelector('input');
+const view = { passId: '', q: '', top: 0 };
+export function fillMatesList(root, { passId, fans, blockOf, onOpen, current = '' }) {
+  const box = root.querySelector('[data-mates-scroll]'), input = root.querySelector('[data-mates-q]');
+  if (!box || !input) return;
+  if (view.passId !== passId) Object.assign(view, { passId, q: '', top: 0 });
+  const ul = box.querySelector('ul');
   const rows = fans.map(f => ({ f, block: blockOf(f.seat) || '', key: `${f.name} ${f.instagram}`.toLowerCase() }));
-  let shown = [], drawn = 0, onlyBlock = false;
-  const row = ({ f, block }) => `<li><button type="button" data-fl-open="${esc(f.seat)}"><span class="mates-av">${esc([...(f.name || '?')][0].toUpperCase())}</span><span class="mates-who"><b>${esc(f.name)}</b><span>@${esc(f.instagram)}</span></span><small>${esc(block)}</small></button></li>`;
+  let shown = [], drawn = 0;
+  const row = ({ f, block }) => `<li><button type="button" data-fl-open="${esc(f.seat)}"${f.seat === current ? ' aria-current="true"' : ''}><span class="mates-av">${esc([...(f.name || '?')][0].toUpperCase())}</span><span class="mates-who"><b>${esc(f.name)}</b><span>@${esc(f.instagram)}</span></span><small>${esc(block)}</small></button></li>`;
   const more = () => {
     if (drawn >= shown.length) return;
     ul.insertAdjacentHTML('beforeend', shown.slice(drawn, drawn + PAGE).map(row).join(''));
     drawn = Math.min(shown.length, drawn + PAGE);
   };
   const filter = () => {
-    const q = input.value.trim().toLowerCase().replace(/^@/, '');
-    shown = rows.filter(x => (!onlyBlock || x.block === myBlock) && (!q || x.key.includes(q)));
-    count.textContent = `${shown.length} fan${shown.length === 1 ? '' : 's'}${onlyBlock ? ` in ${myBlock}` : ''}`;
-    ul.innerHTML = ''; drawn = 0; more();
+    const q = view.q.trim().toLowerCase().replace(/^@/, '');
+    shown = q ? rows.filter(x => x.key.includes(q)) : rows;
+    ul.innerHTML = shown.length ? '' : '<li class="mates-none">No fan by that name.</li>';
+    drawn = 0;
+    more();
   };
-  const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) more(); }, { root: box.querySelector('.fan-list-in'), rootMargin: '300px' });
-  io.observe(box.querySelector('.fan-list-end'));
-  box._io = io;
-  input.addEventListener('input', filter);
-  box.addEventListener('click', e => {
-    const act = e.target.closest('[data-fl]')?.dataset.fl;
-    if (e.target === box || act === 'close') return closeFanList();
-    if (act === 'all' || act === 'block') {
-      onlyBlock = act === 'block';
-      box.querySelectorAll('.fan-list-tabs button').forEach(b => b.setAttribute('aria-pressed', b.dataset.fl === act));
-      filter();
-    }
+  input.value = view.q;
+  filter();
+  // Back where the fan left the list, drawing the rows down to there first.
+  while (drawn < shown.length && ul.scrollHeight < view.top + box.clientHeight) more();
+  box.scrollTop = view.top;
+  box.addEventListener('scroll', () => {
+    view.top = box.scrollTop;
+    if (box.scrollTop + box.clientHeight > box.scrollHeight - 200) more();
+  }, { passive: true });
+  input.addEventListener('input', () => { view.q = input.value; view.top = 0; box.scrollTop = 0; filter(); });
+  ul.addEventListener('click', e => {
     const seat = e.target.closest('[data-fl-open]')?.dataset.flOpen;
     const f = seat && fans.find(x => x.seat === seat);
     if (f) onOpen(f);
   });
-  filter();
-  input.focus({ preventScroll: true });
-}
-export function closeFanList() {
-  const box = document.getElementById('fan-list');
-  if (!box) return;
-  box._io?.disconnect();
-  box.remove();
 }

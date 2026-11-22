@@ -821,6 +821,8 @@ export const EXACT = {
 "On your seat": "Di kursimu",
 "Search a name or @instagram": "Cari nama atau @instagram",
 "My block": "Blokku",
+"Back to my seat": "Kembali ke kursiku",
+"No fan by that name.": "Tidak ada fans dengan nama itu.",
 "Which fans": "Fans yang mana",
 };
 
@@ -835,12 +837,12 @@ const DAY = '(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)';
 // [regex, replacement]. A string replacement has its $n groups passed through the date words;
 // a function gets the match as String.replace gives it.
 export const PATTERNS = [
-  [/^See all (\d+) fans$/, 'Lihat semua $1 fans'],
+  [/^sits in (.+)\. Their seat has the green marker\.$/, 'duduk di $1. Kursinya ditandai penanda hijau.'],
   [/^Fans in (.+)$/, 'Fans di $1'],
   [/^(\d+) fans? in (.+)$/, '$1 fans di $2'],
   [/^(\d+) fans?$/, '$1 fans'],
   [/^Meet fans sitting in (.+) on Instagram before the show\.$/, 'Kenalan lewat Instagram dengan fans yang duduk di $1 sebelum acara.'],
-  [/^fans? in (.+) (?:is|are) here\. Tap a name or a tag on the map to say hi\.$/, 'fans di $1 ada di sini. Ketuk nama atau penanda di peta untuk menyapa.'],
+  [/^fans? in (.+) (?:is|are) here\. Tap a name to see where they sit\.$/, 'fans di $1 ada di sini. Ketuk nama untuk melihat posisi kursinya.'],
   [/^Optional\. Only fans in (.+) can see it, and you can remove it any time\.$/, 'Opsional. Hanya fans di $1 yang bisa melihatnya, dan bisa kamu hapus kapan saja.'],
   [/^(\d+) events this day$/, '$1 event di hari ini'],
   [/^\+(\d+) more$/, '+$1 lainnya'],

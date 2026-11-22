@@ -15,7 +15,7 @@ import { whenOf } from './when.js';
 import { buyLink, activePass, openPass, passes, canView, toggleSeat, STATUS, refresh } from './passes.js';
 import { placeSeat, cleanNumbering, isDefault, numberingOf, numberingSource } from './seatflip.js';
 import { $, esc, icon, state, QUALITY, spotStats, share, toast } from './ui.js';
-import { loadMates, matesBlock, bindMates, mateTags, resetMates, mates, startMatesLive, fanCardHtml, openFanList, closeFanList } from './fans.js';
+import { loadMates, matesBlock, bindMates, mateTags, resetMates, mates, startMatesLive, fanCardHtml, fillMatesList } from './fans.js';
 
 const FOCUS_NAME = { concert: 'stage', cinema: 'screen', combat: 'octagon', stadium: 'centre spot' };
 const out = icon('i-out');
@@ -55,10 +55,10 @@ function paintTags() {
   // A cheap key (the list the Worker sent, by identity, and where the fan sits), so a full
   // venue's thousands of markers are not listed again on every repaint of the panel.
   const own = p ? (state.tour ? tourSeat()?.id : p.seats?.[0] || p.seat) : '';
-  const key = `${state.venue?.eventId}|${p?.id || ''}|${own}|${dataId(mates.data)}|${mates.passId}`;
+  const key = `${state.venue?.eventId}|${p?.id || ''}|${own}|${dataId(mates.data)}|${mates.passId}|${state.tour?.fan?.seat || ''}`;
   if (key === tagKey) return;
   tagKey = key;
-  sc.setFans(p ? mateTags(own) : []);
+  sc.setFans(p && state.tour?.fan ? [{ ...state.tour.fan, spot: true }] : []);
 }
 function paintMates() {
   const p = matesPass();
@@ -72,19 +72,18 @@ function paintMates() {
 }
 
 // A tap on a seat mate's tag (or their name in the list): their card, not Instagram yet.
-// The whole list of the category's fans (fans.js), each row opening the same card as a tag.
-function openAllFans() {
-  const v = state.venue, p = matesPass(), d = mates.data;
-  if (!v || !p || !d) return;
-  const mine = seatOf(state.tour ? tourSeat()?.id : p.seat);
-  openFanList({
-    fans: d.fans.filter(f => !f.mine),
-    cat: v.catById[p.cat]?.name || '',
-    myBlock: mine?.secName || '',
-    blockOf: id => seatOf(id)?.secName,
-    // The card opens over the page; the list waits behind it and comes back on close.
-    onOpen: f => { const l = $('#fan-list'); if (l) l.hidden = true; openFanCard(f); },
-  });
+// A tap on a fan in the list: up over the venue, a marker over that fan's seat, and their
+// card. Only the fan picked gets a marker; the venue is not covered in them.
+function showFanOnMap(f) {
+  const sc = state.scene, s = seatOf(f.seat);
+  if (!sc || !s || !state.tour) return;
+  closeFanCard();
+  state.tour.fan = f;
+  paintTags();
+  paintTour();
+  const go = () => sc.frameCategory(s.cat, { sec: s.sec, seat: s, done: () => { if (state.tour?.fan === f) openFanCard(f); } });
+  if (sc.mode === 'overview' && !sc.anim) go();
+  else { state.tour.afterOverview = go; if (sc.mode === 'seat') sc.backToOverview(); }
 }
 
 function openFanCard(f) {
@@ -97,8 +96,6 @@ function openFanCard(f) {
 function closeFanCard() {
   const box = $('#fan-card');
   if (box) { box.hidden = true; box.innerHTML = ''; }
-  const list = $('#fan-list');
-  if (list?.hidden) list.hidden = false;
 }
 const seatText = s => (s.standing ? `${s.secName}, standing` : `${s.secName} · Row ${s.row} · Seat ${s.num}`);
 const priceText = c => (c.price == null ? c.note || 'On tiket.com' : formatRpShort(c.price));
@@ -171,7 +168,6 @@ export function closeViewer() {
   state.tour = null;
   document.body.classList.remove('in-tour');
   resetMates();
-  closeFanList();
   closeFanCard();
   import('./capture.js').then(m => m.stopCapture());
   tagKey = '';
@@ -258,8 +254,15 @@ function renderCats() {
 function setMode(mode, seat) {
   if (state.tour) {
     if (mode === 'turning' || mode === 'seat') state.scene?.setCrowd(state.crowd);
-    if (mode === 'seat') { state.tour.step = 3; state.tour.picking = false; paintTour(); }
-    if (mode === 'overview' && state.tour.step === 3) {
+    if (mode === 'seat') { state.tour.step = 3; state.tour.picking = false; state.tour.fan = null; paintTags(); paintTour(); }
+    // Up over the venue to show a fan picked from the list: the panel stays on the list.
+    if (mode === 'overview' && state.tour.fan) {
+      state.scene?.setCrowd(false);
+      const go = state.tour.afterOverview;
+      state.tour.afterOverview = null;
+      go?.();
+    }
+    else if (mode === 'overview' && state.tour.step === 3) {
       state.tour.step = 2;
       state.tour.framed = true;
       state.scene?.setCrowd(false);
@@ -397,19 +400,13 @@ export function bindViewer() {
     if (act === 'back') state.scene?.backToOverview();
   });
   bindMates($('#app-side'), { pass: matesPass, repaint: paintViewer });
-  $('#app-side').addEventListener('click', e => {
-    if (e.target.closest('[data-mates-all]')) { openAllFans(); return; }
-    const seat = e.target.closest('[data-fan-open]')?.dataset.fanOpen;
-    const f = seat && (mates.data?.fans || []).find(x => x.seat === seat);
-    if (f) openFanCard(f);
-  });
   $('#fan-card').addEventListener('click', e => {
     const act = e.target.closest('[data-fancard]')?.dataset.fancard;
     if (e.target === e.currentTarget || act === 'close') closeFanCard();
     if (act === 'edit') { closeFanCard(); $('#app-side [data-mates="edit"]')?.click(); }
     if (e.target.closest('a[href^="#unlock-"]')) closeFanCard();
   });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') { if ($('#fan-card').hidden) closeFanList(); closeFanCard(); if (state.tour?.numOpen) setNumOpen(false); } });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeFanCard(); if (state.tour?.numOpen) setNumOpen(false); } });
   $('#sc-close').addEventListener('click', closePeek);
   $('#zoom').addEventListener('click', e => {
     const d = e.target.closest('[data-zoom]')?.dataset.zoom;
@@ -490,6 +487,8 @@ function tourCat(cat) {
 function tourPick(seat) {
   const p = tourPass(), v = state.venue, mine = tourSeat();
   if (!p || !mine) return;
+  // Looking at a fan from the list: only the fan's own seat sits them back down.
+  if (state.tour.fan) { if (seat.id === mine.id) state.scene.flyToSeat(mine); return; }
   if (state.tour.step === 1) {
     if (seat.cat === p.cat) tourCat(p.cat);
     else toast(`That is ${v.catById[seat.cat].name}. Your ticket is ${v.catById[p.cat].name}.`);
@@ -538,7 +537,8 @@ function showCat() {
 function tourBack() {
   const t = state.tour;
   if (!t) return;
-  if (t.step === 3) state.scene?.backToOverview();   // setMode puts the tour on step 2
+  if (t.fan) { const s = tourSeat(); if (s) tourPick(s); }   // from a fan's seat back to the fan's own
+  else if (t.step === 3) state.scene?.backToOverview();   // setMode puts the tour on step 2
   else if (t.step === 2 && t.picking) { t.picking = false; paintTour(); }
   else if (t.step === 2 && t.framed) startTour();
 }
@@ -642,7 +642,7 @@ function paintTour() {
   // right. Folded, the panel is only this head, so the venue fills the screen.
   const mini = !!state.tour.mini, t = state.tour;
   const canBack = step > 2 || !!t.picking || (step === 2 && !!t.framed), canNext = step === 2 && !t.picking;
-  const where = step === 1 ? v.place.name : step === 2 && state.tour.picking ? 'Tap your seat' : step === 2 ? cat.name : 'Your view';
+  const where = t.fan ? t.fan.name : step === 1 ? v.place.name : step === 2 && state.tour.picking ? 'Tap your seat' : step === 2 ? cat.name : 'Your view';
   const bar = `<div class="tour-head">
       <button class="th-btn" type="button" data-tour="prev" aria-label="Back to the step before" title="Back to the step before"${canBack ? '' : ' disabled'}>${icon('i-back')}</button>
       <button class="th-btn" type="button" data-tour="next" aria-label="Next step" title="Next step"${canNext ? '' : ' disabled'}>${icon('i-arrow')}</button>
@@ -665,6 +665,9 @@ function paintTour() {
       <h2>Tap your seat</h2>
       <p class="fine">Tap the seat you know is yours, in <b>${esc(s.secName)}</b>. Pinch or scroll to zoom in.</p>
       <div class="row-btns"><button class="btn btn-line btn-sm" type="button" data-tour="pickcancel">Cancel</button></div>`
+    : step === 3 && t.fan ? `
+      <p class="fine"><b>${esc(t.fan.name)}</b> sits in ${esc(seatText(seatOf(t.fan.seat) || s))}. Their seat has the green marker.</p>
+      <div class="row-btns"><button class="btn btn-coral btn-sm" type="button" data-tour="seat">Back to my seat ${icon('i-seat')}</button></div>`
     : step === 2 ? `
       <p>Your seat is marked in coral: <b>${esc(seatText(s))}</b>. Tap it to sit down.</p>
       <div class="row-btns">${t.framed
@@ -681,8 +684,14 @@ function paintTour() {
         <button class="tour-act" type="button" data-tour="again">${icon('i-venue')}<b>See the whole venue</b><span>Take the tour again</span></button>
       </div>`;
   // Seat mates (the Instagram profile on the seat) at the end of the tour, in the seat.
-  const mates = step === 3 ? matesBlock(p, { cats: v.catById }) : '';
-  $('#app-side').innerHTML = `${bar}${body}${mates}`;
+  const matesHtml = step === 3 ? matesBlock(p, { cats: v.catById, compact: !!t.fan }) : '';
+  $('#app-side').innerHTML = `${bar}${body}${matesHtml}`;
+  if (matesHtml && state.scene) {
+    fillMatesList($('#app-side'), {
+      passId: p.id, fans: (mates.data?.fans || []).filter(f => !f.mine),
+      blockOf: id => seatOf(id)?.secName, onOpen: showFanOnMap, current: t.fan?.seat || '',
+    });
+  }
   renderCats();
   state.scene?.setMine(markedIds());
   paintMates();
