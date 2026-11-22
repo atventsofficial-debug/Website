@@ -2779,3 +2779,17 @@ body:has(#fan-list:not([hidden])) .demo-bar, body:has(#fan-card:not([hidden])) .
 .fan-pin:focus-visible { outline: none; }
 .fan-pin.sec-tag-off { opacity: 0; pointer-events: none; }
 .stage.is-seat .fan-pin { display: none; }
+
+/* One fan picked from the list: the picture goes grey and dim, the fan is drawn again in
+   colour on a layer above it, glowing green, with their name and seat. */
+.scene-canvas { transition: opacity .7s ease, filter .45s ease; }
+.is-solo > .scene-canvas { filter: grayscale(1) brightness(.55) contrast(1.05); }
+.solo-layer { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1;
+  filter: drop-shadow(0 0 4px rgba(95, 211, 90, .95)) drop-shadow(0 0 14px rgba(95, 211, 90, .7)); }
+.solo-layer[hidden] { display: none; }
+.solo-tag { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 5px 11px 6px; border-radius: 999px;
+  background: #5fd35a; color: #08210b; font: 600 12px/1.15 Inter, system-ui, sans-serif; white-space: nowrap;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, .85), 0 0 18px rgba(95, 211, 90, .8); pointer-events: none; margin-top: -26px; }
+.solo-tag b { font-size: 13px; font-weight: 700; }
+.solo-tag span { font-size: 11px; font-weight: 600; opacity: .85; }
+.solo-tag::after { content: ''; position: absolute; left: 50%; bottom: -6px; margin-left: -6px; border: 6px solid transparent; border-bottom: 0; border-top-color: #5fd35a; }

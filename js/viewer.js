@@ -56,15 +56,15 @@ function paintTags() {
   // venue's thousands of markers are not listed again on every repaint of the panel.
   const own = p ? (state.tour ? tourSeat()?.id : p.seats?.[0] || p.seat) : '';
   const t = state.tour;
-  const key = `${state.venue?.eventId}|${p?.id || ''}|${own}|${dataId(mates.data)}|${mates.passId}|${t?.fan?.seat || ''}|${t?.fanMarker ? 1 : 0}|${t?.fanBlock || ''}`;
+  const key = `${state.venue?.eventId}|${p?.id || ''}|${own}|${dataId(mates.data)}|${mates.passId}|${t?.fan?.seat || ''}|${t?.fanBlock || ''}`;
   if (key === tagKey) return;
   if (!t?.fan) sc.clearPerson?.();
   tagKey = key;
   // One pin over each block with fans showing their Instagram (orange and locked for other
   // categories), and one glowing marker over the seat of a fan picked from the list.
   sc.setBlockPins(p && !t?.fan ? blockPins(p) : []);
-  // The fan picked lights up in the crowd; a marker only where nobody is drawn in that seat.
-  sc.setFans(p && t?.fan && t.fanMarker ? [{ ...t.fan, spot: true }] : []);
+  // The fan picked lights up in the crowd: no marker over them.
+  sc.setFans([]);
 }
 const secCode = s => (s.tag || s.sec).replace(/^(RS|CS)-/, '$1 ').replace(/^VIP-/, 'VIP ').replace(/^FA-/, 'FA ');
 function blockPins(p) {
@@ -95,13 +95,36 @@ function paintMates() {
 }
 
 // A tap on a seat mate's tag (or their name in the list): their card, not Instagram yet.
-// A tap on a fan in the list: up over the venue, close to their seat, the whole crowd faded
-// and that one fan lit green, then their card.
+// A tap on a fan in the list: the concert stays as it is, the whole picture turns grey, and
+// that one fan lights up green with their name and seat over them. From the seat the view
+// turns towards them; from above it flies close to them. Then their card.
+const fanTag = (f, s) => ({ name: f.name || '', sub: s.standing ? s.secName : `${secCode(s)} · Row ${s.row} · Seat ${s.num}` });
 function showFanOnMap(f) {
-  const s = seatOf(f.seat);
-  if (!s || !state.tour) return;
-  state.tour.fan = f;
-  lookAtBlock(s, () => { if (state.tour?.fan === f) openFanCard(f); }, true);
+  const s = seatOf(f.seat), sc = state.scene, t = state.tour;
+  if (!s || !t || !sc) return;
+  t.fan = f;
+  const card = () => { if (state.tour?.fan === f) openFanCard(f); };
+  if (sc.mode === 'seat') {
+    closeFanCard();
+    t.fanBlock = null;
+    sc.focusPerson(s, fanTag(f, s));
+    sc.lookToward(s);
+    paintTags();
+    paintTour();
+    setTimeout(card, 1100);
+    return;
+  }
+  lookAtBlock(s, card, f);
+}
+// Back from a fan to the view from the seat, in colour again.
+function clearFan() {
+  const t = state.tour, sc = state.scene;
+  if (!t) return;
+  t.fan = null;
+  closeFanCard();
+  sc?.lookAhead();
+  paintTags();
+  paintTour();
 }
 // A tap on a block's pin: up over that block, and the panel lists its fans.
 function showBlock(sec) {
@@ -110,19 +133,18 @@ function showBlock(sec) {
   state.tour.fan = null;
   lookAtBlock(s);
 }
-function lookAtBlock(s, done, person = false) {
+function lookAtBlock(s, done, person = null) {
   const sc = state.scene;
   if (!sc) return;
   closeFanCard();
   state.tour.fanBlock = s.sec;
   state.tour.mini = false;
-  state.tour.fanMarker = false;
   paintTags();
   paintTour();
   const go = () => {
     if (!person) { sc.setCrowd(false); return sc.frameCategory(s.cat, { sec: s.sec, seat: s, done }); }
     sc.setCrowd(true);
-    if (!sc.focusPerson(s.id)) { state.tour.fanMarker = true; paintTags(); }
+    sc.focusPerson(s, fanTag(person, s));
     sc.lookAtPerson(s, { done });
   };
   if (sc.mode === 'overview' && !sc.anim) go();
@@ -436,6 +458,7 @@ export function bindViewer() {
     if (act === 'numopen' || act === 'numclose') setNumOpen(act === 'numopen');
     if (act === 'mini') { state.tour.mini = !state.tour.mini; paintTour(); $('#app-side [data-tour="mini"]')?.focus(); }
     if (act === 'prev') tourBack();
+    if (act === 'fanclear') clearFan();
     if (act === 'pickseat') { state.tour.numOpen = false; startPicking(); }
     if (act === 'pickcancel') { state.tour.picking = false; paintTour(); }
     if (act === 'unpick') setNumbering('pick', '');
@@ -581,7 +604,8 @@ function showCat() {
 function tourBack() {
   const t = state.tour;
   if (!t) return;
-  if (t.fanBlock) { const s = tourSeat(); if (s) tourPick(s); }   // from a fan's seat back to the fan's own
+  if (t.fan && !t.fanBlock) clearFan();   // from a fan lit in the crowd back to the view
+  else if (t.fanBlock) { const s = tourSeat(); if (s) tourPick(s); }   // from a fan's seat back to the fan's own
   else if (t.step === 3) state.scene?.backToOverview();   // setMode puts the tour on step 2
   else if (t.step === 2 && t.picking) { t.picking = false; paintTour(); }
   else if (t.step === 2 && t.framed) startTour();
@@ -685,7 +709,7 @@ function paintTour() {
   // A slim head in place of a stepper: back one step on the left, fold the panel away on the
   // right. Folded, the panel is only this head, so the venue fills the screen.
   const mini = !!state.tour.mini, t = state.tour;
-  const canBack = step > 2 || !!t.picking || (step === 2 && !!t.framed) || !!t.fanBlock, canNext = step === 2 && !t.picking && !t.fanBlock;
+  const canBack = step > 2 || !!t.picking || (step === 2 && !!t.framed) || !!t.fanBlock || !!t.fan, canNext = step === 2 && !t.picking && !t.fanBlock;
   const where = t.fan ? t.fan.name : t.fanBlock ? (state.venue.seats.find(x => x.sec === t.fanBlock)?.secName || '') : step === 1 ? v.place.name : step === 2 && state.tour.picking ? 'Tap your seat' : step === 2 ? cat.name : 'Your view';
   const bar = `<div class="tour-head">
       <button class="th-btn" type="button" data-tour="prev" aria-label="Back to the step before" title="Back to the step before"${canBack ? '' : ' disabled'}>${icon('i-back')}</button>
@@ -710,7 +734,7 @@ function paintTour() {
       <p class="fine">Tap the seat you know is yours, in <b>${esc(s.secName)}</b>. Pinch or scroll to zoom in.</p>
       <div class="row-btns"><button class="btn btn-line btn-sm" type="button" data-tour="pickcancel">Cancel</button></div>`
     : t.fanBlock ? `
-      <p class="fine">${t.fan ? `<b>${esc(t.fan.name)}</b> sits in ${esc(seatText(seatOf(t.fan.seat) || s))}. ${t.fanMarker ? 'Their seat has the green marker.' : 'They light up green in the crowd.'}` : `<b>${esc(state.venue.seats.find(x => x.sec === t.fanBlock)?.secName || '')}</b>: tap a name to see their seat.`}</p>
+      <p class="fine">${t.fan ? `<b>${esc(t.fan.name)}</b> sits in ${esc(seatText(seatOf(t.fan.seat) || s))}. They light up green in the crowd.` : `<b>${esc(state.venue.seats.find(x => x.sec === t.fanBlock)?.secName || '')}</b>: tap a name to see their seat.`}</p>
       <div class="row-btns"><button class="btn btn-coral btn-sm" type="button" data-tour="seat">Back to my seat ${icon('i-seat')}</button></div>`
     : step === 2 ? `
       <p>Your seat is marked in coral: <b>${esc(seatText(s))}</b>. Tap it to sit down.</p>
@@ -718,6 +742,9 @@ function paintTour() {
         ? `<button class="btn btn-coral btn-sm" type="button" data-tour="seat">Sit in my seat ${icon('i-seat')}</button>`
         : `<button class="btn btn-coral btn-sm" type="button" data-tour="framecat">Show my category ${icon('i-pin')}</button>`}<button class="btn btn-line btn-sm" type="button" data-tour="again">${icon('i-venue')}Whole venue</button></div>
       ${numberingControls(p, s)}`
+      : t.fan ? `
+      <p class="fine"><b>${esc(t.fan.name)}</b> sits in ${esc(seatText(seatOf(t.fan.seat) || s))}. They light up green in the crowd.</p>
+      <div class="row-btns"><button class="btn btn-coral btn-sm" type="button" data-tour="fanclear">Back to my view ${icon('i-seat')}</button></div>`
       : `
       <h2>Your view</h2>
       <p><b>${esc(seatText(s))}</b>, ${esc(cat.name)}. Drag to look round.</p>

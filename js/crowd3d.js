@@ -621,6 +621,28 @@ export class Crowd {
     this.picked = k;
   }
 
+  // One figure on its own, lit green, for a layer drawn over the faded picture: the person in
+  // slot `k`, or (nobody drawn there) someone like slot 0 put in `place` (x, y, z, yaw).
+  soloMesh(k, place) {
+    if (!this.lods) return null;
+    this._soloGeo ||= bodyGeometry(this.lods[0], true);
+    this._soloMat ||= crowdMaterial(this.material);
+    const geo = this._soloGeo, src = k >= 0 && k < this.n ? k : 0, d = this.data;
+    const mesh = new THREE.InstancedMesh(geo, this._soloMat, 1);
+    mesh.frustumCulled = false;
+    for (const [key, name] of [['anim', 'aAnim'], ['col', 'aCol'], ['look', 'aLook']]) {
+      geo.setAttribute(name, new THREE.InstancedBufferAttribute(d[key].slice(src * 4, src * 4 + 4), 4));
+    }
+    const m = new THREE.Matrix4();
+    if (k >= 0 && k < this.n) m.fromArray(d.matrix, k * 16);
+    else m.compose(new THREE.Vector3(place.x, place.y, place.z), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), place.yaw || 0), new THREE.Vector3(1, 1, 1));
+    mesh.setMatrixAt(0, m);
+    const u = this._soloMat.userData.crowd;
+    u.uPick.value.setFromMatrixPosition(m);
+    u.uPickOn.value = 1;
+    return mesh;
+  }
+
   setVisible(on) {
     this.visible = on;
     if (this.far) this.far.visible = on;

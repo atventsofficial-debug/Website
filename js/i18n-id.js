@@ -823,6 +823,7 @@ export const EXACT = {
 "My block": "Blokku",
 "Profile hidden": "Profil disembunyikan",
 "Back to my seat": "Kembali ke kursiku",
+"Back to my view": "Kembali ke pandanganku",
 "No fan by that name.": "Tidak ada fans dengan nama itu.",
 "Which fans": "Fans yang mana",
 };

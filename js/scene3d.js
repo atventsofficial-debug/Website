@@ -118,6 +118,7 @@ export class SeatScene {
     this.clock = new THREE.Clock();
     this.mode = 'overview';
     this.anim = null;
+    this._fovBack = null;
     this.look = { yaw: 0, pitch: 0, cy: 0, cp: 0, baseYaw: 0, basePitch: 0, fov: SEAT_FOV };
     this.hovered = -1;
     this.current = -1;
@@ -306,6 +307,7 @@ export class SeatScene {
     // few at a time, and the hero and the viewer each make one per visit.
     this.renderer.forceContextLoss();
     this.renderer.domElement.remove();
+    if (this.solo) { this.solo.r.dispose(); this.solo.r.forceContextLoss(); this.solo.r.domElement.remove(); this.solo = null; }
     this.labelRenderer.domElement.remove();
   }
 
@@ -316,6 +318,7 @@ export class SeatScene {
     this.labels?.forEach(l => { l.userData.box = null; });
     if (this.tagView) this.tagView.ok = false;
     this.composer?.setSize(w, h);
+    this._soloSize();
     this.camera.aspect = w / h;
     this._lens();
     this.camera.updateProjectionMatrix();
@@ -1117,6 +1120,7 @@ export class SeatScene {
       done: () => {
         this.mode = 'seat';
         this.settleAt = this.clock.elapsedTime;
+        this._fovBack = null;
         this.look = { yaw: 0, pitch: 0, cy: 0, cp: 0, baseYaw: seatedAng.yaw, basePitch: seatedAng.pitch, fov: SEAT_FOV };
         this.eye = eye;
         this.realColors = true;
@@ -1215,19 +1219,95 @@ export class SeatScene {
     return (this._bandMat ||= crowdMaterial(this.people.material));
   }
 
-  // Lights up the person sitting in `seatId` and fades the rest of the crowd. False when
-  // nobody is drawn there.
-  focusPerson(seatId) {
-    const i = this.venue?.seats.findIndex(s => s.id === seatId) ?? -1;
-    const k = i < 0 ? undefined : this.crowdSlot?.get(i);
-    if (k === undefined || !this.people?.pick) { this.clearPerson(); return false; }
-    this.people.pick(k);
+  // One fan picked from the list: the whole picture turns grey and dim, and that one person
+  // is drawn again on a layer of their own above it, lit green, with a tag of their name and
+  // seat. The layer draws only that figure, so it costs next to nothing; seen through anyone
+  // standing in front of them. `tag`: { name, sub }.
+  focusPerson(seat, tag = {}) {
+    if (!this.scene || !seat) return false;
+    const i = this.venue.seatById.get(seat.id);
+    const k = i === undefined ? undefined : this.crowdSlot?.get(i);
+    const mesh = this.people?.soloMesh?.(k ?? -1, seat);
+    if (!mesh) return false;
+    this.clearPerson(true);
+    if (!this.solo) {
+      const r = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+      r.setClearColor(0x000000, 0);
+      r.outputColorSpace = THREE.SRGBColorSpace;
+      r.toneMapping = THREE.ACESFilmicToneMapping;
+      r.domElement.className = 'solo-layer';
+      this.container.insertBefore(r.domElement, this.labelRenderer.domElement);
+      const scene = new THREE.Scene();
+      scene.add(new THREE.HemisphereLight('#eaffea', '#103010', 1.6));
+      const sun = new THREE.DirectionalLight('#ffffff', 1.4);
+      sun.position.set(0.3, 1, 0.5);
+      scene.add(sun);
+      this.solo = { r, scene, mesh: null };
+      this._soloSize();
+    }
+    this.solo.mesh = mesh;
+    this.solo.scene.add(mesh);
+    this.solo.r.domElement.hidden = false;
+    // The name over their head, still in colour.
+    const el = document.createElement('div');
+    el.className = 'solo-tag';
+    el.innerHTML = '<b></b><span></span>';
+    el.firstChild.textContent = tag.name || '';
+    el.lastChild.textContent = tag.sub || '';
+    const obj = new CSS2DObject(el);
+    obj.position.set(seat.x, seat.y + (seat.standing ? 2.45 : 2.05), seat.z);
+    obj.userData.fan = true;
+    this.scene.add(obj);
+    this.soloTag = obj;
+    this.container.classList.add('is-solo');
+    this.labels?.forEach(l => { l.visible = false; });
+    if (this.fanTags) this.fanTags.forEach(t => { t.visible = false; });
     return true;
   }
 
-  clearPerson() {
-    this.people?.pick?.(-1);
+  clearPerson(keep = false) {
+    if (this.solo?.mesh) { this.solo.scene.remove(this.solo.mesh); this.solo.mesh = null; }
+    if (this.soloTag) { this.scene.remove(this.soloTag); this.soloTag.element.remove(); this.soloTag = null; }
+    if (keep) return;
+    if (this.solo) this.solo.r.domElement.hidden = true;
+    if (this.container.classList.contains('is-solo')) {
+      this.container.classList.remove('is-solo');
+      this.setLabels(this.labelsShown);
+      this.fanTags?.forEach(t => { t.visible = true; });
+    }
     if (this._minD != null) { this.controls.minDistance = this._minD; this._minD = null; }
+  }
+
+  _soloSize() {
+    if (!this.solo) return;
+    const w = this.container.clientWidth || 1, h = this.container.clientHeight || 1;
+    this.solo.r.setPixelRatio(this.renderer.getPixelRatio());
+    this.solo.r.setSize(w, h, false);
+  }
+
+  // From the seat, turns the view towards a seat elsewhere (as far as a head turns).
+  lookToward(seat) {
+    if (this.mode !== 'seat' || !seat) return;
+    const L = this.look, eye = this.eye || this.camera.position;
+    const dx = seat.x - eye.x, dz = seat.z - eye.z, dy = seat.y + 1.1 - eye.y;
+    const yaw = Math.atan2(-dx, -dz), pitch = Math.atan2(dy, Math.hypot(dx, dz));
+    let rel = L.baseYaw - yaw;
+    rel = Math.atan2(Math.sin(rel), Math.cos(rel));
+    L.yaw = THREE.MathUtils.clamp(rel, -1.9, 1.9);
+    L.pitch = THREE.MathUtils.clamp(pitch - L.basePitch, -0.7, 0.55);
+    // Zoomed in on someone far off, so they are more than a speck.
+    this._fovBack ??= L.fov;
+    const dist = Math.hypot(dx, dy, dz);
+    L.fov = THREE.MathUtils.clamp(this._fovBack * 22 / Math.max(dist, 1), 14, this._fovBack);
+  }
+
+  // Back to looking ahead from the seat, at the zoom from before.
+  lookAhead() {
+    if (this.mode !== 'seat') { this._fovBack = null; return; }
+    const L = this.look;
+    L.yaw = 0; L.pitch = 0;
+    if (this._fovBack != null) L.fov = this._fovBack;
+    this._fovBack = null;
   }
 
   // Flies the overview's camera to one seat, close enough to pick the person out among their
@@ -1334,6 +1414,7 @@ export class SeatScene {
       done: () => {
         this.mode = 'seat';
         this.eye = eye;
+        this._fovBack = null;
         this.look = { yaw: 0, pitch: 0, cy: 0, cp: 0, baseYaw: seated.yaw, basePitch: seated.pitch, fov: this._fitFov() };
         this.seatSince = this.clock.elapsedTime;
       },
@@ -1442,8 +1523,9 @@ export class SeatScene {
     } else {
       this.renderer.render(this.scene, this.camera);
     }
+    if (this.solo?.mesh) this.solo.r.render(this.solo.scene, this.camera);
     this.afterRender?.(this.renderer.domElement);
-    if ((this.labels?.length && this.labelsShown) || this.fanTags?.length) {
+    if ((this.labels?.length && this.labelsShown) || this.fanTags?.length || this.soloTag) {
       this.labelRenderer.render(this.scene, this.camera);
       if (this.mode === 'overview') this._declutter();
     }
