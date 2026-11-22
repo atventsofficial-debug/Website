@@ -2758,3 +2758,24 @@ body:has(#fan-list:not([hidden])) .demo-bar, body:has(#fan-card:not([hidden])) .
 @media (max-width: 960px) { .mates-scroll { max-height: 200px; } }
 .mates.is-compact { padding-top: var(--s2); }
 .mates.is-compact .mates-scroll { max-height: 160px; }
+
+/* One pin per block of seat mates (scene3d.js setBlockPins): a floating plumbob over a chip
+   with the block and how many fans show their Instagram there. Orange and locked for other
+   categories. */
+.fan-pin { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 0; border: 0; background: none; color: var(--text); cursor: pointer; pointer-events: auto; transition: opacity .2s, transform .15s; }
+.fan-pin .fan-bob { width: 26px; height: 42px; }
+.fan-pin .fan-bob svg { width: 20px; height: 33px; }
+.fan-pin-chip { display: flex; align-items: center; gap: 5px; padding: 4px 8px 4px 9px; border: 1px solid rgba(95, 211, 90, 0.75); border-radius: 999px; background: rgba(14, 13, 13, 0.9); font: 700 11px/1 var(--font); white-space: nowrap; box-shadow: 0 6px 16px -6px rgba(0, 0, 0, 0.7); }
+.fan-pin-chip span { color: #7ee27a; font-weight: 600; }
+.fan-pin-chip svg { width: 11px; height: 11px; }
+.fan-pin.is-locked .fan-pin-chip { border-color: rgba(255, 138, 40, 0.7); }
+.fan-pin.is-locked .fan-pin-chip span, .fan-pin.is-locked .fan-pin-chip svg { color: #ffa257; }
+.fan-pin.is-locked .fan-bob { opacity: .85; transform: scale(.85); }
+.fan-pin:hover .fan-pin-chip, .fan-pin:focus-visible .fan-pin-chip, .fan-pin.is-on .fan-pin-chip { background: #5fd35a; color: #0d1a0c; }
+.fan-pin:hover .fan-pin-chip span, .fan-pin.is-on .fan-pin-chip span { color: #0d1a0c; }
+.fan-pin.is-locked:hover .fan-pin-chip { background: #ff8a2a; color: #1a0f05; }
+.fan-pin.is-locked:hover .fan-pin-chip span, .fan-pin.is-locked:hover .fan-pin-chip svg { color: #1a0f05; }
+.fan-pin:hover .fan-bob svg, .fan-pin.is-on .fan-bob svg { filter: drop-shadow(0 0 12px var(--pb-glow)); }
+.fan-pin:focus-visible { outline: none; }
+.fan-pin.sec-tag-off { opacity: 0; pointer-events: none; }
+.stage.is-seat .fan-pin { transform: scale(.8); }

@@ -821,6 +821,7 @@ export const EXACT = {
 "On your seat": "Di kursimu",
 "Search a name or @instagram": "Cari nama atau @instagram",
 "My block": "Blokku",
+"Profile hidden": "Profil disembunyikan",
 "Back to my seat": "Kembali ke kursiku",
 "No fan by that name.": "Tidak ada fans dengan nama itu.",
 "Which fans": "Fans yang mana",
@@ -837,6 +838,11 @@ const DAY = '(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)';
 // [regex, replacement]. A string replacement has its $n groups passed through the date words;
 // a function gets the match as String.replace gives it.
 export const PATTERNS = [
+  [/^: tap a name to see their seat\.$/, ': ketuk nama untuk melihat kursinya.'],
+  [/^A fan in (.+)$/, 'Fans di $1'],
+  [/^Someone with a paid 3D pass sits here\. Only fans with a 3D pass in$/, 'Di sini duduk fans dengan pass 3D berbayar. Hanya fans dengan pass 3D di'],
+  [/^can see who they are and find them on Instagram\.$/, 'yang bisa melihat siapa mereka dan menemukan Instagram-nya.'],
+  [/^Unlock (.+) · (.+)$/, 'Buka $1 · $2'],
   [/^sits in (.+)\. Their seat has the green marker\.$/, 'duduk di $1. Kursinya ditandai penanda hijau.'],
   [/^Fans in (.+)$/, 'Fans di $1'],
   [/^(\d+) fans? in (.+)$/, '$1 fans di $2'],

@@ -55,13 +55,31 @@ function paintTags() {
   // A cheap key (the list the Worker sent, by identity, and where the fan sits), so a full
   // venue's thousands of markers are not listed again on every repaint of the panel.
   const own = p ? (state.tour ? tourSeat()?.id : p.seats?.[0] || p.seat) : '';
-  const key = `${state.venue?.eventId}|${p?.id || ''}|${own}|${dataId(mates.data)}|${mates.passId}|${state.tour?.fan?.seat || ''}`;
+  const t = state.tour;
+  const key = `${state.venue?.eventId}|${p?.id || ''}|${own}|${dataId(mates.data)}|${mates.passId}|${t?.fan?.seat || ''}|${t?.fanBlock || ''}`;
   if (key === tagKey) return;
   tagKey = key;
-  // Every fan of the category, the one picked from the list (or a tap) marked out; fans of
-  // other categories in orange, locked.
-  const pick = state.tour?.fan?.seat;
-  sc.setFans(p ? mateTags(own).map(f => (f.seat === pick ? { ...f, spot: true } : f)) : []);
+  // One pin over each block with fans showing their Instagram (orange and locked for other
+  // categories), and one glowing marker over the seat of a fan picked from the list.
+  sc.setBlockPins(p ? blockPins(p) : []);
+  sc.setFans(p && t?.fan ? [{ ...t.fan, spot: true }] : []);
+}
+const secCode = s => (s.tag || s.sec).replace(/^(RS|CS)-/, '$1 ').replace(/^VIP-/, 'VIP ').replace(/^FA-/, 'FA ');
+function blockPins(p) {
+  const d = mates.data;
+  if (!d) return [];
+  const by = new Map();
+  const add = (seat, locked) => {
+    const s = seatOf(seat);
+    if (!s) return;
+    const k = s.sec;
+    const pin = by.get(k) || { sec: k, code: secCode(s), label: s.secName, cat: s.cat, seat: s.id, locked, count: 0, on: state.tour?.fanBlock === k };
+    pin.count++;
+    by.set(k, pin);
+  };
+  for (const f of d.fans || []) add(f.seat, false);
+  for (const f of d.others || []) add(f.seat, true);
+  return [...by.values()];
 }
 function paintMates() {
   const p = matesPass();
@@ -78,13 +96,27 @@ function paintMates() {
 // A tap on a fan in the list: up over the venue, a marker over that fan's seat, and their
 // card. Only the fan picked gets a marker; the venue is not covered in them.
 function showFanOnMap(f) {
-  const sc = state.scene, s = seatOf(f.seat);
-  if (!sc || !s || !state.tour) return;
-  closeFanCard();
+  const s = seatOf(f.seat);
+  if (!s || !state.tour) return;
   state.tour.fan = f;
+  lookAtBlock(s, () => { if (state.tour?.fan === f) openFanCard(f); });
+}
+// A tap on a block's pin: up over that block, and the panel lists its fans.
+function showBlock(sec) {
+  const s = state.venue?.seats.find(x => x.sec === sec);
+  if (!s || !state.tour) return;
+  state.tour.fan = null;
+  lookAtBlock(s);
+}
+function lookAtBlock(s, done) {
+  const sc = state.scene;
+  if (!sc) return;
+  closeFanCard();
+  state.tour.fanBlock = s.sec;
+  state.tour.mini = false;
   paintTags();
   paintTour();
-  const go = () => sc.frameCategory(s.cat, { sec: s.sec, seat: s, done: () => { if (state.tour?.fan === f) openFanCard(f); } });
+  const go = () => sc.frameCategory(s.cat, { sec: s.sec, seat: s, done });
   if (sc.mode === 'overview' && !sc.anim) go();
   else { state.tour.afterOverview = go; if (sc.mode === 'seat') sc.backToOverview(); }
 }
@@ -142,6 +174,7 @@ export async function openViewer(id, { cat, seat, back, tour } = {}) {
       onSelect: pickSeat,
       onMode: setMode,
       onFan: f => (state.tour && !f.locked ? showFanOnMap(f) : openFanCard(f)),
+      onPin: pin => (pin.locked ? openFanCard({ locked: true, cat: pin.cat, seat: pin.seat }) : showBlock(pin.sec)),
       onArrive: (s, dist) => {
         $('#sc-dist').textContent = `${Math.round(dist)} m to the ${FOCUS_NAME[state.venue.show ? 'concert' : state.venue.kind]} · eye height ${(s.y + (s.standing ? 1.62 : 1.2)).toFixed(1)} m${s.standing ? ' · free standing: stand anywhere on the floor' : ''}`;
       },
@@ -257,9 +290,9 @@ function renderCats() {
 function setMode(mode, seat) {
   if (state.tour) {
     if (mode === 'turning' || mode === 'seat') state.scene?.setCrowd(state.crowd);
-    if (mode === 'seat') { state.tour.step = 3; state.tour.picking = false; state.tour.fan = null; paintTags(); paintTour(); }
-    // Up over the venue to show a fan picked from the list: the panel stays on the list.
-    if (mode === 'overview' && state.tour.fan) {
+    if (mode === 'seat') { state.tour.step = 3; state.tour.picking = false; state.tour.fan = null; state.tour.fanBlock = null; paintTags(); paintTour(); }
+    // Up over the venue to show a block's fans: the panel stays on the list.
+    if (mode === 'overview' && state.tour.fanBlock) {
       state.scene?.setCrowd(false);
       const go = state.tour.afterOverview;
       state.tour.afterOverview = null;
@@ -491,7 +524,7 @@ function tourPick(seat) {
   const p = tourPass(), v = state.venue, mine = tourSeat();
   if (!p || !mine) return;
   // Looking at a fan from the list: only the fan's own seat sits them back down.
-  if (state.tour.fan) { if (seat.id === mine.id) state.scene.flyToSeat(mine); return; }
+  if (state.tour.fanBlock) { if (seat.id === mine.id) state.scene.flyToSeat(mine); return; }
   if (state.tour.step === 1) {
     if (seat.cat === p.cat) tourCat(p.cat);
     else toast(`That is ${v.catById[seat.cat].name}. Your ticket is ${v.catById[p.cat].name}.`);
@@ -540,7 +573,7 @@ function showCat() {
 function tourBack() {
   const t = state.tour;
   if (!t) return;
-  if (t.fan) { const s = tourSeat(); if (s) tourPick(s); }   // from a fan's seat back to the fan's own
+  if (t.fanBlock) { const s = tourSeat(); if (s) tourPick(s); }   // from a fan's seat back to the fan's own
   else if (t.step === 3) state.scene?.backToOverview();   // setMode puts the tour on step 2
   else if (t.step === 2 && t.picking) { t.picking = false; paintTour(); }
   else if (t.step === 2 && t.framed) startTour();
@@ -644,8 +677,8 @@ function paintTour() {
   // A slim head in place of a stepper: back one step on the left, fold the panel away on the
   // right. Folded, the panel is only this head, so the venue fills the screen.
   const mini = !!state.tour.mini, t = state.tour;
-  const canBack = step > 2 || !!t.picking || (step === 2 && !!t.framed), canNext = step === 2 && !t.picking;
-  const where = t.fan ? t.fan.name : step === 1 ? v.place.name : step === 2 && state.tour.picking ? 'Tap your seat' : step === 2 ? cat.name : 'Your view';
+  const canBack = step > 2 || !!t.picking || (step === 2 && !!t.framed) || !!t.fanBlock, canNext = step === 2 && !t.picking && !t.fanBlock;
+  const where = t.fan ? t.fan.name : t.fanBlock ? (state.venue.seats.find(x => x.sec === t.fanBlock)?.secName || '') : step === 1 ? v.place.name : step === 2 && state.tour.picking ? 'Tap your seat' : step === 2 ? cat.name : 'Your view';
   const bar = `<div class="tour-head">
       <button class="th-btn" type="button" data-tour="prev" aria-label="Back to the step before" title="Back to the step before"${canBack ? '' : ' disabled'}>${icon('i-back')}</button>
       <button class="th-btn" type="button" data-tour="next" aria-label="Next step" title="Next step"${canNext ? '' : ' disabled'}>${icon('i-arrow')}</button>
@@ -668,8 +701,8 @@ function paintTour() {
       <h2>Tap your seat</h2>
       <p class="fine">Tap the seat you know is yours, in <b>${esc(s.secName)}</b>. Pinch or scroll to zoom in.</p>
       <div class="row-btns"><button class="btn btn-line btn-sm" type="button" data-tour="pickcancel">Cancel</button></div>`
-    : step === 3 && t.fan ? `
-      <p class="fine"><b>${esc(t.fan.name)}</b> sits in ${esc(seatText(seatOf(t.fan.seat) || s))}. Their seat has the green marker.</p>
+    : t.fanBlock ? `
+      <p class="fine">${t.fan ? `<b>${esc(t.fan.name)}</b> sits in ${esc(seatText(seatOf(t.fan.seat) || s))}. Their seat has the green marker.` : `<b>${esc(state.venue.seats.find(x => x.sec === t.fanBlock)?.secName || '')}</b>: tap a name to see their seat.`}</p>
       <div class="row-btns"><button class="btn btn-coral btn-sm" type="button" data-tour="seat">Back to my seat ${icon('i-seat')}</button></div>`
     : step === 2 ? `
       <p>Your seat is marked in coral: <b>${esc(seatText(s))}</b>. Tap it to sit down.</p>
@@ -687,11 +720,11 @@ function paintTour() {
         <button class="tour-act" type="button" data-tour="again">${icon('i-venue')}<b>See the whole venue</b><span>Take the tour again</span></button>
       </div>`;
   // Seat mates (the Instagram profile on the seat) at the end of the tour, in the seat.
-  const matesHtml = step === 3 ? matesBlock(p, { cats: v.catById, compact: !!t.fan }) : '';
+  const matesHtml = step === 3 || t.fanBlock ? matesBlock(p, { cats: v.catById, compact: !!t.fanBlock }) : '';
   $('#app-side').innerHTML = `${bar}${body}${matesHtml}`;
   if (matesHtml && state.scene) {
     fillMatesList($('#app-side'), {
-      passId: p.id, fans: (mates.data?.fans || []).filter(f => !f.mine),
+      passId: `${p.id}|${t.fanBlock || ''}`, fans: (mates.data?.fans || []).filter(f => !f.mine && (!t.fanBlock || seatOf(f.seat)?.sec === t.fanBlock)),
       blockOf: id => seatOf(id)?.secName, onOpen: showFanOnMap, current: t.fan?.seat || '',
     });
   }

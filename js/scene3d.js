@@ -73,9 +73,9 @@ export class SeatScene {
   // maxLevel and fps keep a decorative scene (the home page hero) cheap: it never asks for
   // more than that quality level or frame rate, whatever the device could do. `drift`: how
   // far (radians) a seat view slowly looks round on its own, so a still shot feels alive.
-  constructor(container, { onHover, onSelect, onMode, onArrive, onFan, quality = 'auto', labels = true, interactive = true, maxLevel = 2, fps = 60, drift = 0 } = {}) {
+  constructor(container, { onHover, onSelect, onMode, onArrive, onFan, onPin, quality = 'auto', labels = true, interactive = true, maxLevel = 2, fps = 60, drift = 0 } = {}) {
     this.container = container;
-    this.cb = { onHover, onSelect, onMode, onArrive, onFan };
+    this.cb = { onHover, onSelect, onMode, onArrive, onFan, onPin };
     this.labelsOn = labels;
     this.labelsShown = true;
     this.interactive = interactive;
@@ -642,9 +642,47 @@ export class SeatScene {
       el.textContent = a.code.replace(/^(RS|CS)-/, '$1 ').replace(/^VIP-/, 'VIP ').replace(/^FA-/, 'FA ');
       const obj = new CSS2DObject(el);
       obj.position.set(a.x / a.n, a.y + 1.6, a.z / a.n);
+      obj.userData.code = a.code;
       this.scene.add(obj);
       this.labels.push(obj);
     }
+  }
+
+  // Seat mates by block: one floating plumbob over each block, with the block and how many
+  // fans there show their Instagram; green for the fan's category, orange (locked) for the
+  // others. A few dozen page elements whatever the crowd, so a sold out venue stays clean
+  // and light. `pins`: { sec, label, count, locked, cat, seat }. A tap is the page's (onPin).
+  setBlockPins(pins = []) {
+    this.fanTags?.forEach(o => { o.element.remove(); o.removeFromParent(); });
+    this.fanTags = [];
+    if (!this.scene || !this.venue) return;
+    const at = new Map();
+    for (const s of this.venue.seats) {
+      const a = at.get(s.sec) || { x: 0, z: 0, y: -1e9, n: 0 };
+      a.x += s.x; a.z += s.z; a.y = Math.max(a.y, s.y + (s.standing ? STAND_LIFT : 0)); a.n++;
+      at.set(s.sec, a);
+    }
+    const covered = new Set();
+    for (const pin of pins) {
+      const a = at.get(pin.sec);
+      if (!a || !pin.count) continue;
+      covered.add(pin.sec);
+      const el = document.createElement('button');
+      el.type = 'button';
+      el.className = `fan-pin${pin.locked ? ' is-locked' : ''}${pin.on ? ' is-on' : ''}`;
+      el.setAttribute('aria-label', pin.locked ? `${pin.count} fans in ${pin.label}, another category` : `${pin.count} fans in ${pin.label}`);
+      el.innerHTML = `<span class="fan-bob${pin.locked ? ' is-locked' : ''}">${PLUMBOB}</span><span class="fan-pin-chip">${pin.locked ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 11V8a5 5 0 0 1 10 0v3M6 11h12v9H6z" fill="none" stroke="currentColor" stroke-width="2"/></svg>' : ''}<b>${pin.code}</b><span>${pin.count.toLocaleString('id-ID')}</span></span>`;
+      el.addEventListener('pointerdown', e => e.stopPropagation());
+      el.addEventListener('click', e => { e.stopPropagation(); this.cb.onPin?.(pin); });
+      const obj = new CSS2DObject(el);
+      obj.position.set(a.x / a.n, a.y + 3.2, a.z / a.n);
+      obj.userData.fan = true;
+      this.scene.add(obj);
+      this.fanTags.push(obj);
+    }
+    // The block numbers under a pin would repeat it.
+    this.labels?.forEach(l => { l.userData.underPin = covered.has(l.userData.code); l.visible = this.labelsShown && !l.userData.underPin && this.mode !== 'seat'; });
+    if (this.tagView) this.tagView.ok = false;
   }
 
   // Seat mates (js/fans.js): a floating marker over each seat whose fan shows their
@@ -653,8 +691,6 @@ export class SeatScene {
   // out venue (tens of thousands of fans) stays light on a phone. A tap is found by pickFan
   // and handed to the page (onFan).
   setFans(list = []) {
-    this.fanTags?.forEach(o => { o.element.remove(); o.removeFromParent(); });
-    this.fanTags = [];
     if (this.fanMesh) { this.fanMesh.removeFromParent(); this.fanMesh.geometry.dispose(); this.fanMesh.material.dispose(); this.fanMesh = null; }
     this.fanList = [];
     this.fanPos = null;
@@ -830,7 +866,7 @@ export class SeatScene {
   // Block numbers on or off. The seat mates' tags stay, so the layer itself stays shown.
   setLabels(on) {
     this.labelsShown = on;
-    this.labels?.forEach(l => { l.visible = on; });
+    this.labels?.forEach(l => { l.visible = on && !l.userData.underPin; });
     if (this.tagView) this.tagView.ok = false;
   }
 
@@ -1123,7 +1159,7 @@ export class SeatScene {
         this.controls.target.copy(o.target);
         this.controls.enabled = this.interactive;
         this.controls.update();
-        this.labels?.forEach(l => { l.visible = true; });
+        this.labels?.forEach(l => { l.visible = !l.userData.underPin; });
         this.people?.focusOn(null);
         this.mode = 'overview';
         this.cb.onMode?.('overview');
