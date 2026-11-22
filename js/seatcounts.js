@@ -8,7 +8,7 @@ export const SEAT_COUNTS = {
   'stadium': 14774,
   'stadium-end': 22307,
   'stadium-round': 21390,
-  'gbk-bts': 25404,
+  'gbk-bts': 21156,
   'stadium-tottenham': 23083,
   'gbk-westlife': 16503,
   'madya-end': 15498,

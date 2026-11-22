@@ -2114,16 +2114,14 @@ function floorZones(ctx, venue) {
 function pavilion(ctx, S, R, ROOF) {
   const { scene } = ctx, H = S.half;
   const red = new THREE.MeshStandardMaterial({ color: '#8e1b1b', roughness: 0.55 });
-  for (const [sx, sz] of [[1, 1], [-1, 1], [-1, -1], [1, -1]]) {
-    for (const [ax, az] of [[R, H - 3], [H - 3, R]]) {
-      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.7, ROOF - 0.6, 16), red);
-      col.position.set(ax * sx, (ROOF - 0.6) / 2, az * sz);
-      col.castShadow = true;
-      scene.add(col);
-      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 1.05, 0.6, 16), mats.concrete());
-      base.position.set(ax * sx, 0.3, az * sz);
-      scene.add(base);
-    }
+  for (const [px, pz] of S.posts) {
+    const col = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.7, ROOF - 0.6, 16), red);
+    col.position.set(px, (ROOF - 0.6) / 2, pz);
+    col.castShadow = true;
+    scene.add(col);
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 1.05, 0.6, 16), mats.concrete());
+    base.position.set(px, 0.3, pz);
+    scene.add(base);
   }
   // Dancheong: a frieze round all four sides just under the eaves.
   const dan = canvasTex(1024, 128, (g, w, h) => {
@@ -2243,33 +2241,51 @@ function roundStage(ctx, venue, { screen, beamAt, steel, theme }) {
   liftRim.position.y = TOP + 0.21;
   scene.add(liftRim);
 
-  // Runways and end stages, with steps down at the far end and barriers along both sides.
+  // The X's four arms, from the middle of the body out to their tips, with steps down at each
+  // tip, lit edges, light strips along their sides and barriers along both sides.
   const rail = (len, x, z, ry) => { const b = new THREE.Mesh(crowdBarrier(len), steel); b.position.set(x, 0, z); b.rotation.y = ry; scene.add(b); };
   for (const [sx, sz] of [[1, 1], [-1, 1], [-1, -1], [1, -1]]) {
-    const len = (A.to - A.from) * Math.SQRT2, mid = (A.from + A.to) / 2;
-    const ry = Math.atan2(sx, sz), ux = sx / Math.SQRT2, uz = sz / Math.SQRT2, px = uz, pz = -ux;
-    const walk = add(new THREE.Mesh(new THREE.BoxGeometry(A.w, TOP, len), deckMat));
-    walk.position.set(mid * sx, TOP / 2, mid * sz);
-    walk.rotation.y = ry;
+    const tx = A.tip[0] * sx, tz = A.tip[1] * sz, L = Math.hypot(tx, tz);
+    const ux = tx / L, uz = tz / L, px = uz, pz = -ux, ry = Math.atan2(ux, uz);
+    const arm = add(new THREE.Mesh(new THREE.BoxGeometry(A.w, TOP, L), deckMat));
+    arm.position.set(tx / 2, TOP / 2, tz / 2);
+    arm.rotation.y = ry;
+    // LED panels down the arm: chevrons pointing out to the tip, lit on the night.
+    const chev = canvasTex(256, 512, (g, w, h) => {
+      g.fillStyle = '#0d0d12'; g.fillRect(0, 0, w, h);
+      g.strokeStyle = '#ffffff'; g.lineWidth = 18; g.lineJoin = 'miter';
+      for (let k = 0; k < 4; k++) { const y = h * (0.2 + k * 0.2); g.beginPath(); g.moveTo(w * 0.12, y + h * 0.08); g.lineTo(w / 2, y - h * 0.04); g.lineTo(w * 0.88, y + h * 0.08); g.stroke(); }
+    }, { repeat: [1, Math.round(L / 5)] });
+    const ledMat = new THREE.MeshBasicMaterial({ map: chev, color: theme.glow || '#9d7bff', toneMapped: false });
+    ctx.mood(ledMat.color, 'r', ledMat.color.r * 0.35, ledMat.color.r);
+    ctx.mood(ledMat.color, 'g', ledMat.color.g * 0.35, ledMat.color.g);
+    ctx.mood(ledMat.color, 'b', ledMat.color.b * 0.35, ledMat.color.b);
+    const led = new THREE.Mesh(new THREE.PlaneGeometry(A.w * 0.42, L * 0.5), ledMat);
+    led.rotation.order = 'YXZ';
+    led.rotation.set(-Math.PI / 2, ry + Math.PI, 0);
+    led.position.set(tx * 0.66, TOP + 0.012, tz * 0.66);
+    scene.add(led);
+    // Where the arm leaves the square body: its edges and barriers start there.
+    const t0 = (H + 0.3) / Math.max(Math.abs(ux), Math.abs(uz)) / L, len = L * (1 - t0), mid = (t0 + 1) / 2;
     for (const side of [-1, 1]) {
+      const ox = px * side * A.w / 2, oz = pz * side * A.w / 2;
       const e = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.05, len), glowMat);
-      e.position.set(mid * sx + px * side * A.w / 2, TOP + 0.02, mid * sz + pz * side * A.w / 2);
+      e.position.set(tx * mid + ox, TOP + 0.02, tz * mid + oz);
       e.rotation.y = ry;
       scene.add(e);
       const lights = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.3, len), tint);
-      lights.position.set(mid * sx + px * side * (A.w / 2 + 0.01), TOP - 0.3, mid * sz + pz * side * (A.w / 2 + 0.01));
+      lights.position.set(tx * mid + ox * 1.003, TOP - 0.3, tz * mid + oz * 1.003);
       lights.rotation.y = ry;
       scene.add(lights);
-      const off = A.w / 2 + 1.4;
-      rail(len - 2, mid * sx + px * side * off, mid * sz + pz * side * off, ry + Math.PI / 2);
+      const off = A.w / 2 + 1.0;
+      rail(len - 1.5, tx * mid + px * side * off, tz * mid + pz * side * off, ry + Math.PI / 2);
     }
-    const bx = A.to * sx, bz = A.to * sz, B = S.bHalf;
-    add(new THREE.Mesh(box(B * 2, TOP, B * 2, bx, TOP / 2, bz), deckMat));
-    for (const [x, z, r] of [[bx, bz + B, 0], [bx, bz - B, 0], [bx + B, bz, Math.PI / 2], [bx - B, bz, Math.PI / 2]]) edge(B * 2, x, z, r);
-    // Logo-free emblem on the end stage: a lit ring.
+    edge(A.w, tx, tz, ry + Math.PI / 2);
+    // On the arm's last stretch: the flag's trigram for this corner, or a lit ring.
+    const at = 0.86, mx = tx * at, mz = tz * at, size = A.w * 0.8;
     if (S.korean) {
-      // The flag's four trigrams, one on each end stage as on the flag's corners: geon (three
-      // whole bars), gon (three broken), gam (broken, whole, broken), ri (whole, broken, whole).
+      // geon (three whole bars), gon (three broken), gam (broken, whole, broken), ri (whole,
+      // broken, whole), each on the corner where the flag carries it.
       const tri = { '-1,-1': [1, 1, 1], '1,1': [0, 0, 0], '1,-1': [0, 1, 0], '-1,1': [1, 0, 1] }[`${sx},${sz}`];
       const tex = textTexture(512, 512, (g, w) => {
         g.fillStyle = '#f4f1ea';
@@ -2279,40 +2295,45 @@ function roundStage(ctx, venue, { screen, beamAt, steel, theme }) {
           else { g.fillRect(w * 0.18, y, w * 0.28, w * 0.12); g.fillRect(w * 0.54, y, w * 0.28, w * 0.12); }
         });
       });
-      const mark = new THREE.Mesh(new THREE.PlaneGeometry(B * 1.8, B * 1.8), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, toneMapped: false }));
+      const mark = new THREE.Mesh(new THREE.PlaneGeometry(size, size), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, toneMapped: false }));
       mark.rotation.order = 'YXZ';
-      mark.rotation.set(-Math.PI / 2, ry + Math.PI / 4, 0);
-      mark.position.set(bx, TOP + 0.03, bz);
+      mark.rotation.set(-Math.PI / 2, ry + Math.PI / 2, 0);
+      mark.position.set(mx, TOP + 0.03, mz);
       scene.add(mark);
     } else {
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(B * 0.62, 0.05, 6, 64), glowMat);
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(size * 0.4, 0.05, 6, 64), glowMat);
       ring.rotation.x = Math.PI / 2;
-      ring.position.set(bx, TOP + 0.03, bz);
+      ring.position.set(mx, TOP + 0.03, mz);
       scene.add(ring);
     }
+    // A small lift at the very tip, ringed in light.
+    const tipLift = add(new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.4, 0.12, 40), new THREE.MeshStandardMaterial({ color: '#1b1a24', roughness: 0.3 })));
+    tipLift.position.set(tx * 0.955, TOP + 0.04, tz * 0.955);
+    const tipRim = new THREE.Mesh(new THREE.TorusGeometry(1.4, 0.05, 6, 48), tint);
+    tipRim.rotation.x = Math.PI / 2;
+    tipRim.position.set(tx * 0.955, TOP + 0.11, tz * 0.955);
+    scene.add(tipRim);
     for (let k = 0; k < 3; k++) {
-      const h = TOP * (3 - k) / 4, d = B * Math.SQRT2 + 0.5 + k * 0.5;
-      const step = add(new THREE.Mesh(new THREE.BoxGeometry(2.6, h, 0.5), deckMat));
-      step.position.set(bx + ux * d, h / 2, bz + uz * d);
+      const h = TOP * (3 - k) / 4, d = L + 0.25 + k * 0.5;
+      const step = add(new THREE.Mesh(new THREE.BoxGeometry(A.w * 0.6, h, 0.5), deckMat));
+      step.position.set(ux * d, h / 2, uz * d);
       step.rotation.y = ry;
     }
   }
-  // Barriers along the main stage's four sides.
-  for (const [x, z, ry] of [[0, H + 1.4, 0], [0, -H - 1.4, 0], [H + 1.4, 0, Math.PI / 2], [-H - 1.4, 0, Math.PI / 2]]) rail(H * 2 - 3, x, z, ry);
+  // Barriers along the body's four sides, between the arms.
+  const sideLen = 2 * (H - A.w / 2 - 1.2);
+  for (const [x, z, ry] of [[0, H + 1.0, 0], [0, -H - 1.0, 0], [H + 1.0, 0, Math.PI / 2], [-H - 1.0, 0, Math.PI / 2]]) rail(sideLen, x, z, ry);
 
-  // Eight towers, two at each corner either side of the runway, up to the roof.
+  // The towers holding the roof, from the plan's numbers (S.posts).
   const ROOF = 27, R = H + 1;
   const towerGeo = trussGeometry(ROOF, 0.8);
-  for (const [sx, sz] of [[1, 1], [-1, 1], [-1, -1], [1, -1]]) {
-    for (const [ax, az] of [[R, H - 3], [H - 3, R]]) {
-      const t = new THREE.Mesh(towerGeo, steel);
-      t.rotation.z = Math.PI / 2;
-      t.position.set(ax * sx, ROOF / 2, az * sz);
-      t.castShadow = true;
-      scene.add(t);
-      const foot = new THREE.Mesh(box(1.4, 0.2, 1.4, ax * sx, 0.1, az * sz), mats.blackMetal());
-      scene.add(foot);
-    }
+  for (const [px, pz] of S.posts) {
+    const t = new THREE.Mesh(towerGeo, steel);
+    t.rotation.z = Math.PI / 2;
+    t.position.set(px, ROOF / 2, pz);
+    t.castShadow = true;
+    scene.add(t);
+    scene.add(new THREE.Mesh(box(1.4, 0.2, 1.4, px, 0.1, pz), mats.blackMetal()));
   }
   // The roof: a square frame of truss, cross members, and an inner ring of truss.
   const frame = trussGeometry(R * 2 + 1, 0.9), inner = trussGeometry(R * 1.2, 0.6);
@@ -2373,18 +2394,33 @@ function roundStage(ctx, venue, { screen, beamAt, steel, theme }) {
   cube.position.y = ROOF - 7;
   scene.add(cube);
 
-  // Delay towers in the field.
-  for (const [x, z] of S.towers || []) {
-    const t = new THREE.Mesh(trussGeometry(16, 0.5), steel);
-    t.rotation.z = Math.PI / 2;
-    t.position.set(x, 8, z);
-    scene.add(t);
+  // FOH desks on the field, as on the plan: a covered riser with the consoles under it.
+  for (const [fx, fz] of S.foh || []) {
+    const desk = new THREE.Group();
+    desk.add(new THREE.Mesh(box(7.2, 1.0, 5.2, 0, 0.5, 0), mats.darkConcrete()));
+    desk.add(new THREE.Mesh(box(7.6, 0.12, 5.6, 0, 3.6, 0), mats.matteBlack()));
+    for (const [cx, cz] of [[-3.6, -2.6], [3.6, -2.6], [-3.6, 2.6], [3.6, 2.6]]) desk.add(new THREE.Mesh(box(0.12, 2.6, 0.12, cx, 2.3, cz), steel));
+    desk.add(new THREE.Mesh(box(6, 0.5, 1.4, 0, 1.25, 0.6 * Math.sign(-fz)), mats.blackMetal()));
+    desk.position.set(fx, 0, fz);
+    scene.add(desk);
+  }
+  // Production at both ends of the field: a camera and delay riser with a tower of speakers
+  // either side, facing the stage.
+  for (const [x, z] of S.production || []) {
     const face = Math.atan2(-x, -z);
-    for (let k = 0; k < 8; k++) {
-      const c = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.42, 0.9), mats.matteBlack());
-      c.position.set(x, 15 - k * 0.44, z);
-      c.rotation.y = face;
-      scene.add(c);
+    const riser = new THREE.Mesh(box(4, 2.4, 12, x, 1.2, z), mats.darkConcrete());
+    scene.add(riser);
+    for (const dz of [-7.5, 7.5]) {
+      const t = new THREE.Mesh(trussGeometry(16, 0.5), steel);
+      t.rotation.z = Math.PI / 2;
+      t.position.set(x, 8, z + dz);
+      scene.add(t);
+      for (let k = 0; k < 8; k++) {
+        const c = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.42, 0.9), mats.matteBlack());
+        c.position.set(x - Math.sign(x) * 0.6, 15 - k * 0.44, z + dz);
+        c.rotation.y = face;
+        scene.add(c);
+      }
     }
   }
 

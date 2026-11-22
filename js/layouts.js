@@ -336,54 +336,64 @@ function stadiumRound() {
   };
 }
 
-// BTS at Gelora Bung Karno: a square main stage in the middle of the field with a round lift
-// in it, four runways out along the diagonals to a small stage at each end, and a roof of
-// truss over the main stage on four towers. The field between the runways is four wedges of
-// numbered chairs, A to D, each VIP Package nearest the stage and Platinum Floor behind a
-// cross aisle, split down the middle by an aisle; a delay tower stands in the side wedges'
-// aisles. The bowl and upper tiers are the 360 stadium's. Stage numbers (metres, centre
-// (0, 0)) are read by the 3D builder too (venues3d.js roundStage).
-export const BTS_STAGE = { half: 10, lift: 6, korean: true, arm: { w: 3.6, from: 10, to: 29 }, bHalf: 3.2, towers: [[-40, 0], [40, 0]] };
-function btsClear(x, z) {
-  const { half, arm, bHalf } = BTS_STAGE, gap = 2.2;
-  if (Math.abs(x) < half + 2.6 && Math.abs(z) < half + 2.6) return false;
-  const ax = Math.abs(x), az = Math.abs(z);
-  // Distance from the runway on this quadrant's diagonal, and from its end stage.
-  const u = (ax + az) / Math.SQRT2, v = Math.abs(ax - az) / Math.SQRT2;
-  const u0 = arm.from * Math.SQRT2, u1 = arm.to * Math.SQRT2;
-  if (u > u0 && u < u1 && v < arm.w / 2 + gap) return false;
-  if (Math.abs(ax - arm.to) < bHalf + gap && Math.abs(az - arm.to) < bHalf + gap) return false;
-  return true;
+// BTS at Gelora Bung Karno, after iME Indonesia's seat map for the Jakarta shows (May 2026;
+// reproduced by partikel.id): an X-shaped stage in the middle of the field, its square body
+// with a round lift and four broad arms out towards the corners of the field. Between the
+// arms, the four VIP Package blocks hug the stage, A on the north side (-z), B east (+x),
+// C south, D west; a narrow Platinum Floor band of the same letter runs behind each. The rest
+// of the field is clear. Round the field, the front rows of the lower tier are Platinum
+// Tribune and the rest CAT 1; the upper tier is CAT 2 in front and CAT 3 behind. FOH and
+// production stand on the field north and south of the floor, and at both ends. All seated.
+// The plan is to scale only roughly: distances here are read off it against the field.
+// Stage numbers (metres, centre (0, 0)) are read by the 3D builder (venues3d.js roundStage).
+export const BTS_STAGE = {
+  half: 13, lift: 6,
+  arm: { tip: [31, 22], w: 7.5 },
+  // Towers holding the roof, clear of the arms: two on each side of the square body.
+  posts: [[14.2, 3.6], [14.2, -3.6], [-14.2, 3.6], [-14.2, -3.6], [3.6, 14.2], [-3.6, 14.2], [3.6, -14.2], [-3.6, -14.2]],
+  foh: [[0, -32.5], [0, 32.5]],
+  production: [[-50.5, 0], [50.5, 0]],
+};
+// Clear of the stage: outside the square body and away from the arm in this quadrant.
+function btsClear(x, z, gap = 1.6) {
+  const { half, arm } = BTS_STAGE;
+  if (Math.abs(x) < half + gap && Math.abs(z) < half + gap) return false;
+  const ax = Math.abs(x), az = Math.abs(z), [tx, tz] = arm.tip, L = Math.hypot(tx, tz);
+  const t = Math.max(0, Math.min(1, (ax * tx + az * tz) / (L * L)));
+  return Math.hypot(ax - t * tx, az - t * tz) > arm.w / 2 + gap;
 }
 function gbkBts() {
   const seats = [];
-  const SX = 0.56, SZ = 0.95, VIP_ROWS = 10, FRONT = BTS_STAGE.half + 2.6, AISLE = 0.7;
-  // Each wedge: the direction its chairs face (towards the stage), how far back from the
-  // stage centre its rows run, and how wide the field is across them.
-  for (const [w, f, depth, across] of [['A', [0, -1], 33.2, 51], ['B', [1, 0], 51, 33.2], ['C', [0, 1], 33.2, 51], ['D', [-1, 0], 51, 33.2]]) {
-    const [fx, fz] = f, rx = -fz, rz = fx;
-    const rowsOf = { vip: [], plat: [] };
-    let d = FRONT, i = 0;
-    while (d <= depth) {
-      const band = i < VIP_ROWS ? 'vip' : 'plat';
+  const SX = 0.56, SZ = 0.95, AISLE = 0.7;
+  // Each block: the way its chairs face (towards the stage), where its rows start and end
+  // (metres out from the stage centre), and how far they reach either side of the middle.
+  // The Platinum bands round off at the corners like the plan's, inside an ellipse.
+  const inBand = (x, z) => (x / 46) ** 2 + (z / 31) ** 2 <= 1;
+  const blocks = [];
+  for (const [w, f, vip, plat] of [
+    ['A', [0, 1], [14.6, 22.6, 22], [24, 29.6, 26]],
+    ['B', [-1, 0], [14.6, 31, 17], [32.6, 43.6, 21]],
+    ['C', [0, -1], [14.6, 22.6, 22], [24, 29.6, 26]],
+    ['D', [1, 0], [14.6, 31, 17], [32.6, 43.6, 21]],
+  ]) {
+    blocks.push({ w, f, d: vip, sec: `VIP-${w}`, secName: `VIP Package ${w}`, cat: 'vip' });
+    blocks.push({ w, f, d: plat, sec: `PF-${w}`, secName: `Platinum Floor ${w}`, cat: 'plat', band: true });
+  }
+  for (const b of blocks) {
+    const [fx, fz] = b.f, rx = -fz, rz = fx, [d0, d1, across] = b.d;
+    const o = { sec: b.sec, secName: b.secName, cat: b.cat, sx: SX, sz: SZ };
+    let r = 0;
+    for (let d = d0; d <= d1 + 1e-6; d += SZ) {
       const row = [];
-      for (let u = -across; u <= across; u += SX) {
+      for (let u = -across; u <= across + 1e-6; u += SX) {
         if (Math.abs(u) < AISLE) continue;
         const x = -fx * d + rx * u, z = -fz * d + rz * u;
-        // Inside the wedge (between the two runways either side of it) and clear of them.
-        if (Math.abs(u) > d - 0.2) continue;
-        if (!btsClear(x, z)) continue;
+        if (!btsClear(x, z) || (b.band && !inBand(x, z))) continue;
         row.push([x, z, u]);
       }
-      if (row.length) rowsOf[band].push(row);
-      i++;
-      d += SZ + (i === VIP_ROWS ? 1.4 : 0) + (i === VIP_ROWS + 14 ? 1.2 : 0);
-    }
-    for (const [band, sec, secName] of [['vip', `VIP-${w}`, `VIP Package ${w}`], ['plat', `PF-${w}`, `Platinum Floor ${w}`]]) {
-      const o = { sec, secName, cat: band, sx: SX, sz: SZ };
-      rowsOf[band].forEach((row, r) => {
-        row.sort((a, b) => a[2] - b[2]).forEach(([x, z], k) => pushSeat(seats, o, r, k + 1, x, 0, z, fx, fz));
-      });
+      if (!row.length) continue;
+      row.sort((p, q) => p[2] - q[2]).forEach(([x, z], k) => pushSeat(seats, o, r, k + 1, x, 0, z, fx, fz));
+      r++;
     }
   }
   lowerBowl(seats, { catOf: (t, row) => (row < 4 ? 'plat' : 'cat1'), name: s => ({ code: `${s + 1}`.padStart(2, '0'), label: `Section ${s + 1}` }) });
@@ -396,7 +406,7 @@ function gbkBts() {
     stage: BTS_STAGE,
     zoneColors: true,
     uppers,
-    label: 'Gelora Bung Karno, BTS 360 stage',
+    label: 'Gelora Bung Karno, BTS 360 stage (iME plan)',
     event: { title: 'Stadium concert', venue: 'Gelora Bung Karno Main Stadium' },
     focus: [0, 5, 0],
     overview: { pos: [0, 100, 108], target: [0, 0, 4], min: 40, max: 230 },
@@ -405,8 +415,8 @@ function gbkBts() {
     seatColor: '#b8162b',
     occupancy: { vip: 0.92, plat: 0.85, cat1: 0.55, cat2: 0.5, cat3: 0.45 },
     categories: [
-      { id: 'vip', name: 'VIP Package', price: 4500000, color: '#b18cff', note: 'Field, the rows nearest the stage and runways (A to D)' },
-      { id: 'plat', name: 'Platinum', price: 3650000, color: '#f2a7d8', note: 'Field behind VIP (Platinum Floor A to D), and the front of the lower tier' },
+      { id: 'vip', name: 'VIP Package', price: 4500000, color: '#b18cff', note: 'Field, between the arms of the X stage (A north, B east, C south, D west)' },
+      { id: 'plat', name: 'Platinum', price: 3650000, color: '#f2a7d8', note: 'Platinum Floor A to D behind VIP on the field, and Platinum Tribune: the front rows of the lower tier' },
       { id: 'cat1', name: 'CAT 1', price: 2800000, color: '#56b6ff', note: 'Lower tier' },
       { id: 'cat2', name: 'CAT 2', price: 2300000, color: '#ffb35c', note: 'Upper tier, front rows' },
       { id: 'cat3', name: 'CAT 3', price: 1800000, color: '#6ee39a', note: 'Upper tier, back rows' },
