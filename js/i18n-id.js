@@ -875,6 +875,7 @@ export const PATTERNS = [
   [/^(.+): tickets on sale on (.+) since (.+?)\. (.+), (.+)\.$/, (_, a, s, d, w, v) => `${a}: tiket dijual di ${s} sejak ${dt(d)}. ${dt(w).replace(/(\d+) dates from/, '$1 tanggal mulai')}, ${v}.`],
   [/^Tickets for (.+) go on sale (.+) on (.+)\.$/, 'Tiket $1 mulai dijual $2 di $3.'],
   [/^Ticket sale opened (.+) on (.+)\.$/, 'Penjualan tiket dibuka $1 di $2.'],
+  [/^(\d+) concerts? on sale, as listed in (.+)\. Prices as announced; tiket\.com has the live price\.$/, '$1 konser dijual, per daftar $2. Harga sesuai pengumuman; harga terkini ada di tiket.com.'],
   [/^(\d+) events? on sale, as listed in (.+)\. Prices as announced; tiket\.com has the live price\.$/, '$1 event dijual, per daftar $2. Harga sesuai pengumuman; harga terkini ada di tiket.com.'],
   [/^(\d+) categor(?:y|ies)$/, '$1 kategori'],
   [/^(\d+) concerts · from$/, '$1 konser · mulai'],

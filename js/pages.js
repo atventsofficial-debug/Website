@@ -425,7 +425,8 @@ export function renderConcerts() {
   if (fromHash) listQuery.type = fromHash;
   const q = listQuery.q.trim().toLowerCase();
   const match = e => !q || findText(e).includes(q);
-  const all = onSale().filter(e => isCard(e) && !isOver(e));
+  // Concerts only: films and matches are not listed here.
+  const all = onSale().filter(e => isCard(e) && !isOver(e) && typeOf(e) === 'concert');
   // The dropdown offers only the kinds of event on sale now, with a count each. Its list
   // scrolls after a few rows, so more kinds never make it run down the page.
   // "All sport" joins football, tennis and fights when more than one of them is on sale.
@@ -436,9 +437,10 @@ export function renderConcerts() {
   if (listQuery.type !== 'all' && !kinds.some(([t]) => t === listQuery.type)) listQuery.type = sportKinds.length === 1 && listQuery.type === 'sports' ? sportKinds[0][0] : 'all';
   typePicker.set([['all', all.length], ...kinds].map(([t, n]) => ({ value: t, label: t === 'all' ? 'All events' : t === 'sports' ? 'All sport' : EVENT_TYPES[t], note: String(n) })), listQuery.type);
   const list = all.filter(e => isType(listQuery.type, e)).filter(match).sort(byDate);
-  $('#concerts-count').textContent = `${plural(all.length, 'event')} on sale, as listed in ${LISTED}. Prices as announced; tiket.com has the live price.`;
+  $('#concerts-type').hidden = kinds.length < 2;
+  $('#concerts-count').textContent = `${plural(all.length, 'concert')} on sale, as listed in ${LISTED}. Prices as announced; tiket.com has the live price.`;
   // While searching, shows that just ended still come up, after the coming ones and marked.
-  const gone = q ? recentPast().filter(e => isType(listQuery.type, e) && match(e)) : [];
+  const gone = q ? recentPast().filter(e => typeOf(e) === 'concert' && match(e)) : [];
   const pastBlock = gone.length ? `<h3 class="tkt-past-head">Past events</h3>${gone.map(e => ticketCard(e, { past: true })).join('')}` : '';
   $('#concerts-grid').innerHTML = list.length || gone.length ? list.map(e => ticketCard(e)).join('') + pastBlock
     : `<div class="empty-state"><h3>Nothing matches.</h3><p>${q ? `No event matches “${esc(listQuery.q.trim())}”.` : 'No concerts on sale right now.'} New shows are added as they go on sale: get the concert alerts on the home page to hear first.</p>${q ? '<button class="btn btn-line" type="button" id="concerts-clear">Clear the search</button>' : ''}</div>`;
