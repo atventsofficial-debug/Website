@@ -4,7 +4,7 @@ import { getEvent, isConcert, demoFor } from './events.js';
 import { LocalStore, ApiStore, PayStore } from './store.js';
 import { bindBuyLinks, importPass, passes, refresh } from './passes.js';
 import { bindSoldOut } from './soldpop.js';
-import { validAffiliate, formatFee, PAYMENT_ID } from './rules.js';
+import { validAffiliate, formatFee, PAYMENT_ID, PLUS_FEE, UPGRADE_FEE } from './rules.js';
 import { stopEventHero, renderHome, renderConcerts, renderEvent, renderUnlock, renderPaid, renderFootage, renderPasses, renderFaq, bindPassButtons, navCount, bindNavSearch } from './pages.js';
 import { startHero, stopHero } from './hero.js';
 import { renderPartners } from './partners.js';
@@ -65,6 +65,8 @@ async function boot() {
   if (window.ATV_DEMO) (await import('./demo-full.js')).startDemo();
   $$('[data-brand]').forEach(el => { el.textContent = state.cfg.brand; });
   $$('[data-fee]').forEach(el => { el.textContent = formatFee(); });
+  $$('[data-plan-fee="plus"]').forEach(el => { el.textContent = formatFee(PLUS_FEE); });
+  $$('[data-plan-fee="upgrade"]').forEach(el => { el.textContent = formatFee(UPGRADE_FEE); });
   $$('[data-contact]').forEach(el => { const v = state.cfg.contact[el.dataset.contact]; el.textContent = v || ''; const line = el.closest('.contact-line'); if (line) line.hidden = !v; });
   captureCampaign();
   // A returning partner who opens the bare address lands on their own side.
@@ -107,7 +109,7 @@ function stagingBadge() {
 // ---------------------------------------------------------------- routing
 
 // Hash routes are plain tokens: #event-<id>, #seats-<id>--<category>, #seats-<id>@<seat>,
-// #demo-<layout>, #unlock-<id>, #paid-<order id> (back from the payment page),
+// #demo-<layout>, #unlock-<id>, #plus-<id>, #upgrade-<pass id>, #paid-<order id> (back from the payment page),
 // #pass-<id>-<token>.
 function parse(hash) {
   let h = hash.split('?')[0];
@@ -119,6 +121,9 @@ function parse(hash) {
   if (PARTNER_ANCHORS.has(h)) return { view: 'partners', anchor: h };
   if (PAGES.has(h)) return { view: h };
   if (h.startsWith('unlock-') && isConcert(h.slice(7))) return { view: 'unlock', id: h.slice(7) };
+  // 3D Pass Plus for a concert, and an upgrade to Plus of a pass on this device.
+  if (h.startsWith('plus-') && isConcert(h.slice(5))) return { view: 'unlock', id: h.slice(5), plan: 'plus' };
+  if (h.startsWith('upgrade-') && /^[A-Za-z0-9_-]{3,40}$/.test(h.slice(8))) return { view: 'unlock', upgrade: h.slice(8) };
   if (h.startsWith('paid-') && PAYMENT_ID.test(h.slice(5))) return { view: 'unlock', paid: h.slice(5), focus: 'pay-sheet' };
   if (h.startsWith('event-') && isConcert(h.slice(6))) return { view: 'event', id: h.slice(6) };
   if (h.startsWith('tour-')) {
@@ -197,7 +202,7 @@ async function route() {
     case 'concerts': renderConcerts(); break;
     case 'event': renderEvent(r.id); loadScene3d().catch(() => {}); break;   // likely next: the 3D venue
     case 'seats': openViewer(r.id, { cat: r.cat, seat: r.seat, back: state.page, tour: r.tour }); break;
-    case 'unlock': if (r.paid) renderPaid(r.paid); else renderUnlock(r.id); break;
+    case 'unlock': if (r.paid) renderPaid(r.paid); else renderUnlock(r.id, { plan: r.plan || '', upgrade: r.upgrade || '' }); break;
     case 'footage': renderFootage(); break;
     case 'passes': renderPasses({ check: true }); break;
     case 'partners': renderPartners(); break;

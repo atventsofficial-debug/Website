@@ -37,6 +37,15 @@ Rules for a claim (`checkClaim` in `js/rules.js`, the same in the browser and on
 
 The 3D lock is a convenience, not a vault: the venue models are public files. What is protected is the data: passes, emails and order IDs.
 
+## 3D Pass Plus
+
+A second pass beside the seat view (`PLUS_FEE` in `js/order.js`, Rp49.000): everything the seat pass has, and every seat of the concert open in 3D, so the fan can sit anywhere and compare. A fan with a paid seat pass for a concert still to come upgrades it for the difference (`UPGRADE_FEE`, Rp24.000) from the 3D view, My 3D passes or `#upgrade-<pass id>`; the seat stays the pass's own. `#plus-<concert id>` opens the form with Plus chosen.
+
+- **On sale only with `PASS_PLUS` = `on`** in the Cloudflare dashboard (a plain variable). Until then `/api/config` says nothing of it, the form and the price list show its card as *Coming soon*, the upgrade buttons stay hidden, and the Worker refuses a Plus order or an upgrade (400, `field: 'plan'`).
+- The order book keeps the plan (`plan`, `seat` or `plus`) and, for an upgrade, the seat pass it was bought on (`base`). The pass key carries the plan and the amount, so the status check holds a Plus order to its own amount; keys made before plans open as seat passes at the access fee.
+- Team passes are Plus passes.
+- The unlock form also carries a note that the 3D is an illustration built from the promoter's plan, and that changes on the day are not ours to answer for; the consent box says so too.
+
 ## Seat mates
 
 Fans with a paid 3D pass for the same concert can find each other before the show. In the 3D view and the seat tour, a **Seat mates** block shows:

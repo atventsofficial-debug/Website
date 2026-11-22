@@ -5,6 +5,17 @@
 // The price of one 3D seat view, for one concert, the id of an order, and how long it waits.
 export const ACCESS_FEE = 25000;
 export const formatFee = (n = ACCESS_FEE) => `Rp${n.toLocaleString('id-ID')}`;
+
+// The two passes. 'seat' is the view from one seat (ACCESS_FEE). 'plus' opens every seat of
+// the concert, with the show mode and the way to the venue, at PLUS_FEE; a fan who has a paid
+// seat pass for the concert upgrades it for the difference (UPGRADE_FEE). A pass key made
+// before there were plans carries no plan: it is a 'seat' pass.
+export const PLUS_FEE = 49000;
+export const UPGRADE_FEE = PLUS_FEE - ACCESS_FEE;
+export const PLANS = ['seat', 'plus'];
+export const planOf = v => (v === 'plus' ? 'plus' : 'seat');
+// What an order costs: a seat pass, a Plus pass, or a Plus pass bought as an upgrade.
+export const feeOf = (plan, upgrade = false) => (planOf(plan) === 'plus' ? (upgrade ? UPGRADE_FEE : PLUS_FEE) : ACCESS_FEE);
 export const PAYMENT_ID = /^PAY-[A-Z0-9]{6,24}$/;
 // How long the payment form stays open, as on a ticket shop's checkout.
 export const PAY_MINUTES = 60;

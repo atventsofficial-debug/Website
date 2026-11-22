@@ -3,7 +3,9 @@
 // only addresses with no file behind them reach this code.
 //
 //   GET  /api/config            { mode: 'pay', sandbox, fee, clientKey, mail, methods, sso } once MIDTRANS_SERVER_KEY is set, else 404
-//   POST /api/payments          an order and the way to pay it: what to pay with, and the key to the pass
+//   POST /api/payments          an order and the way to pay it: what to pay with, and the key to the pass.
+//                               { plan: 'plus' } is the Plus pass (every seat); with { upgrade, upgradeToken }
+//                               of a paid seat pass of the concert, Plus for the difference
 //   GET  /api/passes/<id>       how that payment is going (header x-pass-token: the key)
 //   POST /api/passes/<id>/cancel  the fan picks another way to pay: Midtrans closes this one
 //   GET/PUT/DELETE /api/passes/<id>/fans  seat mates: the concert's fans who show their
@@ -16,8 +18,8 @@
 //   POST /api/team/session      { idToken } from Google: a member of the team (ADMIN_EMAILS)
 //                               gets a team key (team.mjs)
 //   GET  /api/team/me           who the team key (header x-team-key) belongs to
-//   POST /api/team/passes       a pass for a member, paid at 0: every 3D view, seat mates
-//                               and the story open as for a fan who paid
+//   POST /api/team/passes       a pass for a member, paid at 0: a Plus pass, with every 3D
+//                               view, seat mates and the story open as for a fan who paid
 //
 // Midtrans keeps the payment; the order book (orders.mjs, in D1) keeps the buyer's name,
 // email and seat. The pass email (mail.mjs) goes out once Midtrans says the order is paid,
@@ -25,7 +27,7 @@
 // pass key is signed (passkey.mjs), and every status check asks Midtrans. Clicks, sign-ups
 // and partner requests are not handled here: they stay in the visitor's browser, as before
 // (js/store.js).
-import { ACCESS_FEE, PAY_MINUTES, PAYMENT_ID, line, checkBuyer } from '../js/order.js';
+import { ACCESS_FEE, PLUS_FEE, UPGRADE_FEE, PAY_MINUTES, PAYMENT_ID, line, checkBuyer, planOf, feeOf } from '../js/order.js';
 import { concert, onSale, seatOf } from './catalog.mjs';
 import { paymentsOf, midtrans, MidtransError, PaymentRefused, chargeOf, payDetailsOf, passStateOf, signedByMidtrans, jakartaTime } from './midtrans.mjs';
 import { payMethod, methodsOn } from '../js/paymethods.js';
@@ -100,11 +102,17 @@ export default {
   },
 };
 
+// 3D Pass Plus on sale: PASS_PLUS = 'on' in the Cloudflare dashboard.
+const plusOn = env => String(env?.PASS_PLUS ?? '').trim().toLowerCase() === 'on';
+
 function config(env) {
   const pay = paymentsOf(env);
   if (!pay) return fail(404, 'Payments are not switched on yet.');
   return json(200, {
-    mode: 'pay', provider: 'midtrans', sandbox: pay.sandbox, fee: ACCESS_FEE,
+    mode: 'pay', provider: 'midtrans', sandbox: pay.sandbox, fee: ACCESS_FEE, plus: PLUS_FEE, upgrade: UPGRADE_FEE,
+    // 3D Pass Plus is on sale only once PASS_PLUS is 'on' (README); until then the page shows it
+    // as coming soon.
+    ...(plusOn(env) ? { plusOn: true } : {}),
     ...(pay.clientKey ? { clientKey: pay.clientKey } : {}),
     mail: !!mailerOf(env) && hasOrders(env),   // the pass email goes out once paid
     methods: methodsOn(env.MIDTRANS_METHODS),
@@ -151,8 +159,10 @@ const later = (ctx, promise) => (ctx?.waitUntil ? ctx.waitUntil(promise) : promi
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const newOrderId = () => `PAY-${[...crypto.getRandomValues(new Uint8Array(16))].map(b => ALPHABET[b & 31]).join('')}`;
 
-// The order: the concert, the seat, the buyer and the way to pay, checked as the page checks
-// them; then the charge at the access fee, which the browser cannot change, open for an hour.
+// The order: the concert, the seat, the buyer, the plan and the way to pay, checked as the
+// page checks them; then the charge at the plan's fee (js/order.js), which the browser cannot
+// change, open for an hour. An upgrade to Plus names a paid seat pass of the same concert,
+// with its key: the seat comes from that pass, and the charge is the difference.
 // A card opens Midtrans' card form (Snap); every other way is a Core API charge, and its
 // account number, QR code or store code comes back for the page to show.
 async function createPayment(request, env, url) {
@@ -165,11 +175,20 @@ async function createPayment(request, env, url) {
   const d = await readJson(request);
   if (d instanceof Response) return d;
 
-  const eventId = line(d.eventId), cat = line(d.cat), e = concert(eventId);
+  const eventId = line(d.eventId), e = concert(eventId), plan = planOf(line(d.plan));
   if (!e || !onSale(e)) return fail(400, 'Choose your concert.', { field: 'eventId' });
+  if ((plan === 'plus' || d.upgrade != null) && !plusOn(env)) return fail(400, '3D Pass Plus is coming soon.', { field: 'plan' });
+  let base = null;
+  if (d.upgrade != null) {
+    base = await paidSeatPass(env, pay, line(d.upgrade), line(d.upgradeToken), eventId);
+    if (!base) return fail(400, 'Upgrade a paid seat pass of this concert.', { field: 'upgrade' });
+  }
+  // An upgrade keeps the seat of the pass it is bought on.
+  const cat = base ? base.cat : line(d.cat);
   if (!Object.hasOwn(e.cats, cat)) return fail(400, 'Choose the category on your ticket.', { field: 'cat' });
-  const seat = seatOf(e, cat, line(d.seat));
+  const seat = seatOf(e, cat, base ? base.seat : line(d.seat));
   if (!seat) return fail(400, 'Choose your seat.', { field: 'seat' });
+  const amount = base ? UPGRADE_FEE : feeOf(plan);
   const { buyer, field, error } = checkBuyer(d);
   if (error) return fail(400, error, { field });
   const way = payMethod(line(d.method));
@@ -178,8 +197,8 @@ async function createPayment(request, env, url) {
   const id = newOrderId(), createdAt = Date.now();
   const where = seat.standing ? `${seat.secName}, standing` : `${seat.secName}, row ${seat.row}, seat ${seat.num}`;
   const order = {
-    transaction_details: { order_id: id, gross_amount: ACCESS_FEE },
-    item_details: [{ id: '3D-PASS', price: ACCESS_FEE, quantity: 1, name: `3D seat view: ${e.title}`.slice(0, 50) }],
+    transaction_details: { order_id: id, gross_amount: amount },
+    item_details: [{ id: base ? '3D-PLUS-UP' : plan === 'plus' ? '3D-PLUS' : '3D-PASS', price: amount, quantity: 1, name: `${base ? 'Upgrade to 3D Pass Plus' : plan === 'plus' ? '3D Pass Plus' : '3D seat view'}: ${e.title}`.slice(0, 50) }],
     customer_details: { first_name: buyer.name.slice(0, 80), email: buyer.email },
     custom_field1: `${eventId} / ${e.cats[cat]}`.slice(0, 255),
     custom_field2: where.slice(0, 255),
@@ -210,17 +229,29 @@ async function createPayment(request, env, url) {
     paying = { pay: details };
   }
   // Without the order book the pass still opens on this device; only the email cannot go.
-  await saveOrder(env, { id, eventId, title: e.title, cat, seat: seat.id, seatLabel: where, name: buyer.name, email: buyer.email, amount: ACCESS_FEE, method: way.id, origin: url.origin, createdAt })
+  const planned = base ? 'plus' : plan;
+  await saveOrder(env, { id, eventId, title: e.title, cat, seat: seat.id, seatLabel: where, name: buyer.name, email: buyer.email, amount, method: way.id, plan: planned, base: base?.id || '', origin: url.origin, createdAt })
     .catch(err => console.error(`order ${id} not saved: ${err?.message || err}`));
   // The device that paid is the pass's first.
   const dev = await deviceOf(request);
   if (dev && hasOrders(env)) await admit(env, id, dev, createdAt).catch(err => console.error(`order ${id}: device not kept: ${err?.message || err}`));
-  const token = await signPass(pay.key, { id, eventId, cat, seat: seat.id, createdAt });
+  const token = await signPass(pay.key, { id, eventId, cat, seat: seat.id, createdAt, plan: planned, amount });
   return json(201, {
-    id, token, method: way.id, ...paying, amount: ACCESS_FEE, sandbox: pay.sandbox,
+    id, token, method: way.id, ...paying, amount, sandbox: pay.sandbox, plan: planned, ...(base ? { base: base.id } : {}),
     status: 'checking', eventId, cat, qty: 1, seat: seat.id, name: buyer.name, email: buyer.email, route: 'paid',
     createdAt: new Date(createdAt).toISOString(), expiresAt: new Date(createdAt + PAY_WINDOW).toISOString(),
   });
+}
+
+// The seat pass an upgrade is bought on: its own key, the same concert, not Plus already,
+// and paid (the order book says so, or else Midtrans). Null otherwise.
+async function paidSeatPass(env, pay, id, token, eventId) {
+  const p = PAYMENT_ID.test(id) ? await readPass(pay.key, token) : null;
+  if (!p || p.id !== id || p.eventId !== eventId || p.plan !== 'seat') return null;
+  const known = await statusOf(env, id).catch(() => null);
+  if (known === 'confirmed') return p;
+  if (known === 'revoked' || known === 'rejected') return null;
+  return passStateOf(await midtrans(pay).status(id), { id, amount: p.amount }) === 'confirmed' ? p : null;
 }
 
 // A pass, opened with its key: Midtrans says whether it is paid.
@@ -238,7 +269,7 @@ async function passStatus(request, env, ctx, id) {
   if (known === 'confirmed') later(ctx, sendPass(env, pay, id).catch(() => {}));
   else if (known !== 'rejected') {
     const t = await midtrans(pay).status(id);
-    status = !t && Date.now() - p.createdAt > UNPAID_CLOSE ? 'rejected' : passStateOf(t, { id, amount: ACCESS_FEE });
+    status = !t && Date.now() - p.createdAt > UNPAID_CLOSE ? 'rejected' : passStateOf(t, { id, amount: p.amount });
     if (status !== 'checking') later(ctx, settle(env, pay, id, status));
   }
   if (status !== 'confirmed') return passJson(p, status, env);
@@ -314,7 +345,7 @@ const passJson = (p, status, env) => {
   // Always there once paid (null when none is set), so a link taken out goes from the page too.
   const wa = status === 'confirmed' ? { wa: waOf(env?.FANBASE_WA, p.eventId) } : {};
   return json(200, {
-    id: p.id, eventId: p.eventId, cat: p.cat, qty: 1, seat: p.seat, route: 'paid', status,
+    id: p.id, eventId: p.eventId, cat: p.cat, qty: 1, seat: p.seat, route: 'paid', plan: p.plan, status,
     createdAt: new Date(p.createdAt).toISOString(), expiresAt: new Date(p.createdAt + PAY_WINDOW).toISOString(),
     ...wa,
   });
@@ -334,7 +365,7 @@ async function cancelPayment(request, env, ctx, url, id) {
   if (!p) return fail(404, 'Pass not found');
   const mt = midtrans(pay);
   const answer = await mt.cancel(id), t = await mt.status(id);
-  let status = passStateOf(t, { id, amount: ACCESS_FEE });
+  let status = passStateOf(t, { id, amount: p.amount });
   if (status === 'checking') {
     // Still open at Midtrans and not cancelled: say so rather than let it take money unseen.
     // No transaction at all (a card form nobody used) has nothing to close.
@@ -356,7 +387,9 @@ async function notified(request, env) {
   if (!(await signedByMidtrans(n, pay.signKeys))) return fail(401, 'Bad signature');
   const id = n.order_id;
   if (!PAYMENT_ID.test(id)) return json(200, { ok: true });   // not an order of this site
-  const status = passStateOf(await midtrans(pay).status(id), { id, amount: ACCESS_FEE });
+  // The amount the order was made at, from the order book; an order not in it is a seat pass.
+  const amount = (await orderOf(env, id).catch(() => null))?.amount ?? ACCESS_FEE;
+  const status = passStateOf(await midtrans(pay).status(id), { id, amount });
   if (status !== 'checking' && !(await settle(env, pay, id, status))) return fail(500, 'Not done yet');
   return json(200, { ok: true });
 }
@@ -381,7 +414,7 @@ async function sendPass(env, pay, id) {
   const order = await takeEmail(env, id);
   if (!order) return true;    // sent already, or not an order in the book
   try {
-    const token = await signPass(pay.key, { id, eventId: order.event_id, cat: order.cat, seat: order.seat, createdAt: order.created_at });
+    const token = await signPass(pay.key, { id, eventId: order.event_id, cat: order.cat, seat: order.seat, createdAt: order.created_at, plan: order.plan, amount: order.amount });
     const mail = passEmail({ order, concert: concert(order.event_id), link: `${order.origin}/#pass-${id}-${token}`, wa: waLinksFor(env.FANBASE_WA, order.event_id) });
     await mailer.send({ to: order.email, ...mail });
     console.log(`pass email sent: ${id}`);
@@ -412,7 +445,7 @@ async function seatMates(request, env, ctx, url, id, picOf = '') {
     const known = await statusOf(env, id);
     if (known === 'revoked') return fail(403, 'Seat mates open once your pass is paid.');
     if (known !== 'confirmed') {
-      const status = passStateOf(await midtrans(pay).status(id), { id, amount: ACCESS_FEE });
+      const status = passStateOf(await midtrans(pay).status(id), { id, amount: p.amount });
       if (status !== 'confirmed') return fail(403, 'Seat mates open once your pass is paid.');
       later(ctx, settle(env, pay, id, status));
     }
@@ -530,9 +563,9 @@ async function teamPass(request, env, url) {
   const dev = await deviceOf(request);
   if (dev) await admit(env, id, dev, createdAt).catch(err => console.error(`order ${id}: device not kept: ${err?.message || err}`));
   console.log(`team pass: ${id}`);
-  const token = await signPass(pay.key, { id, eventId, cat, seat: seat.id, createdAt });
+  const token = await signPass(pay.key, { id, eventId, cat, seat: seat.id, createdAt, plan: 'plus', amount: 0 });
   return json(201, {
-    id, token, method: 'team', amount: 0, sandbox: pay.sandbox,
+    id, token, method: 'team', amount: 0, sandbox: pay.sandbox, plan: 'plus',
     status: 'confirmed', eventId, cat, qty: 1, seat: seat.id, name, email: who.email, route: 'paid',
     createdAt: new Date(createdAt).toISOString(), expiresAt: new Date(createdAt + PAY_WINDOW).toISOString(),
   });

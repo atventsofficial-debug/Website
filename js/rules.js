@@ -2,6 +2,7 @@
 // sending it, the server (or the demo store) again before storing. Pure functions, no DOM.
 import { getEvent, isConcert } from './events.js';
 import { ACCESS_FEE, PAYMENT_ID, EMAIL, formatFee, line, email, isEmail, checkBuyer } from './order.js';
+export { PLUS_FEE, UPGRADE_FEE, planOf, feeOf } from './order.js';
 
 export { ACCESS_FEE, PAYMENT_ID, EMAIL, formatFee };
 

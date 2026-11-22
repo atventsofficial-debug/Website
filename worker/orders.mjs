@@ -28,6 +28,10 @@ const SCHEMA = `CREATE TABLE IF NOT EXISTS orders (
 // A table made before the way to pay was kept gets its column. SQLite has no ADD COLUMN IF
 // NOT EXISTS: on a table that has it, the ALTER fails with "duplicate column", which is fine.
 const ADD_METHOD = "ALTER TABLE orders ADD COLUMN method TEXT NOT NULL DEFAULT ''";
+// The same for the plan ('seat' or 'plus', js/order.js) and, for an upgrade to Plus, the
+// seat pass it was bought on. Orders from before plans are seat passes.
+const ADD_PLAN = "ALTER TABLE orders ADD COLUMN plan TEXT NOT NULL DEFAULT 'seat'";
+const ADD_BASE = "ALTER TABLE orders ADD COLUMN base TEXT NOT NULL DEFAULT ''";
 // The devices a paid pass is open on, and the one email code a pass may have out at a time,
 // for opening it on another device (devices.mjs).
 const DEVICES = `CREATE TABLE IF NOT EXISTS pass_devices (
@@ -48,7 +52,9 @@ async function setUp(d) {
   await d.prepare(SCHEMA).run();
   await d.prepare(DEVICES).run();
   await d.prepare(CODES).run();
-  await d.prepare(ADD_METHOD).run().catch(err => { if (!/duplicate column/i.test(String(err?.message))) throw err; });
+  for (const add of [ADD_METHOD, ADD_PLAN, ADD_BASE]) {
+    await d.prepare(add).run().catch(err => { if (!/duplicate column/i.test(String(err?.message))) throw err; });
+  }
 }
 
 const ready = new WeakMap();
@@ -65,9 +71,9 @@ export const hasOrders = env => !!env?.DB?.prepare;
 export async function saveOrder(env, o) {
   const d = await db(env);
   if (!d) return false;
-  await d.prepare(`INSERT OR IGNORE INTO orders (id, event_id, title, cat, seat, seat_label, name, email, amount, method, origin, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-    .bind(o.id, o.eventId, o.title, o.cat, o.seat, o.seatLabel, o.name, o.email, o.amount, o.method || '', o.origin, o.createdAt).run();
+  await d.prepare(`INSERT OR IGNORE INTO orders (id, event_id, title, cat, seat, seat_label, name, email, amount, method, plan, base, origin, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+    .bind(o.id, o.eventId, o.title, o.cat, o.seat, o.seatLabel, o.name, o.email, o.amount, o.method || '', o.plan || 'seat', o.base || '', o.origin, o.createdAt).run();
   return true;
 }
 
@@ -106,20 +112,21 @@ export async function statusOf(env, id) {
   return (await d.prepare('SELECT status FROM orders WHERE id = ?').bind(id).first())?.status ?? null;
 }
 
-// The order's row, or null: for the email code (devices.mjs) and its address.
+// The order's row, or null: for the email code (devices.mjs) and its address, and the amount
+// a Midtrans notification is checked against.
 export async function orderOf(env, id) {
   const d = await db(env);
   if (!d) return null;
-  return d.prepare('SELECT id, event_id, title, name, email, status FROM orders WHERE id = ?').bind(id).first();
+  return d.prepare('SELECT id, event_id, title, name, email, status, amount, plan FROM orders WHERE id = ?').bind(id).first();
 }
 
 // A pass for a member of the team (team.mjs): paid at 0, by nobody, so it opens like any
-// paid pass. No pass email goes out (emailed_at is set): the member is on the page already.
+// paid pass, as a Plus pass (every seat). No pass email goes out (emailed_at is set): the member is on the page already.
 export async function saveTeamOrder(env, o, now = Date.now()) {
   const d = await db(env);
   if (!d) return false;
-  await d.prepare(`INSERT INTO orders (id, event_id, title, cat, seat, seat_label, name, email, amount, method, status, origin, created_at, paid_at, emailed_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 'team', 'confirmed', ?, ?, ?, ?)`)
+  await d.prepare(`INSERT INTO orders (id, event_id, title, cat, seat, seat_label, name, email, amount, method, plan, status, origin, created_at, paid_at, emailed_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 'team', 'plus', 'confirmed', ?, ?, ?, ?)`)
     .bind(o.id, o.eventId, o.title, o.cat, o.seat, o.seatLabel, o.name, o.email, o.origin, o.createdAt, now, now).run();
   return true;
 }
