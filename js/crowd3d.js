@@ -226,6 +226,7 @@ attribute vec4 aAnim;   // action, phase, tempo, energy
 attribute vec4 aCol;    // shirt, skin, hair, trousers: each an sRGB colour as one 24-bit number
 attribute vec4 aLook;   // hair style + 8 long sleeves + 16 standing + 32 female; light stick hue; lean; heavier
 uniform float uTime; uniform float uLive; uniform float uBpm;
+uniform vec3 uPick; uniform float uPickOn; varying float vPicked;
 varying vec3 vCrowdCol; varying vec3 vGlowCol; varying float vRimK; varying float vAO; varying float vSpec;
 mat3 rotX(float a) { float c = cos(a), s = sin(a); return mat3(1., 0., 0., 0., c, s, 0., -s, c); }
 mat3 rotY(float a) { float c = cos(a), s = sin(a); return mat3(c, 0., -s, 0., 1., 0., s, 0., c); }
@@ -390,14 +391,22 @@ vec3 transformed = mix(boneMove(aRig.x, rest), boneMove(aRig.y, rest), aRig.z);
 // Seated, a smaller body still sits on the seat.
 transformed.y += (1. - stand) * fem * ${(J.M.hipL[1] - J.F.hipL[1]).toFixed(4)};
 if (keep < 0.5) transformed = g_shoulderR;
+// One fan picked from the list: they light up, everyone else fades back.
+vPicked = 0.;
+#ifdef USE_INSTANCING
+if (uPickOn > 0.5) vPicked = 1. - step(0.6, distance((modelMatrix * instanceMatrix * vec4(0., 0., 0., 1.)).xyz, uPick));
+#endif
 `;
 
 // The crowd's material: a standard material whose colour, glow and rim light come from the
 // shader above. `rim`: the stage's light catching the edges of heads and shoulders.
-export function crowdMaterial() {
-  const uniforms = {
+// `share`: another crowd material whose clock and lights this one follows (the band), with
+// its own pick, so the band never fades with the crowd.
+export function crowdMaterial(share = null) {
+  const uniforms = share ? { ...share.userData.crowd, uPick: { value: new THREE.Vector3() }, uPickOn: { value: 0 } } : {
     uTime: { value: 0 }, uLive: { value: 0 }, uBpm: { value: 118 },
     uRimDir: { value: new THREE.Vector3(0, 0, -1) }, uRimCol: { value: new THREE.Color('#ffb98a') },
+    uPick: { value: new THREE.Vector3() }, uPickOn: { value: 0 },
   };
   const mat = new THREE.MeshStandardMaterial({ roughness: 0.8, metalness: 0 });
   mat.userData.crowd = uniforms;
@@ -406,9 +415,9 @@ export function crowdMaterial() {
     sh.vertexShader = VERTEX_HEAD + sh.vertexShader
       .replace('#include <beginnormal_vertex>', '#include <beginnormal_vertex>\n' + POSE)
       .replace('#include <begin_vertex>', BEGIN);
-    sh.fragmentShader = 'uniform float uLive; uniform vec3 uRimDir; uniform vec3 uRimCol;\nvarying vec3 vCrowdCol; varying vec3 vGlowCol; varying float vRimK; varying float vAO; varying float vSpec;\n' + sh.fragmentShader
+    sh.fragmentShader = 'uniform float uTime; uniform float uLive; uniform float uPickOn; uniform vec3 uRimDir; uniform vec3 uRimCol;\nvarying float vPicked; varying vec3 vCrowdCol; varying vec3 vGlowCol; varying float vRimK; varying float vAO; varying float vSpec;\n' + sh.fragmentShader
       .replace('#include <lights_fragment_end>', '#include <lights_fragment_end>\nreflectedLight.directSpecular *= vSpec;')
-      .replace('#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.rgb *= vCrowdCol * mix(1.0, 0.6, uLive) * mix(1.0, vAO, 0.85);')
+      .replace('#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.rgb *= vCrowdCol * mix(1.0, 0.6, uLive) * mix(1.0, vAO, 0.85);\nfloat dimK = uPickOn * (1.0 - vPicked);\ndiffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.05, 0.06, 0.08), dimK * 0.7);\ndiffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.3, 0.95, 0.35), vPicked * 0.55);')
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
         totalEmissiveRadiance += vGlowCol;
         {
@@ -416,9 +425,11 @@ export function crowdMaterial() {
           float fr = pow(1.0 - clamp(dot(normal, V), 0.0, 1.0), 2.4);
           float side = clamp(dot(normal, uRimDir) * 0.9 + 0.25, 0.0, 1.0);
           totalEmissiveRadiance += uRimCol * fr * side * uLive * vRimK * vAO * 0.9;
+          totalEmissiveRadiance *= 1.0 - 0.85 * uPickOn * (1.0 - vPicked);
+          totalEmissiveRadiance += vec3(0.25, 1.0, 0.3) * vPicked * (0.75 + 0.35 * sin(uTime * 4.0) + fr * 1.6);
         }`);
   };
-  mat.customProgramCacheKey = () => 'atv-crowd-3';
+  mat.customProgramCacheKey = () => 'atv-crowd-4';
   return mat;
 }
 
@@ -593,6 +604,16 @@ export class Crowd {
     this.hidden = k;
     this._assign();
     if (this.near?.visible) this._fill(this.near, this.nearSlots, true);
+  }
+
+  // Lights up the person in one slot and fades everyone else; -1 brings the crowd back.
+  pick(k) {
+    const u = this.uniforms;
+    if (k == null || k < 0 || k >= this.n) { u.uPickOn.value = 0; this.picked = -1; return; }
+    const m = this.data.matrix;
+    u.uPick.value.set(m[k * 16 + 12], m[k * 16 + 13], m[k * 16 + 14]);
+    u.uPickOn.value = 1;
+    this.picked = k;
   }
 
   setVisible(on) {

@@ -8,7 +8,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
-import { Crowd, Band } from './crowd3d.js';
+import { Crowd, Band, crowdMaterial } from './crowd3d.js';
 import { LensPass, GradePass, depthTarget } from './post.js';
 import { treadShading, concreteNormalMap } from './arena-detail.js';
 import { buildConcert, buildCinema, buildCombat, buildStadium, prepareVenue, preparePoster, posterArt, seatGeometry, crowdGeometries, mats, SEAT_HINGE, concertStage } from './venues3d.js';
@@ -606,7 +606,7 @@ export class SeatScene {
     const bandRnd = () => ((seed2 = (seed2 * 16807) % 2147483647) / 2147483647);
     const stadium = venue.kind === 'stadium', S = !stadium && concertStage(venue);
     this.band = venue.lineup?.length && (!stadium || venue.show === 'end')
-      ? new Band(this.scene, this.people.material, venue.lineup, stadium
+      ? new Band(this.scene, this.bandMat(), venue.lineup, stadium
         // A stadium's end stage is built facing +z at its front edge, then turned to the field.
         ? { y: 2.2, front: 0, riserY: 2.8, riserZ: -9, risers: true, rnd: bandRnd }
         : { y: S.h, front: S.front, riserY: S.h + 0.6, riserZ: S.riserZ, spread: S.k, rnd: bandRnd })
@@ -1194,6 +1194,51 @@ export class SeatScene {
     const dist = THREE.MathUtils.clamp(spread * (aspect < 1 ? 2.3 : 1.6) + 18, 26, 150);
     // A block is seen from higher up, nearly over it, so its rows and seats are easy to tell apart.
     const end = target.clone().addScaledVector(out, dist * (sec ? 0.4 : 0.7)).add(new THREE.Vector3(0, dist * (sec ? 0.85 : 0.62), 0));
+    const start = this.camera.position.clone(), t0 = this.controls.target.clone(), fov0 = this.camera.fov;
+    this.controls.enabled = false;
+    this.anim = {
+      t: 0, dur,
+      step: t => {
+        const k = ease(t / dur);
+        this.camera.position.lerpVectors(start, end, k);
+        this.controls.target.lerpVectors(t0, target, k);
+        this.camera.fov = fov0 + (MAP_FOV - fov0) * k;
+        this.camera.lookAt(this.controls.target);
+        this.camera.updateProjectionMatrix();
+      },
+      done: () => { this.controls.enabled = this.interactive; this.controls.update(); done?.(); },
+    };
+  }
+
+  // The band's own copy of the crowd's material: same clock and lights, never faded.
+  bandMat() {
+    return (this._bandMat ||= crowdMaterial(this.people.material));
+  }
+
+  // Lights up the person sitting in `seatId` and fades the rest of the crowd. False when
+  // nobody is drawn there.
+  focusPerson(seatId) {
+    const i = this.venue?.seats.findIndex(s => s.id === seatId) ?? -1;
+    const k = i < 0 ? undefined : this.crowdSlot?.get(i);
+    if (k === undefined || !this.people?.pick) { this.clearPerson(); return false; }
+    this.people.pick(k);
+    return true;
+  }
+
+  clearPerson() {
+    this.people?.pick?.(-1);
+  }
+
+  // Flies the overview's camera to one seat, close enough to pick the person out among their
+  // neighbours, from the stage's side so they face it.
+  lookAtPerson(seat, { dur = 1.8, done = null } = {}) {
+    if (!this.scene || this.mode !== 'overview' || !seat) return;
+    const target = new THREE.Vector3(seat.x, seat.y + 1, seat.z);
+    const out = new THREE.Vector3(seat.x - this.focus.x, 0, seat.z - this.focus.z);
+    if (out.lengthSq() < 1) out.set(0, 0, 1);
+    out.normalize();
+    // In front of them (towards the stage) and up, looking down at them.
+    const end = target.clone().addScaledVector(out, -16).add(new THREE.Vector3(0, 17, 0));
     const start = this.camera.position.clone(), t0 = this.controls.target.clone(), fov0 = this.camera.fov;
     this.controls.enabled = false;
     this.anim = {

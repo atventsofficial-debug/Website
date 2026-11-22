@@ -56,13 +56,15 @@ function paintTags() {
   // venue's thousands of markers are not listed again on every repaint of the panel.
   const own = p ? (state.tour ? tourSeat()?.id : p.seats?.[0] || p.seat) : '';
   const t = state.tour;
-  const key = `${state.venue?.eventId}|${p?.id || ''}|${own}|${dataId(mates.data)}|${mates.passId}|${t?.fan?.seat || ''}|${t?.fanBlock || ''}`;
+  const key = `${state.venue?.eventId}|${p?.id || ''}|${own}|${dataId(mates.data)}|${mates.passId}|${t?.fan?.seat || ''}|${t?.fanMarker ? 1 : 0}|${t?.fanBlock || ''}`;
   if (key === tagKey) return;
+  if (!t?.fan) sc.clearPerson?.();
   tagKey = key;
   // One pin over each block with fans showing their Instagram (orange and locked for other
   // categories), and one glowing marker over the seat of a fan picked from the list.
-  sc.setBlockPins(p ? blockPins(p) : []);
-  sc.setFans(p && t?.fan ? [{ ...t.fan, spot: true }] : []);
+  sc.setBlockPins(p && !t?.fan ? blockPins(p) : []);
+  // The fan picked lights up in the crowd; a marker only where nobody is drawn in that seat.
+  sc.setFans(p && t?.fan && t.fanMarker ? [{ ...t.fan, spot: true }] : []);
 }
 const secCode = s => (s.tag || s.sec).replace(/^(RS|CS)-/, '$1 ').replace(/^VIP-/, 'VIP ').replace(/^FA-/, 'FA ');
 function blockPins(p) {
@@ -93,13 +95,13 @@ function paintMates() {
 }
 
 // A tap on a seat mate's tag (or their name in the list): their card, not Instagram yet.
-// A tap on a fan in the list: up over the venue, a marker over that fan's seat, and their
-// card. Only the fan picked gets a marker; the venue is not covered in them.
+// A tap on a fan in the list: up over the venue, close to their seat, the whole crowd faded
+// and that one fan lit green, then their card.
 function showFanOnMap(f) {
   const s = seatOf(f.seat);
   if (!s || !state.tour) return;
   state.tour.fan = f;
-  lookAtBlock(s, () => { if (state.tour?.fan === f) openFanCard(f); });
+  lookAtBlock(s, () => { if (state.tour?.fan === f) openFanCard(f); }, true);
 }
 // A tap on a block's pin: up over that block, and the panel lists its fans.
 function showBlock(sec) {
@@ -108,15 +110,21 @@ function showBlock(sec) {
   state.tour.fan = null;
   lookAtBlock(s);
 }
-function lookAtBlock(s, done) {
+function lookAtBlock(s, done, person = false) {
   const sc = state.scene;
   if (!sc) return;
   closeFanCard();
   state.tour.fanBlock = s.sec;
   state.tour.mini = false;
+  state.tour.fanMarker = false;
   paintTags();
   paintTour();
-  const go = () => sc.frameCategory(s.cat, { sec: s.sec, seat: s, done });
+  const go = () => {
+    if (!person) { sc.setCrowd(false); return sc.frameCategory(s.cat, { sec: s.sec, seat: s, done }); }
+    sc.setCrowd(true);
+    if (!sc.focusPerson(s.id)) { state.tour.fanMarker = true; paintTags(); }
+    sc.lookAtPerson(s, { done });
+  };
   if (sc.mode === 'overview' && !sc.anim) go();
   else { state.tour.afterOverview = go; if (sc.mode === 'seat') sc.backToOverview(); }
 }

@@ -2491,9 +2491,9 @@ body { font-family: var(--font); font-feature-settings: "cv11", "ss01"; }
 .fan-bob { --pb-1: #b8f5a0; --pb-2: #5fd35a; --pb-3: #2fa64a; --pb-4: #17732f; --pb-glow: rgba(95, 211, 90, 0.55);
   width: 30px; height: 52px; padding: 0; border: 0; border-radius: 0; background: none; display: block; }
 .fan-bob::after { display: none; }
-.fan-bob svg { position: relative; z-index: 1; display: block; width: 24px; height: 40px; margin: 0 auto; filter: drop-shadow(0 0 6px var(--pb-glow)); animation: pb-float 2.6s ease-in-out infinite; }
+.fan-bob svg { position: relative; z-index: 1; display: block; width: 24px; height: 40px; margin: 0 auto; filter: drop-shadow(0 0 6px var(--pb-glow)); }
 .fan-bob .pb-a { fill: var(--pb-1); } .fan-bob .pb-b { fill: var(--pb-2); } .fan-bob .pb-c { fill: var(--pb-3); } .fan-bob .pb-d { fill: var(--pb-4); }
-.fan-bob .pb-glow { position: absolute; left: 50%; bottom: 1px; width: 16px; height: 5px; margin-left: -8px; border-radius: 50%; background: var(--pb-glow); filter: blur(2px); animation: pb-shadow 2.6s ease-in-out infinite; }
+.fan-bob .pb-glow { position: absolute; left: 50%; bottom: 1px; width: 16px; height: 5px; margin-left: -8px; border-radius: 50%; background: var(--pb-glow); filter: blur(2px); }
 .fan-bob.is-mine { background: none; }
 .fan-bob.is-mine .pb-glow { width: 22px; margin-left: -11px; background: rgba(255, 255, 255, 0.55); box-shadow: 0 0 0 2px rgba(95, 211, 90, 0.9); }
 .fan-bob.is-locked { --pb-1: #ffd2a8; --pb-2: #ff9a3d; --pb-3: #f2700f; --pb-4: #a8470a; --pb-glow: rgba(255, 138, 40, 0.55); }
@@ -2778,4 +2778,4 @@ body:has(#fan-list:not([hidden])) .demo-bar, body:has(#fan-card:not([hidden])) .
 .fan-pin:hover .fan-bob svg, .fan-pin.is-on .fan-bob svg { filter: drop-shadow(0 0 12px var(--pb-glow)); }
 .fan-pin:focus-visible { outline: none; }
 .fan-pin.sec-tag-off { opacity: 0; pointer-events: none; }
-.stage.is-seat .fan-pin { transform: scale(.8); }
+.stage.is-seat .fan-pin { display: none; }
