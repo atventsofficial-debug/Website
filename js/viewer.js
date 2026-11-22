@@ -656,8 +656,8 @@ function paintTour() {
         <button class="tour-act is-capture" type="button" data-tour="capture">${icon('i-camera')}<b>Capture this moment</b><span>Photo or video of your view</span></button>
         <button class="tour-act" type="button" data-tour="again">${icon('i-venue')}<b>See the whole venue</b><span>Take the tour again</span></button>
       </div>`;
-  // Seat mates on every step but while the fan taps their seat.
-  const mates = step === 2 && state.tour.picking ? '' : matesBlock(p, { cats: v.catById });
+  // Seat mates (the Instagram profile on the seat) at the end of the tour, in the seat.
+  const mates = step === 3 ? matesBlock(p, { cats: v.catById }) : '';
   $('#app-side').innerHTML = `${bar}${body}${mates}`;
   renderCats();
   state.scene?.setMine(markedIds());

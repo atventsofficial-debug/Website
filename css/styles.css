@@ -1412,6 +1412,8 @@ input, select, textarea { border-radius: 0; }
 
 /* In the seat tour the last step's panel stays: it holds "Upload to story" and "Back to home". */
 .in-tour .stage.is-seat .app-side { opacity: 1; pointer-events: auto; transform: none; }
+/* the seat tour shows no event card: the chip on top names the tour */
+.in-tour .stage .event-card { display: none; }
 /* ...so the zoom buttons sit beside it on a wide screen, and above it on a narrow one. */
 .in-tour .zoom { top: auto; bottom: max(16px, env(safe-area-inset-bottom, 0px)); right: calc(max(16px, env(safe-area-inset-right, 0px)) + 384px); transform: none; }
 @media (max-width: 960px) {
