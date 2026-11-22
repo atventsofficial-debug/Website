@@ -34,8 +34,8 @@ const TYPE_TAG = { football: 'Football', sport: 'Sport', combat: 'Fight night', 
 const SEE_WHAT = { football: 'pitch', sport: 'court', combat: 'ring', cinema: 'screen' };
 // What the ticket card calls its pass, by the kind of event.
 const PASS_LABEL = { football: 'Match pass', sport: 'Match pass', combat: 'Fight pass', cinema: 'Cinema pass', theatre: 'Show pass' };
-// A film stays on the lists through its run (`until`), a show for a day after it starts.
-export const upcoming = e => (e.until ? Date.parse(e.until) : startOf(e)) + DAY > Date.now();
+// A film stays on the lists through its run (`until`), a show until it has ended.
+export const upcoming = e => !isOver(e);
 export const byDate = (a, b) => startOf(a) - startOf(b);
 export const onSale = () => EVENTS.filter(upcoming).sort(byDate);
 export const featured = () => EVENTS.find(e => e.featured && upcoming(e)) || onSale()[0] || EVENTS[0];
@@ -133,8 +133,8 @@ function ticketCard(e, opts = {}) {
   const dates = opts.run ? datesOf(e).filter(x => x === e || upcoming(x)) : [e];
   const live = dates.find(x => !allSoldOut(x)) || e, from = fromOf(live), name = titleLines(e.title);
   const tags = [];
-  if (dates.some(x => activePass(x.id))) tags.push(`<span class="tag tag-coral">${icon('i-eye')}3D pass</span>`);
-  return `<article class="ev tkt">
+  if (!opts.past && dates.some(x => activePass(x.id))) tags.push(`<span class="tag tag-coral">${icon('i-eye')}3D pass</span>`);
+  return `<article class="ev tkt${opts.past ? ' is-past' : ''}">
     <div class="tkt-bg">${cardImg(e, `${v.name}, ${v.city}`)}</div>
     <div class="tkt-in">
       <div class="tkt-top">
@@ -146,13 +146,16 @@ function ticketCard(e, opts = {}) {
       <div class="tkt-cut" aria-hidden="true"></div>
       <div class="tkt-foot">
         <div class="tkt-code"><small>${PASS_LABEL[typeOf(e)] || 'Concert pass'}</small><i class="barcode"></i></div>
-        <p class="tkt-price">${priceTag(live, from)}</p>
+        <p class="tkt-price">${opts.past ? '<span class="tkt-past">Past event</span>' : priceTag(live, from)}</p>
       </div>
     </div></article>`;
 }
 
 // One card a show, soonest first, for the home page and "more concerts".
 const oncePerShow = list => list.filter((e, i, all) => all.findIndex(x => x.title === e.title) === i).map(e => (isCard(e) ? e : optionsOf(e)[0]));
+
+// Shows that ended in the last two months, newest first: a search still finds them, marked.
+const recentPast = (now = Date.now()) => oncePerShow(EVENTS.filter(e => typeOf(e) !== 'cinema' && e.dateISO && isOver(e, now) && startOf(e) > now - CAL_BACK).sort((a, b) => startOf(b) - startOf(a)));
 
 // Big hero title: shrink long names so they stay on one line on desktop. Phones wrap the
 // title, so there the longest word sets the size.
@@ -378,8 +381,10 @@ export function bindNavSearch() {
   const show = () => {
     const q = input.value.trim().toLowerCase();
     if (!q) return close();
-    const hits = oncePerShow(onSale()).filter(e => findText(e).includes(q));
-    box.innerHTML = (hits.length ? hits.slice(0, 6).map(e => `<a class="nh-row" role="option" href="#event-${e.id}">${thumbImg(e)}<span><b>${esc(e.title)}</b><small>${esc(datesText(datesOf(e).filter(x => x === e || upcoming(x))))}${typeOf(e) === 'cinema' ? ' · Cinema XXI' : ` · ${esc(placeOf(e).name)}, ${esc(placeOf(e).city)}`}</small></span><em>${esc(TYPE_TAG[typeOf(e)] || 'Concert')}</em></a>`).join('')
+    const soon = oncePerShow(onSale().filter(e => !isOver(e))).filter(e => findText(e).includes(q));
+    const gone = recentPast().filter(e => findText(e).includes(q) && !soon.some(x => x.title === e.title));
+    const hits = [...soon, ...gone];
+    box.innerHTML = (hits.length ? hits.slice(0, 6).map(e => { const past = !soon.includes(e); return `<a class="nh-row${past ? ' is-past' : ''}" role="option" href="#event-${e.id}">${thumbImg(e)}<span><b>${esc(e.title)}</b><small>${esc(datesText(past ? [e] : datesOf(e).filter(x => x === e || (upcoming(x) && !isOver(x)))))}${typeOf(e) === 'cinema' ? ' · Cinema XXI' : ` · ${esc(placeOf(e).name)}, ${esc(placeOf(e).city)}`}</small></span><em>${past ? 'Past event' : esc(TYPE_TAG[typeOf(e)] || 'Concert')}</em></a>`; }).join('')
       : `<p class="nh-none">No event matches “${esc(input.value.trim())}”.</p>`)
       + `<a class="nh-all" role="option" href="#concerts" data-all>${hits.length ? `See all ${plural(hits.length, 'result')}` : 'See every event'} ${icon('i-arrow')}</a>`;
     box.hidden = false; input.setAttribute('aria-expanded', 'true'); pick = -1;
@@ -420,7 +425,7 @@ export function renderConcerts() {
   if (fromHash) listQuery.type = fromHash;
   const q = listQuery.q.trim().toLowerCase();
   const match = e => !q || findText(e).includes(q);
-  const all = onSale().filter(isCard);
+  const all = onSale().filter(e => isCard(e) && !isOver(e));
   // The dropdown offers only the kinds of event on sale now, with a count each. Its list
   // scrolls after a few rows, so more kinds never make it run down the page.
   // "All sport" joins football, tennis and fights when more than one of them is on sale.
@@ -432,7 +437,10 @@ export function renderConcerts() {
   typePicker.set([['all', all.length], ...kinds].map(([t, n]) => ({ value: t, label: t === 'all' ? 'All events' : t === 'sports' ? 'All sport' : EVENT_TYPES[t], note: String(n) })), listQuery.type);
   const list = all.filter(e => isType(listQuery.type, e)).filter(match).sort(byDate);
   $('#concerts-count').textContent = `${plural(all.length, 'event')} on sale, as listed in ${LISTED}. Prices as announced; tiket.com has the live price.`;
-  $('#concerts-grid').innerHTML = list.length ? list.map(e => ticketCard(e)).join('')
+  // While searching, shows that just ended still come up, after the coming ones and marked.
+  const gone = q ? recentPast().filter(e => isType(listQuery.type, e) && match(e)) : [];
+  const pastBlock = gone.length ? `<h3 class="tkt-past-head">Past events</h3>${gone.map(e => ticketCard(e, { past: true })).join('')}` : '';
+  $('#concerts-grid').innerHTML = list.length || gone.length ? list.map(e => ticketCard(e)).join('') + pastBlock
     : `<div class="empty-state"><h3>Nothing matches.</h3><p>${q ? `No event matches “${esc(listQuery.q.trim())}”.` : 'No concerts on sale right now.'} New shows are added as they go on sale: get the concert alerts on the home page to hear first.</p>${q ? '<button class="btn btn-line" type="button" id="concerts-clear">Clear the search</button>' : ''}</div>`;
   $('#concerts-clear')?.addEventListener('click', () => { listQuery.q = ''; $('#concerts-q').value = ''; renderConcerts(); });
 }
@@ -721,16 +729,16 @@ export function renderUnlock(eventId) {
     // Wider screens: the events as rows, one tap opens the form for it. Phones ("My seat 3D",
     // the middle tab) get a page of their own that is not a second Events list: what the seat
     // view is, the three steps, one field to choose the concert, and the fan's own seat views.
-    // Soonest first. Films showing all week (`until`) follow the dated shows, so a concert
-    // tonight is not buried under a dozen cinema studios.
-    const list = [...onSale().filter(e => !e.until), ...onSale().filter(e => e.until)];
+    // Concerts only, soonest first: the seat view is sold for concerts, so no cinema or
+    // match ever shows up in this list.
+    const list = onSale().filter(e => typeOf(e) === 'concert');
     // Shows still to come first, then the ones that have taken place.
     const mine = passes.all().filter(p => p.status === 'confirmed' && isConcert(p.eventId))
       .sort((a, b) => !upcoming(eventMeta(a.eventId)) - !upcoming(eventMeta(b.eventId)));
     $('#uf-pick').innerHTML = `
-      <div class="uf-desk"><div class="uf-head"><h2>Choose your event</h2><small>Then your seat, then pay</small></div>
+      <div class="uf-desk"><div class="uf-head"><h2>Choose your concert</h2><small>Then your seat, then pay</small></div>
       <div class="uf-tools">
-        <label class="search uf-find">${icon('i-search')}<input type="search" placeholder="Search an event or venue" aria-label="Search an event"></label>
+        <label class="search uf-find">${icon('i-search')}<input type="search" placeholder="Search a concert or venue" aria-label="Search a concert"></label>
         ${monthChips(list)}
       </div>
       <ul class="uf-pick-list">${list.map(e => `<li ${pickData(e)}><a class="uf-pick-row" href="#unlock-${esc(e.id)}">

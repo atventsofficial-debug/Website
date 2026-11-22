@@ -1582,6 +1582,11 @@ body { counter-reset: sec; }
           mask: radial-gradient(circle var(--notch) at 50% 0, transparent 98%, #000) top / var(--step) 51% repeat-x, radial-gradient(circle var(--notch) at 50% 100%, transparent 98%, #000) bottom / var(--step) 51% repeat-x;
   transition: transform .35s cubic-bezier(.2, .7, .2, 1); }
 .tkt:hover { transform: translateY(-4px) rotate(-1deg); border-color: transparent; }
+.tkt.is-past .tkt-bg { filter: grayscale(1) brightness(.6); }
+.tkt.is-past { background: #222; }
+.tkt-past { display: inline-block; padding: 4px 10px; border-radius: 99px; background: rgba(255, 255, 255, .14); font: 600 12px/1.3 var(--font); color: #eee; }
+.tkt-past-head { grid-column: 1 / -1; margin: 24px 0 4px; font-size: 15px; font-weight: 600; color: var(--muted); }
+.nh-row.is-past img, .nh-row.is-past .cover-thumb { filter: grayscale(1); opacity: .7; }
 .tkt-bg { position: absolute; inset: 0; z-index: -1; }
 .tkt-bg img { width: 100%; height: 100%; object-fit: cover; transform: scale(1.02); transition: transform .6s; }
 .tkt:hover .tkt-bg img { transform: scale(1.07); }

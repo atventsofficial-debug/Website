@@ -90,6 +90,7 @@ export const EXACT = {
 "Concert details": "Lihat Detail",
 "Event details": "Lihat Detail",
 "Past event": "Sudah berlalu",
+"Past events": "Event yang sudah berlalu",
 "This event has passed.": "Event ini sudah berlalu.",
 "These events have passed.": "Event-event ini sudah berlalu.",
 "Next concert": "Konser berikutnya",
