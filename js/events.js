@@ -177,7 +177,7 @@ const SHOW = ({ id, image, theme, title, subtitle, dateISO, time = 'TBA', place,
 // Each day has its own page on tiket.com.
 const BTS_URL = { 1: 'bts-jakarta-day1', 2: 'bts-jakarta-day2', 3: 'bts-jakarta-3rdshowday' };
 const BTS_DAY = (n, dateISO, more = {}) => ({
-  id: `evt-bts-arirang-${n}`, venue: 'stadium-round', theme: 'bts',
+  id: `evt-bts-arirang-${n}`, venue: 'gbk-bts', theme: 'bts',
   title: 'BTS', subtitle: `World Tour ARIRANG · Day ${n}`,
   dateISO, time: 'TBA', doors: 'TBA', ends: '', age: '',
   host: 'iME Indonesia', hostNote: 'Promoter, with Live Nation',

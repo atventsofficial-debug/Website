@@ -216,6 +216,7 @@ export class SeatScene {
     this.moodTarget = 0;
     this.realColors = false;
     this.zoneFloors = null;
+    this.floorNamed = null;
     this._savedCrowd = null;
     // A venue drawn from a seller's plan shows each free seat in its category's colour there.
     this.zones = venue.zoneColors ? Object.fromEntries(venue.categories.map(c => [c.id, new THREE.Color(c.color)])) : null;
@@ -640,6 +641,8 @@ export class SeatScene {
     this.tagView = null;
     if (!this.labelsOn || secs.size < 2) return;
     for (const a of secs.values()) {
+      // A floor block with its name painted over it on the map needs no tag (venues3d.js floorZones).
+      if (this.floorNamed?.has(a.code)) continue;
       const el = document.createElement('div');
       el.className = 'sec-tag';
       el.textContent = a.code.replace(/^(RS|CS)-/, '$1 ').replace(/^VIP-/, 'VIP ').replace(/^FA-/, 'FA ');
@@ -834,7 +837,8 @@ export class SeatScene {
     // map shows another category.
     this.zoneFloors?.forEach(m => {
       m.visible = !this.realColors;
-      m.material.opacity = this.filterCat && this.filterCat !== m.userData.cat ? 0.1 : 0.5;
+      const dim = this.filterCat && this.filterCat !== m.userData.cat;
+      m.material.opacity = m.userData.label ? (dim ? 0.2 : 0.95) : dim ? 0.1 : 0.5;
     });
     if (!this.seatMesh) return;
     const c = new THREE.Color();

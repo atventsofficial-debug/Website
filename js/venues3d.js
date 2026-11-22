@@ -8,7 +8,8 @@
 import * as THREE from 'three';
 import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { superPoint } from './layouts.js';
+import { superPoint, formatRpShort } from './layouts.js';
+import { lang } from './i18n.js';
 import { IMAGES } from './media.js';
 import { themeOf } from './themes.js';
 import { MADYA, jisEnd } from './realvenues.js';
@@ -459,6 +460,8 @@ export function buildConcert(ctx, venue) {
   floor.position.z = CZ;
   floor.receiveShadow = true;
   scene.add(floor);
+  // The floor blocks in their categories' colours, with their names, on the map.
+  floorZones(ctx, venue);
 
   // Roof grid of trusses and house lights.
   const steel = mats.steel();
@@ -1787,25 +1790,8 @@ function stadiumShow(ctx, venue, brand) {
   cover.position.set((cx0 + cx1) / 2, 0.02, 0);
   cover.receiveShadow = true;
   scene.add(cover);
-  // On the map, each standing floor in its category's colour, like the stands (zoneColors).
-  // From a seat the scene hides them: on the night the floor is the plain deck (scene3d.js).
-  if (venue.zoneColors && floor?.length) {
-    const box = new Map();
-    for (const s of floor) {
-      const b = box.get(s.sec) || { cat: s.cat, x0: Infinity, x1: -Infinity, z0: Infinity, z1: -Infinity };
-      b.x0 = Math.min(b.x0, s.x); b.x1 = Math.max(b.x1, s.x); b.z0 = Math.min(b.z0, s.z); b.z1 = Math.max(b.z1, s.z);
-      box.set(s.sec, b);
-    }
-    ctx.zoneFloors = [...box.values()].map(b => {
-      const mat = below(new THREE.MeshStandardMaterial({ color: venue.catById[b.cat]?.color || '#888888', roughness: 0.85, transparent: true, opacity: 0.5, depthWrite: false }), -2);
-      const m = new THREE.Mesh(new THREE.PlaneGeometry(b.x1 - b.x0 + 0.8, b.z1 - b.z0 + 0.8), mat);
-      m.rotation.x = -Math.PI / 2;
-      m.position.set((b.x0 + b.x1) / 2, 0.04, (b.z0 + b.z1) / 2);
-      m.userData.cat = b.cat;
-      scene.add(m);
-      return m;
-    });
-  }
+  // On the map, each floor block in its category's colour with its name on it (zoneColors).
+  floorZones(ctx, venue);
   const art = screenArt(brand, venue);
   const screens = [];
   const screen = (w, h, pixel) => {
@@ -1946,6 +1932,8 @@ function stadiumShow(ctx, venue, brand) {
       scene.add(desk);
     }
   } else {
+    if (venue.stage?.arm) spin = roundStage(ctx, venue, { screen, beamAt, steel, theme });
+    else {
     // 360-degree centre stage: round deck, a four-sided screen cube and a ring of lights above.
     const deck = new THREE.Mesh(new THREE.CylinderGeometry(9.5, 9.8, 2, 48), new THREE.MeshStandardMaterial({ color: '#0c0c0e', roughness: 0.3 }));
     deck.position.y = 1;
@@ -1999,6 +1987,7 @@ function stadiumShow(ctx, venue, brand) {
     glow.position.set(0, 18, 0);
     ctx.mood(glow, 'intensity', 0, 380);
     scene.add(glow);
+    }
   }
 
   return t => {
@@ -2009,6 +1998,285 @@ function stadiumShow(ctx, venue, brand) {
       b.rotation.x = 0.42 + Math.sin(t * 0.33 + i * 1.3) * 0.22;
     });
   };
+}
+
+// ------------------------------------------------------------------ floor plan on the map
+
+// Each floor block (seats or standing spots off the tiers) drawn on the map in its category's
+// colour, row by row so the block keeps its real outline (stepped edges, aisles), with the
+// block's name in big letters over it, upright to the people in it looking at the stage.
+// Shown from above only: scene3d.js hides ctx.zoneFloors from a seat.
+function floorZones(ctx, venue) {
+  if (!venue.zoneColors) return;
+  const floor = venue.seats.filter(s => !s.tier);
+  if (!floor.length) return;
+  const secs = new Map();
+  for (const s of floor) {
+    if (!secs.has(s.sec)) secs.set(s.sec, { name: s.secName || s.sec, cat: s.cat, yaw: s.yaw, rows: new Map(), cats: new Map() });
+    const b = secs.get(s.sec);
+    b.cats.set(s.cat, (b.cats.get(s.cat) || 0) + 1);
+    if (!b.rows.has(s.row)) b.rows.set(s.row, []);
+    b.rows.get(s.row).push(s);
+  }
+  const out = [];
+  for (const [sec, b] of secs) {
+    const cat = [...b.cats].sort((p, q) => q[1] - p[1])[0][0];
+    // Facing f (towards the stage) and across r, from the block's first seat.
+    const fx = -Math.sin(b.yaw), fz = -Math.cos(b.yaw), rx = -fz, rz = fx;
+    const strips = [];
+    let y = 0, minU = Infinity, maxU = -Infinity, minV = Infinity, maxV = -Infinity;
+    for (const row of b.rows.values()) {
+      const w = row[0].width || 0.56, depth = row[0].rowDepth || 0.9;
+      const pts = row.map(s => ({ u: s.x * rx + s.z * rz, v: s.x * fx + s.z * fz })).sort((p, q) => p.u - q.u);
+      const v = pts.reduce((a, p) => a + p.v, 0) / pts.length;
+      y = Math.max(y, row[0].y);
+      // A gap wider than two seats is an aisle: the strip breaks there.
+      let start = pts[0].u, prev = pts[0].u;
+      const flush = end => {
+        const len = end - start + w, mid = (start + end) / 2;
+        const g = new THREE.PlaneGeometry(len, depth * 1.02);
+        g.rotateX(-Math.PI / 2);
+        g.rotateY(b.yaw);
+        g.translate(rx * mid + fx * v, 0, rz * mid + fz * v);
+        strips.push(g);
+      };
+      for (let k = 1; k < pts.length; k++) {
+        if (pts[k].u - prev > w * 2.2) { flush(prev); start = pts[k].u; }
+        prev = pts[k].u;
+      }
+      flush(prev);
+      minU = Math.min(minU, pts[0].u - w / 2); maxU = Math.max(maxU, prev + w / 2);
+      minV = Math.min(minV, v - depth / 2); maxV = Math.max(maxV, v + depth / 2);
+    }
+    const color = venue.catById[cat]?.color || '#888888';
+    const mat = below(new THREE.MeshStandardMaterial({ color, roughness: 0.85, transparent: true, opacity: 0.5, depthWrite: false }), -2);
+    const m = new THREE.Mesh(mergeGeometries(strips), mat);
+    strips.forEach(g => g.dispose());
+    m.position.y = y + 0.04;
+    m.userData.cat = cat;
+    ctx.scene.add(m);
+    out.push(m);
+    // The name, over the heads of the crowd, across the block's middle.
+    const across = maxU - minU, deep = maxV - minV;
+    if (across < 4 || deep < 3) continue;
+    // Two lines: the block's name, and under it what a fan wants next: the price and how many
+    // seats (or spots) it holds, or that it is sold out, so the map answers "where can I sit
+    // and what does it cost" without opening the list.
+    const words = b.name.toUpperCase();
+    const c = venue.catById[cat], id = lang === 'id';
+    const count = [...b.rows.values()].reduce((a, r) => a + r.length, 0);
+    const sold = venue.meta?.soldOut?.includes(cat);
+    const unit = floor.find(q => q.sec === sec)?.standing ? (id ? 'tempat berdiri' : 'standing') : (id ? 'kursi' : 'seats');
+    const info = sold ? (id ? 'HABIS TERJUAL' : 'SOLD OUT') : `${c?.price ? (id ? `Rp ${+(c.price / 1e6).toFixed(2)} jt`.replace('.', ',') : formatRpShort(c.price)) + '  ·  ' : ''}${count.toLocaleString(id ? 'id-ID' : 'en-US')} ${unit}`;
+    const TW = 1024, TH = 288;
+    const tex = textTexture(TW, TH, (g, w, h) => {
+      let size = 150;
+      const font = (px, wt = 800) => `${wt} ${px}px "Inter", "Helvetica Neue", Arial, sans-serif`;
+      g.font = font(size);
+      while (g.measureText(words).width > w - 40 && size > 40) { size -= 6; g.font = font(size); }
+      g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
+      g.lineWidth = size * 0.2; g.strokeStyle = 'rgba(12,12,16,0.92)';
+      g.strokeText(words, w / 2, h * 0.36);
+      g.fillStyle = '#ffffff';
+      g.fillText(words, w / 2, h * 0.36);
+      // The info line on a pill in the category's colour (dark when sold out).
+      const small = Math.round(size * 0.52);
+      g.font = font(small, 700);
+      const pw = g.measureText(info).width + small * 1.2, ph = small * 1.5, px = (w - pw) / 2, py = h * 0.78 - ph / 2;
+      g.fillStyle = sold ? 'rgba(20,20,24,0.92)' : (c?.color || '#888888');
+      g.beginPath(); g.roundRect(px, py, pw, ph, ph / 2); g.fill();
+      g.lineWidth = 4; g.strokeStyle = 'rgba(12,12,16,0.85)'; g.stroke();
+      g.fillStyle = sold ? '#ff6b6b' : '#111114';
+      g.fillText(info, w / 2, h * 0.78 + 2);
+    });
+    const lw = Math.min(across * 0.85, deep * 2.6, 40), lh = lw * TH / TW;
+    const label = new THREE.Mesh(new THREE.PlaneGeometry(lw, lh), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, toneMapped: false, opacity: 0.95 }));
+    label.rotation.order = 'YXZ';
+    // Upright to the people in the block; turned round where that would read upside down
+    // from the map's usual side (the camera starts south, at +z).
+    label.rotation.set(-Math.PI / 2, fz > 0.3 ? b.yaw + Math.PI : b.yaw, 0);
+    const mu = (minU + maxU) / 2, mv = (minV + maxV) / 2;
+    label.position.set(rx * mu + fx * mv, y + 2.7, rz * mu + fz * mv);
+    label.renderOrder = 5;
+    label.userData = { cat, label: true };
+    (ctx.floorNamed ||= new Set()).add(sec);
+    ctx.scene.add(label);
+    out.push(label);
+  }
+  ctx.zoneFloors = [...(ctx.zoneFloors || []), ...out];
+}
+
+// BTS's 360 stage (venue.stage, layouts.js BTS_STAGE): a square main stage with a round lift,
+// four runways out along the diagonals to end stages with steps down, barriers along them,
+// eight truss towers round the main stage holding a square roof of truss, moving heads and
+// line arrays hung from it, the screen cube in the middle, and delay towers in the field.
+// Returns the cube, which turns slowly.
+function roundStage(ctx, venue, { screen, beamAt, steel, theme }) {
+  const { scene } = ctx, S = venue.stage, H = S.half, A = S.arm, TOP = 1.9;
+  const deckMat = new THREE.MeshStandardMaterial({ color: '#111116', roughness: 0.35, metalness: 0.2 });
+  const glowMat = new THREE.MeshBasicMaterial({ color: '#ffffff', toneMapped: false });
+  const tint = new THREE.MeshBasicMaterial({ color: theme.glow || '#9d7bff', toneMapped: false });
+  const add = (m, cast = true) => { m.castShadow = cast; m.receiveShadow = true; scene.add(m); return m; };
+  const edge = (len, x, z, ry, y = TOP + 0.02) => { const e = new THREE.Mesh(new THREE.BoxGeometry(len, 0.05, 0.08), glowMat); e.position.set(x, y, z); e.rotation.y = ry; scene.add(e); };
+
+  // Main stage, its lit edge and the floor's markings: two rings round the lift and spokes.
+  add(new THREE.Mesh(box(H * 2, TOP, H * 2, 0, TOP / 2, 0), deckMat));
+  for (const [x, z, ry] of [[0, H, 0], [0, -H, 0], [H, 0, Math.PI / 2], [-H, 0, Math.PI / 2]]) edge(H * 2, x, z, ry);
+  const marks = canvasTex(1024, 1024, (g, w, h) => {
+    g.clearRect(0, 0, w, h);
+    const c = w / 2, k = w / (H * 2);
+    g.strokeStyle = 'rgba(255,255,255,0.95)'; g.lineWidth = 6;
+    for (const r of [S.lift + 0.4, S.lift + 2.6]) { g.beginPath(); g.arc(c, c, r * k, 0, Math.PI * 2); g.stroke(); }
+    g.lineWidth = 3; g.strokeStyle = 'rgba(200,185,255,0.8)';
+    for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; g.beginPath(); g.moveTo(c + Math.cos(a) * (S.lift + 0.4) * k, c + Math.sin(a) * (S.lift + 0.4) * k); g.lineTo(c + Math.cos(a) * (S.lift + 2.6) * k, c + Math.sin(a) * (S.lift + 2.6) * k); g.stroke(); }
+    g.strokeStyle = 'rgba(255,255,255,0.35)'; g.lineWidth = 2;
+    g.strokeRect(0.6 * k, 0.6 * k, w - 1.2 * k, h - 1.2 * k);
+  });
+  const deckTop = new THREE.Mesh(new THREE.PlaneGeometry(H * 2, H * 2), new THREE.MeshBasicMaterial({ map: marks, transparent: true, depthWrite: false, toneMapped: false }));
+  deckTop.rotation.x = -Math.PI / 2;
+  deckTop.position.y = TOP + 0.015;
+  scene.add(deckTop);
+  const lift = add(new THREE.Mesh(new THREE.CylinderGeometry(S.lift, S.lift, 0.3, 64), new THREE.MeshStandardMaterial({ color: '#1b1a24', roughness: 0.25, metalness: 0.3 })));
+  lift.position.y = TOP + 0.05;
+  const liftRim = new THREE.Mesh(new THREE.TorusGeometry(S.lift, 0.06, 6, 96), tint);
+  liftRim.rotation.x = Math.PI / 2;
+  liftRim.position.y = TOP + 0.21;
+  scene.add(liftRim);
+
+  // Runways and end stages, with steps down at the far end and barriers along both sides.
+  const rail = (len, x, z, ry) => { const b = new THREE.Mesh(crowdBarrier(len), steel); b.position.set(x, 0, z); b.rotation.y = ry; scene.add(b); };
+  for (const [sx, sz] of [[1, 1], [-1, 1], [-1, -1], [1, -1]]) {
+    const len = (A.to - A.from) * Math.SQRT2, mid = (A.from + A.to) / 2;
+    const ry = Math.atan2(sx, sz), ux = sx / Math.SQRT2, uz = sz / Math.SQRT2, px = uz, pz = -ux;
+    const walk = add(new THREE.Mesh(new THREE.BoxGeometry(A.w, TOP, len), deckMat));
+    walk.position.set(mid * sx, TOP / 2, mid * sz);
+    walk.rotation.y = ry;
+    for (const side of [-1, 1]) {
+      const e = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.05, len), glowMat);
+      e.position.set(mid * sx + px * side * A.w / 2, TOP + 0.02, mid * sz + pz * side * A.w / 2);
+      e.rotation.y = ry;
+      scene.add(e);
+      const lights = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.3, len), tint);
+      lights.position.set(mid * sx + px * side * (A.w / 2 + 0.01), TOP - 0.3, mid * sz + pz * side * (A.w / 2 + 0.01));
+      lights.rotation.y = ry;
+      scene.add(lights);
+      const off = A.w / 2 + 1.4;
+      rail(len - 2, mid * sx + px * side * off, mid * sz + pz * side * off, ry + Math.PI / 2);
+    }
+    const bx = A.to * sx, bz = A.to * sz, B = S.bHalf;
+    add(new THREE.Mesh(box(B * 2, TOP, B * 2, bx, TOP / 2, bz), deckMat));
+    for (const [x, z, r] of [[bx, bz + B, 0], [bx, bz - B, 0], [bx + B, bz, Math.PI / 2], [bx - B, bz, Math.PI / 2]]) edge(B * 2, x, z, r);
+    // Logo-free emblem on the end stage: a lit ring.
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(B * 0.62, 0.05, 6, 64), glowMat);
+    ring.rotation.x = Math.PI / 2;
+    ring.position.set(bx, TOP + 0.03, bz);
+    scene.add(ring);
+    for (let k = 0; k < 3; k++) {
+      const h = TOP * (3 - k) / 4, d = B * Math.SQRT2 + 0.5 + k * 0.5;
+      const step = add(new THREE.Mesh(new THREE.BoxGeometry(2.6, h, 0.5), deckMat));
+      step.position.set(bx + ux * d, h / 2, bz + uz * d);
+      step.rotation.y = ry;
+    }
+  }
+  // Barriers along the main stage's four sides.
+  for (const [x, z, ry] of [[0, H + 1.4, 0], [0, -H - 1.4, 0], [H + 1.4, 0, Math.PI / 2], [-H - 1.4, 0, Math.PI / 2]]) rail(H * 2 - 3, x, z, ry);
+
+  // Eight towers, two at each corner either side of the runway, up to the roof.
+  const ROOF = 27, R = H + 1;
+  const towerGeo = trussGeometry(ROOF, 0.8);
+  for (const [sx, sz] of [[1, 1], [-1, 1], [-1, -1], [1, -1]]) {
+    for (const [ax, az] of [[R, H - 3], [H - 3, R]]) {
+      const t = new THREE.Mesh(towerGeo, steel);
+      t.rotation.z = Math.PI / 2;
+      t.position.set(ax * sx, ROOF / 2, az * sz);
+      t.castShadow = true;
+      scene.add(t);
+      const foot = new THREE.Mesh(box(1.4, 0.2, 1.4, ax * sx, 0.1, az * sz), mats.blackMetal());
+      scene.add(foot);
+    }
+  }
+  // The roof: a square frame of truss, cross members, and an inner ring of truss.
+  const frame = trussGeometry(R * 2 + 1, 0.9), inner = trussGeometry(R * 1.2, 0.6);
+  for (const y of [ROOF]) {
+    for (const [x, z, ry] of [[0, R, 0], [0, -R, 0], [R, 0, Math.PI / 2], [-R, 0, Math.PI / 2], [0, 0, 0], [0, 0, Math.PI / 2]]) {
+      const t = new THREE.Mesh(frame, mats.blackMetal()); t.position.set(x, y, z); t.rotation.y = ry; t.castShadow = true; scene.add(t);
+    }
+    for (const [x, z, ry] of [[0, R * 0.6, 0], [0, -R * 0.6, 0], [R * 0.6, 0, Math.PI / 2], [-R * 0.6, 0, Math.PI / 2]]) {
+      const t = new THREE.Mesh(inner, mats.blackMetal()); t.position.set(x, y - 0.9, z); t.rotation.y = ry; scene.add(t);
+    }
+  }
+  // Moving heads all round the frame, every other one throwing a beam.
+  const head = merge([box(0.5, 0.35, 0.4, 0, -0.2, 0), new THREE.CylinderGeometry(0.2, 0.2, 0.42, 10).rotateX(Math.PI / 2).translate(0, -0.6, 0)]);
+  const heads = [];
+  const per = 9;
+  let n = 0;
+  for (const [x0, z0, dx, dz] of [[-R, R, 1, 0], [R, R, 0, -1], [R, -R, -1, 0], [-R, -R, 0, 1]]) {
+    for (let k = 0; k < per; k++) {
+      const x = x0 + dx * (k + 0.5) * (R * 2 / per), z = z0 + dz * (k + 0.5) * (R * 2 / per);
+      heads.push(new THREE.Matrix4().makeTranslation(x, ROOF - 0.45, z));
+      if (k % 2 === 0) beamAt(scene, x, ROOF - 1, z, n++);
+    }
+  }
+  const im = new THREE.InstancedMesh(head, mats.matteBlack(), heads.length);
+  heads.forEach((mtx, i) => im.setMatrixAt(i, mtx));
+  scene.add(im);
+  // Line arrays: one in the middle of each side, one off each corner over the runway.
+  const cab = new THREE.BoxGeometry(1.4, 0.48, 1.0);
+  const hang = [];
+  for (let i = 0; i < 8; i++) {
+    const a = i / 8 * Math.PI * 2, r = i % 2 ? R * Math.SQRT2 - 1.5 : R + 0.9;
+    for (let k = 0; k < 12; k++) {
+      const out = Math.pow(k / 11, 2) * 0.7;
+      const m = new THREE.Matrix4().compose(
+        new THREE.Vector3(Math.sin(a) * (r + out), ROOF - 2 - k * 0.5, Math.cos(a) * (r + out)),
+        new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.pow(k / 11, 2) * 0.5, a, 0, 'YXZ')),
+        new THREE.Vector3(1, 1, 1));
+      hang.push(m);
+    }
+  }
+  const arrays = new THREE.InstancedMesh(cab, mats.matteBlack(), hang.length);
+  hang.forEach((m, i) => arrays.setMatrixAt(i, m));
+  arrays.castShadow = true;
+  scene.add(arrays);
+
+  // The screen cube under the roof.
+  const cube = new THREE.Group();
+  for (let i = 0; i < 4; i++) {
+    const sc = screen(12, 6.8, 80);
+    const a = (i / 4) * Math.PI * 2;
+    sc.position.set(Math.sin(a) * 6.05, 0, Math.cos(a) * 6.05);
+    sc.rotation.y = a;
+    cube.add(sc);
+  }
+  cube.add(new THREE.Mesh(new THREE.BoxGeometry(12, 7.2, 12), mats.matteBlack()));
+  cube.position.y = ROOF - 7;
+  scene.add(cube);
+
+  // Delay towers in the field.
+  for (const [x, z] of S.towers || []) {
+    const t = new THREE.Mesh(trussGeometry(16, 0.5), steel);
+    t.rotation.z = Math.PI / 2;
+    t.position.set(x, 8, z);
+    scene.add(t);
+    const face = Math.atan2(-x, -z);
+    for (let k = 0; k < 8; k++) {
+      const c = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.42, 0.9), mats.matteBlack());
+      c.position.set(x, 15 - k * 0.44, z);
+      c.rotation.y = face;
+      scene.add(c);
+    }
+  }
+
+  const wash = new THREE.SpotLight(theme.wash, 1, 90, 0.55, 0.6, 1.2);
+  wash.position.set(0, 46, 0);
+  wash.target.position.set(0, 2, 0);
+  ctx.mood(wash, 'intensity', 0, 4200);
+  scene.add(wash, wash.target);
+  const glow = new THREE.PointLight(theme.glow, 1, 60, 1.5);
+  glow.position.set(0, 14, 0);
+  ctx.mood(glow, 'intensity', 0, 420);
+  scene.add(glow);
+  return cube;
 }
 
 // ------------------------------------------------------------------ seats & crowd geometry

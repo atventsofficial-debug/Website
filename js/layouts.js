@@ -2,7 +2,7 @@
 // No browser or three.js dependency, so the Node server imports the same file
 // to check event ids and categories.
 
-import { superPoint, gridRows, bowl, deg, norm, dryRun } from './seatgeo.js';
+import { superPoint, gridRows, bowl, deg, norm, dryRun, pushSeat } from './seatgeo.js';
 import { SEAT_COUNTS } from './seatcounts.js';
 import { REAL_BUILDERS } from './realvenues.js';
 import { CINEMA_BUILDERS } from './cinemas.js';
@@ -336,6 +336,85 @@ function stadiumRound() {
   };
 }
 
+// BTS at Gelora Bung Karno: a square main stage in the middle of the field with a round lift
+// in it, four runways out along the diagonals to a small stage at each end, and a roof of
+// truss over the main stage on four towers. The field between the runways is four wedges of
+// numbered chairs, A to D, each VIP Package nearest the stage and Platinum Floor behind a
+// cross aisle, split down the middle by an aisle; a delay tower stands in the side wedges'
+// aisles. The bowl and upper tiers are the 360 stadium's. Stage numbers (metres, centre
+// (0, 0)) are read by the 3D builder too (venues3d.js roundStage).
+export const BTS_STAGE = { half: 10, lift: 6, arm: { w: 3.6, from: 10, to: 29 }, bHalf: 3.2, towers: [[-40, 0], [40, 0]] };
+function btsClear(x, z) {
+  const { half, arm, bHalf } = BTS_STAGE, gap = 2.2;
+  if (Math.abs(x) < half + 2.6 && Math.abs(z) < half + 2.6) return false;
+  const ax = Math.abs(x), az = Math.abs(z);
+  // Distance from the runway on this quadrant's diagonal, and from its end stage.
+  const u = (ax + az) / Math.SQRT2, v = Math.abs(ax - az) / Math.SQRT2;
+  const u0 = arm.from * Math.SQRT2, u1 = arm.to * Math.SQRT2;
+  if (u > u0 && u < u1 && v < arm.w / 2 + gap) return false;
+  if (Math.abs(ax - arm.to) < bHalf + gap && Math.abs(az - arm.to) < bHalf + gap) return false;
+  return true;
+}
+function gbkBts() {
+  const seats = [];
+  const SX = 0.56, SZ = 0.95, VIP_ROWS = 10, FRONT = BTS_STAGE.half + 2.6, AISLE = 0.7;
+  // Each wedge: the direction its chairs face (towards the stage), how far back from the
+  // stage centre its rows run, and how wide the field is across them.
+  for (const [w, f, depth, across] of [['A', [0, -1], 33.2, 51], ['B', [1, 0], 51, 33.2], ['C', [0, 1], 33.2, 51], ['D', [-1, 0], 51, 33.2]]) {
+    const [fx, fz] = f, rx = -fz, rz = fx;
+    const rowsOf = { vip: [], plat: [] };
+    let d = FRONT, i = 0;
+    while (d <= depth) {
+      const band = i < VIP_ROWS ? 'vip' : 'plat';
+      const row = [];
+      for (let u = -across; u <= across; u += SX) {
+        if (Math.abs(u) < AISLE) continue;
+        const x = -fx * d + rx * u, z = -fz * d + rz * u;
+        // Inside the wedge (between the two runways either side of it) and clear of them.
+        if (Math.abs(u) > d - 0.2) continue;
+        if (!btsClear(x, z)) continue;
+        row.push([x, z, u]);
+      }
+      if (row.length) rowsOf[band].push(row);
+      i++;
+      d += SZ + (i === VIP_ROWS ? 1.4 : 0) + (i === VIP_ROWS + 14 ? 1.2 : 0);
+    }
+    for (const [band, sec, secName] of [['vip', `VIP-${w}`, `VIP Package ${w}`], ['plat', `PF-${w}`, `Platinum Floor ${w}`]]) {
+      const o = { sec, secName, cat: band, sx: SX, sz: SZ };
+      rowsOf[band].forEach((row, r) => {
+        row.sort((a, b) => a[2] - b[2]).forEach(([x, z], k) => pushSeat(seats, o, r, k + 1, x, 0, z, fx, fz));
+      });
+    }
+  }
+  lowerBowl(seats, { catOf: (t, row) => (row < 4 ? 'plat' : 'cat1'), name: s => ({ code: `${s + 1}`.padStart(2, '0'), label: `Section ${s + 1}` }) });
+  const uppers = [[-38, 38, 'East', 4], [52, 128, 'South', 4], [142, 218, 'West', 4], [232, 308, 'North', 4]];
+  upperTiers(seats, uppers, (t, row) => (row < 6 ? 'cat2' : 'cat3'));
+  return {
+    key: 'gbk-bts',
+    kind: 'stadium',
+    show: 'round',
+    stage: BTS_STAGE,
+    zoneColors: true,
+    uppers,
+    label: 'Gelora Bung Karno, BTS 360 stage',
+    event: { title: 'Stadium concert', venue: 'Gelora Bung Karno Main Stadium' },
+    focus: [0, 5, 0],
+    overview: { pos: [0, 100, 108], target: [0, 0, 4], min: 40, max: 230 },
+    hero: { along: 49, look: [0, 13, 0], fov: 62 },
+    seatStyle: 'shell',
+    seatColor: '#b8162b',
+    occupancy: { vip: 0.92, plat: 0.85, cat1: 0.55, cat2: 0.5, cat3: 0.45 },
+    categories: [
+      { id: 'vip', name: 'VIP Package', price: 4500000, color: '#b18cff', note: 'Field, the rows nearest the stage and runways (A to D)' },
+      { id: 'plat', name: 'Platinum', price: 3650000, color: '#f2a7d8', note: 'Field behind VIP (Platinum Floor A to D), and the front of the lower tier' },
+      { id: 'cat1', name: 'CAT 1', price: 2800000, color: '#56b6ff', note: 'Lower tier' },
+      { id: 'cat2', name: 'CAT 2', price: 2300000, color: '#ffb35c', note: 'Upper tier, front rows' },
+      { id: 'cat3', name: 'CAT 3', price: 1800000, color: '#6ee39a', note: 'Upper tier, back rows' },
+    ],
+    seats,
+  };
+}
+
 // Tottenham Hotspur Stadium, after a ticket seller's seating plan of the ground. The South
 // Stand behind one goal is a single tier; the West, North and East have three, the lower
 // tier running round both north corners. Blocks carry the plan's numbers, counted the plan's
@@ -445,6 +524,7 @@ function gbkWestlife() {
     key: 'gbk-westlife',
     kind: 'stadium',
     show: 'end',
+    zoneColors: true,
     uppers: uppers.map(([f, t, tag, n]) => [f, t, tag[0] === 'A' ? 'Left' : 'Right', n]),
     foh: WESTLIFE_FOH,
     label: 'Gelora Bung Karno, Westlife',
@@ -468,10 +548,10 @@ function gbkWestlife() {
   };
 }
 
-const builders = { concert, cinema, combat, 'combat-studio': combatStudio, tennis, stadium, 'stadium-end': stadiumEnd, 'stadium-round': stadiumRound, 'stadium-tottenham': stadiumTottenham, 'gbk-westlife': gbkWestlife, ...REAL_BUILDERS, ...CINEMA_BUILDERS };
+const builders = { concert, cinema, combat, 'combat-studio': combatStudio, tennis, stadium, 'stadium-end': stadiumEnd, 'stadium-round': stadiumRound, 'gbk-bts': gbkBts, 'stadium-tottenham': stadiumTottenham, 'gbk-westlife': gbkWestlife, ...REAL_BUILDERS, ...CINEMA_BUILDERS };
 export const VENUE_KEYS = Object.keys(builders);
 // The real venues, each laid out for one show; the rest are the generic layouts the demos use.
-export const REAL_KEYS = [...Object.keys(REAL_BUILDERS), 'gbk-westlife', ...Object.keys(CINEMA_BUILDERS)];
+export const REAL_KEYS = [...Object.keys(REAL_BUILDERS), 'gbk-westlife', 'gbk-bts', ...Object.keys(CINEMA_BUILDERS)];
 const cache = {};
 
 export function getVenue(key) {
