@@ -10,6 +10,7 @@
 import { formatFee, PLUS_FEE, UPGRADE_FEE } from './rules.js';
 import { canView, plusOnSale, upgradable } from './passes.js';
 import { compareSeats, pairText } from './compare.js';
+import { accessOf, wayIn } from './access.js';
 import { $, esc, icon, state, share } from './ui.js';
 
 const seatOf = id => { const v = state.venue, i = v?.seatById.get(id); return i === undefined ? null : v.seats[i]; };
@@ -102,6 +103,75 @@ export function bindCompare({ repaint }) {
         url: `${location.origin}${location.pathname}#${e2.demo ? `demo-${v.key}` : `seats-${v.eventId}`}@${pairText(ids)}`,
       });
     }
+  });
+}
+
+// ---------------------------------------------------------------- getting there
+
+// The seat the way in leads to: the one being looked at, the tour's, or the first compared.
+let routeSeat = null;
+const accessSeat = ({ tourSeat } = {}) => state.viewing || state.peek || tourSeat?.() || seatOf(compareIds()[0]) || null;
+
+export function closeAccess() {
+  const box = $('#access');
+  if (!box) return;
+  box.hidden = true;
+  $('#t-access')?.setAttribute('aria-pressed', 'false');
+  $('#t-access')?.classList.remove('is-on');
+  $('#stage')?.classList.remove('access-open');
+  routeSeat = null;
+  state.scene?.setRoute(null);
+}
+
+export function paintAccess(opts = {}) {
+  const box = $('#access');
+  if (!box || box.hidden || !state.venue) return;
+  const v = state.venue, info = accessOf(v), seat = accessSeat(opts), open = canView(v);
+  const place = v.meta.place || {};
+  const rows = info ? `<dl class="acc-rows">${info.map(([k, t]) => `<div><dt>${esc(k)}</dt><dd>${esc(t)}</dd></div>`).join('')}</dl>`
+    : `<p class="acc-lede">Travel notes for this venue are coming. Check the promoter’s announcement for gates and parking.</p>`;
+  let way = `<div class="acc-way is-empty"><p class="cmp-tag"><b>${icon('i-seat')}</b><span>Your way in</span></p><p class="acc-lede">Tap a seat on the map to see the way in from the nearest side of the venue.</p></div>`;
+  if (seat) {
+    const w = wayIn(v, seat), on = routeSeat === seat.id;
+    way = `<div class="acc-way"><p class="cmp-tag"><b>${icon('i-seat')}</b><span>Your way in</span></p>
+      <p class="cmp-name">${esc(seat.secName)}${seat.standing ? '' : ` · ${esc(seat.row)}${esc(String(seat.num))}`}</p>
+      <p class="acc-walk"><b>${w.minutes}</b><span>min on foot<br>${w.metres} m from outside</span></p>
+      ${open ? `<button class="btn ${on ? 'btn-line' : 'btn-coral'} btn-sm" type="button" data-acc="${on ? 'hide' : 'route'}" data-seat="${esc(seat.id)}">${on ? 'Hide the route' : `Show the route ${icon('i-arrow')}`}</button>`
+        : `<div class="cmp-lock">${plusOffer('The route in 3D')}</div>`}</div>`;
+  }
+  box.innerHTML = `<div class="cmp-head">
+      <div><p class="eyebrow">${icon('i-pin')}Getting there</p><h2>${esc(place.name || v.event?.venue || '')}</h2><p class="acc-addr mono">${esc(place.address || '')}</p></div>
+      <button class="sq sq-sm" type="button" data-acc="close" aria-label="Close getting there"><svg><use href="#i-x"/></svg></button>
+    </div>
+    ${way}
+    ${rows}
+    <p class="cmp-note mono">From public information, an illustration. On the day the promoter’s announcement on gates, parking and road closures comes first.</p>`;
+}
+
+export function bindAccess(opts = {}) {
+  const btn = $('#t-access'), box = $('#access');
+  if (!btn || !box) return;
+  btn.addEventListener('click', () => {
+    if (!box.hidden) { closeAccess(); return; }
+    box.hidden = false;
+    btn.setAttribute('aria-pressed', 'true');
+    btn.classList.add('is-on');
+    $('#stage')?.classList.add('access-open');
+    paintAccess(opts);
+  });
+  box.addEventListener('click', e => {
+    const b = e.target.closest('[data-acc]');
+    if (!b) return;
+    const act = b.dataset.acc, seat = seatOf(b.dataset.seat);
+    if (act === 'close') { closeAccess(); return; }
+    if (act === 'hide') { routeSeat = null; state.scene?.setRoute(null); }
+    if (act === 'route' && seat && canView(state.venue)) {
+      routeSeat = seat.id;
+      state.scene?.setRoute(wayIn(state.venue, seat).points);
+      if (state.scene?.mode !== 'overview') state.scene?.backToOverview();
+      else state.scene?.resetView();
+    }
+    paintAccess(opts);
   });
 }
 

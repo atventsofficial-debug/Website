@@ -15,7 +15,7 @@ import { whenOf, isOver } from './when.js';
 import { buyLink, activePass, openPass, passes, canView, plusPass, plusOnSale, upgradable, toggleSeat, STATUS, refresh } from './passes.js';
 import { placeSeat, cleanNumbering, isDefault, numberingOf, numberingSource } from './seatflip.js';
 import { $, esc, icon, state, QUALITY, spotStats, share, toast } from './ui.js';
-import { addCompare, bindCompare, bindShow, compareIds, paintCompare, setCompare, showModeFor } from './seatplus.js';
+import { addCompare, bindAccess, bindCompare, bindShow, closeAccess, paintAccess, compareIds, paintCompare, setCompare, showModeFor } from './seatplus.js';
 import { pairOf } from './compare.js';
 import { loadMates, matesBlock, bindMates, mateTags, resetMates, mates, startMatesLive, fanCardHtml, fillMatesList } from './fans.js';
 
@@ -199,7 +199,7 @@ export async function openViewer(id, { cat, seat, back, tour } = {}) {
   // One seat a friend sent, or two to compare (seat~seat).
   const pair = tour ? [] : pairOf(seat).filter(id => venue.seatById.has(id));
   state.shared = pair.length === 1 ? pair[0] : null;
-  if (state.venue?.eventId !== id) state.compare = [];
+  if (state.venue?.eventId !== id) { state.compare = []; closeAccess(); }
   if (pair.length === 2) setCompare(pair);
   const p = tour ? passes.get(tour) : null;
   state.tour = p && p.status === 'confirmed' && p.eventId === id && venue.seatById.has(p.seat) ? { id: p.id, step: 1 } : null;
@@ -264,6 +264,7 @@ export function closeViewer() {
   state.tour = null;
   state.compare = [];
   paintCompare();
+  closeAccess();
   document.body.classList.remove('in-tour');
   resetMates();
   closeFanCard();
@@ -388,6 +389,7 @@ function setMode(mode, seat) {
   $('#pov-hint').hidden = mode !== 'seat';
   $('#zoom').hidden = mode !== 'seat';
   showModeFor(mode);
+  paintAccess({ tourSeat });
 }
 
 // A paid seat pass of this concert, on its way to Plus: every seat, for the difference.
@@ -416,12 +418,14 @@ function peek(seat) {
 function closePeek() {
   if (!state.peek) return;
   state.peek = null;
+  queueMicrotask(() => paintAccess({ tourSeat }));
   $('#stage').classList.remove('is-peek');
   if (state.scene?.mode === 'overview') $('#seatcard').hidden = true;
   state.scene?.setMine(markedIds());
 }
 
 function fillSeatCard(seat) {
+  queueMicrotask(() => paintAccess({ tourSeat }));
   const v = state.venue, e = v.meta, cat = v.catById[seat.cat], p = pass();
   const locked = !canView(v), mine = !!p?.seats?.includes(seat.id), friend = seat.id === state.shared;
   $('#sc-section').textContent = seat.secName;
@@ -523,6 +527,7 @@ export function bindViewer() {
   bindMates($('#app-side'), { pass: matesPass, repaint: paintViewer });
   bindCompare({ repaint: () => { state.scene?.setMine([...markedIds(), ...(state.peek ? [state.peek.id] : [])]); if (state.viewing || state.peek) fillSeatCard(state.viewing || state.peek); } });
   bindShow();
+  bindAccess({ tourSeat });
   $('#fan-card').addEventListener('click', e => {
     const act = e.target.closest('[data-fancard]')?.dataset.fancard;
     // Closing a lit-up fan's card ends looking at them: colours and panels come back.
