@@ -58,7 +58,9 @@ function paintTags() {
   const key = `${state.venue?.eventId}|${p?.id || ''}|${own}|${dataId(mates.data)}|${mates.passId}|${state.tour?.fan?.seat || ''}`;
   if (key === tagKey) return;
   tagKey = key;
-  sc.setFans(p && state.tour?.fan ? [{ ...state.tour.fan, spot: true }] : []);
+  // Every fan of the category, the one picked from the list (or a tap) marked out.
+  const pick = state.tour?.fan?.seat;
+  sc.setFans(p ? mateTags(own).filter(f => !f.locked).map(f => (f.seat === pick ? { ...f, spot: true } : f)) : []);
 }
 function paintMates() {
   const p = matesPass();
@@ -138,7 +140,7 @@ export async function openViewer(id, { cat, seat, back, tour } = {}) {
       onHover: showTooltip,
       onSelect: pickSeat,
       onMode: setMode,
-      onFan: f => openFanCard(f),
+      onFan: f => (state.tour ? showFanOnMap(f) : openFanCard(f)),
       onArrive: (s, dist) => {
         $('#sc-dist').textContent = `${Math.round(dist)} m to the ${FOCUS_NAME[state.venue.show ? 'concert' : state.venue.kind]} · eye height ${(s.y + (s.standing ? 1.62 : 1.2)).toFixed(1)} m${s.standing ? ' · free standing: stand anywhere on the floor' : ''}`;
       },

@@ -658,7 +658,7 @@ export class SeatScene {
     if (this.fanMesh) { this.fanMesh.removeFromParent(); this.fanMesh.geometry.dispose(); this.fanMesh.material.dispose(); this.fanMesh = null; }
     this.fanList = [];
     this.fanPos = null;
-    this.fanSpot = false;
+    this.fanSpot = -1;
     this.fanGlow?.removeFromParent();
     if (this.fanU) this.fanU.uHover.value = -1;
     if (!this.scene || !this.venue || !list.length) return;
@@ -686,7 +686,10 @@ export class SeatScene {
           float a = uTime * 1.3 + ph, ca = cos(a), sa = sin(a);
           transformed.xz = mat2(ca, -sa, sa, ca) * transformed.xz;
           vShade = 0.72 + 0.28 * clamp(dot(normalize(mat2(ca, -sa, sa, ca) * normal.xz), vec2(0.6, 0.8)), -1.0, 1.0);
-          transformed *= clamp(distance(fc, cameraPosition) * 0.03, 0.3, 1.0) * (1.0 + 0.5 * vHot);
+          // About the same size on screen near and far; none right round the camera, so
+          // from a seat the fans next to it never fill the view.
+          float dc = distance(fc, cameraPosition);
+          transformed *= clamp(dc * 0.012, 0.35, 1.2) * smoothstep(9.0, 16.0, dc) * (1.0 + 0.6 * vHot);
           transformed.y += sin(uTime * 2.4 + ph) * 0.16;`);
       sh.fragmentShader = sh.fragmentShader
         .replace('#include <common>', '#include <common>\nvarying float vHot;\nvarying float vShade;')
@@ -701,7 +704,7 @@ export class SeatScene {
     const sc = new THREE.Vector3(), q = new THREE.Quaternion(), pos = new THREE.Vector3();
     rows.forEach(({ f, s }, k) => {
       // Over the head of a fan standing with their arms up.
-      const y = s.y + (s.standing ? STAND_LIFT : 0) + (f.spot ? 4 : 2.75), b = f.spot ? 4 : f.locked ? 0.6 : 1;
+      const y = s.y + (s.standing ? STAND_LIFT : 0) + (f.spot ? 3.6 : 2.75), b = f.spot ? 2.2 : f.locked ? 0.6 : 1;
       this.fanScale[k] = b;
       mesh.setMatrixAt(k, m.compose(pos.set(s.x, y, s.z), q, sc.setScalar(b)));
       mesh.setColorAt(k, c.copy(f.locked ? ORANGE : f.mine ? MINE : GREEN));
@@ -716,8 +719,8 @@ export class SeatScene {
     this.scene.add(mesh);
     U.uHover.value = -1;
     // The one fan picked from the list: a big marker that glows the whole time.
-    this.fanSpot = rows.length === 1 && !!rows[0].f.spot;
-    if (this.fanSpot) this.setFanHover(0, true);
+    this.fanSpot = rows.findIndex(r => r.f.spot);
+    this.setFanHover(-1, true);
     if (!this._fanTick) {
       this._fanTick = true;
       this.onTick(t => { U.uTime.value = t; this._glowAt(t); });
@@ -725,11 +728,13 @@ export class SeatScene {
   }
 
   // The glow behind the marker under the pointer: one soft sprite, following its bob.
-  setFanHover(i, force = false) {
+  // The marker under the pointer glows; with none, the one picked from the list does.
+  setFanHover(hover, force = false) {
     const U = this.fanU;
-    if (!U || (this.fanSpot && !force) || (U.uHover.value === i && !force)) return;
+    const i = hover >= 0 ? hover : (this.fanSpot ?? -1);
+    if (!U || (U.uHover.value === i && !force)) return;
     U.uHover.value = i;
-    this.renderer.domElement.style.cursor = i >= 0 ? 'pointer' : '';
+    this.renderer.domElement.style.cursor = hover >= 0 ? 'pointer' : '';
     if (!this.fanGlow) {
       const cv = document.createElement('canvas');
       cv.width = cv.height = 64;
@@ -748,7 +753,7 @@ export class SeatScene {
     const i = this.fanU?.uHover.value, g = this.fanGlow;
     if (!g?.parent || !(i >= 0) || !this.fanPos) return;
     const x = this.fanPos[i * 3], y = this.fanPos[i * 3 + 1], z = this.fanPos[i * 3 + 2], b = this.fanScale[i];
-    const near = THREE.MathUtils.clamp(this.camera.position.distanceTo(g.position.set(x, y, z)) * 0.03, 0.3, 1);
+    const near = THREE.MathUtils.clamp(this.camera.position.distanceTo(g.position.set(x, y, z)) * 0.012, 0.35, 1.2);
     g.position.y += Math.sin(t * 2.4 + x * 0.73 + z * 0.51) * 0.16 * b;
     g.scale.setScalar(2.4 * near * b);
   }
@@ -763,9 +768,9 @@ export class SeatScene {
     for (let i = 0, n = P.length / 3; i < n; i++) {
       const px = P[i * 3] - o.x, py = P[i * 3 + 1] - o.y, pz = P[i * 3 + 2] - o.z;
       const t = px * d.x + py * d.y + pz * d.z;
-      if (t < 0.3 || t > bestT) continue;
+      if (t < 12 || t > bestT) continue;   // hidden round the camera (setFans)
       const dx = px - d.x * t, dy = py - d.y * t, dz = pz - d.z * t;
-      const r = 0.45 + t * 0.004;
+      const r = Math.max(0.5, t * 0.014);
       if (dx * dx + dy * dy + dz * dz < r * r) { bestT = t; best = i; }
     }
     return best;
