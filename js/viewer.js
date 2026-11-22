@@ -50,6 +50,7 @@ const dataIds = new WeakMap();
 let dataSeq = 0;
 const dataId = d => (d ? (dataIds.get(d) || (dataIds.set(d, ++dataSeq), dataSeq)) : 0);
 function paintTags() {
+  paintFocus();
   const sc = state.scene, p = matesPass();
   if (!sc?.scene || !sc.venue) return;
   // A cheap key (the list the Worker sent, by identity, and where the fan sits), so a full
@@ -112,10 +113,15 @@ function showFanOnMap(f) {
     sc.lookToward(s);
     paintTags();
     paintTour();
-    setTimeout(card, 1100);
+    card();
     return;
   }
   lookAtBlock(s, card, f);
+}
+// While a fan is lit up the screen is theirs: the panels and buttons step aside and their
+// card sits at the bottom as the one thing to read and tap (css: .stage.is-fanfocus).
+function paintFocus() {
+  $('#stage')?.classList.toggle('is-fanfocus', !!state.tour?.fan);
 }
 // Back from a fan to the view from the seat, in colour again.
 function clearFan() {
@@ -155,9 +161,23 @@ function lookAtBlock(s, done, person = null) {
 function openFanCard(f) {
   const v = state.venue, s = seatOf(f.seat), box = $('#fan-card');
   if (!v || !box) return;
+  box.classList.toggle('is-sheet', !f.locked && state.tour?.fan === f);
   box.innerHTML = fanCardHtml(f, { cat: v.catById[f.cat]?.name || '', seat: s ? seatText(s) : '', unlock: `#unlock-${v.eventId}`, fee: formatFee() });
   box.hidden = false;
   box.querySelector('.fan-card-in')?.focus?.();
+  // Their real Instagram picture over the first letter, once it arrives.
+  const p = matesPass();
+  if (!f.locked && p && state.store?.fanPic) {
+    state.store.fanPic(p, f.instagram).then(src => {
+      const av = box.querySelector('.fan-card-av');
+      if (!src || !av || box.hidden || !box.contains(av)) { if (src) URL.revokeObjectURL(src); return; }
+      const img = new Image();
+      img.alt = '';
+      img.onload = () => { av.classList.add('has-pic'); };
+      img.src = src;
+      av.append(img);
+    });
+  }
 }
 function closeFanCard() {
   const box = $('#fan-card');
@@ -236,6 +256,7 @@ export function closeViewer() {
   document.body.classList.remove('in-tour');
   resetMates();
   closeFanCard();
+  paintFocus();
   import('./capture.js').then(m => m.stopCapture());
   tagKey = '';
   if (!state.scene) return;
@@ -470,11 +491,12 @@ export function bindViewer() {
   bindMates($('#app-side'), { pass: matesPass, repaint: paintViewer });
   $('#fan-card').addEventListener('click', e => {
     const act = e.target.closest('[data-fancard]')?.dataset.fancard;
-    if (e.target === e.currentTarget || act === 'close') closeFanCard();
+    // Closing a lit-up fan's card ends looking at them: colours and panels come back.
+    if (e.target === e.currentTarget || act === 'close') { if (state.tour?.fan && e.currentTarget.classList.contains('is-sheet')) clearFan(); else closeFanCard(); }
     if (act === 'edit') { closeFanCard(); $('#app-side [data-mates="edit"]')?.click(); }
     if (e.target.closest('a[href^="#unlock-"]')) closeFanCard();
   });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeFanCard(); if (state.tour?.numOpen) setNumOpen(false); } });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (state.tour?.fan) clearFan(); else closeFanCard(); if (state.tour?.numOpen) setNumOpen(false); } });
   $('#sc-close').addEventListener('click', closePeek);
   $('#zoom').addEventListener('click', e => {
     const d = e.target.closest('[data-zoom]')?.dataset.zoom;

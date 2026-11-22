@@ -34,7 +34,8 @@ import { signPass, readPass } from './passkey.mjs';
 import { hasOrders, saveOrder, setStatus, statusOf, takeEmail, returnEmail, orderOf, saveTeamOrder } from './orders.mjs';
 import { deviceOf, admit, newCode, useCode, maskEmail, CODE_MINUTES } from './devices.mjs';
 import { hasFans, fansList, catView, forgetFans, saveFan, dropFan, dropConcert, KEEP_AFTER } from './fans.mjs';
-import { checkFan, waLinksFor, waOf, SEAT_TAKEN } from '../js/fanrules.js';
+import { checkFan, waLinksFor, waOf, SEAT_TAKEN, IG_MISSING } from '../js/fanrules.js';
+import { igExists, igRecheck, igCheckOn, igPicture } from './igcheck.mjs';
 import { mailerOf, passEmail, codeEmail } from './mail.mjs';
 import { googleEmail, onTeam, signTeam, readTeam, teamOf } from './team.mjs';
 
@@ -68,6 +69,9 @@ export default {
       if (cancel) return method === 'POST' ? await cancelPayment(request, env, ctx, url, cancel[1]) : notAllowed('POST');
       const mates = /^\/api\/passes\/([^/]{1,40})\/fans$/.exec(path);
       if (mates) return ['GET', 'PUT', 'DELETE'].includes(method) ? await seatMates(request, env, ctx, url, mates[1]) : notAllowed('GET, PUT, DELETE');
+      // A seat mate's Instagram picture, for the same paid pass, of a fan in its own category.
+      const pic = /^\/api\/passes\/([^/]{1,40})\/fans\/pic\/([A-Za-z0-9._]{1,30})$/.exec(path);
+      if (pic) return method === 'GET' ? await seatMates(request, env, ctx, url, pic[1], pic[2]) : notAllowed('GET');
       const code = /^\/api\/passes\/([^/]{1,40})\/code$/.exec(path);
       if (code) return method === 'POST' ? await sendCode(request, env, url, code[1]) : notAllowed('POST');
       const device = /^\/api\/passes\/([^/]{1,40})\/device$/.exec(path);
@@ -393,7 +397,7 @@ async function sendPass(env, pay, id) {
 // else Midtrans does. GET: the concert's fans who show their Instagram, which of them is
 // this pass, and the WhatsApp group. PUT: show this pass's name and Instagram on its seat.
 // DELETE: take them down.
-async function seatMates(request, env, ctx, url, id) {
+async function seatMates(request, env, ctx, url, id, picOf = '') {
   const pay = paymentsOf(env);
   if (!pay || !hasFans(env)) return fail(503, 'Seat mates are not switched on yet.');
   const m = request.method;
@@ -426,7 +430,12 @@ async function seatMates(request, env, ctx, url, id) {
     if (d instanceof Response) return d;
     const { fan, field, error } = checkFan(d);
     if (error) return fail(400, error, { field });
+    // The Instagram must be a real account: refused when Instagram says it is not there;
+    // kept, and asked about again shortly, when Instagram does not answer clearly.
+    const ig = igCheckOn(env) ? await igExists(fan.instagram) : true;
+    if (ig === false) return fail(400, IG_MISSING, { field: 'instagram' });
     if ((await saveFan(env, p, fan)) === 'taken') return fail(409, SEAT_TAKEN);
+    if (ig === null) later(ctx, igRecheck(fan.instagram, async () => { await dropFan(env, id, p.eventId); await forgetFans(env, p.eventId); }).catch(() => {}));
   }
   if (m === 'DELETE') await dropFan(env, id, p.eventId);
   if (m !== 'GET') await forgetFans(env, p.eventId);
@@ -437,6 +446,11 @@ async function seatMates(request, env, ctx, url, id) {
   try { list = await fansList(env, p.eventId); } catch (err) {
     console.error(`seat mates ${p.eventId}: ${err?.message || err}`);
     return fail(503, 'Seat mates are busy. Trying again shortly.', {}, { 'retry-after': '20' });
+  }
+  if (picOf) {
+    const h = picOf.toLowerCase();
+    if (!list.rows.some(r => r.cat === p.cat && String(r.instagram).toLowerCase() === h)) return fail(404, 'Not found');
+    return (await igPicture(h)) || fail(404, 'No picture');
   }
   // The browser already has this list: a tiny answer instead of the whole list again.
   // The category's part is built once and sent as it is to every fan in it: only `me` and

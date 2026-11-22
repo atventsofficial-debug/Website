@@ -59,4 +59,5 @@ export function waOf(setting, eventId) {
 }
 
 // One seat shows one Instagram: the first fan to put theirs on a seat keeps it.
+export const IG_MISSING = 'We could not find that Instagram account. Check the username and try again.';
 export const SEAT_TAKEN = 'Another fan already shows their Instagram on this seat. One seat shows one Instagram. If this is your seat, write to us at halo@atvents.com.';

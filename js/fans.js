@@ -131,7 +131,7 @@ export function fanCardHtml(f, { cat = '', seat = '', unlock = '', fee = '' } = 
       <div class="fan-card-btns">
         ${f.mine ? `<button class="btn btn-line btn-sm" type="button" data-fancard="edit">Edit my info</button>`
           : `<a class="btn btn-coral btn-sm" href="${esc(igUrl(f.instagram))}" target="_blank" rel="noopener noreferrer">Open Instagram</a>`}
-        <button class="btn btn-line btn-sm" type="button" data-fancard="close">Close</button>
+        <button class="btn btn-line btn-sm" type="button" data-fancard="close">Back</button>
       </div>
     </div>`;
 }

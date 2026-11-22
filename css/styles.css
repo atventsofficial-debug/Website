@@ -2793,3 +2793,21 @@ body:has(#fan-list:not([hidden])) .demo-bar, body:has(#fan-card:not([hidden])) .
 .solo-tag b { font-size: 13px; font-weight: 700; }
 .solo-tag span { font-size: 11px; font-weight: 600; opacity: .85; }
 .solo-tag::after { content: ''; position: absolute; left: 50%; bottom: -6px; margin-left: -6px; border: 6px solid transparent; border-bottom: 0; border-top-color: #5fd35a; }
+
+/* A fan lit up from the list: the panels and buttons step aside, the picture is theirs, and
+   their card sits at the bottom as a sheet (no dimmed backdrop: the view can still be
+   dragged round them). */
+.stage.is-fanfocus :is(.event-card, .sections, .tools, .app-side, .zoom, .pov-hint, .app-chip, .sq-min) { opacity: 0 !important; visibility: hidden !important; pointer-events: none !important; }
+body:has(.stage.is-fanfocus) .demo-bar { display: none; }
+.fan-card.is-sheet { place-items: end center; padding: 0 12px calc(12px + env(safe-area-inset-bottom)); background: none; pointer-events: none; }
+.fan-card.is-sheet .fan-card-in { pointer-events: auto; width: min(420px, 100%); padding: 18px 18px 16px; border-radius: 22px; animation: fc-up .22s ease-out; }
+.fan-card.is-sheet .fan-card-facts { margin: 14px 0 14px; padding: 12px 0; }
+.fan-card.is-sheet .fine { display: none; }
+@keyframes fc-up { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+.fan-card.is-sheet .btn-coral { background: linear-gradient(135deg, #f58529, #dd2a7b 55%, #8134af); color: #fff; border-color: transparent; }
+.fan-card.is-sheet .btn-line { background: rgba(255, 255, 255, 0.08); color: var(--text); border-color: rgba(255, 255, 255, 0.14); }
+.stage.is-fanfocus #seats-back { opacity: 0; visibility: hidden; pointer-events: none; }
+.fan-card-av { position: relative; overflow: hidden; }
+.fan-card-av img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .2s; }
+.fan-card-av.has-pic img { opacity: 1; }
+.fan-card-top .fan-card-av { color: #fff; font-size: 22px; }

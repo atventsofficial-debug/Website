@@ -62,6 +62,7 @@ function chargeOk(b) {
     default: return { status_code: '402', status_message: 'Payment channel is not activated.' };
   }
 }
+const igMissing = new Set(['no.such.fan']);
 const realFetch = globalThis.fetch, realError = console.error, realLog = console.log;
 let logged;
 beforeEach(() => {
@@ -70,6 +71,10 @@ beforeEach(() => {
   console.log = (...a) => logged.push(a.join(' '));
   globalThis.fetch = async (url, init = {}) => {
     calls.push({ url: String(url), init });
+    // Instagram: every account is there but the ones listed as missing.
+    const ig = /^https:\/\/i\.instagram\.com\/api\/v1\/users\/web_profile_info\/\?username=(.+)$/.exec(String(url));
+    if (ig) return igMissing.has(decodeURIComponent(ig[1])) ? new Response(null, { status: 404 }) : Response.json({ data: { user: { username: decodeURIComponent(ig[1]), profile_pic_url: `https://scontent.cdninstagram.com/${ig[1]}.jpg` } } });
+    if (/^https:\/\/scontent\.cdninstagram\.com\//.test(String(url))) return new Response(new Uint8Array([0xff, 0xd8, 0xff]), { headers: { 'content-type': 'image/jpeg' } });
     if (String(url) === 'https://api.resend.com/emails') {
       if (mailFails) return Response.json({ message: 'The atvents.com domain is not verified.' }, { status: 403 });
       mails.push({ headers: init.headers, ...JSON.parse(init.body) });
@@ -651,6 +656,10 @@ test('seat mates: only a paid pass gets in, and a fan shows only what they chose
   assert.equal((await bad.json()).field, 'instagram');
   // Another site's page cannot set it.
   assert.equal((await mates(a, { env: e, method: 'PUT', body: { name: 'Rani', instagram: '@rani.p', consent: true }, headers: { origin: 'https://evil.example' } })).status, 403);
+  // An Instagram account that is not there is refused, on the Instagram field.
+  const ghost = await mates(a, { env: e, method: 'PUT', body: { name: 'Rani', instagram: '@no.such.fan', consent: true } });
+  assert.equal(ghost.status, 400);
+  assert.equal((await ghost.json()).field, 'instagram');
 
   r = await mates(a, { env: e, method: 'PUT', body: { name: 'Rani', instagram: 'https://www.instagram.com/Rani.P/', consent: true } });
   assert.equal(r.status, 200);
@@ -749,6 +758,13 @@ test('seat mates: a fan sees only the seat mates of their own category', async (
   // and the category, never a name.
   assert.deepEqual(seenByB.others, [{ seat: seat.id, cat: seat.cat, n: 1 }]);
   assert.deepEqual(seenByC.length, 1);
+  // Their Instagram picture: for a fan in the same category only.
+  const pic = (p, h) => req(`/api/passes/${p.id}/fans/pic/${h}`, { env: e, headers: { 'x-pass-token': p.token } });
+  const got = await pic(c, 'rani.p');
+  assert.equal(got.status, 200);
+  assert.equal(got.headers.get('content-type'), 'image/jpeg');
+  assert.equal((await pic(b, 'rani.p')).status, 404);
+  assert.equal((await pic(c, 'someone.else')).status, 404);
   await settled();
 });
 

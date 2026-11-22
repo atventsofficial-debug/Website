@@ -244,6 +244,16 @@ export class PayStore extends LocalStore {
     if (since && this.fansVer[p.id]) headers['x-fans-have'] = this.fansVer[p.id];
     return call(path, { headers, onHeaders }).then(d => mine(d) ?? { unchanged: true });
   }
+  // A seat mate's Instagram picture, as a local image link (the page loads images from its own
+  // address only). Null when there is none: the card keeps the first letter of the name.
+  async fanPic(p, handle) {
+    if (!p.token || !handle) return null;
+    try {
+      const r = await fetch(`api/passes/${encodeURIComponent(p.id)}/fans/pic/${encodeURIComponent(handle)}`, { headers: { 'x-pass-token': p.token, 'x-device': deviceId() } });
+      if (!r.ok || !/^image\//.test(r.headers.get('content-type') || '')) return null;
+      return URL.createObjectURL(await r.blob());
+    } catch { return null; }
+  }
   // A pass from the preview, without a key, is still this browser's.
   claimStatus(id, token) {
     return token ? call(`api/passes/${encodeURIComponent(id)}`, { headers: { 'x-pass-token': token, 'x-device': deviceId() } }) : super.claimStatus(id);

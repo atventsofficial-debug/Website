@@ -53,6 +53,8 @@ export const EXACT = {
 "Main": "Utama",
 "Help": "Bantuan",
 "Back": "Kembali",
+"Open Instagram": "Buka Instagram",
+"We could not find that Instagram account. Check the username and try again.": "Akun Instagram itu tidak ditemukan. Cek lagi username-nya, lalu coba lagi.",
 "Close": "Tutup",
 "Soon": "Segera",
 "More": "Lainnya",
