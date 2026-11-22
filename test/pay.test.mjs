@@ -128,7 +128,7 @@ test('payments stay off until the server key is set', async () => {
   assert.equal((await req('/api/config', { env: env({ MIDTRANS_SERVER_KEY: '' }) })).status, 404);
   assert.equal((await post(order(), { env: env({ MIDTRANS_SERVER_KEY: undefined }) })).status, 503);
   const c = await (await req('/api/config')).json();
-  assert.deepEqual(c, { mode: 'pay', provider: 'midtrans', sandbox: true, fee: 25000, mail: false, methods: PAY_METHODS.map(m => m.id), sso: {} });
+  assert.deepEqual(c, { mode: 'pay', provider: 'midtrans', sandbox: true, fee: 25000, plus: 49000, upgrade: 24000, mail: false, methods: PAY_METHODS.map(m => m.id), sso: {} });
   assert.equal((await (await req('/api/config', { env: env({ MIDTRANS_SERVER_KEY: 'Mid-server-LIVEKEY0123456789' }) })).json()).sandbox, false);
   assert.equal((await (await req('/api/config', { env: env({ MIDTRANS_ENV: 'production' }) })).json()).sandbox, false);
   const tilde = 'SB-Mid-server-abcdEFGH1234ijkl~mnopQRST';
@@ -352,7 +352,7 @@ test('the pass opens once Midtrans has the payment settled', async () => {
   assert.equal(await check(), 'checking');
   paid[p.id] = { transaction_status: 'settlement' };
   const r = await (await status(p.id, p.token)).json();
-  assert.deepEqual(r, { id: p.id, eventId: live.id, cat: seat.cat, qty: 1, seat: seat.id, route: 'paid', status: 'confirmed', createdAt: p.createdAt, expiresAt: p.expiresAt, wa: null });
+  assert.deepEqual(r, { id: p.id, eventId: live.id, cat: seat.cat, qty: 1, seat: seat.id, route: 'paid', plan: 'seat', status: 'confirmed', createdAt: p.createdAt, expiresAt: p.expiresAt, wa: null });
   paid[p.id] = { transaction_status: 'capture', fraud_status: 'accept' };
   assert.equal(await check(), 'confirmed');
   for (const s of ['expire', 'cancel', 'deny', 'failure', 'refund', 'partial_refund', 'chargeback']) {
@@ -957,4 +957,101 @@ test('a paid pass stays open after its show', async () => {
     assert.equal((await (await onDevice(DEVICE, p, e)).json()).status, 'confirmed');
     await settled();
   } finally { Date.now = realNow; }
+});
+
+// ---------------------------------------------------------------- 3D Pass Plus
+
+const PLUS = { PASS_PLUS: 'on' };
+
+test('3D Pass Plus is coming soon until PASS_PLUS is on', async () => {
+  assert.equal((await (await req('/api/config')).json()).plusOn, undefined);
+  assert.equal((await (await req('/api/config', { env: env(PLUS) })).json()).plusOn, true);
+  const r = await post(order({ plan: 'plus' }));
+  assert.equal(r.status, 400);
+  assert.equal((await r.json()).field, 'plan');
+  assert.equal((await post(order({ upgrade: 'PAY-AAAAAAAAAAAAAAAA', upgradeToken: 'x' }))).status, 400);
+  assert.ok(!calls.some(c => /midtrans/.test(c.url)), 'Midtrans never hears of it');
+});
+
+test('a Plus order is charged at the Plus fee, and its key says Plus', async () => {
+  const r = await post(order({ plan: 'plus', amount: 1 }), { env: env(PLUS) });
+  assert.equal(r.status, 201);
+  const p = await r.json();
+  assert.equal(p.amount, 49000);
+  assert.equal(p.plan, 'plus');
+  const body = JSON.parse(calls.find(c => c.url.endsWith('/snap/v1/transactions')).init.body);
+  assert.deepEqual(body.transaction_details, { order_id: p.id, gross_amount: 49000 });
+  assert.equal(body.item_details.reduce((a, i) => a + i.price * i.quantity, 0), 49000);
+  const k = await readPass(KEY, p.token);
+  assert.equal(k.plan, 'plus');
+  assert.equal(k.amount, 49000);
+  // Paid at the seat fee, a Plus order stays shut; at its own fee it opens, as Plus.
+  paid[p.id] = { transaction_status: 'settlement' };
+  assert.equal((await (await status(p.id, p.token, { env: env(PLUS) })).json()).status, 'rejected');
+  paid[p.id] = { transaction_status: 'settlement', gross_amount: '49000.00' };
+  const s = await (await status(p.id, p.token)).json();
+  assert.equal(s.status, 'confirmed');
+  assert.equal(s.plan, 'plus');
+});
+
+test('any other plan is a seat pass', async () => {
+  const p = await (await post(order({ plan: 'gold' }), { env: env(PLUS) })).json();
+  assert.equal(p.plan, 'seat');
+  assert.equal(p.amount, 25000);
+});
+
+test('a key made before plans opens as a seat pass at the access fee', async () => {
+  const { signPass } = await import('../worker/passkey.mjs');
+  const p = await newPass();
+  // The old key: five fields, no plan and no amount.
+  const enc = s => Buffer.from(s).toString('base64url');
+  const body = enc(JSON.stringify([p.id, live.id, seat.cat, seat.id, Date.parse(p.createdAt)]));
+  const mac = crypto.createHmac('sha256', crypto.createHmac('sha256', KEY).update('atvents pass key v1').digest()).update(body).digest('base64url');
+  const k = await readPass(KEY, `${body}.${mac}`);
+  assert.equal(k.plan, 'seat');
+  assert.equal(k.amount, 25000);
+  assert.ok(await signPass(KEY, { id: p.id, eventId: live.id, cat: seat.cat, seat: seat.id, createdAt: 1 }));
+});
+
+test('an upgrade to Plus costs the difference, keeps the seat, and needs a paid seat pass of the concert', async () => {
+  const DB = fakeD1(), e = env({ DB, ...PLUS });
+  const base = await (await post(order(), { env: e })).json();
+  const up = more => post(order({ plan: 'plus', upgrade: base.id, upgradeToken: base.token, cat: 'nope', seat: 'nope', ...more }), { env: e });
+  // Not paid yet: refused.
+  let r = await up();
+  assert.equal(r.status, 400);
+  assert.equal((await r.json()).field, 'upgrade');
+  paid[base.id] = { transaction_status: 'settlement' };
+  // Another pass's key, or none: refused.
+  assert.equal((await up({ upgradeToken: 'x.y' })).status, 400);
+  const other = await (await post(order(), { env: e })).json();
+  assert.equal((await up({ upgradeToken: other.token })).status, 400);
+  r = await up();
+  assert.equal(r.status, 201);
+  const p = await r.json();
+  assert.equal(p.amount, 24000);
+  assert.equal(p.plan, 'plus');
+  assert.equal(p.base, base.id);
+  assert.equal(p.seat, seat.id, 'the seat of the pass it upgrades');
+  const row = DB.rows().find(x => x.id === p.id);
+  assert.equal(row.plan, 'plus');
+  assert.equal(row.base, base.id);
+  assert.equal(row.amount, 24000);
+  paid[p.id] = { transaction_status: 'settlement', gross_amount: '24000.00' };
+  assert.equal((await (await status(p.id, p.token)).json()).status, 'confirmed');
+  // A Plus pass cannot be upgraded again.
+  assert.equal((await up({ upgrade: p.id, upgradeToken: p.token })).status, 400);
+});
+
+test('a Plus notification is checked against the amount in the order book, and its email says Plus', async () => {
+  const DB = fakeD1(), e = env({ DB, ...MAILING, ...PLUS });
+  const p = await (await post(order({ plan: 'plus' }), { env: e })).json();
+  paid[p.id] = { transaction_status: 'settlement', gross_amount: '49000.00' };
+  const n = { order_id: p.id, gross_amount: '49000.00' };
+  assert.equal((await notify({ ...n, signature_key: sign({ status_code: '200', ...n }) }, { env: e })).status, 200);
+  assert.equal(DB.rows()[0].status, 'confirmed');
+  assert.equal(mails.length, 1);
+  assert.match(mails[0].subject, /^Your 3D Pass Plus is open: /);
+  const link = new RegExp(`${ORIGIN}/#pass-(${p.id})-([A-Za-z0-9_.-]+)`).exec(mails[0].text);
+  assert.equal((await readPass(KEY, link[2])).plan, 'plus');
 });

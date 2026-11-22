@@ -22,6 +22,17 @@
   // The order book (worker/orders.mjs). With no database_id, Cloudflare makes the database
   // on the first deploy and keeps using it; its table is made on first use.
   "d1_databases": [{ "binding": "DB", "database_name": "atvents-orders" }],
+  // Preview builds (`wrangler preview`, run by Workers Builds for pull requests) need their
+  // own rate-limit namespaces and their own order book, so a preview never shares
+  // production's counters or writes to its orders.
+  "previews": {
+    "d1_databases": [{ "binding": "DB", "database_name": "atvents-orders-preview", "database_id": "b5d7c503-f92e-47a0-a2d9-08bbd9815b30" }],
+    "ratelimits": [
+      { "name": "PAY_LIMIT", "namespace_id": "3001", "simple": { "limit": 30, "period": 60 } },
+      { "name": "STATUS_LIMIT", "namespace_id": "3002", "simple": { "limit": 60, "period": 60 } },
+      { "name": "FANS_LIMIT", "namespace_id": "3003", "simple": { "limit": 40, "period": 60 } }
+    ]
+  },
   // Variables set in the dashboard survive a deploy: the secrets above, and the public
   // MIDTRANS_CLIENT_KEY, GOOGLE_CLIENT_ID and MICROSOFT_CLIENT_ID (README, Payments), and
   // FANBASE_WA, the WhatsApp fan group's invite link that paid passes see (README, Seat mates).

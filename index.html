@@ -81,6 +81,10 @@ html:not(.atv-seen) #nav .logo-img{animation:ai-show 0s 2.57s both}
   <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
   <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
   <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  <symbol id="i-devices" viewBox="0 0 24 24"><path d="M4 16V6.5A1.5 1.5 0 0 1 5.5 5h11A1.5 1.5 0 0 1 18 6.5V8M2.5 19h11M14.5 10.5A1.5 1.5 0 0 1 16 9h4a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 20 20h-4a1.5 1.5 0 0 1-1.5-1.5zM18 17.5h0" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-forever" viewBox="0 0 24 24"><path d="M12 12c-1.8-2.4-3.3-3.6-5-3.6a3.6 3.6 0 0 0 0 7.2c1.7 0 3.2-1.2 5-3.6Zm0 0c1.8 2.4 3.3 3.6 5 3.6a3.6 3.6 0 0 0 0-7.2c-1.7 0-3.2 1.2-5 3.6Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+  <symbol id="i-compare" viewBox="0 0 24 24"><path d="M3.5 5.5h7v13h-7zM13.5 5.5h7v13h-7zM7 9v3M17 9v6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-lightstick" viewBox="0 0 24 24"><path d="M10.5 13.5 6 21M13 6.5a4.5 4.5 0 1 1 0 .01M15.5 3.2l.6-1.4M19.6 5.9l1.4-.6M20 10.6l1.4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21Zm0-9a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
   <symbol id="i-clock" viewBox="0 0 24 24"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm0-13v4.5l3 2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
   <symbol id="i-lock" viewBox="0 0 24 24"><path d="M6 11h12v9H6zM8.5 11V8a3.5 3.5 0 0 1 7 0v3" fill="none" stroke="currentColor" stroke-width="1.6"/></symbol>
@@ -335,6 +339,12 @@ html:not(.atv-seen) #nav .logo-img{animation:ai-show 0s 2.57s both}
               <label class="uf-field" id="num-field">Seat<select name="num" required></select></label>
             </div>
             <p class="fine" id="seat-note" hidden></p>
+            <div class="uf-head uf-head-pass"><h2>Your pass</h2><small>Upgrade later for the difference</small></div>
+            <div class="uf-plans" id="uf-plans" role="radiogroup" aria-label="Your pass">
+              <label class="uf-plan"><input type="radio" name="plan" value="seat" checked><span class="uf-plan-t"><b>3D seat view</b><small>The view from your seat, the seat tour and your story video.</small></span><b class="uf-plan-fee" data-plan-fee="seat">Rp25.000</b></label>
+              <label class="uf-plan"><input type="radio" name="plan" value="plus"><span class="uf-plan-t"><b>3D Pass Plus <span class="soon-tag plan-soon" hidden>Coming soon</span></b><small>Everything in the seat view, and every seat of this concert: sit anywhere and compare.</small></span><b class="uf-plan-fee" data-plan-fee="plus">Rp49.000</b></label>
+            </div>
+            <p class="uf-upgrade" id="uf-upgrade" hidden></p>
             <div class="uf-head uf-head-pass"><h2>Where your pass goes</h2><small>We send the pass link to this email</small></div>
             <div class="uf-sso" id="uf-sso" hidden>
               <button class="sso-btn" type="button" data-sso="google" hidden><svg class="sso-logo"><use href="#i-google"/></svg><span>Continue with Google</span></button>
@@ -347,37 +357,46 @@ html:not(.atv-seen) #nav .logo-img{animation:ai-show 0s 2.57s both}
               <label class="uf-field uf-half">Email<input name="email" type="email" required autocomplete="email" maxlength="160" placeholder="you@example.com"></label>
             </div>
           </div>
-          <label class="check"><input type="checkbox" name="consent" required><span>I agree to the <a class="u" href="#terms">terms</a> and the <a class="u" href="#privacy">privacy policy</a>.</span></label>
+          <div class="uf-disclaimer" role="note">
+            <b>The 3D is an illustration, not an exact copy</b>
+            <p>We build each venue from the promoter’s seating plan and announcements, so distances, angles, the stage and the screens are close, not 100% accurate. If the promoter or the venue changes the layout or the seat positions on the day, that is outside our control and not our responsibility. Your ticket decides your seat.</p>
+          </div>
+          <label class="check"><input type="checkbox" name="consent" required><span>I understand the 3D is an illustration, and I agree to the <a class="u" href="#terms">terms</a> and the <a class="u" href="#privacy">privacy policy</a>.</span></label>
           <p class="form-error" id="unlock-error" role="alert" hidden></p>
           <p class="fine pay-test" id="pay-test" hidden>Test mode: this payment goes to the Midtrans Sandbox, and nothing is charged.</p>
-          <button class="btn btn-coral btn-block" type="submit" id="pay-start" aria-disabled="true">Continue to payment · <span data-fee>Rp25.000</span> <svg><use href="#i-arrow"/></svg></button>
+          <button class="btn btn-coral btn-block" type="submit" id="pay-start" aria-disabled="true">Continue to payment · <span id="pay-fee">Rp25.000</span> <svg><use href="#i-arrow"/></svg></button>
           <p class="fine pay-keep">Your pass is saved for good: the seat view and your story still open after the show.</p>
           <p class="fine">No ticket yet? Each concert page links to its official seller. The 3D view does not include a concert ticket.</p>
         </form>
         <section class="pay-sheet panel-box" id="pay-sheet" hidden></section>
       </div>
       <aside class="host-side">
-        <p class="eyebrow">How it works</p>
-        <ol class="timeline">
-          <li><b>Fill in</b><span>Your concert, your seat, your name and your email. About a minute.</span></li>
-          <li><b>Pay</b><span><span data-fee>Rp25.000</span> for one seat at one event, by QRIS, e-wallet, bank transfer or card, right on this page.</span></li>
-          <li><b>It opens</b><span>The pass opens on this device as soon as the payment goes through, and its link comes to your email.</span></li>
-          <li><b>Your tour</b><span>The whole venue, then your category, then the view from your seat. Save it as a video for your story.</span></li>
-        </ol>
+        <p class="eyebrow">Price list</p>
         <div class="host-plan">
-          <span class="eyebrow eyebrow-ink">One price</span>
+          <span class="eyebrow eyebrow-ink">3D seat view</span>
           <b data-fee>Rp25.000</b>
           <p>Per seat, per event: a concert, a match or a film. Pay once, and you get:</p>
           <ul class="plan-gets">
-            <li><b>Your seat tour in 3D</b><span>The whole venue, then your category, then the view from your own seat, with the crowd around you and the show's lights up.</span></li>
-            <li><b>Your story video</b><span>A 19-second trailer of your show with the music, ending on the view from your seat. Save it for Instagram or TikTok.</span></li>
-            <li><b>Photos and clips</b><span>Take a photo or a short video of your view, captioned with the show and your seat.</span></li>
-            <li><b>Seat mates</b><span>Find fans with a pass for the same show and their Instagram over their seat, show yours if you like, and join the fan WhatsApp group.</span></li>
-            <li><b>Your real seat</b><span>If the venue numbers its seats its own way, set it, or point at your seat yourself.</span></li>
-            <li><b>On your phone and laptop</b><span>The pass link comes to your email and opens on two devices. Another one gets in with a code from your email.</span></li>
-            <li><b>Yours for good</b><span>After the show the pass reads Event ended, and the tour and your story still open.</span></li>
+            <li><svg class="pg-ic" aria-hidden="true"><use href="#i-cube"/></svg><b>Your seat tour in 3D</b><span>The whole venue, then your category, then the view from your own seat, with the crowd around you and the show's lights up.</span></li>
+            <li><svg class="pg-ic" aria-hidden="true"><use href="#i-play"/></svg><b>Your story video</b><span>A 19-second trailer of your show with the music, ending on the view from your seat. Save it for Instagram or TikTok.</span></li>
+            <li><svg class="pg-ic" aria-hidden="true"><use href="#i-camera"/></svg><b>Photos and clips</b><span>Take a photo or a short video of your view, captioned with the show and your seat.</span></li>
+            <li><svg class="pg-ic" aria-hidden="true"><use href="#i-people"/></svg><b>Seat mates</b><span>Find fans with a pass for the same show and their Instagram over their seat, show yours if you like, and join the fan WhatsApp group.</span></li>
+            <li><svg class="pg-ic" aria-hidden="true"><use href="#i-seat"/></svg><b>Your real seat</b><span>If the venue numbers its seats its own way, set it, or point at your seat yourself.</span></li>
+            <li><svg class="pg-ic" aria-hidden="true"><use href="#i-devices"/></svg><b>On your phone and laptop</b><span>The pass link comes to your email and opens on two devices. Another one gets in with a code from your email.</span></li>
+            <li><svg class="pg-ic" aria-hidden="true"><use href="#i-forever"/></svg><b>Yours for good</b><span>After the show the pass reads Event ended, and the tour and your story still open.</span></li>
           </ul>
           <p class="plan-fine">The 3D view does not include a ticket.</p>
+        </div>
+        <div class="host-plus">
+          <div class="host-plus-top"><span class="eyebrow">3D Pass Plus</span><span class="soon-tag plan-soon">Coming soon</span></div>
+          <b data-plan-fee="plus">Rp49.000</b>
+          <p>Per concert. Everything in the seat view, and more. Already have a seat pass? Upgrade for the difference, <span data-plan-fee="upgrade">Rp24.000</span>.</p>
+          <ul class="plan-gets">
+            <li><svg class="pg-ic" aria-hidden="true"><use href="#i-eye"/></svg><b>Every seat of the concert</b><span>Sit in any seat, not just yours, and look round from there.</span></li>
+            <li><svg class="pg-ic" aria-hidden="true"><use href="#i-compare"/></svg><b>Compare seats</b><span>Two seats side by side, with the distance to the stage, before you buy.</span></li>
+            <li><svg class="pg-ic" aria-hidden="true"><use href="#i-lightstick"/></svg><b>Show mode</b><span>The lights go down and the lightsticks round you glow with the music.</span></li>
+            <li><svg class="pg-ic" aria-hidden="true"><use href="#i-pin"/></svg><b>Getting there</b><span>Trains, buses, parking, the gates and the way home, on a 3D map of the area round the venue.</span></li>
+          </ul>
         </div>
       </aside>
     </div>
@@ -666,7 +685,7 @@ html:not(.atv-seen) #nav .logo-img{animation:ai-show 0s 2.57s both}
       <h2>3. The 3D view</h2>
       <p>The 3D venue is our illustration, built from the venue and the category layout of the show. Distances, angles and sight lines are close, not exact, and the stage, screens and crowd on the night will differ. The view does not promise you a particular seat or view: your ticket decides your seat.</p>
       <h2>4. 3D passes</h2>
-      <p>A 3D pass costs Rp25.000 and opens the view from one seat at one concert, and stays open after the show. It opens as soon as the payment goes through. It is a preview of the venue and does not include a concert ticket or guarantee a seat. We refund it if the show is cancelled. We may close a pass that is shared or misused.</p>
+      <p>A 3D pass costs Rp25.000 and opens the view from one seat at one concert; 3D Pass Plus costs Rp49.000 (Rp24.000 as an upgrade of a paid seat pass) and opens every seat of one concert. Both stay open after the show. It opens as soon as the payment goes through. It is a preview of the venue and does not include a concert ticket or guarantee a seat. We refund it if the show is cancelled. We may close a pass that is shared or misused.</p>
       <h2>5. Fair use</h2>
       <p>Do not copy, scrape or extract the 3D models, share pass links publicly, send automated requests, or try to get round the payment.</p>
       <h2>6. Ownership</h2>

@@ -2013,6 +2013,47 @@ body { font-family: var(--font); font-feature-settings: "cv11", "ss01"; }
 .uf-ok svg { width: 14px; height: 14px; }
 .uf-who .uf-change { flex: none; }
 .unlock-form #pay-start { height: 56px; }
+/* The pass: the seat view or 3D Pass Plus, two cards with one radio each. */
+.uf-plans { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.uf-plan { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.14); background: rgba(255, 255, 255, 0.035); cursor: pointer; transition: border-color .2s, background .2s; }
+.uf-plan:hover { border-color: rgba(255, 255, 255, 0.28); }
+.uf-plan.is-on, .uf-plan:has(input:checked) { border-color: var(--coral); background: rgba(236, 84, 70, 0.08); }
+.uf-plan input { flex: none; margin: 3px 0 0; accent-color: var(--coral); width: 16px; height: 16px; }
+.uf-plan-t { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.uf-plan-t b { font-size: 15.5px; font-weight: 600; color: var(--text); }
+.uf-plan-t small { font-size: 13px; line-height: 1.4; color: #a9a9a9; }
+.uf-plan-fee { flex: none; font: 700 15px/1.3 var(--font); color: var(--text); white-space: nowrap; }
+.uf-upgrade { display: flex; align-items: flex-start; gap: 12px; margin: 0; padding: 14px 16px; border-radius: 16px; border: 1px solid var(--coral); background: rgba(236, 84, 70, 0.08); }
+.uf-upgrade > svg { flex: none; width: 18px; height: 18px; margin-top: 2px; color: var(--coral); }
+.uf-upgrade span { display: flex; flex-direction: column; gap: 4px; }
+.uf-upgrade b { font-size: 15.5px; font-weight: 600; color: var(--text); }
+.uf-upgrade small { font-size: 13px; line-height: 1.45; color: #a9a9a9; }
+@media (max-width: 700px) { .uf-plans { grid-template-columns: 1fr; } }
+.uf-plan.is-soon { cursor: default; opacity: 0.6; }
+.uf-plan.is-soon:hover { border-color: rgba(255, 255, 255, 0.14); }
+.uf-plan-t .soon-tag { margin-left: 6px; vertical-align: 2px; }
+/* What the 3D is, before the fan agrees: close, not exact; the promoter decides on the day. */
+.uf-disclaimer { margin: 0 0 14px; padding: 14px 16px; border-radius: 16px; border: 1px dashed rgba(255, 255, 255, 0.22); background: rgba(255, 255, 255, 0.025); }
+.uf-disclaimer b { display: block; margin-bottom: 4px; font-size: 14.5px; font-weight: 600; color: var(--text); }
+.uf-disclaimer p { margin: 0; font-size: 13px; line-height: 1.5; color: #a9a9a9; }
+/* The price list beside the form: the seat view, then 3D Pass Plus. On a wide screen the form
+   stays in view while the price list scrolls past it (js/pages.js sets its top, so a form
+   taller than the window still shows its end). */
+@media (min-width: 961px) { #view-unlock .unlock-main { position: sticky; top: 24px; } }
+.host-plus { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; padding: var(--s5); border-radius: var(--r); border: 1px solid var(--line-2); background: rgba(255, 255, 255, 0.03); }
+.host-plus-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.host-plus > b { font: 600 28px/1 var(--display); letter-spacing: -0.03em; color: var(--text); }
+.host-plus p { margin: 0; font-size: 14px; color: var(--muted); }
+.host-plus .plan-gets b { font: 600 14px/1.3 var(--display); letter-spacing: -0.01em; color: var(--text); }
+.host-plus .plan-gets span { color: var(--muted); }
+/* 3D Pass Plus in the 3D view's side panel: the upgrade card, and the line under Unlock. */
+.plus-up { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; padding: 14px; border-radius: var(--r-sm); border: 1px solid var(--line-2); background: rgba(255, 255, 255, 0.03); }
+.plus-up p { display: flex; flex-direction: column; gap: 4px; margin: 0; }
+.plus-up b { font-size: 14.5px; color: var(--text); }
+.plus-up span { font-size: 13px; line-height: 1.45; color: var(--muted); }
+.plus-up .btn { align-self: flex-start; }
+.plus-note { display: flex; align-items: flex-start; gap: 8px; margin: 12px 0 0; font-size: 13px; line-height: 1.45; color: var(--muted); }
+.plus-note svg { flex: none; width: 15px; height: 15px; margin-top: 2px; color: var(--coral); }
 .unlock-form #pay-start[aria-disabled="true"] { opacity: 0.45; cursor: not-allowed; }
 @media (max-width: 700px) {
   .uf-card { padding: 20px 16px; border-radius: 18px; }
@@ -2570,9 +2611,10 @@ html.has-soldpop { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) { .soldpop-card { animation: none; } }
 
 /* Unlock: what the one price gets you */
-.host-plan .plan-gets { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
-.host-plan .plan-gets li { position: relative; display: flex; flex-direction: column; gap: 2px; padding-left: 22px; font-size: 13px; line-height: 1.45; }
-.host-plan .plan-gets li::before { content: ''; position: absolute; left: 2px; top: 5px; width: 10px; height: 6px; border-left: 2px solid var(--coral); border-bottom: 2px solid var(--coral); transform: rotate(-45deg); }
+.host-plan .plan-gets, .host-plus .plan-gets { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.host-plan .plan-gets li, .host-plus .plan-gets li { position: relative; display: flex; flex-direction: column; gap: 2px; padding-left: 30px; font-size: 13px; line-height: 1.45; }
+/* Each line of the price list has its own icon, drawn in the line's own colour. */
+.plan-gets .pg-ic { position: absolute; left: 0; top: 0; width: 19px; height: 19px; color: var(--coral); }
 .host-plan .plan-gets b { font: 600 14px/1.3 var(--display); font-stretch: 100%; letter-spacing: -0.01em; text-transform: none; color: #fff; }
 .host-plan .plan-gets span { color: rgba(245, 242, 238, 0.66); }
 .host-plan .plan-fine { margin-top: 4px; font-size: 12px; color: rgba(245, 242, 238, 0.5); }

@@ -7,7 +7,7 @@ const brand = t => t.replaceAll('{brand}', esc(state.cfg.brand));
 
 export const FAQ_FANS = [
   { id: 'price', q: 'How much is the view from my seat?',
-    a: 'Rp25.000 for one seat at one concert. You pay once, and the pass is yours for good: the view, the seat tour and your story still open after the show.' },
+    a: 'Rp25.000 for one seat at one concert, or Rp49.000 for 3D Pass Plus, which opens every seat of the concert so you can sit anywhere and compare. A seat pass can go Plus later for the difference, Rp24.000. You pay once, and the pass is yours for good: the view, the seat tour and your story still open after the show.' },
   { id: 'unlock', q: 'How do I get the view from my seat?',
     a: 'Open <a class="u" href="#unlock">Unlock 3D</a>, choose your concert, category, section, row and seat, add your name and email, and pay. Your pass opens straight away and the seat tour starts from there.' },
   { id: 'pay', q: 'How can I pay?',
@@ -29,7 +29,7 @@ export const FAQ_FANS = [
   { id: 'data', q: 'What do you do with my name and email?',
     a: 'We use them to open your pass, send you its link and receipt, and answer you about it. We never ask for payment details. See the <a class="u" href="#privacy">privacy policy</a>.' },
   { id: 'refunds', q: 'A cancelled show?',
-    a: 'Concert tickets are refunded by their seller, under the promoter’s terms. If a show is cancelled after you paid Rp25.000 for its seat view, <a class="u" href="#contact">write to us</a> and we refund it.' },
+    a: 'Concert tickets are refunded by their seller, under the promoter’s terms. If a show is cancelled after you paid for its 3D pass, <a class="u" href="#contact">write to us</a> and we refund it.' },
 ];
 
 export const FAQ_PARTNERS = [

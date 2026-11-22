@@ -8,9 +8,9 @@ import { cardImg, eventImg, kindCover, posterFig, posterImg, thumbImg, coverThum
 import { picker } from './picker.js';
 import { whenOf, startOf, venueClock, gapText, isOver } from './when.js';
 import { waTiles } from './fans.js';
-import { justBought, buyUrl, buyAttrs, buyLink, passes, activePass, claim, holdPass, refresh, passLink, clicksFor, STATUS, markVerified, sendCode, useCode } from './passes.js';
+import { justBought, buyUrl, buyAttrs, buyLink, passes, activePass, upgradable, plusOnSale, claim, holdPass, refresh, passLink, clicksFor, STATUS, markVerified, sendCode, useCode } from './passes.js';
 import { checkClaim, formatFee } from './rules.js';
-import { ACCESS_FEE, PAY_MINUTES, line, email as cleanEmail, isEmail } from './order.js';
+import { ACCESS_FEE, PLUS_FEE, UPGRADE_FEE, PAY_MINUTES, line, email as cleanEmail, isEmail, planOf, feeOf } from './order.js';
 import { signIn, PROVIDERS } from './sso.js';
 import { PAY_GROUPS, PAY_METHODS, payMethod, payDetails, wayName } from './paymethods.js';
 import { loadSnap, embedSnap, hideSnap } from './snap.js';
@@ -630,7 +630,13 @@ let unlockBound = false;
 // or Microsoft (js/sso.js), or are typed: `who` is who signed in, `typing` that the fan
 // chose to type them. Continue stays greyed out until every field is filled. `fixed`: the
 // concert was chosen on the page before, so it is shown, not asked again.
-const unlock = { payment: null, data: null, again: null, method: '', who: null, typing: false, fixed: false };
+// `plan`: the pass chosen ('seat' or 'plus', js/order.js); `upgrade`: the paid seat pass on
+// this device that is being upgraded to Plus (#upgrade-<pass id>), whose seat stays.
+const unlock = { payment: null, data: null, again: null, method: '', who: null, typing: false, fixed: false, plan: 'seat', upgrade: null };
+
+// What the order costs, and what it is called on the checkout.
+const orderFee = d => (Number.isInteger(d?.amount) ? d.amount : feeOf(d?.plan, !!d?.upgrade));
+const orderName = d => (d?.upgrade || d?.base ? 'Upgrade to 3D Pass Plus' : planOf(d?.plan) === 'plus' ? '3D Pass Plus' : '3D seat view');
 
 // Phones, "My seat 3D": the concerts on sale as cards in a sheet that rises from the bottom,
 // in place of a dropdown that grows with every concert. A search field once there are many.
@@ -715,9 +721,18 @@ function bindPickFilter(root, rows, first) {
   paint();
 }
 
-export function renderUnlock(eventId) {
+export function renderUnlock(eventId, { plan = '', upgrade = '' } = {}) {
   const form = $('#unlock-form');
   if (!unlockBound) { unlockBound = true; bindUnlock(form); }
+  // #upgrade-<pass id>: a paid seat pass on this device, of a concert still to come, goes Plus
+  // for the difference, on its own seat. Any other pass (or none) opens the usual form.
+  const up = upgrade ? passes.get(upgrade) : null;
+  unlock.upgrade = up && up.status === 'confirmed' && planOf(up.plan) === 'seat' && upgradable(up.eventId)?.id === up.id && upcoming(eventMeta(up.eventId)) ? up : null;
+  if (unlock.upgrade) { eventId = up.eventId; unlock.again = { ...up, email: up.email || form.email.value }; }
+  if (plan || unlock.upgrade) unlock.plan = unlock.upgrade ? 'plus' : planOf(plan);
+  // Plus not on sale yet: its card says Coming soon, and the order is a seat pass.
+  if (!plusOnSale()) unlock.plan = 'seat';
+  for (const k of ['cat', 'sec', 'row', 'num']) form[k].disabled = false;
   $('#unlock-done')?.remove();
   $('#unlock-body').hidden = false;
   $('#unlock-error').hidden = true;
@@ -787,6 +802,7 @@ export function renderUnlock(eventId) {
     justBought.id = '';
   } else note.hidden = true;
   paintWho(form);
+  paintPlan(form);
   ready(form);
   // Another way to pay for the same order: straight back to the ways, the details kept.
   if (again?.ways) {
@@ -799,6 +815,43 @@ export function renderUnlock(eventId) {
 // A seat as a pass names it.
 const seatText = s => (s.standing ? `${s.secName}, standing` : `${s.secName} · Row ${s.row} · Seat ${s.num}`);
 const seatIn = (eventId, seatId) => { const venue = getEvent(eventId), i = venue?.seatById.get(seatId); return i === undefined ? null : venue.seats[i]; };
+
+// Wide screens: the form stays in view while the price list beside it scrolls (css: sticky).
+// A form taller than the window sticks once its end is in view, so nothing is out of reach.
+function stickForm() {
+  const main = $('#view-unlock .unlock-main');
+  if (!main || !('ResizeObserver' in window)) return;
+  const fit = () => { main.style.top = `${Math.min(24, window.innerHeight - main.offsetHeight - 24)}px`; };
+  new ResizeObserver(fit).observe(main);
+  window.addEventListener('resize', fit);
+  fit();
+}
+
+// The pass: the seat view or Plus, with the price on Continue. Upgrading, the plan is Plus,
+// the seat is the pass's own and cannot change, and the price is the difference.
+function paintPlan(form) {
+  const up = unlock.upgrade;
+  $('#uf-plans').hidden = !!up;
+  const soon = !plusOnSale();
+  $$('#uf-plans input[name=plan]').forEach(r => {
+    r.disabled = soon && r.value === 'plus';
+    r.checked = r.value === unlock.plan;
+    r.closest('.uf-plan').classList.toggle('is-on', r.checked);
+    r.closest('.uf-plan').classList.toggle('is-soon', r.disabled);
+  });
+  $$('.plan-soon').forEach(el => { el.hidden = !soon; });
+  $('[data-plan-fee="seat"]').textContent = formatFee(ACCESS_FEE);
+  $$('[data-plan-fee="plus"]').forEach(el => { el.textContent = formatFee(PLUS_FEE); });
+  const box = $('#uf-upgrade'), s = up ? seatIn(up.eventId, up.seat) : null;
+  box.hidden = !up;
+  box.innerHTML = up ? `${icon('i-eye')}<span><b>Upgrading to 3D Pass Plus</b><small>${s ? `Your seat stays: ${esc(seatText(s))}. ` : ''}Every seat of this concert opens, and you pay only the difference: ${formatFee(UPGRADE_FEE)}.</small></span>` : '';
+  if (up) {
+    for (const k of ['cat', 'sec', 'row', 'num']) form[k].disabled = true;
+    const change = $('#uf-event-change');
+    if (change) change.hidden = true;
+  }
+  $('#pay-fee').textContent = formatFee(orderFee({ plan: unlock.plan, upgrade: !!up }));
+}
 
 // The concert. Chosen on the page before (#unlock-<id>), it is shown with its poster, date
 // and venue, and Change opens the list; from the menu's Unlock 3D, it is picked from the list.
@@ -964,7 +1017,8 @@ function checkForm(form) {
   });
   if (error) return say(error, field);
   err.hidden = true;
-  return data;
+  const up = unlock.upgrade;
+  return { ...data, plan: up ? 'plus' : unlock.plan, ...(up ? { upgrade: up.id, upgradeToken: up.token || '' } : {}) };
 }
 
 function startPayment(form) {
@@ -996,30 +1050,30 @@ function stepper(back) {
 // pass is for, the total and the way to pay. On the first screen it holds the one Pay
 // button, which a phone pins to the bottom of the screen.
 function orderCard(p, way, { go = false } = {}) {
-  const e = eventMeta(p.eventId), s = seatIn(p.eventId, p.seat), fee = formatFee();
+  const e = eventMeta(p.eventId), s = seatIn(p.eventId, p.seat), fee = formatFee(orderFee(p));
   const to = p.email ? (state.store.mail ? `Your pass goes to <b>${esc(p.email)}</b>` : `${esc(p.name || '')} · ${esc(p.email)}`) : '';
   return `<aside class="co-sum${go ? ' is-go' : ''}" aria-label="Your order">
       <div class="co-sum-ev">${thumbImg(e)}<span><b>${esc(e?.title || '3D seat view')}</b>${e ? `<small>${esc(whenOf(e).date)} · ${esc(placeOf(e).name)}</small>` : ''}${s ? `<small>${esc(seatText(s))}</small>` : ''}</span></div>
       ${to ? `<p class="co-sum-to">${icon('i-mail')}<span>${to}</span></p>` : ''}
       <dl class="co-sum-lines">
-        <div><dt>3D seat view × 1</dt><dd>${fee}</dd></div>
+        <div><dt>${esc(orderName(p))} × 1</dt><dd>${fee}</dd></div>
         <div><dt>Service fee</dt><dd>Free</dd></div>
         <div class="co-total"><dt>Total</dt><dd>${fee}</dd></div>
       </dl>
       <div class="co-sum-way" id="co-sum-way">${wayLine(way)}</div>
       ${go ? `<p class="co-error" id="pm-error" role="alert" hidden></p>
-      <div class="co-go-row"><span class="co-go-total"><small>Total</small><b>${fee}</b></span>${goButton(way)}</div>
+      <div class="co-go-row"><span class="co-go-total"><small>Total</small><b>${fee}</b></span>${goButton(way, p)}</div>
       ${payNotes('co-sum-notes')}` : ''}
     </aside>`;
 }
 const wayLine = way => (way ? `${logos(way)}<span>Paying with <b>${esc(wayName(way))}</b></span>` : '<span class="co-sum-none">Choose a way to pay</span>');
 // "Pay Rp25.000" beside the total on a laptop, "Pay with BCA" on a phone's bar.
-const goButton = way => `<button class="btn btn-coral btn-block co-go" type="button" id="pay-go" aria-disabled="${way ? 'false' : 'true'}"><span class="co-go-wide">Pay ${formatFee()}</span><span class="co-go-narrow">${way ? esc(way.id === 'card' ? 'Pay by card' : `Pay with ${way.name}`) : 'Pay'}</span>${icon('i-arrow')}</button>`;
+const goButton = (way, p = unlock.data) => `<button class="btn btn-coral btn-block co-go" type="button" id="pay-go" aria-disabled="${way ? 'false' : 'true'}"><span class="co-go-wide">Pay ${formatFee(orderFee(p))}</span><span class="co-go-narrow">${way ? esc(way.id === 'card' ? 'Pay by card' : `Pay with ${way.name}`) : 'Pay'}</span>${icon('i-arrow')}</button>`;
 const payNotes = cls => `<div class="${cls}">${state.store.sandbox ? '<p class="fine pay-test">Test mode: this payment goes to the Midtrans Sandbox, and nothing is charged.</p>' : ''}<p class="fine co-safe">${icon('i-lock')}<span>Payments run through Midtrans. Card numbers go into Midtrans’ own form and never reach us.</span></p></div>`;
 // On a phone, the order in one line above the ways to pay.
 function miniOrder(p) {
   const e = eventMeta(p.eventId), s = seatIn(p.eventId, p.seat);
-  return `<div class="co-mini">${thumbImg(e)}<span><b>${esc(e?.title || '3D seat view')}</b>${s ? `<small>${esc(seatText(s))}</small>` : ''}</span><b class="co-mini-fee">${formatFee()}</b></div>`;
+  return `<div class="co-mini">${thumbImg(e)}<span><b>${esc(e?.title || '3D seat view')}</b>${s ? `<small>${esc(seatText(s))}</small>` : ''}</span><b class="co-mini-fee">${formatFee(orderFee(p))}</b></div>`;
 }
 
 function openSheet(form) {
@@ -1123,7 +1177,7 @@ async function chooseWay(form, method, btn) {
   err.hidden = true;
   let leaving = false;   // the buttons stay off while the next screen loads
   try {
-    const p = await state.store.pay({ eventId: data.eventId, cat: data.cat, seat: data.seat, name: data.name, email: data.email, consent: true, method });
+    const p = await state.store.pay({ eventId: data.eventId, cat: data.cat, seat: data.seat, name: data.name, email: data.email, consent: true, method, plan: data.plan, ...(data.upgrade ? { upgrade: data.upgrade, upgradeToken: data.upgradeToken } : {}) });
     if (state.store.live) {
       const held = holdPass(p);
       leaving = true;
@@ -1305,8 +1359,8 @@ const field = (label, value, shown = value, big = true) => `<div class="co-field
 const qrBox = (src, alt) => `<figure class="co-qr"><img src="${esc(src)}" alt="${esc(alt)}" width="232" height="232" referrerpolicy="no-referrer"></figure>`;
 
 function payingSheet(p, id, way) {
-  const d = p.pay, fee = formatFee(), phone = isPhone();
-  const amount = field('Amount', String(ACCESS_FEE), fee, false);
+  const d = p.pay, fee = formatFee(orderFee(p)), phone = isPhone();
+  const amount = field('Amount', String(orderFee(p)), fee, false);
   let title = `Pay with ${way.name}`, body = '', steps = [], tap = false;
   if (way.kind === 'va') {
     title = `Transfer to your ${way.bank} virtual account`;
@@ -1480,6 +1534,8 @@ function bindUnlock(form) {
   });
   $('#pay-sheet').addEventListener('change', ev => { if (ev.target.name === 'pm') pickWay(ev.target.value); });
   form.addEventListener('submit', ev => { ev.preventDefault(); startPayment(form); });
+  stickForm();
+  form.addEventListener('change', ev => { if (ev.target.name === 'plan') { unlock.plan = planOf(ev.target.value); paintPlan(form); } });
   form.addEventListener('change', () => { $('#unlock-error').hidden = true; ready(form); });
 }
 
@@ -1547,9 +1603,9 @@ function passCard(p, { actions = true } = {}) {
   const len = code(c || { name: p.cat }).length;
   return `<article class="pass${p.status === 'rejected' ? ' is-closed' : ''}">
     <div class="pass-stub">
-      <span class="pass-k">3D pass</span>
+      <span class="pass-k">${p.plan === 'plus' ? '3D Pass Plus' : '3D pass'}</span>
       <b class="pass-code"${len > 7 ? ' style="font-size:20px"' : len > 5 ? ' style="font-size:clamp(22px,2.2vw,30px)"' : ''}>${esc(code(c || { name: p.cat }))}</b>
-      <span class="pass-n">1 seat</span>
+      <span class="pass-n">${p.plan === 'plus' ? 'Every seat' : '1 seat'}</span>
     </div>
     <div class="pass-body">
       <div class="pass-top"><span class="pass-pill is-${p.status}">${st.label}</span>${ended ? '<span class="pass-pill is-ended">Event ended</span>' : ''}<span class="mono">${esc(p.id)}</span>${actions ? `<button class="pass-del" type="button" data-remove-pass="${esc(p.id)}" aria-label="Remove this pass from this device" title="Remove from this device">${icon('i-trash')}</button>` : ''}</div>
@@ -1560,11 +1616,11 @@ function passCard(p, { actions = true } = {}) {
         <div><dt>Category</dt><dd>${esc(c?.name || p.cat)}</dd></div>
         ${p.name ? `<div><dt>Name</dt><dd>${esc(p.name)}</dd></div>` : ''}
         <div><dt>${seats.length > 1 ? 'Seats' : 'Seat'}</dt><dd>${seats.length ? seats.map(s => esc(s.standing ? `${s.secName}, standing` : `${s.secName} · Row ${s.row} · Seat ${s.num}`)).join(', ') : 'Not given'}</dd></div>
-        ${p.route === 'paid' || p.route === 'outside' ? `<div><dt>Access</dt><dd>${formatFee()}, paid</dd></div>` : ''}
+        ${p.route === 'paid' || p.route === 'outside' ? `<div><dt>Access</dt><dd>${formatFee(Number.isInteger(p.amount) ? p.amount : feeOf(p.plan, !!p.base))}, paid</dd></div>` : ''}
       </dl>
       ${actions ? `<div class="row-btns">
         ${p.status === 'rejected' ? `${ended ? '' : `<a class="btn btn-coral btn-sm" href="#unlock-${p.eventId}">Unlock again</a>`}<a class="btn btn-line btn-sm" href="#contact">Write to us</a>`
-          : p.status === 'confirmed' ? `<a class="btn btn-coral btn-sm" href="#tour-${esc(p.id)}">Open my seat view ${icon('i-arrow')}</a>${p.seat ? `<button class="btn btn-line btn-sm" type="button" data-story-pass="${esc(p.id)}">${icon('i-share')}Story</button>` : ''}`
+          : p.status === 'confirmed' ? `<a class="btn btn-coral btn-sm" href="#tour-${esc(p.id)}">Open my seat view ${icon('i-arrow')}</a>${p.seat ? `<button class="btn btn-line btn-sm" type="button" data-story-pass="${esc(p.id)}">${icon('i-share')}Story</button>` : ''}${!ended && upgradable(p.eventId)?.id === p.id ? `<a class="btn btn-line btn-sm" href="#upgrade-${esc(p.id)}">${icon('i-eye')}Every seat · ${formatFee(UPGRADE_FEE)}</a>` : ''}`
             : `<a class="btn btn-line btn-sm" href="#seats-${p.eventId}">Look round the venue ${icon('i-arrow')}</a>`}
         ${p.token && p.status !== 'device' ? `<button class="btn btn-line btn-sm" type="button" data-copy-pass="${esc(p.id)}">${icon('i-link')}Copy pass link</button>` : ''}
       </div>${p.status === 'device' ? otpForm(p) : ''}${waButtons(p) ? `<div class="pass-wa">${waButtons(p)}</div>` : ''}

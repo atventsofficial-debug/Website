@@ -60,8 +60,10 @@ export function passEmail({ order, concert, link, wa = {} }) {
   const paidWith = way ? wayName(way) : '';
   const when = [concert?.when, concert?.venue].filter(Boolean).join(' · ');
   const poster = concert?.poster ? { ...concert.poster, url: `${order.origin}/${concert.poster.src}` } : null;
-  const subject = `Your 3D seat view is open: ${title}`.slice(0, 120);
+  const plus = order.plan === 'plus';
+  const subject = `${plus ? 'Your 3D Pass Plus is open' : 'Your 3D seat view is open'}: ${title}`.slice(0, 120);
   const details = [
+    plus && ['Pass', '3D Pass Plus: every seat, show mode'],
     category && ['Category', category],
     ['Seat', order.seat_label],
     ['Name', order.name],
@@ -134,7 +136,7 @@ ${poster ? `      <tr><td style="padding:0;"><a href="${esc(link)}" style="text-
           <tr><td class="tk" style="padding:6px 24px 22px;">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
               <td valign="bottom">
-                <div style="font:700 10px/1.2 ${font};letter-spacing:0.14em;text-transform:uppercase;color:${orange};">3D pass</div>
+                <div style="font:700 10px/1.2 ${font};letter-spacing:0.14em;text-transform:uppercase;color:${orange};">${plus ? '3D Pass Plus' : '3D pass'}</div>
                 <div style="margin-top:6px;font:800 26px/1.05 ${font};letter-spacing:-0.01em;text-transform:uppercase;color:${orange};">${esc(category || '1 seat')}</div>
                 <div style="margin-top:6px;font:400 13px/1.4 ${font};color:${inkMuted};">Yours for good, even after the show</div>
               </td>

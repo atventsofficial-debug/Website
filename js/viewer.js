@@ -8,11 +8,11 @@
 // The tour: (1) the whole venue, where only the fan's own category can be picked; (2) that
 // category up close, where only the seat on their e-ticket can be picked; (3) the view from
 // that seat. Then a photo or video of that view (capture.js), or the whole venue again.
-import { formatFee } from './rules.js';
+import { formatFee, PLUS_FEE, UPGRADE_FEE } from './rules.js';
 import { getEvent, typeOf } from './events.js';
 import { crowdSeats, formatRpShort, REAL_KEYS } from './layouts.js';
-import { whenOf } from './when.js';
-import { buyLink, activePass, openPass, passes, canView, toggleSeat, STATUS, refresh } from './passes.js';
+import { whenOf, isOver } from './when.js';
+import { buyLink, activePass, openPass, passes, canView, plusPass, plusOnSale, upgradable, toggleSeat, STATUS, refresh } from './passes.js';
 import { placeSeat, cleanNumbering, isDefault, numberingOf, numberingSource } from './seatflip.js';
 import { $, esc, icon, state, QUALITY, spotStats, share, toast } from './ui.js';
 import { loadMates, matesBlock, bindMates, mateTags, resetMates, mates, startMatesLive, fanCardHtml, fillMatesList } from './fans.js';
@@ -288,6 +288,7 @@ export function paintViewer() {
   $('#ev-venue').textContent = v.event.venue;
   $('#app-chip').innerHTML = e.demo ? `${icon('i-eye')}<span>Demo venue · sample prices</span>`
     : state.tour ? `${icon('i-eye')}<span>Your seat tour · ${esc(v.catById[tourPass()?.cat]?.name || '')}</span>`
+      : p?.status === 'confirmed' && p.plan === 'plus' ? `${icon('i-eye')}<span>3D Pass Plus · every seat open</span>`
       : p ? `${icon(p.status === 'confirmed' ? 'i-eye' : 'i-lock')}<span>3D pass · ${STATUS[p.status].label}</span>`
         : `${icon('i-lock')}<span>View from above · seat views locked</span>`;
   $('#app-chip').className = `app-chip${open || state.tour ? ' is-open' : ''}`;
@@ -299,11 +300,18 @@ export function paintViewer() {
       <h2>Sit anywhere</h2>
       <p>Click any seat to sit down, drag to look round, scroll to zoom. ${esc(e.blurb)}</p>
       <div class="row-btns"><a class="btn btn-coral btn-sm" href="#partner-contact">Book a demo</a><a class="btn btn-line btn-sm" href="#concerts">See concerts</a></div>`
+    : p?.status === 'confirmed' && p.plan === 'plus' ? `
+      <p class="eyebrow">Your 3D Pass Plus</p>
+      <h2>Every seat is open</h2>
+      <p>Click any seat of this concert to sit down and look round, then the next one to compare. The tour still takes you to your own seat.</p>
+      <div class="row-btns"><a class="btn btn-coral btn-sm" href="#tour-${esc(p.id)}">Open my seat view ${icon('i-arrow')}</a></div>
+      ${matesBlock(p, { cats: v.catById })}`
     : p?.status === 'confirmed' ? `
       <p class="eyebrow">Your 3D pass</p>
       <h2>Your seat is ready</h2>
       <p>Your pass is paid and open. Take the tour from the whole venue to your category, then to the view from your seat.</p>
       <div class="row-btns"><a class="btn btn-coral btn-sm" href="#tour-${esc(p.id)}">Open my seat view ${icon('i-arrow')}</a></div>
+      ${upgradeBlock(e)}
       ${matesBlock(p, { cats: v.catById })}`
       : p?.status === 'verifying' ? `
       <p class="eyebrow">${icon('i-clock')}Checking your pass</p>
@@ -324,7 +332,8 @@ export function paintViewer() {
       <p class="eyebrow">${icon('i-lock')}Seat views locked</p>
       <h2>Look round, then sit down</h2>
       <p>Anyone can look round from above. The view from your own seat opens with a 3D pass: fill in your seat, your name and your email, and pay ${formatFee()}.</p>
-      <div class="row-btns"><a class="btn btn-coral btn-sm" href="#unlock-${e.id}">Unlock · ${formatFee()} ${icon('i-arrow')}</a>${buyLink(e, `Tickets ${out}`, 'btn btn-line btn-sm')}</div>`;
+      <div class="row-btns"><a class="btn btn-coral btn-sm" href="#unlock-${e.id}">Unlock · ${formatFee()} ${icon('i-arrow')}</a>${buyLink(e, `Tickets ${out}`, 'btn btn-line btn-sm')}</div>
+      ${plusOnSale() ? `<p class="plus-note">${icon('i-eye')}<span>Still choosing? <a class="u" href="#plus-${e.id}">3D Pass Plus</a> opens every seat of this concert for ${formatFee(PLUS_FEE)}.</span></p>` : ''}`;
   renderCats();
   state.scene?.setMine(markedIds());
   if (state.viewing) fillSeatCard(state.viewing);
@@ -367,6 +376,14 @@ function setMode(mode, seat) {
   $('#seatcard').hidden = !!state.tour || !(mode === 'turning' || mode === 'seat' || (mode === 'overview' && state.peek));
   $('#pov-hint').hidden = mode !== 'seat';
   $('#zoom').hidden = mode !== 'seat';
+}
+
+// A paid seat pass of this concert, on its way to Plus: every seat, for the difference.
+function upgradeBlock(e) {
+  const up = upgradable(e.id);
+  return up && !isOver(e) ? `<div class="plus-up">
+      <p><b>Every seat, not just yours</b><span>Upgrade to 3D Pass Plus and sit in any seat of this concert to compare. You pay only the difference.</span></p>
+      <a class="btn btn-line btn-sm" href="#upgrade-${esc(up.id)}">Upgrade · ${formatFee(UPGRADE_FEE)} ${icon('i-arrow')}</a></div>` : '';
 }
 
 // A click on a seat: sit down, or (without a pass) see what the seat is and how to unlock.
@@ -412,11 +429,12 @@ function fillSeatCard(seat) {
   if (locked) {
     $('#sc-dist').textContent = friend ? `Your friend sits here. Unlock a seat near them for ${formatFee()} to see their view.`
       : `Have a ticket here? Unlock the view from your seat for ${formatFee()}.`;
+    const up = !isOver(e) ? upgradable(e.id) : null;
     $('#sc-actions').innerHTML = p?.status === 'confirmed'
-      ? `<a class="btn btn-coral" href="#tour-${esc(p.id)}">Open my seat view ${icon('i-arrow')}</a>`
+      ? `<a class="btn btn-coral" href="#tour-${esc(p.id)}">Open my seat view ${icon('i-arrow')}</a>${up ? `<a class="btn btn-line" href="#upgrade-${esc(up.id)}">Open every seat · ${formatFee(UPGRADE_FEE)}</a>` : ''}`
       : p?.status === 'checking' ? `<a class="btn btn-line" href="#passes">${icon('i-clock')}Waiting for payment</a>`
         : `<a class="btn btn-coral" href="#unlock-${e.id}">Unlock seat view · ${formatFee()} ${icon('i-arrow')}</a>${buyLink(e, `Tickets ${out}`, 'btn btn-line')}`;
-    if (p?.status === 'confirmed') $('#sc-dist').textContent = 'Your pass is open. The tour takes you to your seat.';
+    if (p?.status === 'confirmed') $('#sc-dist').textContent = up ? 'Your pass opens your own seat. Upgrade to 3D Pass Plus to sit here too.' : 'Your pass is open. The tour takes you to your seat.';
     return;
   }
   $('#sc-actions').innerHTML = `

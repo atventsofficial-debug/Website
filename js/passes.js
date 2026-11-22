@@ -9,6 +9,7 @@ import { CLICK_ID, maskRef, validAffiliate } from './rules.js';
 import { payMethod, payDetails } from './paymethods.js';
 import { state, emit, esc, campaign } from './ui.js';
 import { WA_GROUP } from './fanrules.js';
+import { planOf, feeOf } from './order.js';
 
 const WALLET = 'atvents:passes';
 const CLICKS = 'atvents:clicks';
@@ -121,7 +122,13 @@ export const passes = {
 export const activePass = eventId => passes.all().filter(p => p.eventId === eventId && p.status !== 'rejected').at(-1) || null;
 // Only a checked pass opens the venue from the seat, and only its own seat (see tour.js).
 export const openPass = eventId => passes.all().filter(p => p.eventId === eventId && p.status === 'confirmed').at(-1) || null;
-export const canView = venue => !!venue.meta.demo;
+// A paid 3D Pass Plus opens every seat of its concert, like a demo venue.
+export const plusPass = eventId => passes.all().filter(p => p.eventId === eventId && p.status === 'confirmed' && p.plan === 'plus').at(-1) || null;
+export const canView = venue => !!venue.meta.demo || !!plusPass(venue.eventId);
+// A paid seat pass of the concert that can still be upgraded to Plus: none when the concert
+// has a Plus pass on this device already.
+export const plusOnSale = () => !!state.store?.plusOn;
+export const upgradable = eventId => (!plusOnSale() || plusPass(eventId) ? null : passes.all().filter(p => p.eventId === eventId && p.status === 'confirmed' && p.plan !== 'plus').at(-1) || null);
 
 // The seats on the fan's e-tickets, marked in the 3D view: as many as the booking has.
 // Marking one more than that lets go of the first one marked.
@@ -136,7 +143,7 @@ export function toggleSeat(p, seatId) {
 // keeps the pass, the token that opens it elsewhere and the payment's last digits.
 export async function claim({ eventId, name, email, cat, seat, payment }) {
   const r = await state.store.claim({ eventId, name, email, cat, seat, payment, consent: true, clicks: clicksFor(eventId) });
-  const pass = { id: r.id, token: r.token || '', eventId, cat: r.cat, qty: r.qty || 1, seat: r.seat || seat || '', name: r.name || name, route: 'paid', status: r.status, ref: maskRef(payment), createdAt: r.createdAt, seats: r.seat || seat ? [r.seat || seat] : passes.get(r.id)?.seats || [] };
+  const pass = { id: r.id, token: r.token || '', eventId, cat: r.cat, qty: r.qty || 1, seat: r.seat || seat || '', name: r.name || name, route: 'paid', plan: planOf(r.plan), amount: r.amount, status: r.status, ref: maskRef(payment), createdAt: r.createdAt, seats: r.seat || seat ? [r.seat || seat] : passes.get(r.id)?.seats || [] };
   passes.save(pass);
   return pass;
 }
@@ -150,6 +157,7 @@ const PAY_PAGE = /^https:\/\/app\.(sandbox\.)?midtrans\.com\//;
 export function holdPass(r) {
   const pass = {
     id: r.id, token: r.token, eventId: r.eventId, cat: r.cat, qty: 1, seat: r.seat, name: r.name, route: 'paid', status: r.status, ref: maskRef(r.id), createdAt: r.createdAt, seats: [r.seat],
+    plan: planOf(r.plan), amount: Number.isInteger(r.amount) ? r.amount : feeOf(r.plan, !!r.base), base: r.base || '',
     snap: typeof r.snap === 'string' ? r.snap : '', url: PAY_PAGE.test(r.url || '') ? r.url : '', email: r.email || '', expiresAt: r.expiresAt || '',
     method: payMethod(r.method)?.id || '', pay: payDetails(r.method, r.pay) || null,
   };
@@ -174,8 +182,9 @@ export async function refresh(p) {
   // The Worker says which WhatsApp links a paid pass has; the demo store says nothing.
   const wa = r.status !== 'confirmed' ? null : 'wa' in r ? waLinks(r.wa) : p.wa || null;
   const now = asShown({ ...p, status: r.status }).status;
-  if (now !== p.status || (r.seat && r.seat !== p.seat) || JSON.stringify(wa) !== JSON.stringify(p.wa || null)) {
-    passes.save({ ...p, status: r.status, seat: r.seat || p.seat, seats: r.seat ? [r.seat] : p.seats, wa });
+  const plan = r.plan ? planOf(r.plan) : p.plan;
+  if (now !== p.status || plan !== p.plan || (r.seat && r.seat !== p.seat) || JSON.stringify(wa) !== JSON.stringify(p.wa || null)) {
+    passes.save({ ...p, status: r.status, plan, seat: r.seat || p.seat, seats: r.seat ? [r.seat] : p.seats, wa });
   }
   return true;
 }
@@ -210,12 +219,12 @@ export async function importPass(id, token) {
     // Paid, and open on two other devices: the pass comes in locked, with the email code.
     if (err?.status !== 403 || err.code !== 'device' || !err.pass || err.pass.id !== id) throw err;
     const k = err.pass, old = passes.get(id);
-    const p = { ...(old || {}), id, token, eventId: k.eventId, cat: k.cat, qty: 1, seat: k.seat || '', route: 'paid', status: 'device', lockedTo: err.email || '', canMail: !!err.mail, ref: old?.ref || '', createdAt: k.createdAt, seats: old?.seats || (k.seat ? [k.seat] : []), wa: null };
+    const p = { ...(old || {}), id, token, eventId: k.eventId, cat: k.cat, qty: 1, seat: k.seat || '', route: 'paid', plan: planOf(k.plan || old?.plan), status: 'device', lockedTo: err.email || '', canMail: !!err.mail, ref: old?.ref || '', createdAt: k.createdAt, seats: old?.seats || (k.seat ? [k.seat] : []), wa: null };
     passes.save(p);
     return passes.get(id);
   }
   if (r.status === 'confirmed') markVerified(id);
-  const p = { id: r.id, token, eventId: r.eventId, cat: r.cat, qty: r.qty, seat: r.seat || '', route: r.route || 'affiliate', status: r.status, ref: passes.get(r.id)?.ref || '', createdAt: r.createdAt, seats: r.seat ? [r.seat] : passes.get(r.id)?.seats || [], wa: waLinks(r.wa) };
+  const p = { id: r.id, token, eventId: r.eventId, cat: r.cat, qty: r.qty, seat: r.seat || '', route: r.route || 'affiliate', plan: planOf(r.plan), status: r.status, ref: passes.get(r.id)?.ref || '', createdAt: r.createdAt, seats: r.seat ? [r.seat] : passes.get(r.id)?.seats || [], wa: waLinks(r.wa) };
   // How the fan set the venue's numbering stays with the pass on this device (seatflip.js).
   const numbering = passes.get(r.id)?.numbering;
   if (numbering) p.numbering = numbering;

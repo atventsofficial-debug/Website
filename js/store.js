@@ -5,7 +5,7 @@
 import { clientsOf } from './sso.js';
 import { teamKey } from './team.js';
 import { checkFan, SEAT_TAKEN } from './fanrules.js';
-import { checkClick, checkClaim, checkSubscription, checkLead, checkConversions, passStatus, PASS_STATUSES, TAKEN, ACCESS_FEE, PAYMENT_ID } from './rules.js';
+import { checkClick, checkClaim, checkSubscription, checkLead, checkConversions, passStatus, PASS_STATUSES, TAKEN, PAYMENT_ID, planOf, feeOf } from './rules.js';
 
 const DB = 'atvents:demo-db';
 const DEVICE_KEY = 'atvents:device';
@@ -67,19 +67,21 @@ export class LocalStore {
     if (!pay || pay.status !== 'paid') throw fail(402, 'The payment has not gone through yet.');
     let p = this.db.claims.find(x => x.payment === c.payment);
     if (p && p.email !== c.email) throw fail(409, TAKEN);
-    if (!p) this.db.claims.push(p = { id: newId('P'), ...c, status: 'confirmed', createdAt: new Date().toISOString() });
+    if (!p) this.db.claims.push(p = { id: newId('P'), ...c, plan: planOf(pay.plan), status: 'confirmed', createdAt: new Date().toISOString() });
     this.save();
-    return { id: p.id, token: '', status: p.status, eventId: p.eventId, cat: p.cat, qty: p.qty, seat: p.seat || '', name: p.name, route: 'paid', createdAt: p.createdAt };
+    return { id: p.id, token: '', status: p.status, eventId: p.eventId, cat: p.cat, qty: p.qty, seat: p.seat || '', name: p.name, route: 'paid', plan: planOf(p.plan), amount: pay.amount, createdAt: p.createdAt };
   }
 
   // The access fee for a 3D seat view. In the demo nothing is charged: the payment page is a
   // stand-in for the payment provider's own (Midtrans, Xendit), and payDemo marks the order
   // paid the way the provider's webhook would.
-  async pay({ eventId, email, name, seat }) {
+  // A Plus pass costs PLUS_FEE, or the difference as an upgrade of a seat pass (js/order.js).
+  async pay({ eventId, email, name, seat, plan, upgrade }) {
     const id = `PAY-${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
-    this.db.payments.push({ id, eventId, email, name, seat, amount: ACCESS_FEE, status: 'pending', createdAt: new Date().toISOString() });
+    const kind = upgrade ? 'plus' : planOf(plan), amount = feeOf(kind, !!upgrade);
+    this.db.payments.push({ id, eventId, email, name, seat, plan: kind, amount, status: 'pending', createdAt: new Date().toISOString() });
     this.save();
-    return { id, amount: ACCESS_FEE, status: 'pending', demo: true };
+    return { id, amount, plan: kind, status: 'pending', demo: true };
   }
   async payDemo(id) {
     const p = this.db.payments.find(x => x.id === id);
@@ -98,7 +100,7 @@ export class LocalStore {
   async claimStatus(id) {
     const c = this.db.claims.find(x => x.id === id);
     if (!c) throw fail(404, 'Pass not found');
-    return { id: c.id, eventId: c.eventId, cat: c.cat, qty: c.qty, seat: c.seat || '', name: c.name || '', route: c.route || 'affiliate', status: c.status, createdAt: c.createdAt };
+    return { id: c.id, eventId: c.eventId, cat: c.cat, qty: c.qty, seat: c.seat || '', name: c.name || '', route: c.route || 'affiliate', plan: planOf(c.plan), status: c.status, createdAt: c.createdAt };
   }
 
   // Seat mates (js/fans.js), the same answers as GET/PUT/DELETE /api/passes/<id>/fans. In
@@ -206,8 +208,10 @@ export class PayStore extends LocalStore {
   // the page (without it, a card payment goes to Midtrans' payment page), whether the pass
   // email is switched on, the ways to pay switched on (js/paymethods.js), and the client ids
   // for "Continue with Google / Microsoft" (js/sso.js).
-  constructor({ sandbox = false, clientKey = '', mail = false, methods = null, sso = null, staging = false, team = false } = {}) {
+  constructor({ sandbox = false, clientKey = '', mail = false, methods = null, sso = null, staging = false, team = false, plusOn = false } = {}) {
     super();
+    // 3D Pass Plus on sale (PASS_PLUS in the dashboard); off, the page shows it as coming soon.
+    this.plusOn = !!plusOn;
     // The staging copy (wrangler.jsonc, env.staging), and whether the team sign-in is on.
     this.staging = !!staging;
     this.team = !!team;
