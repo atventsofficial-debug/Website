@@ -38,16 +38,16 @@ export function resetMates() {
   Object.assign(mates, { passId: '', data: null, loading: false, error: '', editing: false, draft: null, busy: false });
 }
 
-// Live: while the 3D view is open and on screen, ask again every few seconds, so a fan who
+// Live: while the 3D view is open and on screen, ask again every half minute, so a fan who
 // shows (or deletes) their Instagram appears for everyone in the category without a reload.
 // `changed()` is called only when the list really changed.
 //
 // Made for a crowd: each fan's next ask is a little early or late (so thousands never ask in
 // the same second), an unchanged list comes back as a tiny answer, a busy or failing server
-// is asked less and less often (up to once a minute, or when it says), and a fan who has not
+// is asked less and less often (up to once every two minutes, or when it says), and a fan who has not
 // touched the page for IDLE stops asking until they do.
-export const LIVE_EVERY = 8000;
-const MAX_EVERY = 60000, IDLE = 10 * 6e4;
+export const LIVE_EVERY = 30000;
+const MAX_EVERY = 120000, IDLE = 10 * 6e4;
 let live = null;
 const sameFans = (a, b) => a === b || ['fans', 'others', 'me'].every(k => JSON.stringify(a?.[k] || null) === JSON.stringify(b?.[k] || null));
 const jitter = ms => Math.round(ms * (0.8 + Math.random() * 0.4));

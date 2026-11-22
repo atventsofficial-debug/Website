@@ -71,16 +71,17 @@ function blockPins(p) {
   const d = mates.data;
   if (!d) return [];
   const by = new Map();
-  const add = (seat, locked) => {
+  const add = (seat, locked, n = 1) => {
     const s = seatOf(seat);
     if (!s) return;
     const k = s.sec;
     const pin = by.get(k) || { sec: k, code: secCode(s), label: s.secName, cat: s.cat, seat: s.id, locked, count: 0, on: state.tour?.fanBlock === k };
-    pin.count++;
+    pin.count += n;
     by.set(k, pin);
   };
   for (const f of d.fans || []) add(f.seat, false);
-  for (const f of d.others || []) add(f.seat, true);
+  // Other categories come as one count per block.
+  for (const f of d.others || []) add(f.seat, true, f.n || 1);
   return [...by.values()];
 }
 function paintMates() {

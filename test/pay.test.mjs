@@ -21,16 +21,23 @@ const KEY = 'SB-Mid-server-TESTKEY0123456789abcdef';
 const ORIGIN = 'https://atvents.com';
 const env = (more = {}) => ({ MIDTRANS_SERVER_KEY: KEY, ASSETS: { fetch: async () => new Response('static 404', { status: 404 }) }, ...more });
 
-// D1 as the Worker uses it (prepare, bind, run, first), on SQLite in memory.
+// D1 as the Worker uses it (prepare, bind, run, first, batch), on SQLite in memory.
 function fakeD1() {
   const db = new DatabaseSync(':memory:');
   const stmt = (sql, args = []) => ({
+    sql, args,
     bind: (...a) => stmt(sql, a),
     run: async () => ({ meta: { changes: Number(db.prepare(sql).run(...args).changes) } }),
     first: async () => db.prepare(sql).get(...args) ?? null,
     all: async () => ({ results: db.prepare(sql).all(...args) }),
   });
-  return { prepare: sql => stmt(sql), rows: () => db.prepare('SELECT * FROM orders').all() };
+  // A batch runs as one transaction: all of it or none.
+  const batch = async list => {
+    db.exec('BEGIN');
+    try { const out = list.map(s => ({ meta: { changes: Number(db.prepare(s.sql).run(...s.args).changes) } })); db.exec('COMMIT'); return out; }
+    catch (err) { db.exec('ROLLBACK'); throw err; }
+  };
+  return { prepare: sql => stmt(sql), batch, rows: () => db.prepare('SELECT * FROM orders').all() };
 }
 
 // Midtrans, as far as the Worker sees it: Snap makes a card payment page; the Core API charge
@@ -634,7 +641,7 @@ test('seat mates: only a paid pass gets in, and a fan shows only what they chose
   paid[b.id] = { transaction_status: 'settlement' };
   r = await mates(a, { env: e });
   assert.equal(r.status, 200);
-  assert.deepEqual(await r.json(), { eventId: live.id, group: '', community: WA, me: null, fans: [], others: [] });
+  assert.deepEqual(await r.json(), { eventId: live.id, group: '', community: WA, me: null, mineSeat: null, fans: [], others: [] });
   await settled();
 
   // Without the box ticked, or with no Instagram, nothing is saved.
@@ -738,8 +745,9 @@ test('seat mates: a fan sees only the seat mates of their own category', async (
   assert.deepEqual(seenByB.fans.map(f => f.instagram), ['dimas.arya']);
   assert.equal(JSON.stringify(seenByB).includes('rani'), false);
   assert.equal(JSON.stringify(seenByB).includes('Rani'), false);
-  // ...but he sees that someone sits in Rani's seat: a marker, with the seat and category only.
-  assert.deepEqual(seenByB.others, [{ seat: seat.id, cat: seat.cat }]);
+  // ...but he sees that someone sits in Rani's block: a count per block, with one seat in it
+  // and the category, never a name.
+  assert.deepEqual(seenByB.others, [{ seat: seat.id, cat: seat.cat, n: 1 }]);
   assert.deepEqual(seenByC.length, 1);
   await settled();
 });

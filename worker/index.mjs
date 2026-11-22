@@ -33,7 +33,7 @@ import { clientsOf } from '../js/sso.js';
 import { signPass, readPass } from './passkey.mjs';
 import { hasOrders, saveOrder, setStatus, statusOf, takeEmail, returnEmail, orderOf, saveTeamOrder } from './orders.mjs';
 import { deviceOf, admit, newCode, useCode, maskEmail, CODE_MINUTES } from './devices.mjs';
-import { hasFans, fansList, forgetFans, saveFan, dropFan, dropConcert, KEEP_AFTER } from './fans.mjs';
+import { hasFans, fansList, catView, forgetFans, saveFan, dropFan, dropConcert, KEEP_AFTER } from './fans.mjs';
 import { checkFan, waLinksFor, waOf, SEAT_TAKEN } from '../js/fanrules.js';
 import { mailerOf, passEmail, codeEmail } from './mail.mjs';
 import { googleEmail, onTeam, signTeam, readTeam, teamOf } from './team.mjs';
@@ -428,29 +428,30 @@ async function seatMates(request, env, ctx, url, id) {
     if (error) return fail(400, error, { field });
     if ((await saveFan(env, p, fan)) === 'taken') return fail(409, SEAT_TAKEN);
   }
-  if (m === 'DELETE') await dropFan(env, id);
+  if (m === 'DELETE') await dropFan(env, id, p.eventId);
   if (m !== 'GET') await forgetFans(env, p.eventId);
   // A fan sees the seat mates of their own category only (CAT 2 sees CAT 2): the rest
   // never leave the Worker.
-  // Fans in other categories show as a marker only: their seat and its category, never a
-  // name or an Instagram.
+  // Fans in other categories show only as a count per block: never a name or an Instagram.
   let list;
   try { list = await fansList(env, p.eventId); } catch (err) {
     console.error(`seat mates ${p.eventId}: ${err?.message || err}`);
     return fail(503, 'Seat mates are busy. Trying again shortly.', {}, { 'retry-after': '20' });
   }
   // The browser already has this list: a tiny answer instead of the whole list again.
-  const vh = { 'x-fans-version': list.version };
-  if (m === 'GET' && request.headers.get('x-fans-have') === list.version) return new Response(null, { status: 204, headers: { ...HEADERS, ...vh } });
-  const all = list.rows, rows = all.filter(r => r.cat === p.cat);
-  const me = rows.find(r => r.order_id === id);
-  return json(200, {
+  // The category's part is built once and sent as it is to every fan in it: only `me` and
+  // `mineSeat` are this pass's own.
+  const view = await catView(list, p.cat);
+  const vh = { 'x-fans-version': view.version };
+  if (m === 'GET' && request.headers.get('x-fans-have') === view.version) return new Response(null, { status: 204, headers: { ...HEADERS, ...vh } });
+  const me = view.byOrder.get(id);
+  const head = JSON.stringify({
     eventId: p.eventId,
     ...waLinksFor(env.FANBASE_WA, p.eventId),
     me: me ? { name: me.name, instagram: me.instagram } : null,
-    fans: rows.map(r => ({ seat: r.seat, cat: r.cat, name: r.name, instagram: r.instagram, ...(r.order_id === id ? { mine: true } : {}) })),
-    others: all.filter(r => r.cat !== p.cat).map(r => ({ seat: r.seat, cat: r.cat })),
-  }, vh);
+    mineSeat: me ? me.seat : null,
+  });
+  return new Response(`${head.slice(0, -1)},"fans":${view.fans},"others":${view.others}}`, { status: 200, headers: { ...HEADERS, ...vh } });
 }
 
 // Passes this Worker has seen paid, for a few minutes: a fan with the 3D view open asks

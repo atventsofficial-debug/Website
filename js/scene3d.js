@@ -1230,8 +1230,11 @@ export class SeatScene {
     const mesh = this.people?.soloMesh?.(k ?? -1, seat);
     if (!mesh) return false;
     this.clearPerson(true);
-    if (!this.solo) {
-      const r = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+    // One more GPU context: a phone short of them says no, and the fan is then shown by the
+    // tag alone over the grey picture.
+    let r = null;
+    if (this.solo == null) try { r = new THREE.WebGLRenderer({ alpha: true, antialias: true }); } catch { this.solo = false; }
+    if (r) {
       r.setClearColor(0x000000, 0);
       r.outputColorSpace = THREE.SRGBColorSpace;
       r.toneMapping = THREE.ACESFilmicToneMapping;
@@ -1245,9 +1248,11 @@ export class SeatScene {
       this.solo = { r, scene, mesh: null };
       this._soloSize();
     }
-    this.solo.mesh = mesh;
-    this.solo.scene.add(mesh);
-    this.solo.r.domElement.hidden = false;
+    if (this.solo) {
+      this.solo.mesh = mesh;
+      this.solo.scene.add(mesh);
+      this.solo.r.domElement.hidden = false;
+    }
     // The name over their head, still in colour.
     const el = document.createElement('div');
     el.className = 'solo-tag';
@@ -1266,7 +1271,7 @@ export class SeatScene {
   }
 
   clearPerson(keep = false) {
-    if (this.solo?.mesh) { this.solo.scene.remove(this.solo.mesh); this.solo.mesh = null; }
+    if (this.solo && this.solo.mesh) { this.solo.scene.remove(this.solo.mesh); this.solo.mesh = null; }
     if (this.soloTag) { this.scene.remove(this.soloTag); this.soloTag.element.remove(); this.soloTag = null; }
     if (keep) return;
     if (this.solo) this.solo.r.domElement.hidden = true;

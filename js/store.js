@@ -234,10 +234,15 @@ export class PayStore extends LocalStore {
     const path = `api/passes/${encodeURIComponent(p.id)}/fans`, headers = { 'x-pass-token': p.token, 'x-device': deviceId() };
     this.fansVer ||= {};
     const onHeaders = h => { const v = h.get('x-fans-version'); if (v) this.fansVer[p.id] = v; };
-    if (change === null) return call(path, { method: 'DELETE', headers, onHeaders });
-    if (change) return call(path, { method: 'PUT', headers, body: change, onHeaders });
+    // The list is the same for the whole category; the server names this pass's own seat.
+    const mine = d => {
+      if (d?.mineSeat && Array.isArray(d.fans)) for (const f of d.fans) if (f.seat === d.mineSeat) f.mine = true;
+      return d;
+    };
+    if (change === null) return call(path, { method: 'DELETE', headers, onHeaders }).then(mine);
+    if (change) return call(path, { method: 'PUT', headers, body: change, onHeaders }).then(mine);
     if (since && this.fansVer[p.id]) headers['x-fans-have'] = this.fansVer[p.id];
-    return call(path, { headers, onHeaders }).then(d => d ?? { unchanged: true });
+    return call(path, { headers, onHeaders }).then(d => mine(d) ?? { unchanged: true });
   }
   // A pass from the preview, without a key, is still this browser's.
   claimStatus(id, token) {

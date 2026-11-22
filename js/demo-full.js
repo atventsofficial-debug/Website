@@ -34,17 +34,18 @@ export function startDemo() {
     }
     const key = `${p.id}|${p.seat}|${JSON.stringify(me[p.id] || null)}`;
     if (cache[p.id]?.key === key) return cache[p.id].d;
-    const fans = [], others = [];
+    const fans = [], blocks = new Map();
     let n = 0;
     for (const s of v.seats) {
       if (s.id === p.seat) continue;
-      if (s.cat !== p.cat) { others.push({ seat: s.id, cat: s.cat }); continue; }
+      // Other categories as the Worker sends them: one count per block.
+      if (s.cat !== p.cat) { const k = `${s.cat}|${s.sec}`, b = blocks.get(k); if (b) b.n++; else blocks.set(k, { seat: s.id, cat: s.cat, n: 1 }); continue; }
       const f = FIRST[n % FIRST.length], l = LAST[Math.floor(n / FIRST.length) % LAST.length];
       fans.push({ seat: s.id, cat: s.cat, name: f, instagram: `${f.toLowerCase()}${l ? `.${l}` : ''}${n >= FIRST.length * LAST.length ? `_${n}` : ''}` });
       n++;
     }
     if (me[p.id]) fans.push({ seat: p.seat, cat: p.cat, ...me[p.id], mine: true });
-    const d = { eventId: EVENT, group: '', community: '', me: me[p.id] || null, fans, others };
+    const d = { eventId: EVENT, group: '', community: '', me: me[p.id] || null, fans, others: [...blocks.values()] };
     cache[p.id] = { key, d };
     return d;
   };
