@@ -1,7 +1,7 @@
-// Only real Instagram accounts are kept (worker/igcheck.mjs).
+// Asking Instagram about an account, for its picture (worker/igcheck.mjs).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { igExists, igRecheck } from '../worker/igcheck.mjs';
+import { igExists } from '../worker/igcheck.mjs';
 
 const answer = (status, body) => async () => new Response(body == null ? null : JSON.stringify(body), { status });
 
@@ -24,12 +24,4 @@ test('answers are kept, so the same name is not asked again', async () => {
   await igExists('kept.one', { fetchImpl: f, now: 100 });
   await igExists('Kept.One', { fetchImpl: f, now: 200 });
   assert.equal(asked, 1);
-});
-
-test('a profile kept without an answer is taken down when Instagram later says no', async () => {
-  let dropped = 0, n = 0;
-  const f = async () => (++n === 1 ? new Response(null, { status: 429 }) : new Response(null, { status: 404 }));
-  const r = await igRecheck('later.no', async () => { dropped++; }, { tries: [1, 1], fetchImpl: f });
-  assert.equal(r, false);
-  assert.equal(dropped, 1);
 });

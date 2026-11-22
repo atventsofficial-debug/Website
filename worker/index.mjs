@@ -34,8 +34,8 @@ import { signPass, readPass } from './passkey.mjs';
 import { hasOrders, saveOrder, setStatus, statusOf, takeEmail, returnEmail, orderOf, saveTeamOrder } from './orders.mjs';
 import { deviceOf, admit, newCode, useCode, maskEmail, CODE_MINUTES } from './devices.mjs';
 import { hasFans, fansList, catView, forgetFans, saveFan, dropFan, dropConcert, KEEP_AFTER } from './fans.mjs';
-import { checkFan, waLinksFor, waOf, SEAT_TAKEN, IG_MISSING } from '../js/fanrules.js';
-import { igExists, igRecheck, igCheckOn, igPicture } from './igcheck.mjs';
+import { checkFan, waLinksFor, waOf, SEAT_TAKEN } from '../js/fanrules.js';
+import { igPicture } from './igcheck.mjs';
 import { mailerOf, passEmail, codeEmail } from './mail.mjs';
 import { googleEmail, onTeam, signTeam, readTeam, teamOf } from './team.mjs';
 
@@ -430,12 +430,7 @@ async function seatMates(request, env, ctx, url, id, picOf = '') {
     if (d instanceof Response) return d;
     const { fan, field, error } = checkFan(d);
     if (error) return fail(400, error, { field });
-    // The Instagram must be a real account: refused when Instagram says it is not there;
-    // kept, and asked about again shortly, when Instagram does not answer clearly.
-    const ig = igCheckOn(env) ? await igExists(fan.instagram) : true;
-    if (ig === false) return fail(400, IG_MISSING, { field: 'instagram' });
     if ((await saveFan(env, p, fan)) === 'taken') return fail(409, SEAT_TAKEN);
-    if (ig === null) later(ctx, igRecheck(fan.instagram, async () => { await dropFan(env, id, p.eventId); await forgetFans(env, p.eventId); }).catch(() => {}));
   }
   if (m === 'DELETE') await dropFan(env, id, p.eventId);
   if (m !== 'GET') await forgetFans(env, p.eventId);

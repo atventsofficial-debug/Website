@@ -1,11 +1,8 @@
-// Is there an Instagram account by this name? Instagram has no official way to ask this for
-// a personal account, so the Worker asks the same public endpoint instagram.com's own pages
-// use. Three answers:
-//   true  - the account is there
-//   false - Instagram says there is no such account: the profile is refused
-//   null  - Instagram did not answer clearly (it often turns data-centre addresses away):
-//           the profile is kept and asked about again a little later (recheck)
-// Answers are kept a while, so the same name is not asked about again and again.
+// A seat mate's Instagram picture. Instagram has no official way to get it for a personal
+// account, so the Worker asks the same public endpoint instagram.com's own pages use. It is
+// only ever a nicety: saving a profile never waits on Instagram, and whenever Instagram does
+// not answer the card shows the name's first letter. igExists answers true (there), false
+// (not there) or null (no clear answer); answers are kept a while.
 const ENDPOINT = 'https://i.instagram.com/api/v1/users/web_profile_info/?username=';
 const HEADERS = {
   'x-ig-app-id': '936619743392459',
@@ -15,8 +12,6 @@ const HEADERS = {
 const KEEP_YES = 24 * 36e5, KEEP_NO = 10 * 6e4;
 const seen = new Map();   // handle -> { ok, pic, at }
 const PIC_FOR = 36e5;   // Instagram's picture links are signed and run out: asked again hourly
-
-export const igCheckOn = env => String(env?.IG_CHECK || 'on').toLowerCase() !== 'off';
 
 export async function igExists(handle, { fetchImpl = globalThis.fetch, now = Date.now(), timeout = 4000 } = {}) {
   const h = String(handle || '').toLowerCase();
@@ -38,19 +33,6 @@ export async function igExists(handle, { fetchImpl = globalThis.fetch, now = Dat
     seen.set(h, { ok, pic, at: now });
   }
   return ok;
-}
-
-// After a profile was kept without a clear answer: ask again a couple of times while the
-// request's work may still run (waitUntil), and take the profile down if Instagram then says
-// the account is not there. `drop` removes it.
-export async function igRecheck(handle, drop, { tries = [8000, 20000], ...opts } = {}) {
-  for (const wait of tries) {
-    await new Promise(r => setTimeout(r, wait));
-    const ok = await igExists(handle, opts);
-    if (ok === true) return true;
-    if (ok === false) { await drop(); return false; }
-  }
-  return null;
 }
 
 // The account's profile picture, through this Worker (the site's pages load images from

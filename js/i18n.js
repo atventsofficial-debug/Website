@@ -1,20 +1,39 @@
-// English and Indonesian. The site is written in English but opens in Indonesian unless the
-// visitor picked English on the toggle (kept in localStorage). With Indonesian chosen, every text
-// on the page (and the placeholders, labels and titles) is swapped for its Indonesian line
+// English and Indonesian. The site is written in English and opens in English unless the
+// visitor picked Indonesian on the toggle (kept in localStorage). With Indonesian chosen, every
+// text on the page (and the placeholders, labels and titles) is swapped for its Indonesian line
 // from js/i18n-id.js as it appears, whatever renders it. Lines that carry names, dates or
-// prices are matched by pattern. Switching back to English reloads the page as written.
+// prices are matched by pattern. Each swapped text keeps its English, so switching back puts
+// it back in place: no reload either way, the page just fades across.
 import { EXACT, PATTERNS } from './i18n-id.js';
 
 const KEY = 'atvents-lang';
-export const lang = (() => {
+export let lang = (() => {
   try { const v = localStorage.getItem(KEY); if (v === 'en' || v === 'id') return v; } catch {}
-  return 'id';
+  return 'en';
 })();
 
+// A quick fade out, the words swapped while the page is faint, a fade back in.
+let switching = null;
 export function setLang(v) {
-  if (v === lang) return;
+  if ((v !== 'en' && v !== 'id') || v === lang) return;
   try { localStorage.setItem(KEY, v); } catch {}
-  location.reload();
+  lang = v;
+  paintToggles();
+  const root = document.documentElement;
+  const still = matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  root.classList.add('lang-swap');
+  // A second tap before the first has finished: the last one wins.
+  clearTimeout(switching);
+  switching = setTimeout(() => {
+    switching = null;
+    apply();
+    requestAnimationFrame(() => { if (!switching) root.classList.remove('lang-swap'); });
+  }, still ? 0 : 140);
+}
+function paintToggles() {
+  document.documentElement.lang = lang;
+  document.querySelectorAll('[data-lang]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lang === lang)));
+  document.querySelectorAll('.lang').forEach(g => { g.dataset.cur = lang; });
 }
 
 const DAYS = { Mon: 'Sen', Tue: 'Sel', Wed: 'Rab', Thu: 'Kam', Fri: 'Jum', Sat: 'Sab', Sun: 'Min' };
@@ -44,21 +63,49 @@ export function t(raw) {
 }
 
 const done = new WeakMap(); // text node -> the Indonesian we set, so our own change is not done again
+const orig = new WeakMap(); // text node -> its English, to put back
 function doText(n) {
   const p = n.parentElement;
   if (!p || p.closest('script,style,[data-no-i18n]')) return;
   if (done.get(n) === n.nodeValue) return;
   // An element can carry its own Indonesian in data-id, where word order differs.
   const out = p.dataset.id != null && n.nodeValue.trim() ? n.nodeValue.replace(/\S.*\S|\S/s, p.dataset.id) : t(n.nodeValue);
-  if (out != null) { n.nodeValue = out; done.set(n, out); }
+  if (out != null) { orig.set(n, n.nodeValue); n.nodeValue = out; done.set(n, out); }
 }
 const ATTRS = ['placeholder', 'aria-label', 'title', 'alt'];
+const origAttr = new WeakMap(); // element -> { attribute: its English }
 function doAttrs(el) {
   for (const a of ATTRS) {
     const v = el.getAttribute?.(a), k = `i18n${a.replace('-', '')}`;
     if (!v || !el.dataset || el.dataset[k] === v) continue;
     const out = t(v);
-    if (out != null) { el.dataset[k] = out; el.setAttribute(a, out); }
+    if (out != null) {
+      const o = origAttr.get(el) || {};
+      o[a] = v;
+      origAttr.set(el, o);
+      el.dataset[k] = out;
+      el.setAttribute(a, out);
+    }
+  }
+}
+// Back to English: every text and attribute we swapped, as it was written.
+function undo(root) {
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
+  let n;
+  while ((n = w.nextNode())) {
+    if (n.nodeType === 3) {
+      if (orig.has(n) && done.get(n) === n.nodeValue) n.nodeValue = orig.get(n);
+      orig.delete(n); done.delete(n);
+    } else {
+      const o = origAttr.get(n);
+      if (!o) continue;
+      for (const [a, v] of Object.entries(o)) {
+        const k = `i18n${a.replace('-', '')}`;
+        if (n.getAttribute(a) === n.dataset[k]) n.setAttribute(a, v);
+        delete n.dataset[k];
+      }
+      origAttr.delete(n);
+    }
   }
 }
 function walk(root) {
@@ -70,21 +117,34 @@ function walk(root) {
   while ((n = w.nextNode())) n.nodeType === 3 ? doText(n) : doAttrs(n);
 }
 
+let observer = null, titleEn = '';
+let applied = 'en';
+function apply() {
+  if (applied === lang) return;
+  applied = lang;
+  if (lang === 'id') {
+    titleEn = document.title;
+    walk(document.body);
+    const title = t(document.title); if (title) document.title = title;
+    observer ||= new MutationObserver(list => {
+      if (lang !== 'id') return;
+      for (const m of list) {
+        if (m.type === 'characterData') doText(m.target);
+        else if (m.type === 'attributes') doAttrs(m.target);
+        else m.addedNodes.forEach(walk);
+      }
+      const tt = t(document.title); if (tt) { titleEn = document.title; document.title = tt; }
+    });
+    observer.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ATTRS });
+  } else {
+    observer?.disconnect();
+    undo(document.body);
+    if (titleEn) document.title = titleEn;
+  }
+}
+
 export function startI18n() {
-  document.documentElement.lang = lang;
-  document.querySelectorAll('[data-lang]').forEach(b => {
-    b.setAttribute('aria-pressed', String(b.dataset.lang === lang));
-    b.addEventListener('click', () => setLang(b.dataset.lang));
-  });
-  if (lang !== 'id') return;
-  walk(document.body);
-  const title = t(document.title); if (title) document.title = title;
-  new MutationObserver(list => {
-    for (const m of list) {
-      if (m.type === 'characterData') doText(m.target);
-      else if (m.type === 'attributes') doAttrs(m.target);
-      else m.addedNodes.forEach(walk);
-    }
-    const tt = t(document.title); if (tt) document.title = tt;
-  }).observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ATTRS });
+  paintToggles();
+  document.querySelectorAll('[data-lang]').forEach(b => b.addEventListener('click', () => setLang(b.dataset.lang)));
+  if (lang === 'id') apply();
 }

@@ -656,10 +656,10 @@ test('seat mates: only a paid pass gets in, and a fan shows only what they chose
   assert.equal((await bad.json()).field, 'instagram');
   // Another site's page cannot set it.
   assert.equal((await mates(a, { env: e, method: 'PUT', body: { name: 'Rani', instagram: '@rani.p', consent: true }, headers: { origin: 'https://evil.example' } })).status, 403);
-  // An Instagram account that is not there is refused, on the Instagram field.
-  const ghost = await mates(a, { env: e, method: 'PUT', body: { name: 'Rani', instagram: '@no.such.fan', consent: true } });
-  assert.equal(ghost.status, 400);
-  assert.equal((await ghost.json()).field, 'instagram');
+  // Saving never asks Instagram whether the account is there.
+  const before = calls.length;
+  assert.equal((await mates(a, { env: e, method: 'PUT', body: { name: 'Rani', instagram: '@no.such.fan', consent: true } })).status, 200);
+  assert.equal(calls.slice(before).some(c => c.url.includes('instagram.com')), false);
 
   r = await mates(a, { env: e, method: 'PUT', body: { name: 'Rani', instagram: 'https://www.instagram.com/Rani.P/', consent: true } });
   assert.equal(r.status, 200);
