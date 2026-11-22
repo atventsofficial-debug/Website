@@ -5,8 +5,8 @@
 // It also writes worker/catalog.json, the concerts and seats the payment Worker checks
 // orders against (scripts/worker-catalog.mjs).
 //
-// Its CSP lets Midtrans' payment form open inside the page (js/snap.js); the Node server's
-// does not, as it takes no payments.
+// Its CSP lets Midtrans' payment form open inside the page (js/snap.js), and Google Tag
+// Manager and Analytics load and report (js/gtm.js); the Node server's does neither.
 //
 // The scripts and the stylesheet are bundled and minified with esbuild, under names that
 // carry a hash of their contents, so browsers can keep them for a year and still get every
@@ -60,6 +60,11 @@ try {
   const introName = `intro-${crypto.createHash('sha256').update(intro.code).digest('hex').slice(0, 10)}.js`;
   fs.writeFileSync(path.join(out, 'js', introName), intro.code);
   swap('src="js/intro.js"', `src="js/${introName}"`);
+  // Google Tag Manager's loader (js/gtm.js): a small file of its own too, hashed the same way.
+  const gtm = await esbuild.transform(fs.readFileSync(path.join(root, 'js/gtm.js'), 'utf8'), { loader: 'js', minify: true, target: 'es2015' });
+  const gtmName = `gtm-${crypto.createHash('sha256').update(gtm.code).digest('hex').slice(0, 10)}.js`;
+  fs.writeFileSync(path.join(out, 'js', gtmName), gtm.code);
+  swap('src="js/gtm.js"', `src="js/${gtmName}"`);
   swap('src="js/app.js"', `src="js/${path.basename(entry)}"`);
   swap('href="css/styles.css"', `href="css/${cssName}"`);
   swap('<link rel="stylesheet" href="css/mobile.css">\n', '');
@@ -90,7 +95,7 @@ fs.writeFileSync(path.join(out, 'auth.html'), auth);
 const block = (route, rules, drop = []) => `${route}\n${[...drop.map(k => `  ! ${k}`), ...Object.entries(rules).map(([k, v]) => `  ${k}: ${v}`)].join('\n')}\n`;
 const code = bundled ? 'public, max-age=31536000, immutable' : 'public, max-age=300';
 fs.writeFileSync(path.join(out, '_headers'), [
-  block('/*', securityHeaders(out, true, { midtrans: true })),   // from the page as built: no import map, no CDN
+  block('/*', securityHeaders(out, true, { midtrans: true, analytics: true })),   // from the page as built: no import map, no CDN
   block('/js/*', { 'cache-control': code }),
   block('/css/*', { 'cache-control': code }),
   // stale-while-revalidate: after the five minutes a picture still shows from the cache at

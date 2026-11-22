@@ -87,7 +87,7 @@ export function checkOrigin(req, publicUrl) {
   if (!ok) throw new HttpError(403, 'Cross-site request refused');
 }
 
-export function securityHeaders(root, isHttps, { midtrans = false } = {}) {
+export function securityHeaders(root, isHttps, { midtrans = false, analytics = false } = {}) {
   // Hash the inline import map so the CSP can stay free of 'unsafe-inline' for scripts, and
   // allow only the folders it maps to (three.js at its exact version), not the whole CDN.
   let mapHash = '', cdn = '';
@@ -106,15 +106,21 @@ export function securityHeaders(root, isHttps, { midtrans = false } = {}) {
   // Nothing on the page fetches from Midtrans itself.
   const pay = midtrans ? 'https://app.midtrans.com https://app.sandbox.midtrans.com' : '';
   const qr = midtrans ? ' https://api.midtrans.com https://api.sandbox.midtrans.com' : '';
+  // Google Tag Manager and the Analytics tag it loads (js/gtm.js), on the static build only:
+  // the hosts Google lists for GA4 through GTM. Its tags are Google's own templates, so no
+  // 'unsafe-inline' or 'unsafe-eval' is needed (a Custom HTML tag in GTM would not run).
+  const gt = analytics ? ' https://*.googletagmanager.com' : '';
+  const ga = analytics ? ' https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com' : '';
+  const gaImg = analytics ? ' https://*.google-analytics.com https://*.googletagmanager.com' : '';
   const csp = [
     "default-src 'self'",
-    `script-src 'self' ${mapHash} ${cdn}${pay ? ` ${pay}` : ''}`,
+    `script-src 'self' ${mapHash} ${cdn}${pay ? ` ${pay}` : ''}${gt}`,
     "style-src 'self' 'unsafe-inline'",
     "font-src 'self'",
-    `img-src 'self' data: blob:${qr}`,
+    `img-src 'self' data: blob:${qr}${gaImg}`,
     // The story video plays in its sheet straight from the recording in memory (js/story.js).
     "media-src 'self' blob:",
-    "connect-src 'self'",
+    `connect-src 'self'${ga}`,
     `frame-src ${pay || "'none'"}`,
     "object-src 'none'",
     "base-uri 'self'",
