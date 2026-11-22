@@ -816,6 +816,17 @@ export function renderUnlock(eventId, { plan = '', upgrade = '' } = {}) {
 const seatText = s => (s.standing ? `${s.secName}, standing` : `${s.secName} · Row ${s.row} · Seat ${s.num}`);
 const seatIn = (eventId, seatId) => { const venue = getEvent(eventId), i = venue?.seatById.get(seatId); return i === undefined ? null : venue.seats[i]; };
 
+// Wide screens: the form stays in view while the price list beside it scrolls (css: sticky).
+// A form taller than the window sticks once its end is in view, so nothing is out of reach.
+function stickForm() {
+  const main = $('#view-unlock .unlock-main');
+  if (!main || !('ResizeObserver' in window)) return;
+  const fit = () => { main.style.top = `${Math.min(24, window.innerHeight - main.offsetHeight - 24)}px`; };
+  new ResizeObserver(fit).observe(main);
+  window.addEventListener('resize', fit);
+  fit();
+}
+
 // The pass: the seat view or Plus, with the price on Continue. Upgrading, the plan is Plus,
 // the seat is the pass's own and cannot change, and the price is the difference.
 function paintPlan(form) {
@@ -1523,6 +1534,7 @@ function bindUnlock(form) {
   });
   $('#pay-sheet').addEventListener('change', ev => { if (ev.target.name === 'pm') pickWay(ev.target.value); });
   form.addEventListener('submit', ev => { ev.preventDefault(); startPayment(form); });
+  stickForm();
   form.addEventListener('change', ev => { if (ev.target.name === 'plan') { unlock.plan = planOf(ev.target.value); paintPlan(form); } });
   form.addEventListener('change', () => { $('#unlock-error').hidden = true; ready(form); });
 }
