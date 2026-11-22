@@ -697,14 +697,14 @@ export class SeatScene {
     };
     const mesh = new THREE.InstancedMesh(geo, mat, rows.length);
     const m = new THREE.Matrix4(), c = new THREE.Color();
-    const GREEN = new THREE.Color('#5fd35a'), ORANGE = new THREE.Color('#c9772f'), MINE = new THREE.Color('#ffffff');
+    const GREEN = new THREE.Color('#5fd35a'), ORANGE = new THREE.Color('#ff8a2a'), MINE = new THREE.Color('#ffffff');
     this.fanPos = new Float32Array(rows.length * 3);
     // Fans of other categories are smaller and darker, so the fan's own category stands out.
     this.fanScale = new Float32Array(rows.length);
     const sc = new THREE.Vector3(), q = new THREE.Quaternion(), pos = new THREE.Vector3();
     rows.forEach(({ f, s }, k) => {
       // Over the head of a fan standing with their arms up.
-      const y = s.y + (s.standing ? STAND_LIFT : 0) + (f.spot ? 3.6 : 2.75), b = f.spot ? 2.2 : f.locked ? 0.6 : 1;
+      const y = s.y + (s.standing ? STAND_LIFT : 0) + (f.spot ? 3.6 : 2.75), b = f.spot ? 2.2 : f.locked ? 0.75 : 1;
       this.fanScale[k] = b;
       mesh.setMatrixAt(k, m.compose(pos.set(s.x, y, s.z), q, sc.setScalar(b)));
       mesh.setColorAt(k, c.copy(f.locked ? ORANGE : f.mine ? MINE : GREEN));
