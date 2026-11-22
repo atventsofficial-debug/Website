@@ -26,7 +26,7 @@
   // own rate-limit namespaces and their own order book, so a preview never shares
   // production's counters or writes to its orders.
   "previews": {
-    "d1_databases": [{ "binding": "DB", "database_name": "atvents-orders-preview" }],
+    "d1_databases": [{ "binding": "DB", "database_name": "atvents-orders-preview", "database_id": "b5d7c503-f92e-47a0-a2d9-08bbd9815b30" }],
     "ratelimits": [
       { "name": "PAY_LIMIT", "namespace_id": "3001", "simple": { "limit": 30, "period": 60 } },
       { "name": "STATUS_LIMIT", "namespace_id": "3002", "simple": { "limit": 60, "period": 60 } },
