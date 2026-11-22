@@ -844,6 +844,7 @@ export const PATTERNS = [
   [/^can see who they are and find them on Instagram\.$/, 'yang bisa melihat siapa mereka dan menemukan Instagram-nya.'],
   [/^Unlock (.+) · (.+)$/, 'Buka $1 · $2'],
   [/^sits in (.+)\. Their seat has the green marker\.$/, 'duduk di $1. Kursinya ditandai penanda hijau.'],
+  [/^sits in (.+)\. They light up green in the crowd\.$/, 'duduk di $1. Dia menyala hijau di antara penonton.'],
   [/^Fans in (.+)$/, 'Fans di $1'],
   [/^(\d+) fans? in (.+)$/, '$1 fans di $2'],
   [/^(\d+) fans?$/, '$1 fans'],

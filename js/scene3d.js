@@ -1227,6 +1227,7 @@ export class SeatScene {
 
   clearPerson() {
     this.people?.pick?.(-1);
+    if (this._minD != null) { this.controls.minDistance = this._minD; this._minD = null; }
   }
 
   // Flies the overview's camera to one seat, close enough to pick the person out among their
@@ -1238,7 +1239,10 @@ export class SeatScene {
     if (out.lengthSq() < 1) out.set(0, 0, 1);
     out.normalize();
     // In front of them (towards the stage) and up, looking down at them.
-    const end = target.clone().addScaledVector(out, -16).add(new THREE.Vector3(0, 17, 0));
+    const end = target.clone().addScaledVector(out, -11).add(new THREE.Vector3(0, 12, 0));
+    // The overview keeps the camera further out than this; close in only while a fan is shown.
+    this._minD ??= this.controls.minDistance;
+    this.controls.minDistance = Math.min(this._minD, 10);
     const start = this.camera.position.clone(), t0 = this.controls.target.clone(), fov0 = this.camera.fov;
     this.controls.enabled = false;
     this.anim = {

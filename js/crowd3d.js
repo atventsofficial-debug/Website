@@ -394,8 +394,9 @@ if (keep < 0.5) transformed = g_shoulderR;
 // One fan picked from the list: they light up, everyone else fades back.
 vPicked = 0.;
 #ifdef USE_INSTANCING
-if (uPickOn > 0.5) vPicked = 1. - step(0.6, distance((modelMatrix * instanceMatrix * vec4(0., 0., 0., 1.)).xyz, uPick));
+if (uPickOn > 0.5) vPicked = 1. - step(0.22, distance((modelMatrix * instanceMatrix * vec4(0., 0., 0., 1.)).xyz, uPick));
 #endif
+transformed *= 1. + 0.3 * vPicked;
 `;
 
 // The crowd's material: a standard material whose colour, glow and rim light come from the
@@ -416,8 +417,12 @@ export function crowdMaterial(share = null) {
       .replace('#include <beginnormal_vertex>', '#include <beginnormal_vertex>\n' + POSE)
       .replace('#include <begin_vertex>', BEGIN);
     sh.fragmentShader = 'uniform float uTime; uniform float uLive; uniform float uPickOn; uniform vec3 uRimDir; uniform vec3 uRimCol;\nvarying float vPicked; varying vec3 vCrowdCol; varying vec3 vGlowCol; varying float vRimK; varying float vAO; varying float vSpec;\n' + sh.fragmentShader
+      .replace('#include <dithering_fragment>', `#include <dithering_fragment>
+        { float dimK = uPickOn * (1.0 - vPicked);
+          vec3 g = vec3(dot(gl_FragColor.rgb, vec3(0.3, 0.59, 0.11)));
+          gl_FragColor.rgb = mix(gl_FragColor.rgb, g * 0.2, dimK * 0.92); }`)
       .replace('#include <lights_fragment_end>', '#include <lights_fragment_end>\nreflectedLight.directSpecular *= vSpec;')
-      .replace('#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.rgb *= vCrowdCol * mix(1.0, 0.6, uLive) * mix(1.0, vAO, 0.85);\nfloat dimK = uPickOn * (1.0 - vPicked);\ndiffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.05, 0.06, 0.08), dimK * 0.7);\ndiffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.3, 0.95, 0.35), vPicked * 0.55);')
+      .replace('#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.rgb *= vCrowdCol * mix(1.0, 0.6, uLive) * mix(1.0, vAO, 0.85);\ndiffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.3, 0.95, 0.35), vPicked * 0.85);')
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
         totalEmissiveRadiance += vGlowCol;
         {
@@ -426,7 +431,7 @@ export function crowdMaterial(share = null) {
           float side = clamp(dot(normal, uRimDir) * 0.9 + 0.25, 0.0, 1.0);
           totalEmissiveRadiance += uRimCol * fr * side * uLive * vRimK * vAO * 0.9;
           totalEmissiveRadiance *= 1.0 - 0.85 * uPickOn * (1.0 - vPicked);
-          totalEmissiveRadiance += vec3(0.25, 1.0, 0.3) * vPicked * (0.75 + 0.35 * sin(uTime * 4.0) + fr * 1.6);
+          totalEmissiveRadiance += vec3(0.25, 1.0, 0.3) * vPicked * (1.4 + 0.5 * sin(uTime * 4.0) + fr * 2.5);
         }`);
   };
   mat.customProgramCacheKey = () => 'atv-crowd-4';

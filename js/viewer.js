@@ -710,7 +710,7 @@ function paintTour() {
       <p class="fine">Tap the seat you know is yours, in <b>${esc(s.secName)}</b>. Pinch or scroll to zoom in.</p>
       <div class="row-btns"><button class="btn btn-line btn-sm" type="button" data-tour="pickcancel">Cancel</button></div>`
     : t.fanBlock ? `
-      <p class="fine">${t.fan ? `<b>${esc(t.fan.name)}</b> sits in ${esc(seatText(seatOf(t.fan.seat) || s))}. Their seat has the green marker.` : `<b>${esc(state.venue.seats.find(x => x.sec === t.fanBlock)?.secName || '')}</b>: tap a name to see their seat.`}</p>
+      <p class="fine">${t.fan ? `<b>${esc(t.fan.name)}</b> sits in ${esc(seatText(seatOf(t.fan.seat) || s))}. ${t.fanMarker ? 'Their seat has the green marker.' : 'They light up green in the crowd.'}` : `<b>${esc(state.venue.seats.find(x => x.sec === t.fanBlock)?.secName || '')}</b>: tap a name to see their seat.`}</p>
       <div class="row-btns"><button class="btn btn-coral btn-sm" type="button" data-tour="seat">Back to my seat ${icon('i-seat')}</button></div>`
     : step === 2 ? `
       <p>Your seat is marked in coral: <b>${esc(seatText(s))}</b>. Tap it to sit down.</p>
