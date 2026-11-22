@@ -1,6 +1,22 @@
 // Indonesian lines for js/i18n.js, keyed by the English text as it shows on the page.
 // Generated from the translation sheet; names, venues and film titles stay as they are.
 export const EXACT = {
+"Pick a second seat": "Pilih kursi kedua",
+"Tap any seat on the map, then Compare on its card.": "Ketuk kursi mana pun di peta, lalu Bandingkan di kartunya.",
+"Both seats see the stage about as well.": "Kedua kursi melihat panggung sama baiknya.",
+"Nearer, straighter on, or both.": "Lebih dekat, lebih lurus, atau keduanya.",
+"A close call": "Hampir seimbang",
+"Free standing": "Berdiri bebas",
+"Second seat": "Kursi kedua",
+"Not picked yet": "Belum dipilih",
+"Sit in A": "Duduk di A",
+"Sit in B": "Duduk di B",
+"Measured from the 3D model. The real layout on the day may differ.": "Diukur dari model 3D. Tata letak asli di hari H bisa berbeda.",
+"Light up the crowd": "Nyalakan penonton",
+"Your fandom's colour on every light stick round your seat, a wave round the stage, and the house lights up or down.": "Warna fandom-mu di setiap lightstick sekitar kursimu, gelombang keliling panggung, dan lampu venue nyala atau redup.",
+"Colour": "Warna",
+"Mixed": "Campur",
+"All my colour": "Semua warnaku",
 "Compare": "Bandingkan",
 "Compare with A": "Bandingkan dengan A",
 "Sit here": "Duduk di sini",
@@ -909,6 +925,8 @@ const DAY = '(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)';
 // [regex, replacement]. A string replacement has its $n groups passed through the date words;
 // a function gets the match as String.replace gives it.
 export const PATTERNS = [
+  [/^Seat ([AB]) sees more$/, "Kursi $1 lebih jelas"],
+  [/^Seat ([AB]) is the better value for the price\.$/, "Kursi $1 lebih sepadan dengan harganya."],
   [/^Seat ([AB]) sees more of the show\.(?: Seat ([AB]) is the better value for the price\.)?$/, (m, a, b) => `Kursi ${a} melihat pertunjukan lebih jelas.${b ? ` Kursi ${b} lebih sepadan dengan harganya.` : ''}`],
   [/^A close call: both seats see the stage about as well\. Seat ([AB]) is the better value for the price\.$/, "Hampir seimbang: kedua kursi melihat panggung sama baiknya. Kursi $1 lebih sepadan dengan harganya."],
   [/^(?:\d|Rp).*(?:closer to the stage|more straight on|higher up|cheaper)$/, m => m.split(' · ').map(w => w.replace(/^(\d+) m closer to the stage$/, '$1 m lebih dekat ke panggung').replace(/^(\d+)° more straight on$/, '$1° lebih lurus ke panggung').replace(/^([\d.]+) m higher up$/, '$1 m lebih tinggi').replace(/^(Rp[\d.]+) cheaper$/, '$1 lebih murah')).join(' · ')],

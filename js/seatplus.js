@@ -49,35 +49,41 @@ export function paintCompare() {
   $('#stage')?.classList.toggle('has-compare', !box.hidden);
   if (box.hidden) return;
   const v = state.venue, seats = ids.map(seatOf), open = canView(v);
-  const head = `<div class="cmp-head"><p class="eyebrow">${icon('i-compare')}Compare seats</p>
-    <button class="sq sq-sm" type="button" data-cmp="close" aria-label="Close compare"><svg><use href="#i-x"/></svg></button></div>`;
-  const col = (s, i) => `<div class="cmp-seat${seats.length === 2 && i === 0 ? ' is-a' : ' is-b'}"><b>${'AB'[i]}</b><span>${esc(seatName(s))}</span><small>${esc(v.catById[s.cat]?.name || '')}</small>
-    ${open ? `<button class="btn btn-line btn-sm" type="button" data-cmp="sit" data-seat="${esc(s.id)}">${icon('i-eye')}Sit here</button>` : ''}
-    <button class="cmp-x" type="button" data-cmp="drop" data-seat="${esc(s.id)}" aria-label="Take ${esc(seatName(s))} out">${icon('i-x')}</button></div>`;
-  if (seats.length < 2) {
-    box.innerHTML = `${head}<div class="cmp-seats">${col(seats[0], 0)}<div class="cmp-seat is-empty"><b>B</b><span>Pick a second seat on the map, then tap Compare on its card.</span></div></div>`;
-    return;
-  }
-  const r = compareSeats(v, seats[0], seats[1]), [a, b] = r.stats;
-  const row = (label, va, vb, better) => `<tr><th>${label}</th><td class="${better === 0 ? 'is-win' : ''}">${va}</td><td class="${better === 1 ? 'is-win' : ''}">${vb}</td></tr>`;
-  const lower = (x, y, eps) => (Math.abs(x - y) < eps ? -1 : x < y ? 0 : 1);
-  const price = s => (s.price == null ? '—' : fmtRp(s.price));
-  const verdict = r.best < 0 ? 'A close call: both seats see the stage about as well.'
-    : `Seat ${'AB'[r.best]} sees more of the show.`;
-  const wins = r.wins.map((w, i) => (w.length ? `<li><b>${'AB'[i]}</b> ${esc(w.join(' · '))}</li>` : '')).join('');
-  box.innerHTML = `${head}<div class="cmp-seats">${seats.map(col).join('')}</div>
-    <table class="cmp-table">
-      ${row('View score', `${r.score[0]}<small>/100</small>`, `${r.score[1]}<small>/100</small>`, r.best)}
+  const r = seats.length === 2 ? compareSeats(v, seats[0], seats[1]) : null;
+  const title = !r ? 'Pick a second seat' : r.best < 0 ? 'A close call' : `Seat ${'AB'[r.best]} sees more`;
+  const lede = !r ? 'Tap any seat on the map, then Compare on its card.'
+    : r.value >= 0 && r.value !== r.best ? `Seat ${'AB'[r.value]} is the better value for the price.`
+      : r.best < 0 ? 'Both seats see the stage about as well.' : 'Nearer, straighter on, or both.';
+  const card = (s, i) => `<div class="cmp-seat${r?.best === i ? ' is-best' : ''}">
+      <p class="cmp-tag"><b>${'AB'[i]}</b><span>${esc(v.catById[s.cat]?.name || '')}</span></p>
+      <p class="cmp-name">${esc(s.secName)}</p>
+      <p class="cmp-spot mono">${s.standing ? 'Free standing' : `Row ${esc(s.row)} · Seat ${esc(String(s.num))}`}</p>
+      ${r ? `<p class="cmp-score"><b>${r.score[i]}</b><span>View score</span></p>` : ''}
+    </div>`;
+  const empty = `<div class="cmp-seat is-empty"><p class="cmp-tag"><b>B</b><span>Second seat</span></p><p class="cmp-spot mono">Not picked yet</p></div>`;
+  let rows = '';
+  if (r) {
+    const [a, b] = r.stats;
+    const lower = (x, y, eps) => (Math.abs(x - y) < eps ? -1 : x < y ? 0 : 1);
+    const row = (label, va, vb, win) => `<div><dt>${label}</dt><dd class="${win === 0 ? 'is-win' : ''}">${va}</dd><dd class="${win === 1 ? 'is-win' : ''}">${vb}</dd></div>`;
+    rows = `<dl class="cmp-rows">
       ${row('To the stage', `${Math.round(a.dist)} m`, `${Math.round(b.dist)} m`, lower(a.dist, b.dist, 2))}
       ${a.round ? '' : row('Off centre', `${Math.round(a.side)}°`, `${Math.round(b.side)}°`, lower(a.side, b.side, 8))}
       ${row('Eye height', `${a.height.toFixed(1)} m`, `${b.height.toFixed(1)} m`, -1)}
-      ${row('Price', price(a), price(b), a.price != null && b.price != null ? lower(a.price, b.price, 1) : -1)}
-    </table>
-    <p class="cmp-verdict">${esc(verdict)}${r.value >= 0 && r.value !== r.best ? ` Seat ${'AB'[r.value]} is the better value for the price.` : ''}</p>
-    ${wins ? `<ul class="cmp-wins">${wins}</ul>` : ''}
-    <div class="cmp-actions"><button class="btn btn-line btn-sm" type="button" data-cmp="share">${icon('i-share')}Share this pair</button>
-      ${open ? '' : plusOffer('Sitting in both to look')}</div>
-    <p class="cmp-note">Measured from the 3D model, an illustration of the venue. The real layout on the day may differ.</p>`;
+      ${row('Price', a.price == null ? '—' : fmtRp(a.price), b.price == null ? '—' : fmtRp(b.price), a.price != null && b.price != null ? lower(a.price, b.price, 1) : -1)}
+    </dl>`;
+  }
+  const sit = open && seats.length ? `<div class="cmp-sit">${seats.map((s, i) => `<button class="btn ${i === 0 ? 'btn-coral' : 'btn-line'} btn-sm" type="button" data-cmp="sit" data-seat="${esc(s.id)}">Sit in ${'AB'[i]}</button>`).join('')}</div>` : '';
+  box.innerHTML = `<div class="cmp-head">
+      <div><p class="eyebrow">${icon('i-compare')}Compare seats</p><h2>${esc(title)}</h2><p class="cmp-lede">${esc(lede)}</p></div>
+      <button class="sq sq-sm" type="button" data-cmp="close" aria-label="Close compare"><svg><use href="#i-x"/></svg></button>
+    </div>
+    <div class="cmp-seats">${seats.map(card).join('')}${seats.length < 2 ? empty : ''}</div>
+    ${rows}
+    ${sit}
+    ${r ? `<div class="cmp-foot">${open ? '' : `<div class="cmp-lock">${plusOffer('Sitting in both to look')}</div>`}
+      <button class="btn btn-line btn-sm" type="button" data-cmp="share">${icon('i-share')}Share this pair</button></div>
+    <p class="cmp-note mono">Measured from the 3D model. The real layout on the day may differ.</p>` : ''}`;
 }
 
 export function bindCompare({ repaint }) {
@@ -124,7 +130,7 @@ export function showModeFor(mode) {
   const inSeat = mode === 'seat';
   btn.hidden = !inSeat;
   if (mode === 'seat') state.showLights = true;
-  if (!inSeat) { panel.hidden = true; btn.setAttribute('aria-expanded', 'false'); $('#stage')?.classList.remove('show-open'); }
+  if (!inSeat) { panel.hidden = true; btn.setAttribute('aria-expanded', 'false'); btn.classList.remove('is-on'); $('#stage')?.classList.remove('show-open'); }
   // A seat pass keeps the crowd's own light sticks; Plus brings back the fan's choice.
   state.scene?.setShow(showOpen() ? state.show : { ...state.show, mix: 0, ocean: 0, fx: 'beat' });
   btn.classList.toggle('is-locked', !showOpen());
@@ -133,21 +139,22 @@ export function showModeFor(mode) {
 
 function paintShow() {
   const panel = $('#show-panel'), o = state.show;
+  const head = `<div class="show-head"><p class="eyebrow">${icon('i-lightstick')}Show mode</p><h2>Light up the crowd</h2></div>`;
   if (!showOpen()) {
-    panel.innerHTML = `<p class="eyebrow">${icon('i-lightstick')}Show mode</p>
-      <p class="show-lede">Light up the crowd round your seat in your fandom's colour, set the sticks to a wave and turn the house lights up or down.</p>
-      ${plusOffer('Show mode')}`;
+    panel.innerHTML = `${head}<p class="show-lede">Your fandom's colour on every light stick round your seat, a wave round the stage, and the house lights up or down.</p>${plusOffer('Show mode')}`;
     return;
   }
-  const chip = (group, val, label, on) => `<button class="show-chip" type="button" data-show="${group}" data-val="${esc(val)}" aria-pressed="${on}">${esc(label)}</button>`;
-  panel.innerHTML = `<p class="eyebrow">${icon('i-lightstick')}Show mode</p>
-    <div class="show-group"><p>Light-stick colour</p>
-      <div class="show-swatches">${COLORS.map(([c, n]) => `<button class="show-sw" type="button" data-show="color" data-val="${c}" style="--sw:${c}" aria-label="${n}" title="${n}" aria-pressed="${o.mix > 0 && o.color === c}"></button>`).join('')}
-        <label class="show-sw show-custom" title="Your own colour" style="--sw:${esc(o.color)}"><input type="color" value="${esc(o.color)}" data-show="custom" aria-label="Your own colour"></label></div>
-      <div class="show-chips">${chip('mix', '0', 'Mixed colours', o.mix === 0)}${chip('mix', '1', 'Everyone in my colour', o.mix > 0)}</div></div>
-    <div class="show-group"><p>Effect</p><div class="show-chips">${FX.map(([v, l]) => chip('fx', v, l, o.fx === v)).join('')}</div></div>
-    <div class="show-group"><p>Crowd</p><div class="show-chips">${chip('ocean', '0', 'As it is', !o.ocean)}${chip('ocean', '0.85', 'Light-stick ocean', o.ocean > 0)}</div></div>
-    <div class="show-group"><p>Lights</p><div class="show-chips">${chip('lights', '1', 'Show lights', state.showLights !== false)}${chip('lights', '0', 'House lights up', state.showLights === false)}</div></div>`;
+  const seg = (group, opts, cur) => `<div class="show-seg">${opts.map(([val, label]) => `<button type="button" data-show="${group}" data-val="${esc(val)}" aria-pressed="${String(val) === String(cur)}">${esc(label)}</button>`).join('')}</div>`;
+  panel.innerHTML = `${head}
+    <dl class="show-rows">
+      <div><dt>Colour</dt><dd>
+        <div class="show-swatches">${COLORS.map(([c, n]) => `<button class="show-sw" type="button" data-show="color" data-val="${c}" style="--sw:${c}" aria-label="${n}" title="${n}" aria-pressed="${o.mix > 0 && o.color === c}"></button>`).join('')}
+          <label class="show-sw show-custom" title="Your own colour"${o.mix > 0 && !COLORS.some(([c]) => c === o.color) ? ' data-on="true"' : ''}><input type="color" value="${esc(o.color)}" data-show="custom" aria-label="Your own colour"><svg aria-hidden="true"><use href="#i-plus"/></svg></label></div>
+        ${seg('mix', [['0', 'Mixed'], ['1', 'All my colour']], o.mix > 0 ? '1' : '0')}</dd></div>
+      <div><dt>Effect</dt><dd>${seg('fx', FX, o.fx)}</dd></div>
+      <div><dt>Crowd</dt><dd>${seg('ocean', [['0', 'As it is'], ['0.85', 'Light-stick ocean']], o.ocean > 0 ? '0.85' : '0')}</dd></div>
+      <div><dt>Lights</dt><dd>${seg('lights', [['1', 'Show lights'], ['0', 'House lights up']], state.showLights === false ? '0' : '1')}</dd></div>
+    </dl>`;
 }
 
 export function bindShow() {
@@ -156,6 +163,7 @@ export function bindShow() {
   btn.addEventListener('click', () => {
     panel.hidden = !panel.hidden;
     btn.setAttribute('aria-expanded', String(!panel.hidden));
+    btn.classList.toggle('is-on', !panel.hidden);
     $('#stage')?.classList.toggle('show-open', !panel.hidden);
     if (!panel.hidden) paintShow();
   });
@@ -177,6 +185,7 @@ export function bindShow() {
     saveShow();
     state.scene?.setShow(state.show);
     e.target.parentElement.style.setProperty('--sw', e.target.value);
+    e.target.parentElement.dataset.on = 'true';
   });
   panel.addEventListener('change', e => { if (e.target.dataset.show === 'custom') paintShow(); });
 }
