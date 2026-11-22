@@ -2424,6 +2424,8 @@ function roundStage(ctx, venue, { screen, beamAt, steel, theme }) {
     }
   }
 
+  if (S.field) fieldPlan(ctx, S, steel);
+
   const wash = new THREE.SpotLight(theme.wash, 1, 90, 0.55, 0.6, 1.2);
   wash.position.set(0, 46, 0);
   wash.target.position.set(0, 2, 0);
@@ -2434,6 +2436,99 @@ function roundStage(ctx, venue, { screen, beamAt, steel, theme }) {
   ctx.mood(glow, 'intensity', 0, 420);
   scene.add(glow);
   return cube;
+}
+
+// The field round an X stage where the plan sells nothing, drawn so it reads as part of the
+// show rather than empty: the barrier line round the blocks, a lane from each corner gate out
+// past the arm tips with chevrons towards the stage, hatching on what is crew-only, and the
+// FOH and production areas named on the deck. One painted texture over the deck, and a gate
+// frame with its number at each corner.
+function fieldPlan(ctx, S, steel) {
+  const { scene } = ctx, F = S.field, [DX, DZ] = F.deck, [BX, BZ] = F.barrier, id = lang === 'id';
+  const K = 24, W = DX * 2 * K, Hh = DZ * 2 * K;
+  const P = (x, z) => [(x + DX) * K, (z + DZ) * K];
+  const [tx, tz] = S.arm.tip, len = Math.hypot(tx, tz), ux = tx / len, uz = tz / len;
+  // Each lane runs out along its arm from just past the tip to the deck's edge.
+  const lanes = [[1, 1], [-1, 1], [1, -1], [-1, -1]].map(([sx, sz], i) => {
+    const dx = ux * sx, dz = uz * sz;
+    const t1 = Math.min((DX - 1.5 - Math.abs(tx)) / ux, (DZ - 1.5 - Math.abs(tz)) / uz);
+    return { n: [2, 1, 3, 4][i], dx, dz, a: [tx * sx + dx * 4, tz * sz + dz * 4], b: [tx * sx + dx * t1, tz * sz + dz * t1] };
+  });
+  const font = (px, wt = 800) => `${wt} ${px}px "Inter", "Helvetica Neue", Arial, sans-serif`;
+  const tex = canvasTex(W, Hh, (g) => {
+    g.clearRect(0, 0, W, Hh);
+    // Crew-only hatching outside the barrier.
+    g.save();
+    g.beginPath(); g.rect(0, 0, W, Hh);
+    g.ellipse(...P(0, 0), BX * K, BZ * K, 0, 0, Math.PI * 2);
+    g.clip('evenodd');
+    g.strokeStyle = 'rgba(255,255,255,0.07)'; g.lineWidth = 6;
+    for (let x = -Hh; x < W; x += 34) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x + Hh, Hh); g.stroke(); }
+    g.restore();
+    // The barrier line round the blocks.
+    g.setLineDash([46, 26]); g.lineWidth = 9; g.strokeStyle = 'rgba(255,196,92,0.85)';
+    g.beginPath(); g.ellipse(...P(0, 0), BX * K, BZ * K, 0, 0, Math.PI * 2); g.stroke();
+    g.setLineDash([]);
+    // Lanes: a lighter band with white edges and chevrons pointing in.
+    for (const L of lanes) {
+      const [ax, az] = P(...L.a), [bx, bz] = P(...L.b), w = F.lane * K, l = Math.hypot(bx - ax, bz - az);
+      g.save(); g.translate(bx, bz); g.rotate(Math.atan2(az - bz, ax - bx));
+      g.fillStyle = 'rgba(255,255,255,0.10)'; g.fillRect(0, -w / 2, l, w);
+      g.fillStyle = 'rgba(255,255,255,0.8)'; g.fillRect(0, -w / 2, l, 5); g.fillRect(0, w / 2 - 5, l, 5);
+      g.strokeStyle = 'rgba(255,196,92,0.95)'; g.lineWidth = 10; g.lineJoin = 'round';
+      for (let d = 2.4 * K; d < l - K; d += 3.2 * K) {
+        g.beginPath(); g.moveTo(d - 0.5 * K, -w * 0.3); g.lineTo(d + 0.3 * K, 0); g.lineTo(d - 0.5 * K, w * 0.3); g.stroke();
+      }
+      g.restore();
+    }
+    // Names on the deck, upright from the south stand where the map starts.
+    const say = (text, x, z, px, { rot = 0, color = '#ffffff', sub } = {}) => {
+      g.save(); g.translate(...P(x, z)); g.rotate(rot);
+      g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
+      g.font = font(px); g.lineWidth = px * 0.22; g.strokeStyle = 'rgba(10,10,14,0.9)';
+      const y = sub ? -px * 0.3 : 0;
+      g.strokeText(text, 0, y); g.fillStyle = color; g.fillText(text, 0, y);
+      if (sub) { g.font = font(px * 0.5, 600); g.lineWidth = px * 0.12; g.strokeText(sub, 0, px * 0.5); g.fillStyle = 'rgba(255,255,255,0.75)'; g.fillText(sub, 0, px * 0.5); }
+      g.restore();
+    };
+    const crew = id ? 'AREA TEKNIS · TIDAK DIJUAL' : 'CREW ONLY · NOT ON SALE';
+    for (const [fx, fz] of S.foh || []) say('FOH', fx - 9, fz + Math.sign(fz) * 0.2, 1.4 * K, { sub: id ? 'MEJA SOUND & LIGHTING' : 'SOUND & LIGHTING DESK' });
+    for (const [px] of S.production || []) say(id ? 'PRODUKSI' : 'PRODUCTION', px - Math.sign(px) * 4, 0, 1.5 * K, { rot: Math.sign(px) * Math.PI / 2, sub: crew });
+    for (const L of lanes) {
+      const [x, z] = L.b;
+      say(`${id ? 'PINTU FLOOR' : 'FLOOR GATE'} ${L.n}`, x - Math.sign(x) * 7.5, z - Math.sign(z) * 0.6, 1.25 * K, { color: '#ffc45c', sub: id ? 'MASUK VIP & PLATINUM FLOOR' : 'VIP & PLATINUM FLOOR ENTRY' });
+    }
+  });
+  const mat = below(new THREE.MeshStandardMaterial({ map: tex, transparent: true, depthWrite: false, roughness: 0.9, emissive: '#ffffff', emissiveMap: tex, emissiveIntensity: 0.55 }), -1);
+  const plan = new THREE.Mesh(new THREE.PlaneGeometry(DX * 2, DZ * 2), mat);
+  plan.rotation.x = -Math.PI / 2;
+  plan.position.y = 0.05;
+  plan.receiveShadow = true;
+  scene.add(plan);
+  // A gate frame across each lane's outer end, its number lit over it.
+  const glow = new THREE.MeshBasicMaterial({ color: '#ffc45c', toneMapped: false });
+  for (const L of lanes) {
+    const gate = new THREE.Group(), w = F.lane + 1;
+    for (const s of [-1, 1]) gate.add(new THREE.Mesh(box(0.22, 3.4, 0.22, s * w / 2, 1.7, 0), steel));
+    gate.add(new THREE.Mesh(box(w + 0.4, 0.9, 0.3, 0, 3.75, 0), mats.matteBlack()));
+    const sign = textTexture(512, 128, (g, w2, h2) => {
+      g.fillStyle = '#ffc45c'; g.font = font(78); g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(`${id ? 'PINTU' : 'GATE'} ${L.n}`, w2 / 2, h2 / 2 + 4);
+    });
+    for (const s of [1, -1]) {
+      const face = new THREE.Mesh(new THREE.PlaneGeometry(w, 0.7), new THREE.MeshBasicMaterial({ map: sign, transparent: true, toneMapped: false }));
+      face.position.set(0, 3.75, s * 0.16); if (s < 0) face.rotation.y = Math.PI;
+      gate.add(face);
+    }
+    gate.add(new THREE.Mesh(box(w + 0.4, 0.05, 0.05, 0, 3.28, 0.17), glow));
+    // Barriers either side of the lane's mouth.
+    for (const s of [-1, 1]) gate.add(new THREE.Mesh(box(0.08, 1.1, 2.4, s * w / 2, 0.55, -1.3), steel));
+    const [x, z] = L.b;
+    gate.position.set(x - L.dx * 0.6, 0, z - L.dz * 0.6);
+    gate.rotation.y = Math.atan2(L.dx, L.dz);
+    gate.traverse(o => { o.castShadow = true; });
+    scene.add(gate);
+  }
 }
 
 // ------------------------------------------------------------------ seats & crowd geometry
