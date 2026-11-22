@@ -6,7 +6,7 @@ import { loadScene3d } from './viewer.js';
 import { EVENTS, CITY, LISTED, getEvent, eventMeta, placeOf, timeKnown, minPrice, allSoldOut, isConcert, demoFor, onTiket, sellerOf, saleInfo, EVENT_TYPES, typeOf, optionsOf, isCard } from './events.js';
 import { cardImg, eventImg, kindCover, posterFig, posterImg, thumbImg, coverThumb } from './media.js';
 import { picker } from './picker.js';
-import { whenOf, startOf, venueClock, gapText } from './when.js';
+import { whenOf, startOf, venueClock, gapText, isOver } from './when.js';
 import { waTiles } from './fans.js';
 import { justBought, buyUrl, buyAttrs, buyLink, passes, activePass, claim, holdPass, refresh, passLink, clicksFor, STATUS, markVerified, sendCode, useCode } from './passes.js';
 import { checkClaim, formatFee } from './rules.js';
@@ -236,9 +236,12 @@ const CAL_DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const CAL_MON = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const cal = { month: '', day: '' };
 const dayOf = e => e.dateISO.slice(0, 10);
-function calEvents() {
+// Upcoming dated events plus the ones of the last two months, so a show that just
+// happened stays on the calendar, marked as past, instead of vanishing.
+const CAL_BACK = 62 * DAY;
+function calEvents(now = Date.now()) {
   const seen = new Set();
-  return onSale().filter(e => typeOf(e) !== 'cinema').filter(e => {
+  return EVENTS.filter(e => typeOf(e) !== 'cinema' && e.dateISO && startOf(e) > now - CAL_BACK).sort(byDate).filter(e => {
     const k = `${e.title}|${dayOf(e)}`;
     if (seen.has(k)) return false;
     seen.add(k); return true;
@@ -256,9 +259,12 @@ function renderCalendar() {
   for (const e of list) byDay.set(dayOf(e), [...(byDay.get(dayOf(e)) || []), e]);
   const months = [...new Set(list.map(e => dayOf(e).slice(0, 7)))].sort();
   if (!months.length) { root.innerHTML = '<p class="cal-empty">No dated events on sale right now.</p>'; return; }
-  if (!months.includes(cal.month)) cal.month = months[0];
+  // A day is past when every event on it has ended. The calendar opens on the next show.
+  const pastDay = d => (byDay.get(d) || []).every(e => isOver(e));
+  const next = list.find(e => !isOver(e));
+  if (!months.includes(cal.month)) cal.month = next ? dayOf(next).slice(0, 7) : months[months.length - 1];
   const inMonth = [...byDay.keys()].filter(d => d.startsWith(cal.month)).sort();
-  if (!inMonth.includes(cal.day)) cal.day = inMonth[0];
+  if (!inMonth.includes(cal.day)) cal.day = inMonth.find(d => !pastDay(d)) || inMonth[inMonth.length - 1];
 
   // Each day is a tile. A day with events is filled with the first event's cover, its other
   // events as small round covers in the corner (two at most, then +N) and the title below.
@@ -274,16 +280,18 @@ function renderCalendar() {
     if (!evs.length) { grid += `<div class="cal-cell${out ? ' is-out' : ''}"><span class="cal-n">${d.getUTCDate()}</span></div>`; continue; }
     const rest = evs.slice(1), shown = rest.length > 2 ? rest.slice(0, 2) : rest;
     const stack = rest.length ? `<span class="cal-avs">${shown.map(av).join('')}${rest.length > 2 ? `<span class="cal-av cal-av-more">+${rest.length - 2}</span>` : ''}</span>` : '';
-    grid += `<button class="cal-cell has-ev${key === cal.day ? ' is-sel' : ''}" type="button" data-day="${key}" aria-pressed="${key === cal.day}">
-      <span class="cal-bg">${coverThumb(evs[0])}</span><span class="cal-n">${d.getUTCDate()}</span>${stack}
+    const past = pastDay(key);
+    grid += `<button class="cal-cell has-ev${past ? ' is-past' : ''}${key === cal.day ? ' is-sel' : ''}" type="button" data-day="${key}" aria-pressed="${key === cal.day}">
+      <span class="cal-bg">${coverThumb(evs[0])}</span><span class="cal-n">${d.getUTCDate()}</span>${stack}${past ? '<span class="cal-past">Past event</span>' : ''}
       <span class="cal-name"><span>${esc(evs[0].title)}</span>${evs.length > 1 ? `<em>+${evs.length - 1}</em>` : ''}</span>
       <span class="sr-only">${evs.map(e => esc(e.title)).join(', ')}</span></button>`;
   }
 
   // Beside the grid, every event of the chosen day with its round cover.
   const sel = byDay.get(cal.day) || [];
-  const row = e => `<a class="cal-row" href="#event-${esc(e.id)}">${av(e)}<span><b>${esc(e.title)}</b><small>${esc(placeOf(e).name)}, ${esc(placeOf(e).city)}</small></span>${icon('i-arrow')}</a>`;
+  const row = e => `<a class="cal-row${isOver(e) ? ' is-past' : ''}" href="#event-${esc(e.id)}">${av(e)}<span><b>${esc(e.title)}</b><small>${esc(placeOf(e).name)}, ${esc(placeOf(e).city)}</small>${isOver(e) ? '<em class="cal-past-tag">Past event</em>' : ''}</span>${icon('i-arrow')}</a>`;
   const one = sel.length === 1 ? sel[0] : null;
+  const allPast = sel.length && sel.every(e => isOver(e));
   root.innerHTML = `
     <div class="cal-tabs" role="tablist">${months.map(k => { const [yy, mm] = k.split('-').map(Number); return `<button type="button" role="tab" data-month="${k}" aria-selected="${k === cal.month}">${MON[mm - 1]} ${yy}</button>`; }).join('')}</div>
     <div class="cal-body">
@@ -291,8 +299,9 @@ function renderCalendar() {
       <aside class="cal-side">
         <div class="cal-date">${calLabel(cal.day)}</div>
         <h3 class="cal-count">${sel.length === 1 ? '1 event this day' : `${sel.length} events this day`}</h3>
+        ${allPast ? `<p class="cal-past-note">${sel.length === 1 ? 'This event has passed.' : 'These events have passed.'}</p>` : ''}
         <div class="cal-rows">${sel.map(row).join('')}</div>
-        ${one ? `<div class="cal-btns"><a class="btn btn-coral btn-sm" href="#event-${esc(one.id)}">Event details</a><a class="btn btn-line btn-sm" href="#seats-${esc(one.id)}">See in 3D</a></div>` : ''}
+        ${one ? `<div class="cal-btns"><a class="btn ${allPast ? 'btn-line' : 'btn-coral'} btn-sm" href="#event-${esc(one.id)}">Event details</a>${allPast ? '' : `<a class="btn btn-line btn-sm" href="#seats-${esc(one.id)}">See in 3D</a>`}</div>` : ''}
       </aside>
     </div>`;
   root.querySelectorAll('[data-month]').forEach(b => b.addEventListener('click', () => { cal.month = b.dataset.month; cal.day = ''; renderCalendar(); }));

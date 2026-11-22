@@ -6,7 +6,7 @@ import { formatFee } from './rules.js';
 import { placeOf, minPrice, sellerOf, onTiket, saleInfo, typeOf } from './events.js';
 import { formatRpShort } from './layouts.js';
 import { IMAGES, cover, srcsetOf } from './media.js';
-import { whenOf } from './when.js';
+import { whenOf, isOver } from './when.js';
 import { buyLink } from './passes.js';
 import { onSale, featured, datesOf, upcoming, timesLine } from './pages.js';
 import { HeroPhoto, FlatHeroPhoto, preloadPoster } from './herophoto.js';
@@ -27,9 +27,12 @@ const hero = { list: [], key: '', i: 0, run: null, bound: false, held: new Set()
 
 // One slide per concert, the featured one first; a show with several nights is one slide.
 // Matches, fights and films stay off it: the hero is a concert arena with the show on its screens.
+// A show leaves the hero the moment it is over (not the day after, as on the lists), so the
+// hero always leads with what is coming up.
 function shows() {
-  const concerts = onSale().filter(e => typeOf(e) === 'concert');
-  const first = typeOf(featured()) === 'concert' ? featured() : concerts[0] || featured();
+  const concerts = onSale().filter(e => typeOf(e) === 'concert' && !isOver(e));
+  const lead = featured();
+  const first = typeOf(lead) === 'concert' && !isOver(lead) ? lead : concerts[0] || lead;
   const rest = concerts.filter((e, i, all) => e.title !== first.title && all.findIndex(x => x.title === e.title) === i);
   return [first, ...rest].slice(0, 6);
 }
@@ -312,14 +315,13 @@ async function showArena() {
   }
 }
 
+// A page left open: every few minutes the slides are worked out again, so a show that has
+// just ended drops off and the next one comes in, without a reload.
+let recheck = 0;
 export function startHero() {
-  const list = shows(), key = list.map(e => e.id).join();
-  if (key !== hero.key) {
-    hero.list = list;
-    hero.key = key;
-    hero.i = 0;
-    build();
-  }
+  clearInterval(recheck);
+  recheck = setInterval(() => { if (hero.run && !document.hidden) refreshShows(); }, 5 * 6e4);
+  refreshShows();
   bind();
   paint();
   if (!hero.run) {
@@ -330,7 +332,16 @@ export function startHero() {
     if (document.readyState === 'complete') start(); else addEventListener('load', start, { once: true });
   }
 }
-
+function refreshShows() {
+  const list = shows(), key = list.map(e => e.id).join();
+  if (key === hero.key) return;
+  const was = hero.list[hero.i];
+  hero.list = list;
+  hero.key = key;
+  hero.i = Math.max(0, list.indexOf(was));
+  build();
+  if (hero.run) paint();
+}
 export function stopHero() {
   if (!hero.run) return;
   hero.run.photo?.dispose();

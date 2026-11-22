@@ -72,6 +72,23 @@ export function startOf(e) {
   return starts.get(e);
 }
 
+// When an event is over, as a moment: a film's run ends on `until`; a show with its end time
+// at that time, with a start time but no end five hours after it, with no time at all at the
+// end of its day at the venue.
+const ends = new WeakMap();
+export function endOf(e) {
+  if (!ends.has(e)) {
+    let ms;
+    if (e.until) ms = Date.parse(e.until);
+    else if (timeKnown(e) && /^\d\d:\d\d$/.test(e.ends || '')) ms = atVenue(e, e.ends);
+    else if (timeKnown(e)) ms = startOf(e) + 5 * 36e5;
+    else ms = instant(`${e.dateISO.slice(0, 10)}T23:59`, tzOf(e));
+    ends.set(e, ms);
+  }
+  return ends.get(e);
+}
+export const isOver = (e, now = Date.now()) => endOf(e) <= now;
+
 // A venue time ('HH:MM') on the event's date, as a moment. A time more than twelve hours
 // before the start belongs to the night after midnight.
 export function atVenue(e, hhmm) {
