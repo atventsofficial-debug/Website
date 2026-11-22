@@ -603,6 +603,7 @@ export class SeatScene {
     // The bodies arrive from their file after the scene is built, so their material joins the
     // house-lights fade here rather than in load().
     this.people.material.userData.envMood = true;
+    this._applyShow();
     this.mood(this.people.material, 'envMapIntensity', 0.55, 0.06);
     // The act on stage, as many as the show's line-up, on the concert stage's deck and risers.
     this.band?.dispose();
@@ -1436,6 +1437,31 @@ export class SeatScene {
 
   zoomSeatView(delta) {
     this.look.fov = THREE.MathUtils.clamp(this.look.fov + delta, 16, 70);
+  }
+
+  // ---------- show mode ----------
+
+  // The light sticks round the seat (viewer.js): `color` a CSS colour, `mix` how much of the
+  // crowd's sticks take it (0 their own colours, 1 all of them), `fx` 'beat', 'steady' or
+  // 'wave', `ocean` the share of the crowd holding one up (0 as they came).
+  setShow(opts = {}) {
+    this.show = { ...(this.show || { color: '#ffffff', mix: 0, fx: 'beat', ocean: 0 }), ...opts };
+    this._applyShow();
+  }
+
+  _applyShow() {
+    const u = this.people?.uniforms, o = this.show;
+    if (!u?.uStickCol || !o) return;
+    u.uStickCol.value.set(o.color);
+    u.uStickMix.value = o.mix;
+    u.uStickFx.value = { beat: 0, steady: 1, wave: 2 }[o.fx] ?? 0;
+    u.uStickAll.value = o.ocean;
+    u.uStage.value.set(this.focus?.x || 0, this.focus?.z || 0);
+  }
+
+  // From a seat: the show's lights (true) or the house lights up to see the venue (false).
+  setShowLights(on) {
+    if (this.mode === 'seat') this.moodTarget = on ? 1 : 0;
   }
 
   // ---------- mood & render loop ----------
