@@ -278,6 +278,7 @@ export class SeatScene {
 
   disposeScene() {
     if (!this.scene) return;
+    this.setRoute(null);
     this.scene.traverse(o => {
       if (o.isCSS2DObject) o.element.remove();
       o.geometry?.dispose();
@@ -1441,6 +1442,32 @@ export class SeatScene {
 
   zoomSeatView(delta) {
     this.look.fov = THREE.MathUtils.clamp(this.look.fov + delta, 16, 70);
+  }
+
+  // ---------- getting there ----------
+
+  // The way in to a seat (access.js): a coral path from the outside of the venue to the seat,
+  // with a light running along it. null takes it away.
+  setRoute(points) {
+    if (this.route) {
+      this.scene?.remove(this.route.group);
+      this.route.group.traverse(o => { o.geometry?.dispose(); o.material?.dispose(); });
+      this.ticks = this.ticks.filter(f => f !== this.route.tick);
+      this.route = null;
+    }
+    if (!points?.length || !this.scene) return;
+    const curve = new THREE.CatmullRomCurve3(points.map(p => new THREE.Vector3(...p)), false, 'catmullrom', 0.2);
+    const group = new THREE.Group();
+    const line = new THREE.Mesh(new THREE.TubeGeometry(curve, 96, 0.6, 8), new THREE.MeshBasicMaterial({ color: 0xec5446, transparent: true, opacity: 0.85, depthTest: false }));
+    const spark = new THREE.Mesh(new THREE.SphereGeometry(1.4, 16, 12), new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: false }));
+    const gate = new THREE.Mesh(new THREE.RingGeometry(2.2, 3.4, 40), new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, depthTest: false }));
+    gate.rotation.x = -Math.PI / 2;
+    gate.position.copy(curve.getPoint(0)).y += 0.1;
+    for (const m of [line, spark, gate]) { m.renderOrder = 20; group.add(m); }
+    this.scene.add(group);
+    const tick = t => { spark.position.copy(curve.getPointAt((t * 0.18) % 1)); gate.scale.setScalar(1 + 0.25 * Math.sin(t * 4)); };
+    this.onTick(tick);
+    this.route = { group, tick };
   }
 
   // ---------- show mode ----------

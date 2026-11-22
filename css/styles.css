@@ -2951,3 +2951,27 @@ html.lang-swap body { opacity: .35; }
   .compare h2, .show-panel h2 { font-size: 20px; }
   .show-panel { top: auto; bottom: max(12px, env(safe-area-inset-bottom, 0px)); transform: none; left: max(12px, env(safe-area-inset-left, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); width: auto; max-height: 62%; padding: var(--s4); z-index: 8; }
 }
+
+/* ------------------------------------------------ getting there (3D Pass Plus) */
+.access { position: absolute; z-index: 6; right: max(16px, env(safe-area-inset-right, 0px)); top: 80px; width: 372px; max-height: calc(100% - 112px); display: flex; flex-direction: column; gap: var(--s4); padding: var(--s5); box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45); overflow: auto; overscroll-behavior: contain; scrollbar-width: none; }
+.access::-webkit-scrollbar { display: none; }
+.access h2 { margin-top: 10px; font: 900 24px/0.95 var(--display); font-stretch: 118%; letter-spacing: -0.03em; text-transform: uppercase; }
+.stage.access-open .app-side, .stage.access-open .compare { opacity: 0; pointer-events: none; }
+.acc-addr { margin-top: 8px; font: 600 10px/1.4 var(--mono); text-transform: uppercase; color: var(--muted); }
+.acc-lede { font-size: 13.5px; color: rgba(244, 240, 238, 0.82); }
+.acc-way { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 14px; border-radius: 14px; background: rgba(255, 255, 255, 0.06); }
+.acc-way.is-empty { background: transparent; border: 1.5px dashed var(--line-2); }
+.acc-way .cmp-tag b svg { width: 12px; height: 12px; }
+.acc-way .cmp-lock { margin-top: 4px; }
+.acc-walk { display: flex; align-items: flex-end; gap: 10px; margin: 2px 0 4px; }
+.acc-walk b { font: 900 40px/0.8 var(--display); font-stretch: 112%; letter-spacing: -0.04em; }
+.acc-walk span { font: 700 9px/1.25 var(--display); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.acc-rows { margin: 0; display: flex; flex-direction: column; }
+.acc-rows div { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: var(--s3); padding: 10px 0; border-top: 1px solid var(--line-2); }
+.acc-rows dt { font: 700 9px/1.6 var(--display); letter-spacing: 0.14em; text-transform: uppercase; color: var(--coral); }
+.acc-rows dd { margin: 0; font-size: 13.5px; line-height: 1.4; }
+@media (max-width: 960px) {
+  .access { top: 64px; left: max(12px, env(safe-area-inset-left, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); width: auto; max-height: calc(100% - 92px); padding: var(--s4); z-index: 8; background: rgba(22, 20, 20, 0.98); }
+  .access h2 { font-size: 20px; }
+  .stage.access-open .sections { opacity: 0; pointer-events: none; }
+}

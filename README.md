@@ -52,6 +52,10 @@ A second pass beside the seat view (`PLUS_FEE` in `js/order.js`, Rp49.000): ever
 
 Show mode is the button over a seat view: the light sticks round the seat in a colour the fan picks (or the crowd's own), on the beat, steady or in a wave round the stage, a light-stick ocean, and the house lights up or down. The choice is kept in the browser (`atv-show`). The crowd shader reads it from `uStickCol`, `uStickMix`, `uStickFx`, `uStickAll` and `uStage` (`SeatScene.setShow`). It comes with Plus and is open on the demo venues; a seat pass sees the crowd's own sticks and the Plus offer.
 
+### Getting there
+
+The pin among the viewer's tools opens Getting there (`js/access.js`, painted by `js/seatplus.js`): how to reach the venue by MRT, KRL, TransJakarta, car or ride-hailing, from public information and written as an illustration, keyed by the venue's name (`ACCESS`). With a seat picked it also gives the way in: from the outside of the venue nearest the seat's block (from behind for the floor) to the seat, its metres and about how many minutes on foot (`wayIn`). Drawing that route in 3D (`SeatScene.setRoute`) comes with Plus, or a demo venue. The promoter's announcement on gates, parking and road closures always comes first, and the panel says so.
+
 ## Seat mates
 
 Fans with a paid 3D pass for the same concert can find each other before the show. In the 3D view and the seat tour, a **Seat mates** block shows:
