@@ -178,6 +178,8 @@ const SHOW = ({ id, image, theme, title, subtitle, dateISO, time = 'TBA', place,
 const BTS_URL = { 1: 'bts-jakarta-day1', 2: 'bts-jakarta-day2', 3: 'bts-jakarta-3rdshowday' };
 const BTS_DAY = (n, dateISO, more = {}) => ({
   id: `evt-bts-arirang-${n}`, venue: 'gbk-bts', theme: 'bts',
+  // Seven members, each with a handheld microphone, round the 360 stage.
+  lineup: Array.from({ length: 7 }, () => ({ role: 'vocals' })),
   title: 'BTS', subtitle: `World Tour ARIRANG · Day ${n}`,
   dateISO, time: 'TBA', doors: 'TBA', ends: '', age: '',
   host: 'iME Indonesia', hostNote: 'Promoter, with Live Nation',

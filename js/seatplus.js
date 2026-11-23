@@ -12,6 +12,7 @@ import { canView, plusOnSale, upgradable } from './passes.js';
 import { compareSeats, pairText } from './compare.js';
 import { accessOf, wayIn } from './access.js';
 import { $, esc, icon, state, share } from './ui.js';
+import { setlistFor } from './setlists.js';
 
 const seatOf = id => { const v = state.venue, i = v?.seatById.get(id); return i === undefined ? null : v.seats[i]; };
 const seatName = s => (s.standing ? s.secName : `${s.secName} · ${s.row}${s.num}`);
@@ -183,7 +184,7 @@ const COLORS = [
 ];
 const FX = [['beat', 'On the beat'], ['steady', 'Steady'], ['wave', 'Wave']];
 const KEY = 'atv-show';
-const DEFAULT = { color: '#a259ff', mix: 0, fx: 'beat', ocean: 0 };
+const DEFAULT = { color: '#a259ff', mix: 0, fx: 'beat', ocean: 0, roam: true };
 
 function loadShow() {
   try { return { ...DEFAULT, ...JSON.parse(localStorage.getItem(KEY) || '{}') }; } catch { return { ...DEFAULT }; }
@@ -191,6 +192,9 @@ function loadShow() {
 const saveShow = () => { try { localStorage.setItem(KEY, JSON.stringify(state.show)); } catch { /* private mode */ } };
 
 const showOpen = () => !!state.venue && canView(state.venue);
+// The performers walk the stage with Plus, unless the fan keeps them on their spots.
+const roamOn = () => showOpen() && state.show?.roam !== false;
+const hasBand = () => !!state.scene?.band;
 
 // Called on every change of the view's mode: show mode belongs to the seat.
 export function showModeFor(mode) {
@@ -203,6 +207,7 @@ export function showModeFor(mode) {
   if (!inSeat) { panel.hidden = true; btn.setAttribute('aria-expanded', 'false'); btn.classList.remove('is-on'); $('#stage')?.classList.remove('show-open'); }
   // A seat pass keeps the crowd's own light sticks; Plus brings back the fan's choice.
   state.scene?.setShow(showOpen() ? state.show : { ...state.show, mix: 0, ocean: 0, fx: 'beat' });
+  state.scene?.setRoam(inSeat && roamOn());
   btn.classList.toggle('is-locked', !showOpen());
   if (!panel.hidden) paintShow();
 }
@@ -211,7 +216,7 @@ function paintShow() {
   const panel = $('#show-panel'), o = state.show;
   const head = `<div class="show-head"><p class="eyebrow">${icon('i-lightstick')}Show mode</p><h2>Light up the crowd</h2></div>`;
   if (!showOpen()) {
-    panel.innerHTML = `${head}<p class="show-lede">Your fandom's colour on every light stick round your seat, a wave round the stage, and the house lights up or down.</p>${plusOffer('Show mode')}`;
+    panel.innerHTML = `${head}<p class="show-lede">Your fandom's colour on every light stick round your seat, a wave round the stage, the artist walking every side of it, the songs of the night, and the house lights up or down.</p>${plusOffer('Show mode')}`;
     return;
   }
   const seg = (group, opts, cur) => `<div class="show-seg">${opts.map(([val, label]) => `<button type="button" data-show="${group}" data-val="${esc(val)}" aria-pressed="${String(val) === String(cur)}">${esc(label)}</button>`).join('')}</div>`;
@@ -223,8 +228,23 @@ function paintShow() {
         ${seg('mix', [['0', 'Mixed'], ['1', 'All my colour']], o.mix > 0 ? '1' : '0')}</dd></div>
       <div><dt>Effect</dt><dd>${seg('fx', FX, o.fx)}</dd></div>
       <div><dt>Crowd</dt><dd>${seg('ocean', [['0', 'As it is'], ['0.85', 'Light-stick ocean']], o.ocean > 0 ? '0.85' : '0')}</dd></div>
+      ${hasBand() ? `<div><dt>Artist</dt><dd>${seg('roam', [['1', 'Walk the stage'], ['0', 'Stay put']], o.roam === false ? '0' : '1')}</dd></div>` : ''}
       <div><dt>Lights</dt><dd>${seg('lights', [['1', 'Show lights'], ['0', 'House lights up']], state.showLights === false ? '0' : '1')}</dd></div>
-    </dl>`;
+    </dl>
+    ${setlistHtml()}`;
+}
+
+// The songs of the night: a recent set from the same tour (setlists.js), with its source.
+function setlistHtml() {
+  const l = setlistFor(state.venue?.meta?.id);
+  const top = `<p class="eyebrow">${icon('i-music')}Setlist</p>`;
+  if (!l) return `<section class="show-set">${top}<p class="show-set-note">No set from this tour has been posted yet. We add it once the tour plays its first nights.</p></section>`;
+  return `<section class="show-set">${top}
+    <p class="show-set-note">Expected, from a recent show of this tour. The night's songs and order can change.</p>
+    <ol class="show-set-list">${l.songs.map(t => `<li>${esc(t)}</li>`).join('')}</ol>
+    ${l.partial ? '<p class="show-set-note">Part of the set: the rest has not been posted.</p>' : ''}
+    <p class="show-set-src">Source: <a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.from)}</a></p>
+  </section>`;
 }
 
 export function bindShow() {
@@ -246,6 +266,7 @@ export function bindShow() {
     if (k === 'mix') state.show.mix = +val;
     if (k === 'fx') state.show.fx = val;
     if (k === 'ocean') state.show.ocean = +val;
+    if (k === 'roam') { state.show.roam = val === '1'; saveShow(); state.scene?.setRoam(roamOn()); paintShow(); return; }
     if (k === 'lights') { state.showLights = val === '1'; state.scene?.setShowLights(state.showLights); paintShow(); return; }
     apply();
   });

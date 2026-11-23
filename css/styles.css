@@ -2956,6 +2956,15 @@ html.lang-swap body { opacity: .35; }
 .show-seg button { flex: 1; min-width: 0; height: 34px; padding: 0 10px; border: 0; border-radius: 999px; background: transparent; color: var(--text); font: 600 12.5px/1 var(--font); white-space: nowrap; cursor: pointer; transition: background .2s, color .2s; }
 .show-seg button:hover { background: rgba(255, 255, 255, 0.06); }
 .show-seg button[aria-pressed="true"] { background: #fff; color: var(--ink); }
+.show-set { display: flex; flex-direction: column; gap: 10px; padding-top: 14px; border-top: 1px solid var(--line-2); }
+.show-set .eyebrow { margin: 0; }
+.show-set-note { margin: 0; font-size: 12.5px; line-height: 1.45; color: rgba(244, 240, 238, 0.66); }
+.show-set-list { margin: 0; padding: 0; list-style: none; counter-reset: song; display: flex; flex-direction: column; }
+.show-set-list li { counter-increment: song; display: grid; grid-template-columns: 26px 1fr; align-items: baseline; gap: 8px; padding: 7px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.06); font: 600 13.5px/1.3 var(--font); color: var(--text); }
+.show-set-list li::before { content: counter(song, decimal-leading-zero); font: 700 10.5px/1 var(--mono, ui-monospace, monospace); letter-spacing: 0.04em; color: var(--coral); font-variant-numeric: tabular-nums; }
+.show-set-list li:last-child { border-bottom: 0; }
+.show-set-src { margin: 0; font-size: 11.5px; line-height: 1.45; color: rgba(244, 240, 238, 0.5); }
+.show-set-src a { color: rgba(244, 240, 238, 0.78); text-decoration: underline; text-underline-offset: 2px; }
 
 @media (max-width: 960px) {
   .stage.has-compare .sections { opacity: 0; pointer-events: none; }
