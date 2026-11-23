@@ -1331,6 +1331,19 @@ input, select, textarea { border-radius: 0; }
 /* the tour's two buttons span the panel, as wide as the numbering row below them */
 .app-side .row-btns:has(> :nth-child(2)) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
 .app-side .row-btns:has(> :nth-child(2)) .btn { min-width: 0; padding: 0 12px; }
+/* A small coral button with its icon in a circle at the end: the circle sits inside the pill,
+   as far from the right edge as from the top and bottom (40 px pill, 24 px circle: 8 px, the 1.5 px border included), never
+   over the edge, and the label keeps its own padding on the left. */
+.btn.btn-sm.btn-coral:has(> svg:last-child:not(.lead)) { padding-right: 6.5px; }
+.btn.btn-sm.btn-coral > svg:last-child:not(.lead) { flex: none; margin-right: 0; }
+/* In the panel's pair: the label left and the circle right in the coral one, the icon and label
+   centred in the other, both the same height, the label cut with an ellipsis rather than
+   pushing the circle out. */
+.app-side .row-btns:has(> :nth-child(2)) { display: flex; flex-wrap: nowrap; }
+.app-side .row-btns:has(> :nth-child(2)) .btn { flex: 1 1 auto; height: 40px; gap: 8px; }
+.app-side .row-btns:has(> :nth-child(2)) .btn.btn-coral:has(> svg:last-child:not(.lead)) { justify-content: space-between; padding-left: 14px; }
+.app-side .row-btns:has(> :nth-child(2)) .btn > svg { flex: none; }
+.app-side .row-btns .btn-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 /* the tour's head: back one step, where the fan is, and fold the panel away */
 .tour-head { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 32px; }
 .th-step { flex: 1; min-width: 0; font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

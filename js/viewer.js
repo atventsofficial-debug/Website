@@ -802,8 +802,8 @@ function paintTour() {
     : step === 2 ? `
       <p>Your seat is marked in coral: <b>${esc(seatText(s))}</b>. Tap it to sit down.</p>
       <div class="row-btns">${t.framed
-        ? `<button class="btn btn-coral btn-sm" type="button" data-tour="seat">Sit in my seat ${icon('i-seat')}</button>`
-        : `<button class="btn btn-coral btn-sm" type="button" data-tour="framecat">Show my category ${icon('i-pin')}</button>`}<button class="btn btn-line btn-sm" type="button" data-tour="again">${icon('i-venue')}Whole venue</button></div>
+        ? `<button class="btn btn-coral btn-sm" type="button" data-tour="seat"><span class="btn-t">Sit in my seat</span>${icon('i-seat')}</button>`
+        : `<button class="btn btn-coral btn-sm" type="button" data-tour="framecat"><span class="btn-t">Show my category</span>${icon('i-pin')}</button>`}<button class="btn btn-line btn-sm" type="button" data-tour="again">${icon('i-venue')}<span class="btn-t">Whole venue</span></button></div>
       ${numberingControls(p, s)}`
       : t.fan ? `
       <p class="fine"><b>${esc(t.fan.name)}</b> sits in ${esc(seatText(seatOf(t.fan.seat) || s))}. They light up green in the crowd.</p>
