@@ -3066,3 +3066,14 @@ html.lang-swap body { opacity: .35; }
   .venue-trip { margin-top: var(--s3); }
   .venue-trip .btn { flex: 1 1 100%; justify-content: center; }
 }
+
+/* My 3D passes: sign in first (js/account.js) */
+.me-box { display: flex; flex-direction: column; gap: var(--s4); max-width: 560px; padding: var(--s6); }
+.me-box form { display: flex; flex-direction: column; gap: var(--s4); }
+.me-box .sso-btn { width: 100%; }
+.me-box .uf-or { margin: 0; color: var(--muted); text-align: center; font-size: 14px; }
+.me-box .fine { color: var(--muted); }
+.me-idle { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 12px; background: rgba(255, 90, 31, .1); border: 1px solid rgba(255, 90, 31, .35); font-size: 14px; }
+.me-idle svg { width: 18px; height: 18px; flex: none; margin-top: 2px; }
+.me-line { display: block; margin-top: 8px; color: var(--muted); }
+.me-line b { color: var(--fg, #f2f2f2); font-weight: 600; }

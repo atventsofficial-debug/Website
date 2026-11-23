@@ -208,8 +208,10 @@ export class PayStore extends LocalStore {
   // the page (without it, a card payment goes to Midtrans' payment page), whether the pass
   // email is switched on, the ways to pay switched on (js/paymethods.js), and the client ids
   // for "Continue with Google / Microsoft" (js/sso.js).
-  constructor({ sandbox = false, clientKey = '', mail = false, methods = null, sso = null, staging = false, team = false, plusOn = false } = {}) {
+  constructor({ sandbox = false, clientKey = '', mail = false, methods = null, sso = null, staging = false, team = false, plusOn = false, account = null } = {}) {
     super();
+    // Signing in to My 3D passes (worker/account.mjs): by email code, by Google, or neither.
+    this.account = account && typeof account === 'object' ? { code: !!account.code, google: !!account.google } : null;
     // 3D Pass Plus on sale (PASS_PLUS in the dashboard); off, the page shows it as coming soon.
     this.plusOn = !!plusOn;
     // The staging copy (wrangler.jsonc, env.staging), and whether the team sign-in is on.
@@ -227,6 +229,11 @@ export class PayStore extends LocalStore {
   // A member of the team (js/team.js): the pass opens without paying.
   get teamKey() { return this.team ? teamKey() : null; }
   teamPass(d) { return call('api/team/passes', { method: 'POST', body: d, headers: { 'x-team-key': this.teamKey?.key || '', 'x-device': deviceId() } }); }
+  // My 3D passes (js/account.js): a code to the email, then the code or Google's token for a
+  // fan key, which lists the email's paid passes.
+  meCode(email) { return call('api/me/code', { method: 'POST', body: { email }, headers: { 'x-device': deviceId() } }); }
+  meSession(d) { return call('api/me/session', { method: 'POST', body: d, headers: { 'x-device': deviceId() } }); }
+  mePasses(key) { return call('api/me/passes', { headers: { 'x-fan-key': key, 'x-device': deviceId() } }); }
   // Another way to pay: the server has Midtrans close this order first.
   cancelPay(id, token) { return call(`api/passes/${encodeURIComponent(id)}/cancel`, { method: 'POST', headers: { 'x-pass-token': token, 'x-device': deviceId() } }); }
   // Seat mates: undefined reads, a profile shows it, null takes it down. A pass from the

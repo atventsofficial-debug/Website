@@ -73,13 +73,21 @@ export async function useCode(env, id, device, code, now = Date.now()) {
     return row.tries + 1 >= CODE_TRIES ? 'expired' : 'wrong';
   }
   await d.prepare('DELETE FROM pass_codes WHERE order_id = ?').bind(id).run();
+  await takeOver(env, id, device, now);
+  return 'ok';
+}
+
+// Lets this device in, signing out the least recently used one when the pass is full: for a
+// device that proved it holds the buyer's email (the code above, or signing in, account.mjs).
+export async function takeOver(env, id, device, now = Date.now()) {
+  const d = await db(env);
+  if (!d) return;
   // Keep the newest MAX_DEVICES - 1 others, then this one.
   await d.prepare(`DELETE FROM pass_devices WHERE order_id = ?1 AND device <> ?2 AND device NOT IN (
     SELECT device FROM pass_devices WHERE order_id = ?1 AND device <> ?2 ORDER BY seen_at DESC LIMIT ?3)`)
     .bind(id, device, MAX_DEVICES - 1).run();
   await d.prepare(`INSERT INTO pass_devices (order_id, device, added_at, seen_at) VALUES (?1, ?2, ?3, ?3)
     ON CONFLICT (order_id, device) DO UPDATE SET seen_at = ?3`).bind(id, device, now).run();
-  return 'ok';
 }
 
 // The buyer's email as the code sheet shows it: r***@example.com.
