@@ -15,7 +15,7 @@ import { signIn, PROVIDERS } from './sso.js';
 import { PAY_GROUPS, PAY_METHODS, payMethod, payDetails, wayName } from './paymethods.js';
 import { loadSnap, embedSnap, hideSnap } from './snap.js';
 import { FAQ_FANS, faqHtml } from './content.js';
-import { $, $$, esc, icon, state, QUALITY, entranceTicket, share, copyText, bindSubscribe, toast, pageToTop, countdownHtml, tickCountdowns } from './ui.js';
+import { $, $$, esc, icon, state, QUALITY, entranceTicket, share, copyText, bindSubscribe, toast, pageToTop, countdownHtml, tickCountdowns, spotStats } from './ui.js';
 
 const DAY = 864e5;
 const cityCode = e => CITY[placeOf(e).city]?.code || '';
