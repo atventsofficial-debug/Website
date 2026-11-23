@@ -239,3 +239,34 @@ export function codeEmail({ order, concert, code, minutes }) {
 </td></tr></table></td></tr></table></body></html>`;
   return { subject, html, text };
 }
+
+// The code that signs a fan in to My 3D passes (account.mjs), on any device.
+export function signInEmail({ name, code, minutes }) {
+  const firstName = String(name || '').split(' ')[0] || 'there';
+  const subject = `${code} is your Atvents sign-in code`;
+  const text = [
+    `Hi ${firstName},`,
+    '',
+    'Someone asked to sign in to My 3D passes on Atvents with this email. The code is:',
+    '',
+    code,
+    '',
+    `It works for ${minutes} minutes, on the device that asked. Signed in, your 3D passes open there: each opens on two devices at a time, and the one you used least recently is signed out.`,
+    '',
+    'If that was not you, ignore this email and do not share the code. Your passes stay as they are.',
+    '',
+    'Atvents',
+  ].join('\n');
+  const html = `<!DOCTYPE html><html><body style="margin:0;background:#0c0c0c;color:#f2f2f2;font-family:Helvetica,Arial,sans-serif">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#0c0c0c"><tr><td align="center" style="padding:32px 16px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px">
+<tr><td style="font-size:15px;line-height:1.6;color:#f2f2f2">
+<p style="margin:0 0 16px">Hi ${esc(firstName)},</p>
+<p style="margin:0 0 16px">Someone asked to sign in to <b>My 3D passes</b> on Atvents with this email. The code is:</p>
+<p style="margin:0 0 16px;font-size:34px;font-weight:700;letter-spacing:8px;color:#ff5a1f">${esc(code)}</p>
+<p style="margin:0 0 16px">It works for ${minutes} minutes, on the device that asked. Signed in, your 3D passes open there: each opens on two devices at a time, and the one you used least recently is signed out.</p>
+<p style="margin:0 0 16px;color:#9a9a9a">If that was not you, ignore this email and do not share the code. Your passes stay as they are.</p>
+<p style="margin:0;color:#9a9a9a">Atvents</p>
+</td></tr></table></td></tr></table></body></html>`;
+  return { subject, html, text };
+}

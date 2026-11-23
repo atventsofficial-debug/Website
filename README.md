@@ -127,6 +127,12 @@ Switching it on, in the Cloudflare dashboard (Workers, `website`, Settings, Vari
 
 Run it locally with `npm run dev` (`wrangler dev`, with the key in `.dev.vars`, which git ignores).
 
+## Signing in to My 3D passes
+
+With live payments, **My 3D passes** (#passes) shows nothing until the fan signs in (js/account.js, worker/account.mjs): with Google (the token is checked on the Worker, as for the team) or with a 6-digit code sent to the email they paid with. Only an email with a paid order in the order book can sign in; any other is told it has no paid 3D pass. Signed in, every paid pass of that email comes to the device, wherever it was bought, and opens there (a device that signs in takes a pass's place the way the device code does, signing out the one used least recently).
+
+The fan key lasts 30 days, but after **30 minutes with no tap, click, key or scroll** on the site the fan is signed out, and the passes that signing in brought leave the device again. Passes bought on the device stay, but stay hidden until the fan signs in. It needs the order book (DB) and email (RESEND_API_KEY) for the code, and GOOGLE_CLIENT_ID for Google. Endpoints: `POST /api/me/code`, `POST /api/me/session`, `GET /api/me/passes`.
+
 ## The team
 
 The owner and the people they name open every 3D pass without paying, to watch the live site and check changes from any phone or laptop (`worker/team.mjs`, `js/team.js`).

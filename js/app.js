@@ -5,6 +5,7 @@ import { LocalStore, PayStore } from './store.js';
 import { bindBuyLinks, importPass, passes, refresh } from './passes.js';
 import { bindSoldOut } from './soldpop.js';
 import { formatFee, PAYMENT_ID, PLUS_FEE, UPGRADE_FEE } from './rules.js';
+import { watchIdle } from './account.js';
 import { stopEventHero, renderHome, renderConcerts, renderEvent, renderUnlock, renderPaid, renderFootage, renderPasses, renderFaq, bindPassButtons, navCount, bindNavSearch } from './pages.js';
 import { startHero, stopHero } from './hero.js';
 import { renderPartners } from './partners.js';
@@ -81,6 +82,13 @@ async function boot() {
   if ($('#foot-alert')) bindSubscribe($('#foot-alert'), { kind: 'newsletter', done: 'You’re on the list. The next big concert lands in your inbox.' }, $('#foot-alert-msg'));
   bindViewer();
   navCount();
+  // Signed in to My 3D passes, or out (by hand, or idle: js/account.js).
+  if (state.store.live && state.store.account) watchIdle();
+  on('me', () => {
+    navCount();
+    if (state.view === 'passes') renderPasses();
+    if (state.view === 'unlock' && location.hash === '#unlock') renderUnlock();
+  });
   on('passes', () => {
     navCount();
     if (state.view === 'passes') renderPasses();

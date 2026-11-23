@@ -1,6 +1,30 @@
 // Indonesian lines for js/i18n.js, keyed by the English text as it shows on the page.
 // Generated from the translation sheet; names, venues and film titles stay as they are.
 export const EXACT = {
+"Sign in with the email you paid with. Your 3D passes open on this device, wherever you bought them.": "Masuk dengan email yang kamu pakai saat membayar. 3D pass-mu terbuka di perangkat ini, di mana pun kamu membelinya.",
+"Sign in to your 3D passes": "Masuk ke 3D pass-mu",
+"Buyers only": "Khusus pembeli",
+"or with a code to your email": "atau dengan kode ke emailmu",
+"Email you paid with": "Email yang dipakai saat membayar",
+"6-digit code from the email": "Kode 6 digit dari email",
+"Send me a code": "Kirim kode",
+"Sign in": "Masuk",
+"Send a new code": "Kirim kode baru",
+"No pass yet?": "Belum punya pass?",
+"Unlock a seat view": "Buka seat view",
+". Only an email that has paid for a 3D pass can sign in.": ". Hanya email yang sudah membayar 3D pass yang bisa masuk.",
+"You were signed out after 30 minutes without activity. Sign in again to open your passes.": "Kamu otomatis keluar setelah 30 menit tanpa aktivitas. Masuk lagi untuk membuka pass-mu.",
+"This email has no paid 3D pass. Sign in with the email you paid with.": "Email ini belum pernah membeli 3D pass. Masuk dengan email yang kamu pakai saat membayar.",
+"Your browser blocked the Google window. Allow pop-ups for this site and try again.": "Browsermu memblokir jendela Google. Izinkan pop-up untuk situs ini lalu coba lagi.",
+"Google did not sign you in. Please try again.": "Google belum memasukkanmu. Coba lagi.",
+"That code has run out. Ask for a new one.": "Kode itu sudah kedaluwarsa. Minta kode baru.",
+"That code is not right. Check the email and try again.": "Kodenya salah. Cek emailnya lalu coba lagi.",
+"Type the email you paid with.": "Ketik email yang kamu pakai saat membayar.",
+"Signed in. Your 3D passes are on this device.": "Berhasil masuk. 3D pass-mu sudah ada di perangkat ini.",
+"Signed out. Your passes are hidden on this device.": "Kamu sudah keluar. Pass-mu disembunyikan di perangkat ini.",
+"No paid 3D pass for this email yet.": "Belum ada 3D pass berbayar untuk email ini.",
+"Signed in as": "Masuk sebagai",
+"Sign out": "Keluar",
 "Hotels near the venue": "Hotel dekat venue",
 "Coming from out of town? Book a room or a flight on tiket.com, and find things to do on Klook.": "Datang dari luar kota? Pesan kamar atau tiket pesawat di tiket.com, dan cari aktivitas seru di Klook.",
 "What this browser stored. Paid passes and the team are on the Worker (Cloudflare).": "Data yang tersimpan di browser ini. Pass berbayar dan akses tim ada di Worker (Cloudflare).",
@@ -984,6 +1008,8 @@ const DAY = '(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)';
 // [regex, replacement]. A string replacement has its $n groups passed through the date words;
 // a function gets the match as String.replace gives it.
 export const PATTERNS = [
+  [/^Code sent to (\S+)\. It works for (\d+) minutes\.$/, 'Kode dikirim ke $1. Berlaku $2 menit.'],
+  [/^A code was just sent\. Wait (\d+) seconds to ask for another\.$/, 'Kode baru saja dikirim. Tunggu $1 detik untuk minta lagi.'],
   [/^(\d+) m from outside$/, "$1 m dari luar"],
   [/^([\d.]+ k?m) to the venue$/, "$1 ke venue"],
   [/^([\d.]+ k?m) · (\d+) min$/, "$1 · $2 mnt"],

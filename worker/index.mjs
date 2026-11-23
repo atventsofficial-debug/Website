@@ -38,7 +38,8 @@ import { deviceOf, admit, newCode, useCode, maskEmail, CODE_MINUTES } from './de
 import { hasFans, fansList, catView, forgetFans, saveFan, dropFan, dropConcert, KEEP_AFTER } from './fans.mjs';
 import { checkFan, waLinksFor, waOf, SEAT_TAKEN } from '../js/fanrules.js';
 import { igPicture } from './igcheck.mjs';
-import { mailerOf, passEmail, codeEmail } from './mail.mjs';
+import { mailerOf, passEmail, codeEmail, signInEmail } from './mail.mjs';
+import { emailOf, paidOrders, newSignCode, useSignCode, openAll, signFan, readFan, SIGN_MINUTES } from './account.mjs';
 import { googleEmail, onTeam, signTeam, readTeam, teamOf } from './team.mjs';
 
 const MAX_BODY = 4096, NOTIFY_BODY = 16384;
@@ -83,6 +84,9 @@ export default {
       if (path === '/api/team/session') return method === 'POST' ? await teamSession(request, env, url) : notAllowed('POST');
       if (path === '/api/team/me') return method === 'GET' ? await teamMe(request, env) : notAllowed('GET');
       if (path === '/api/team/passes') return method === 'POST' ? await teamPass(request, env, url) : notAllowed('POST');
+      if (path === '/api/me/code') return method === 'POST' ? await meCode(request, env, url) : notAllowed('POST');
+      if (path === '/api/me/session') return method === 'POST' ? await meSession(request, env, url) : notAllowed('POST');
+      if (path === '/api/me/passes') return method === 'GET' ? await mePasses(request, env) : notAllowed('GET');
       if (path.startsWith('/api/')) return fail(404, 'Not found');
     } catch (err) {
       // Midtrans' own message, never the key: it is only ever in the Authorization header.
@@ -122,6 +126,8 @@ function config(env) {
     // The staging copy: the page always takes Sandbox payments, and says it is staging.
     ...(env.STAGING ? { staging: true } : {}),
     // The team sign-in on #admin (team.mjs): on once there is a list and Google's client id.
+    // Signing in to My 3D passes (account.mjs): with the order book, by email code and/or Google.
+    ...(hasOrders(env) && (mailerOf(env) || clientsOf({ google: env.GOOGLE_CLIENT_ID }).google) ? { account: { code: !!mailerOf(env), google: !!clientsOf({ google: env.GOOGLE_CLIENT_ID }).google } } : {}),
     ...(teamOf(env).size > 0 && clientsOf({ google: env.GOOGLE_CLIENT_ID }).google && hasOrders(env) ? { team: true } : {}),
   });
 }
@@ -570,6 +576,86 @@ async function teamPass(request, env, url) {
     createdAt: new Date(createdAt).toISOString(), expiresAt: new Date(createdAt + PAY_WINDOW).toISOString(),
   });
 }
+
+// ---------------------------------------------------------------- My 3D passes (account.mjs)
+
+const NOT_BOUGHT = 'This email has no paid 3D pass. Sign in with the email you paid with.';
+
+// The 6-digit code to sign in with, to an email that has a paid pass. Any other is refused.
+async function meCode(request, env, url) {
+  const pay = paymentsOf(env), mailer = mailerOf(env);
+  if (!pay || !hasOrders(env) || !mailer) return fail(503, 'Signing in by email is not switched on.');
+  const origin = request.headers.get('origin');
+  if (origin && origin !== url.origin) return fail(403, 'Forbidden');
+  if (await tooMany(env, 'PAY_LIMIT', request)) return slowDown();
+  const device = await deviceOf(request);
+  if (!device) return fail(400, 'Reload the page and try again.');
+  const d = await readJson(request, 2048);
+  if (d instanceof Response) return d;
+  const email = emailOf(d.email);
+  if (!email) return fail(400, 'Type the email you paid with.', { field: 'email' });
+  const orders = await paidOrders(env, email);
+  if (!orders.length) return fail(404, NOT_BOUGHT, { field: 'email', code: 'not-bought' });
+  const c = await newSignCode(env, email, device);
+  if (c.wait) return fail(429, `A code was just sent. Wait ${c.wait} seconds to ask for another.`, {}, { 'retry-after': String(c.wait) });
+  await mailer.send({ to: orders.at(-1).email, ...signInEmail({ name: orders.at(-1).name, code: c.code, minutes: SIGN_MINUTES }) });
+  console.log('sign-in code sent');
+  return json(200, { ok: true, sent: true, email: maskEmail(email), minutes: SIGN_MINUTES });
+}
+
+// Signing in: the email and its code, or Google's ID token (checked here, team.mjs). Only an
+// email with a paid pass gets a fan key; its passes open on this device and come back.
+async function meSession(request, env, url) {
+  const pay = paymentsOf(env);
+  if (!pay || !hasOrders(env)) return fail(503, 'Signing in is not switched on.');
+  const origin = request.headers.get('origin');
+  if (origin && origin !== url.origin) return fail(403, 'Forbidden');
+  if (await tooMany(env, 'PAY_LIMIT', request)) return slowDown();
+  const device = await deviceOf(request);
+  if (!device) return fail(400, 'Reload the page and try again.');
+  const d = await readJson(request, 8192);
+  if (d instanceof Response) return d;
+  let email = '';
+  if (d.idToken) {
+    const google = clientsOf({ google: env.GOOGLE_CLIENT_ID }).google;
+    if (!google) return fail(503, 'Signing in with Google is not switched on.');
+    email = emailOf(await googleEmail(d.idToken, google));
+    if (!email) return fail(403, 'Google did not confirm this account. Please try again.');
+  } else {
+    email = emailOf(d.email);
+    if (!email) return fail(400, 'Type the email you paid with.', { field: 'email' });
+    const r = await useSignCode(env, email, device, line(d.code).replace(/\s+/g, ''));
+    if (r === 'wrong') return fail(400, 'That code is not right. Check the email and try again.', { field: 'code' });
+    if (r !== 'ok') return fail(400, 'That code has run out. Ask for a new one.', { field: 'code', expired: true });
+  }
+  const orders = await paidOrders(env, email);
+  if (!orders.length) {
+    console.log('sign-in refused: no paid pass');
+    return fail(403, NOT_BOUGHT, { code: 'not-bought' });
+  }
+  await openAll(env, orders, device);
+  console.log('fan sign-in');
+  return json(200, { ...(await signFan(pay.key, email)), passes: await passKeys(pay, orders) });
+}
+
+// Signed in: the email's paid passes, each with its key, open on this device. A pass paid
+// since signing in comes along too.
+async function mePasses(request, env) {
+  const pay = paymentsOf(env);
+  if (!pay || !hasOrders(env)) return fail(503, 'Signing in is not switched on.');
+  if (await tooMany(env, 'STATUS_LIMIT', request)) return slowDown();
+  const who = await readFan(pay.key, request.headers.get('x-fan-key'));
+  if (!who) return fail(401, 'Sign in again.');
+  const device = await deviceOf(request);
+  if (!device) return fail(400, 'Reload the page and try again.');
+  const orders = await paidOrders(env, who.email);
+  await openAll(env, orders, device);
+  return json(200, { ...who, passes: await passKeys(pay, orders) });
+}
+
+const passKeys = (pay, orders) => Promise.all(orders.map(async o => ({
+  id: o.id, eventId: o.event_id, token: await signPass(pay.key, { id: o.id, eventId: o.event_id, cat: o.cat, seat: o.seat, createdAt: o.created_at, plan: o.plan, amount: o.amount }),
+})));
 
 // Midtrans adds ?order_id=… to the finish address. The page takes it from there.
 function backFromPayment(url) {

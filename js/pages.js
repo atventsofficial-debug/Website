@@ -15,6 +15,7 @@ import { signIn, PROVIDERS } from './sso.js';
 import { PAY_GROUPS, PAY_METHODS, payMethod, payDetails, wayName } from './paymethods.js';
 import { loadSnap, embedSnap, hideSnap } from './snap.js';
 import { FAQ_FANS, faqHtml } from './content.js';
+import { accountOn, me, meNews, isMine, sendSignCode, signInWithCode, signInWithGoogle, signOut, refreshMe } from './account.js';
 import { $, $$, esc, icon, state, QUALITY, entranceTicket, share, copyText, bindSubscribe, toast, pageToTop, countdownHtml, tickCountdowns, spotStats } from './ui.js';
 
 const DAY = 864e5;
@@ -769,7 +770,8 @@ export function renderUnlock(eventId, { plan = '', upgrade = '' } = {}) {
     // match ever shows up in this list.
     const list = onSale().filter(e => typeOf(e) === 'concert');
     // Shows still to come first, then the ones that have taken place.
-    const mine = passes.all().filter(p => p.status === 'confirmed' && isConcert(p.eventId))
+    const who = accountOn() ? me() : null;
+    const mine = (accountOn() && !who ? [] : passes.all()).filter(p => p.status === 'confirmed' && isConcert(p.eventId) && (!who || isMine(who, p)))
       .sort((a, b) => !upcoming(eventMeta(a.eventId)) - !upcoming(eventMeta(b.eventId)));
     $('#uf-pick').innerHTML = `
       <div class="uf-desk"><div class="uf-head"><h2>Choose your concert</h2><small>Then your seat, then pay</small></div>
@@ -1654,15 +1656,102 @@ const otpForm = p => (p.canMail === false
       <button class="btn btn-line btn-sm" type="submit">Open here</button>
     </form>`);
 
+// With live payments, My 3D passes is for the buyer signed in (js/account.js): Google, or a
+// code sent to the email they paid with. An email with no paid pass is refused.
+const meForm = { email: '', sent: false };
+function renderSignIn() {
+  const a = state.store.account, idle = meNews.idle;
+  meNews.idle = false;
+  $('#passes-note').textContent = 'Sign in with the email you paid with. Your 3D passes open on this device, wherever you bought them.';
+  $('#passes-body').innerHTML = `<div class="me-box panel-box">
+    <div class="uf-head"><h2>Sign in to your 3D passes</h2><small>Buyers only</small></div>
+    ${idle ? `<p class="me-idle" role="status">${icon('i-eye')}<span>You were signed out after ${IDLE_TEXT} without activity. Sign in again to open your passes.</span></p>` : ''}
+    ${a.google && state.store.sso.google ? `<button class="sso-btn" type="button" id="me-google"><svg class="sso-logo"><use href="#i-google"/></svg><span>Continue with Google</span></button>` : ''}
+    ${a.code ? `${a.google && state.store.sso.google ? '<p class="uf-or">or with a code to your email</p>' : ''}
+    <form id="me-form" novalidate>
+      <label class="uf-field">Email you paid with<input name="email" type="email" required autocomplete="email" maxlength="160" placeholder="you@example.com" value="${esc(meForm.email)}"></label>
+      <label class="uf-field" id="me-code-field" ${meForm.sent ? '' : 'hidden'}>6-digit code from the email<input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="123456"></label>
+      <p class="form-error" id="me-error" role="alert" hidden></p>
+      <div class="row-btns">
+        <button class="btn btn-coral" type="submit" id="me-go">${meForm.sent ? 'Sign in' : 'Send me a code'} ${icon('i-arrow')}</button>
+        <button class="btn btn-line" type="button" id="me-resend" ${meForm.sent ? '' : 'hidden'}>Send a new code</button>
+      </div>
+    </form>` : ''}
+    <p class="fine">No pass yet? <a class="u" href="#unlock">Unlock a seat view</a>. Only an email that has paid for a 3D pass can sign in.</p>
+  </div>`;
+}
+const IDLE_TEXT = '30 minutes';
+const meError = (msg, field) => {
+  const el = $('#me-error');
+  if (!el) return toast(msg);
+  el.textContent = msg; el.hidden = !msg;
+  if (field) $(`#me-form [name="${field}"]`)?.focus();
+};
+let meBound = false;
+function bindSignIn() {
+  if (meBound) return;
+  meBound = true;
+  const signedIn = () => { meForm.email = ''; meForm.sent = false; toast('Signed in. Your 3D passes are on this device.'); renderPasses({ check: true }); };
+  const failed = e => {
+    if (e?.code === 'not-bought') return meError('This email has no paid 3D pass. Sign in with the email you paid with.', 'email');
+    if (e?.reason === 'blocked') return meError('Your browser blocked the Google window. Allow pop-ups for this site and try again.');
+    if (e?.reason === 'failed') return meError('Google did not sign you in. Please try again.');
+    if (e?.expired) { meForm.sent = false; renderSignIn(); return meError('That code has run out. Ask for a new one.'); }
+    return meError(e?.status === 429 && !e.message ? 'Too many tries. Please wait a minute.' : e?.message || 'That did not work. Please try again.', e?.field);
+  };
+  const ask = async btn => {
+    const email = $('#me-form').email.value.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return meError('Type the email you paid with.', 'email');
+    meForm.email = email;
+    btn.disabled = true;
+    try {
+      const r = await sendSignCode(email);
+      meForm.sent = true;
+      renderSignIn();
+      $('#me-form').code.focus();
+      toast(`Code sent to ${r.email}. It works for ${r.minutes} minutes.`);
+    } catch (e) { btn.disabled = false; failed(e); }
+  };
+  document.addEventListener('submit', async ev => {
+    if (ev.target.id !== 'me-form') return;
+    ev.preventDefault();
+    const form = ev.target, btn = $('#me-go');
+    meError('');
+    if (!meForm.sent || form.email.value.trim() !== meForm.email) { meForm.sent = false; return ask(btn); }
+    const code = form.code.value.replace(/\s+/g, '');
+    if (!/^\d{6}$/.test(code)) return meError('Type the 6-digit code from the email.', 'code');
+    btn.disabled = true;
+    try { await signInWithCode(meForm.email, code); signedIn(); } catch (e) { btn.disabled = false; failed(e); }
+  });
+  document.addEventListener('click', async ev => {
+    if (ev.target.closest('#me-resend')) { meError(''); return ask(ev.target.closest('#me-resend')); }
+    if (ev.target.closest('#me-out')) { signOut(); toast('Signed out. Your passes are hidden on this device.'); return; }
+    const g = ev.target.closest('#me-google');
+    if (!g) return;
+    meError('');
+    g.disabled = true;
+    try { await signInWithGoogle(); signedIn(); } catch (e) { failed(e); }
+    g.disabled = false;
+  });
+}
+
 export function renderPasses({ check = false } = {}) {
+  const m = accountOn() ? me() : null;
+  if (accountOn()) {
+    bindSignIn();
+    if (!m) { renderSignIn(); return; }
+    // A pass paid since signing in, on another device, comes along.
+    if (check) refreshMe();
+  }
   const starts = p => { const e = eventMeta(p.eventId); return e ? startOf(e) : Infinity; };
   const past = p => !upcoming(eventMeta(p.eventId));
-  const list = passes.all().filter(p => eventMeta(p.eventId))
+  const list = passes.all().filter(p => eventMeta(p.eventId) && (!m || isMine(m, p)))
     .sort((a, b) => past(a) - past(b) || (past(a) ? starts(b) - starts(a) : starts(a) - starts(b)));
   const open = list.filter(p => p.status !== 'rejected').length;
   $('#passes-note').textContent = list.length
     ? `${plural(list.length, 'pass', 'passes')} on this device${open < list.length ? `, ${open} open` : ''}. Each opens the seat views of its concert.`
-    : 'Passes you unlock appear here, on the device you unlocked them on.';
+    : m ? 'No paid 3D pass for this email yet.' : 'Passes you unlock appear here, on the device you unlocked them on.';
+  if (m) $('#passes-note').insertAdjacentHTML('beforeend', ` <span class="me-line">Signed in as <b>${esc(m.email)}</b> · <button class="link" type="button" id="me-out">Sign out</button></span>`);
   $('#passes-body').innerHTML = list.length
     ? `<div class="pass-grid">${list.map(p => passCard(p)).join('')}</div>`
     : `<div class="empty-state"><h3>No 3D passes yet.</h3><p>Pick your concert and your seat, pay ${formatFee()}, and the view from your seat opens here.</p><div class="row-btns"><a class="btn btn-coral" href="#unlock">Unlock my seat view ${icon('i-arrow')}</a><a class="btn btn-line" href="#concerts">Find a concert</a></div></div>`;
@@ -1749,7 +1838,8 @@ export function bindPassButtons() {
 }
 
 export function navCount() {
-  const n = passes.all().filter(p => p.status !== 'rejected' && eventMeta(p.eventId)).length;
+  const m = accountOn() ? me() : null;
+  const n = accountOn() && !m ? 0 : passes.all().filter(p => p.status !== 'rejected' && eventMeta(p.eventId) && (!m || isMine(m, p))).length;
   $$('[data-count="passes"]').forEach(b => { b.hidden = !n; b.textContent = n; });
 }
 
