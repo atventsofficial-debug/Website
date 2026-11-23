@@ -32,10 +32,12 @@ const CODES = `CREATE TABLE IF NOT EXISTS sign_codes (
   tries INTEGER NOT NULL DEFAULT 0
 )`;
 const made = new WeakMap();
+// Finding an email's orders reads only its own rows, not the whole book (D1 counts rows read).
+const BY_EMAIL = 'CREATE INDEX IF NOT EXISTS orders_by_email ON orders (lower(email), status)';
 async function book(env) {
   const d = await db(env);
   if (!d) return null;
-  if (!made.has(d)) made.set(d, d.prepare(CODES).run().catch(err => { made.delete(d); throw err; }));
+  if (!made.has(d)) made.set(d, Promise.all([d.prepare(CODES).run(), d.prepare(BY_EMAIL).run()]).catch(err => { made.delete(d); throw err; }));
   await made.get(d);
   return d;
 }
