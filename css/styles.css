@@ -3059,3 +3059,10 @@ html.lang-swap body { opacity: .35; }
 /* Hotels and flights on tiket.com, under Getting there on the event page (affiliate links). */
 .venue-trip { margin-top: var(--s5); flex-wrap: wrap; }
 .venue-trip-note { margin: 8px 0 0; font-size: 13px; color: rgba(244, 240, 238, 0.6); }
+/* phones: the seller's logo above its note, and the travel links full width and equal */
+@media (max-width: 640px) {
+  .ev-official.has-logo { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .ev-official.has-logo > span { padding-left: 0; border-left: 0; }
+  .venue-trip { margin-top: var(--s3); }
+  .venue-trip .btn { flex: 1 1 100%; justify-content: center; }
+}
