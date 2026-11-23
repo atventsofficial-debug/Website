@@ -28,15 +28,19 @@ export function securityHeaders(root, isHttps, { midtrans = false, analytics = f
   const gt = analytics ? ' https://*.googletagmanager.com' : '';
   const ga = analytics ? ' https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com' : '';
   const gaImg = analytics ? ' https://*.google-analytics.com https://*.googletagmanager.com' : '';
+  // Cloudflare Web Analytics, switched on for the site in the dashboard: Cloudflare adds its
+  // beacon to the page it serves, and the beacon reports to cloudflareinsights.com. Cookieless.
+  const cf = analytics ? ' https://static.cloudflareinsights.com' : '';
+  const cfReport = analytics ? ' https://cloudflareinsights.com' : '';
   const csp = [
     "default-src 'self'",
-    `script-src 'self' ${mapHash} ${cdn}${pay ? ` ${pay}` : ''}${gt}`,
+    `script-src 'self' ${mapHash} ${cdn}${pay ? ` ${pay}` : ''}${gt}${cf}`,
     "style-src 'self' 'unsafe-inline'",
     "font-src 'self'",
     `img-src 'self' data: blob:${qr}${gaImg}`,
     // The story video plays in its sheet straight from the recording in memory (js/story.js).
     "media-src 'self' blob:",
-    `connect-src 'self'${ga}`,
+    `connect-src 'self'${ga}${cfReport}`,
     `frame-src ${pay || "'none'"}`,
     "object-src 'none'",
     "base-uri 'self'",
