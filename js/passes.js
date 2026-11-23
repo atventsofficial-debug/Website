@@ -37,6 +37,20 @@ export function buyUrl(e, sub = subFor(e.id)) {
     .replace('{src}', encodeURIComponent(campaign().src || 'site')).replace('{event}', encodeURIComponent(e.id));
 }
 
+// Hotels and flights on tiket.com for the trip to a concert, through the same affiliate
+// link. Not a ticket sale, so no click id: the sub id names the kind of trip and the concert,
+// and these links never open the claim form. Empty affiliate link: plain tiket.com pages.
+export const TRAVEL = {
+  hotel: { label: 'Hotels near the venue', url: 'https://www.tiket.com/id-id/hotel' },
+  flight: { label: 'Flights to Jakarta', url: 'https://www.tiket.com/id-id/pesawat' },
+};
+export function travelUrl(e, kind) {
+  const t = TRAVEL[kind], tpl = state.cfg.affiliateLink;
+  if (!t || !validAffiliate(tpl)) return t?.url || '';
+  return tpl.replace('{url}', encodeURIComponent(t.url)).replace('{sub}', `${kind}-${e.id}`.slice(0, 40))
+    .replace('{src}', encodeURIComponent(campaign().src || 'site')).replace('{event}', encodeURIComponent(e.id));
+}
+
 // Attributes for a link out to tiket.com. `sponsored` tells search engines it is an affiliate link.
 // A link to another seller carries no click id: no click, no claim form after it. Every link
 // names its concert (and the category, from a category ticket), so the sold-out note

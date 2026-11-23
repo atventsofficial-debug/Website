@@ -3050,3 +3050,7 @@ html.lang-swap body { opacity: .35; }
   .access h2 { font-size: 20px; }
   .stage.access-open .sections { opacity: 0; pointer-events: none; }
 }
+
+/* Hotels and flights on tiket.com, under Getting there on the event page (affiliate links). */
+.venue-trip { margin-top: var(--s5); flex-wrap: wrap; }
+.venue-trip-note { margin: 8px 0 0; font-size: 13px; color: rgba(244, 240, 238, 0.6); }
