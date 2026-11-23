@@ -1659,16 +1659,21 @@ const otpForm = p => (p.canMail === false
 // With live payments, My 3D passes is for the buyer signed in (js/account.js): Google, or a
 // code sent to the email they paid with. An email with no paid pass is refused.
 const meForm = { email: '', sent: false };
-function renderSignIn() {
-  const a = state.store.account, idle = meNews.idle;
+// Three looks for the sign-in, to choose from: ?login=1, 2 or 3 in the address (kept on this
+// device), or the plain box without one.
+const LOGIN_LOOK = 'atvents:login-look';
+function loginLook() {
+  const q = new URLSearchParams(location.search).get('login');
+  try { if (q) localStorage.setItem(LOGIN_LOOK, q); return q || localStorage.getItem(LOGIN_LOOK) || ''; } catch { return q || ''; }
+}
+function signInParts() {
+  const a = state.store.account, google = a.google && state.store.sso.google, idle = meNews.idle;
   meNews.idle = false;
-  $('#passes-note').textContent = 'Sign in with the email you paid with. Your 3D passes open on this device, wherever you bought them.';
-  $('#passes-body').innerHTML = `<div class="me-box panel-box">
-    <div class="uf-head"><h2>Sign in to your 3D passes</h2><small>Buyers only</small></div>
-    ${idle ? `<p class="me-idle" role="status">${icon('i-eye')}<span>You were signed out after ${IDLE_TEXT} without activity. Sign in again to open your passes.</span></p>` : ''}
-    ${a.google && state.store.sso.google ? `<button class="sso-btn" type="button" id="me-google"><svg class="sso-logo"><use href="#i-google"/></svg><span>Continue with Google</span></button>` : ''}
-    ${a.code ? `${a.google && state.store.sso.google ? '<p class="uf-or">or with a code to your email</p>' : ''}
-    <form id="me-form" novalidate>
+  return {
+    idle: idle ? `<p class="me-idle" role="status">${icon('i-clock')}<span>You were signed out after ${IDLE_TEXT} without activity. Sign in again to open your passes.</span></p>` : '',
+    google: google ? `<button class="sso-btn" type="button" id="me-google"><svg class="sso-logo"><use href="#i-google"/></svg><span>Continue with Google</span></button>` : '',
+    or: google && a.code ? '<p class="uf-or me-or"><span>or with a code to your email</span></p>' : '',
+    form: a.code ? `<form id="me-form" novalidate>
       <label class="uf-field">Email you paid with<input name="email" type="email" required autocomplete="email" maxlength="160" placeholder="you@example.com" value="${esc(meForm.email)}"></label>
       <label class="uf-field" id="me-code-field" ${meForm.sent ? '' : 'hidden'}>6-digit code from the email<input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="123456"></label>
       <p class="form-error" id="me-error" role="alert" hidden></p>
@@ -1676,9 +1681,49 @@ function renderSignIn() {
         <button class="btn btn-coral" type="submit" id="me-go">${meForm.sent ? 'Sign in' : 'Send me a code'} ${icon('i-arrow')}</button>
         <button class="btn btn-line" type="button" id="me-resend" ${meForm.sent ? '' : 'hidden'}>Send a new code</button>
       </div>
-    </form>` : ''}
-    <p class="fine">No pass yet? <a class="u" href="#unlock">Unlock a seat view</a>. Only an email that has paid for a 3D pass can sign in.</p>
-  </div>`;
+    </form>` : '',
+    foot: '<p class="fine">No pass yet? <a class="u" href="#unlock">Unlock a seat view</a>. Only an email that has paid for a 3D pass can sign in.</p>',
+  };
+}
+function renderSignIn() {
+  const look = loginLook(), x = signInParts(), body = $('#passes-body');
+  $('#passes-note').textContent = 'Sign in with the email you paid with. Your 3D passes open on this device, wherever you bought them.';
+  document.body.dataset.loginLook = look;
+  const box = (head = '<div class="uf-head"><h2>Sign in to your 3D passes</h2><small>Buyers only</small></div>') => `${head}${x.idle}${x.google}${x.or}${x.form}`;
+  const perks = [
+    ['i-devices', 'Any device', 'Your passes come to this phone or laptop, wherever you bought them.'],
+    ['i-shield', 'Buyers only', 'Only the email you paid with gets in. Nobody else sees your seat.'],
+    ['i-clock', 'Signs you out', `After ${IDLE_TEXT} with nothing touched, so a shared device stays yours.`],
+  ];
+  if (look === '1') {
+    // The seat view itself, beside the form.
+    body.innerHTML = `<div class="me-split">
+      <figure class="me-shot"><img src="assets/tour/seat.webp" alt="The stage seen from a seat in 3D" decoding="async">
+        <figcaption><span class="s3d-chip">${icon('i-seat')}Your seat view</span><b>Back to your seat, on any device.</b>
+          <ul>${perks.map(([i, t, d]) => `<li>${icon(i)}<span><b>${t}</b>${d}</span></li>`).join('')}</ul></figcaption></figure>
+      <div class="me-box panel-box">${box()}${x.foot}</div></div>`;
+    return;
+  }
+  if (look === '2') {
+    // The passes waiting behind a lock: what signing in opens.
+    const shows = onSale().filter(e => typeOf(e) === 'concert').slice(0, 3);
+    body.innerHTML = `<div class="me-vault">
+      <div class="me-ghosts" aria-hidden="true">${shows.map((e, i) => `<div class="me-ghost" style="--i:${i}">${posterImg(e)}<span class="me-ghost-t"><i>3D PASS</i><b>${esc(e.title)}</b><small>CAT · Row · Seat</small></span></div>`).join('')}</div>
+      <div class="me-lock">${icon('i-lock')}</div>
+      <div class="me-box me-box-float panel-box">${box('<div class="me-hello"><p class="eyebrow">My 3D passes</p><h2>Your passes are waiting.</h2><p>Sign in with the email you paid with and they open here, wherever you bought them.</p></div>')}${x.foot}</div></div>`;
+    return;
+  }
+  if (look === '3') {
+    // Three steps, and why it asks.
+    const steps = [['Sign in', 'Google, or a code to the email you paid with.'], ['Your passes come here', 'Every pass bought with that email, from any device.'], ['Open your seat', 'The 3D view from your seat, your story video and seat mates.']];
+    body.innerHTML = `<div class="me-steps panel-box">
+      <div class="me-steps-side"><p class="eyebrow">How it works</p><h2>Your seat, three steps away.</h2>
+        <ol>${steps.map(([t, d], i) => `<li class="${i === 0 ? 'is-on' : ''}"><i>${i + 1}</i><span><b>${t}</b><small>${d}</small></span></li>`).join('')}</ol></div>
+      <div class="me-steps-form">${box()}${x.foot}</div>
+      <ul class="me-trust">${perks.map(([i, t]) => `<li>${icon(i)}${t}</li>`).join('')}</ul></div>`;
+    return;
+  }
+  body.innerHTML = `<div class="me-box panel-box">${box()}${x.foot}</div>`;
 }
 const IDLE_TEXT = '30 minutes';
 const meError = (msg, field) => {
