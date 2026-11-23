@@ -29,26 +29,34 @@ export function newClickId() {
 const subs = new Map();
 const subFor = id => { if (!subs.has(id)) subs.set(id, newClickId()); return subs.get(id); };
 
+// The affiliate link for a show's seller: tiket.com's, or another approved brand's
+// (Traveloka). '' when the seller has none, and the button goes straight to it.
+const sellerTpl = e => (onTiket(e) ? state.cfg.affiliateLink : state.cfg.sellerLinks?.[sellerOf(e)]) || '';
+const fill = (tpl, url, sub, e) => tpl.replace('{url}', encodeURIComponent(url)).replace('{sub}', sub)
+  .replace('{src}', encodeURIComponent(campaign().src || 'site')).replace('{event}', encodeURIComponent(e.id));
+export const affiliated = e => validAffiliate(sellerTpl(e));
+
 export function buyUrl(e, sub = subFor(e.id)) {
-  const tpl = state.cfg.affiliateLink;
-  // Shows tiket.com does not sell link straight to their own seller, with no affiliate link.
-  if (!onTiket(e) || !validAffiliate(tpl)) return e.official.url;
-  return tpl.replace('{url}', encodeURIComponent(e.official.url)).replace('{sub}', sub)
-    .replace('{src}', encodeURIComponent(campaign().src || 'site')).replace('{event}', encodeURIComponent(e.id));
+  const tpl = sellerTpl(e);
+  if (!validAffiliate(tpl)) return e.official.url;
+  return fill(tpl, e.official.url, sub, e);
 }
 
-// Hotels and flights on tiket.com for the trip to a concert, through the same affiliate
-// link. Not a ticket sale, so no click id: the sub id names the kind of trip and the concert,
-// and these links never open the claim form. Empty affiliate link: plain tiket.com pages.
+// Hotels and flights on tiket.com, and things to do on Klook, for the trip to a concert,
+// through the affiliate links. Not a ticket sale, so no click id: the sub id names the kind
+// of trip and the concert, and these links never open the claim form. No affiliate link:
+// the plain page. Labels and pages follow the venue's city.
+const cityOf = e => e.place?.city || 'Jakarta';
 export const TRAVEL = {
-  hotel: { label: 'Hotels near the venue', url: 'https://www.tiket.com/id-id/hotel' },
-  flight: { label: 'Flights to Jakarta', url: 'https://www.tiket.com/id-id/pesawat' },
+  hotel: { label: () => 'Hotels near the venue', url: () => 'https://www.tiket.com/id-id/hotel' },
+  flight: { label: e => `Flights to ${cityOf(e)}`, url: () => 'https://www.tiket.com/id-id/pesawat' },
+  todo: { label: e => `Things to do in ${cityOf(e)}`, url: e => `https://www.klook.com/id/search/result/?query=${encodeURIComponent(cityOf(e))}`, link: 'Klook' },
 };
 export function travelUrl(e, kind) {
-  const t = TRAVEL[kind], tpl = state.cfg.affiliateLink;
-  if (!t || !validAffiliate(tpl)) return t?.url || '';
-  return tpl.replace('{url}', encodeURIComponent(t.url)).replace('{sub}', `${kind}-${e.id}`.slice(0, 40))
-    .replace('{src}', encodeURIComponent(campaign().src || 'site')).replace('{event}', encodeURIComponent(e.id));
+  const t = TRAVEL[kind];
+  if (!t) return '';
+  const tpl = t.link ? state.cfg.sellerLinks?.[t.link] : state.cfg.affiliateLink;
+  return validAffiliate(tpl) ? fill(tpl, t.url(e), `${kind}-${e.id}`.slice(0, 40), e) : t.url(e);
 }
 
 // Attributes for a link out to tiket.com. `sponsored` tells search engines it is an affiliate link.
@@ -56,7 +64,7 @@ export function travelUrl(e, kind) {
 // names its concert (and the category, from a category ticket), so the sold-out note
 // (js/soldpop.js) can step in before the fan leaves for the seller.
 const outAttrs = (e, cat) => ` data-out="${esc(e.id)}"${cat ? ` data-out-cat="${esc(cat)}"` : ''}`;
-export const buyAttrs = (e, cat = '') => (!onTiket(e) ? ' target="_blank" rel="noopener"' : ` target="_blank" rel="noopener sponsored" data-buy="${esc(e.id)}" data-sub="${subFor(e.id)}"`) + outAttrs(e, cat);
+export const buyAttrs = (e, cat = '') => (!onTiket(e) ? ` target="_blank" rel="noopener${affiliated(e) ? ' sponsored' : ''}"` : ` target="_blank" rel="noopener sponsored" data-buy="${esc(e.id)}" data-sub="${subFor(e.id)}"`) + outAttrs(e, cat);
 export const buyLink = (e, label, cls = 'btn btn-coral') => `<a class="${cls}" href="${esc(buyUrl(e))}"${buyAttrs(e)}>${onTiket(e) ? label : label.replace(/tiket\.com/g, esc(sellerOf(e)))}</a>`;
 
 const localClicks = () => read(CLICKS, localClicks.mem);

@@ -599,8 +599,8 @@ export function renderEvent(id) {
           <div><dt>${icon('i-seat')}Categories</dt><dd>${plural(venue.categories.length, 'category', 'categories')}${v.capacity ? ` · ${esc(v.capacity)}` : ''}</dd></div>
           <div><dt>${icon('i-clock')}Doors</dt><dd>${esc(doorsKnown(e) ? `${clock(e, e.doors)}, show at ${w.time}` : timeKnown(e) ? `To be announced, starts ${w.time}` : 'To be announced')}</dd></div>
         </dl>
-        ${live ? `<div class="row-btns venue-trip">${Object.keys(TRAVEL).map(k => `<a class="btn btn-line btn-sm" href="${esc(travelUrl(e, k))}" target="_blank" rel="noopener sponsored" data-trip="${k}">${esc(TRAVEL[k].label)} ${out}</a>`).join('')}</div>
-        <p class="venue-trip-note">Coming from out of town? Book a room or a flight on tiket.com.</p>` : ''}
+        ${live ? `<div class="row-btns venue-trip">${Object.keys(TRAVEL).map(k => `<a class="btn btn-line btn-sm" href="${esc(travelUrl(e, k))}" target="_blank" rel="noopener sponsored" data-trip="${k}">${esc(TRAVEL[k].label(e))} ${out}</a>`).join('')}</div>
+        <p class="venue-trip-note">Coming from out of town? Book a room or a flight on tiket.com, and find things to do on Klook.</p>` : ''}
       </div>
     </div>`;
 

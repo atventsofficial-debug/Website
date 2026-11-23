@@ -2,8 +2,7 @@
 // Generated from the translation sheet; names, venues and film titles stay as they are.
 export const EXACT = {
 "Hotels near the venue": "Hotel dekat venue",
-"Flights to Jakarta": "Tiket pesawat ke Jakarta",
-"Coming from out of town? Book a room or a flight on tiket.com.": "Datang dari luar kota? Pesan kamar atau tiket pesawat di tiket.com.",
+"Coming from out of town? Book a room or a flight on tiket.com, and find things to do on Klook.": "Datang dari luar kota? Pesan kamar atau tiket pesawat di tiket.com, dan cari aktivitas seru di Klook.",
 "What this browser stored. Paid passes and the team are on the Worker (Cloudflare).": "Data yang tersimpan di browser ini. Pass berbayar dan akses tim ada di Worker (Cloudflare).",
 "Close getting there": "Tutup cara ke sana",
 "Your way in": "Jalan masukmu",
@@ -1029,6 +1028,8 @@ export const PATTERNS = [
   [/^(.*)\bDay (\d)\b(.*)$/, (_, a, n, b) => `${a}Hari ${n}${b}`],
   [/^Doors (.+) · Start (.+?)(?: · ends (.+))?$/, (_, d, st, e) => `Open gate ${d} · Mulai ${st}${e ? ` · selesai ${e}` : ''}`],
   [/^(.+?) Each ticket opens the (concert|event) on (.+)\.$/, (_, a, k, s) => `${tr(a)} Setiap tiket membuka ${k === 'concert' ? 'konser' : 'event'} ini di ${s}.`],
+  [/^Flights to (.+)$/, 'Tiket pesawat ke $1'],
+  [/^Things to do in (.+)$/, 'Aktivitas seru di $1'],
   [/^Tickets are sold by (.+), the official seller\. The 3D view from your seat is sold here for (Rp[\d.]+) and opens as soon as you pay\.$/, 'Tiket resmi dijual oleh $1. Tampilan 3D dari kursimu bisa kamu beli di sini seharga $2 dan langsung aktif setelah bayar.'],
   [new RegExp(`^(.+) plays (.+), (${DAY}, .+?|\\d+ dates from .+?)\\. Show starts (.+)\\.$`), (_, a, v, d, t) => `${a} tampil di ${v}, ${dt(d).replace(/(\d+) dates from/, '$1 tanggal mulai')}. Acara mulai ${t}.`],
   [new RegExp(`^(.+) plays (.+), (${DAY}, .+?|\\d+ dates from .+?)\\. Times still to be announced\\.$`), (_, a, v, d) => `${a} tampil di ${v}, ${dt(d).replace(/(\d+) dates from/, '$1 tanggal mulai')}. Jam menyusul.`],
