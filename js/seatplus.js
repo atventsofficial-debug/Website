@@ -13,6 +13,7 @@ import { compareSeats, pairText } from './compare.js';
 import { accessOf, wayIn } from './access.js';
 import { $, esc, icon, state, share } from './ui.js';
 import { setlistFor } from './setlists.js';
+import { CityMap, KINDS, mapAreaOf } from './citymap.js';
 
 const seatOf = id => { const v = state.venue, i = v?.seatById.get(id); return i === undefined ? null : v.seats[i]; };
 const seatName = s => (s.standing ? s.secName : `${s.secName} · ${s.row}${s.num}`);
@@ -113,6 +114,53 @@ export function bindCompare({ repaint }) {
 let routeSeat = null;
 const accessSeat = ({ tourSeat } = {}) => state.viewing || state.peek || tourSeat?.() || seatOf(compareIds()[0]) || null;
 
+// The map round the venue (citymap.js): opens with the panel where the venue has one.
+let city = null, mapView = false, mapReady = false, mapKind = null, mapStop = null, mapFailed = false;
+const mapArea = () => mapAreaOf(state.venue?.meta?.place?.name);
+const KIND_LABEL = Object.fromEntries(KINDS.map(([k, label]) => [k, label]));
+
+function mapInset() {
+  const box = $('#access'), stage = $('#stage');
+  if (!box || !stage) return { right: 0, bottom: 0 };
+  const b = box.getBoundingClientRect(), st = stage.getBoundingClientRect();
+  return b.width > st.width * 0.7 ? { right: 0, bottom: Math.max(0, st.bottom - b.top) } : { right: Math.max(0, st.right - b.left), bottom: 0 };
+}
+
+async function openMap(opts) {
+  const key = mapArea();
+  if (!key) return;
+  city ||= new CityMap($('#stage'), { onPick: id => pickStop(id, opts) });
+  mapView = true; mapReady = false;
+  $('#stage')?.classList.add('map-open');
+  paintAccess(opts);
+  city.setInset(mapInset());
+  try {
+    await city.open(key, state.venue.meta.place.name);
+    if (!mapView) { city.close(); return; }
+    mapReady = true; mapFailed = false;
+    if (mapStop != null && !city.walks.some(w => w.id === mapStop)) mapStop = null;
+    if (mapStop != null && canView(state.venue)) city.pick(mapStop);
+  } catch {
+    mapFailed = true; mapView = false;
+    $('#stage')?.classList.remove('map-open');
+  }
+  paintAccess(opts);
+}
+
+function closeMap() {
+  mapView = false; mapReady = false;
+  city?.close();
+  $('#stage')?.classList.remove('map-open');
+}
+
+function pickStop(id, opts) {
+  mapStop = id;
+  const s = city?.walks.find(w => w.id === id);
+  if (s) mapKind = s.kind;
+  if (canView(state.venue)) city?.pick(id);
+  paintAccess(opts);
+}
+
 export function closeAccess() {
   const box = $('#access');
   if (!box) return;
@@ -122,6 +170,37 @@ export function closeAccess() {
   $('#stage')?.classList.remove('access-open');
   routeSeat = null;
   state.scene?.setRoute(null);
+  closeMap();
+  mapStop = null; mapKind = null;
+}
+
+const fmtM = m => (m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${m} m`);
+
+// How are you coming: the kinds of transport round the venue, its nearest stops, and the walk.
+function mapHtml(open) {
+  if (!mapReady) return `<div class="acc-map is-loading"><p class="acc-lede">Drawing the streets round the venue…</p></div>`;
+  const walks = city.walks, kinds = KINDS.map(([k]) => k).filter(k => walks.some(w => w.kind === k));
+  if (!kinds.length) return '';
+  if (!kinds.includes(mapKind)) mapKind = kinds[0];
+  const list = walks.filter(w => w.kind === mapKind).slice(0, 4);
+  const sel = walks.find(w => w.id === mapStop) || null;
+  const legs = sel ? sel.walk.legs.slice(0, 6) : [];
+  const walk = !sel ? `<p class="acc-lede">Pick where you arrive: the walk from there lights up on the map.</p>`
+    : !open ? `<div class="cmp-lock">${plusOffer('The walking route on the map')}</div>`
+      : `<div class="acc-route">
+        <p class="acc-walk"><b>${sel.walk.minutes}</b><span>min on foot<br>${fmtM(sel.walk.metres)} to the venue</span></p>
+        <ol class="acc-legs">
+          <li><i></i><span>From <b>${esc(sel.name)}</b></span></li>
+          ${legs.map(l => `<li><i></i><span>${l.name ? `Along <b>${esc(l.name)}</b>` : 'On the footpath'}</span><em class="mono">${fmtM(l.metres)}</em></li>`).join('')}
+          <li class="is-end"><i></i><span>At the venue door</span></li>
+        </ol>
+      </div>`;
+  return `<div class="acc-map">
+      <p class="cmp-tag"><b>${icon('i-pin')}</b><span>How are you coming?</span></p>
+      <div class="show-seg acc-kinds">${kinds.map(k => `<button type="button" data-acc="kind" data-kind="${k}" aria-pressed="${k === mapKind}">${esc(KIND_LABEL[k])}</button>`).join('')}</div>
+      <ul class="acc-stops">${list.map(w => `<li><button type="button" data-acc="stop" data-stop="${w.id}" aria-pressed="${w.id === mapStop}"><span class="acc-badge" data-kind="${w.kind}">${esc(KINDS.find(([k]) => k === w.kind)[2])}</span><span class="acc-stop-name">${esc(w.name)}</span><span class="acc-stop-m mono">${fmtM(w.walk.metres)} · ${w.walk.minutes} min</span></button></li>`).join('')}</ul>
+      ${walk}
+    </div>`;
 }
 
 export function paintAccess(opts = {}) {
@@ -134,19 +213,24 @@ export function paintAccess(opts = {}) {
   let way = `<div class="acc-way is-empty"><p class="cmp-tag"><b>${icon('i-seat')}</b><span>Your way in</span></p><p class="acc-lede">Tap a seat on the map to see the way in from the nearest side of the venue.</p></div>`;
   if (seat) {
     const w = wayIn(v, seat), on = routeSeat === seat.id;
-    way = `<div class="acc-way"><p class="cmp-tag"><b>${icon('i-seat')}</b><span>Your way in</span></p>
+    way = `<div class="acc-way"><p class="cmp-tag"><b>${icon('i-seat')}</b><span>${mapView ? 'Then, inside' : 'Your way in'}</span></p>
       <p class="cmp-name">${esc(seat.secName)}${seat.standing ? '' : ` · ${esc(seat.row)}${esc(String(seat.num))}`}</p>
       <p class="acc-walk"><b>${w.minutes}</b><span>min on foot<br>${w.metres} m from outside</span></p>
-      ${open ? `<button class="btn ${on ? 'btn-line' : 'btn-coral'} btn-sm" type="button" data-acc="${on ? 'hide' : 'route'}" data-seat="${esc(seat.id)}">${on ? 'Hide the route' : `Show the route ${icon('i-arrow')}`}</button>`
+      ${open ? `<button class="btn ${on && !mapView ? 'btn-line' : 'btn-coral'} btn-sm" type="button" data-acc="${on && !mapView ? 'hide' : 'route'}" data-seat="${esc(seat.id)}">${on && !mapView ? 'Hide the route' : `Show the way to the seat in 3D ${icon('i-arrow')}`}</button>`
         : `<div class="cmp-lock">${plusOffer('The route in 3D')}</div>`}</div>`;
   }
+  const hasMap = !!mapArea() && !mapFailed;
+  const tabs = hasMap ? `<div class="show-seg acc-views"><button type="button" data-acc="view" data-val="map" aria-pressed="${mapView}">Streets round it</button><button type="button" data-acc="view" data-val="3d" aria-pressed="${!mapView}">The venue in 3D</button></div>` : '';
   box.innerHTML = `<div class="cmp-head">
       <div><p class="eyebrow">${icon('i-pin')}Getting there</p><h2>${esc(place.name || v.event?.venue || '')}</h2><p class="acc-addr mono">${esc(place.address || '')}</p></div>
       <button class="sq sq-sm" type="button" data-acc="close" aria-label="Close getting there"><svg><use href="#i-x"/></svg></button>
     </div>
+    ${tabs}
+    ${mapView ? mapHtml(open) : ''}
     ${way}
     ${rows}
-    <p class="cmp-note mono">From public information, an illustration. On the day the promoter’s announcement on gates, parking and road closures comes first.</p>`;
+    <p class="cmp-note mono">From public information${hasMap ? ' and OpenStreetMap' : ''}, an illustration. On the day the promoter’s announcement on gates, parking and road closures comes first.</p>`;
+  if (mapView) city?.setInset(mapInset());
 }
 
 export function bindAccess(opts = {}) {
@@ -159,14 +243,19 @@ export function bindAccess(opts = {}) {
     btn.classList.add('is-on');
     $('#stage')?.classList.add('access-open');
     paintAccess(opts);
+    if (mapArea() && !mapFailed) openMap(opts);
   });
   box.addEventListener('click', e => {
     const b = e.target.closest('[data-acc]');
     if (!b) return;
     const act = b.dataset.acc, seat = seatOf(b.dataset.seat);
     if (act === 'close') { closeAccess(); return; }
+    if (act === 'view') { if (b.dataset.val === 'map') { if (!mapView) openMap(opts); } else { closeMap(); paintAccess(opts); } return; }
+    if (act === 'kind') { mapKind = b.dataset.kind; const first = city?.walks.find(w => w.kind === mapKind); if (first) { pickStop(first.id, opts); return; } }
+    if (act === 'stop') { pickStop(+b.dataset.stop, opts); return; }
     if (act === 'hide') { routeSeat = null; state.scene?.setRoute(null); }
     if (act === 'route' && seat && canView(state.venue)) {
+      closeMap();
       routeSeat = seat.id;
       state.scene?.setRoute(wayIn(state.venue, seat).points);
       if (state.scene?.mode !== 'overview') state.scene?.backToOverview();
