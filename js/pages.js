@@ -1659,16 +1659,14 @@ const otpForm = p => (p.canMail === false
 // With live payments, My 3D passes is for the buyer signed in (js/account.js): Google, or a
 // code sent to the email they paid with. An email with no paid pass is refused.
 const meForm = { email: '', sent: false };
-function renderSignIn() {
-  const a = state.store.account, idle = meNews.idle;
+function signInParts() {
+  const a = state.store.account, google = a.google && state.store.sso.google, idle = meNews.idle;
   meNews.idle = false;
-  $('#passes-note').textContent = 'Sign in with the email you paid with. Your 3D passes open on this device, wherever you bought them.';
-  $('#passes-body').innerHTML = `<div class="me-box panel-box">
-    <div class="uf-head"><h2>Sign in to your 3D passes</h2><small>Buyers only</small></div>
-    ${idle ? `<p class="me-idle" role="status">${icon('i-eye')}<span>You were signed out after ${IDLE_TEXT} without activity. Sign in again to open your passes.</span></p>` : ''}
-    ${a.google && state.store.sso.google ? `<button class="sso-btn" type="button" id="me-google"><svg class="sso-logo"><use href="#i-google"/></svg><span>Continue with Google</span></button>` : ''}
-    ${a.code ? `${a.google && state.store.sso.google ? '<p class="uf-or">or with a code to your email</p>' : ''}
-    <form id="me-form" novalidate>
+  return {
+    idle: idle ? `<p class="me-idle" role="status">${icon('i-clock')}<span>You were signed out after ${IDLE_TEXT} without activity. Sign in again to open your passes.</span></p>` : '',
+    google: google ? `<button class="sso-btn" type="button" id="me-google"><svg class="sso-logo"><use href="#i-google"/></svg><span>Continue with Google</span></button>` : '',
+    or: google && a.code ? '<p class="uf-or me-or"><span>or with a code to your email</span></p>' : '',
+    form: a.code ? `<form id="me-form" novalidate>
       <label class="uf-field">Email you paid with<input name="email" type="email" required autocomplete="email" maxlength="160" placeholder="you@example.com" value="${esc(meForm.email)}"></label>
       <label class="uf-field" id="me-code-field" ${meForm.sent ? '' : 'hidden'}>6-digit code from the email<input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="123456"></label>
       <p class="form-error" id="me-error" role="alert" hidden></p>
@@ -1676,9 +1674,18 @@ function renderSignIn() {
         <button class="btn btn-coral" type="submit" id="me-go">${meForm.sent ? 'Sign in' : 'Send me a code'} ${icon('i-arrow')}</button>
         <button class="btn btn-line" type="button" id="me-resend" ${meForm.sent ? '' : 'hidden'}>Send a new code</button>
       </div>
-    </form>` : ''}
-    <p class="fine">No pass yet? <a class="u" href="#unlock">Unlock a seat view</a>. Only an email that has paid for a 3D pass can sign in.</p>
-  </div>`;
+    </form>` : '',
+    foot: '<p class="fine">No pass yet? <a class="u" href="#unlock">Unlock a seat view</a>. Only an email that has paid for a 3D pass can sign in.</p>',
+  };
+}
+// The passes waiting behind a lock, blurred, and the sign-in in front of them.
+function renderSignIn() {
+  const x = signInParts();
+  $('#passes-note').textContent = 'Sign in with the email you paid with. Your 3D passes open on this device, wherever you bought them.';
+  const shows = onSale().filter(e => typeOf(e) === 'concert').slice(0, 3);
+  $('#passes-body').innerHTML = `<div class="me-vault">
+    <div class="me-ghosts" aria-hidden="true">${shows.map((e, i) => `<div class="me-ghost" style="--i:${i}">${posterImg(e)}<span class="me-ghost-t"><i>3D PASS</i><b>${esc(e.title)}</b><small>CAT · Row · Seat</small></span></div>`).join('')}</div>
+    <div class="me-box me-box-float panel-box"><div class="me-lock">${icon('i-lock')}</div><div class="me-hello"><p class="eyebrow">My 3D passes</p><h2>Your passes are waiting.</h2><p>Sign in with the email you paid with and they open here, wherever you bought them.</p></div>${x.idle}${x.google}${x.or}${x.form}${x.foot}</div></div>`;
 }
 const IDLE_TEXT = '30 minutes';
 const meError = (msg, field) => {
