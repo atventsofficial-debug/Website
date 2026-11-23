@@ -353,6 +353,9 @@ export const BTS_STAGE = {
   posts: [[14.2, 3.6], [14.2, -3.6], [-14.2, 3.6], [-14.2, -3.6], [3.6, 14.2], [-3.6, 14.2], [3.6, -14.2], [-3.6, -14.2]],
   foh: [[0, -32.5], [0, 32.5]],
   production: [[-50.5, 0], [50.5, 0]],
+  // The rest of the field on iME's plan sells nothing: the lanes the floor walks in by, from
+  // a gate in each corner out past the arm tips, and the barrier line round the blocks.
+  field: { deck: [52.5, 34], barrier: [47, 32], lane: 3, gates: 4 },
 };
 // Clear of the stage: outside the square body and away from the arm in this quadrant.
 function btsClear(x, z, gap = 1.6) {
