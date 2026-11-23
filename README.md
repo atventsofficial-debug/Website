@@ -55,6 +55,12 @@ Show mode is the button over a seat view: the light sticks round the seat in a c
 
 Show mode also has the artist walk the stage (`SeatScene.setRoam`, on by default with Plus, `roam` in `atv-show`): the singers and dancers follow a loop over the whole deck (`stageRoute` in `crowd3d.js`), out to both wings of an end stage, or round the 360 stage and out to the end of every runway, walking about 7 s and stopping 5 s to sing to that side. And it lists the songs of the night (`js/setlists.js`): the set from a recent show of the same tour, labelled as expected and with its source linked. A tour with no set posted yet says so. Song titles only.
 
+### Getting there, on the map
+
+The Getting there button opens the streets round the venue (`js/citymap.js`), pulling back from the venue to its neighbourhood. The map is drawn in Atvents' own night palette from OpenStreetMap data baked into `assets/maps/<area>.json` by `node scripts/bake-maps.mjs <raw-dir>`. The raw files are Overpass extracts named `atv-osm-<area>.json`, and the areas are GBK, JIS, JIExpo, ICE BSD and Graha UNESA. Each baked file holds buildings, roads, green, water, rail, the venues' outlines, the stops round them (MRT, KRL, LRT, TransJakarta, bus, parking) and a walking graph.
+
+A fan picks how they are coming and where they arrive. The walk from there to the venue's nearest door is found on the graph (`js/walk.js`, one search out from the doors), and it lights up in coral while the rest of the city dims. The panel shows the minutes, the metres and the streets along the way. "Then, inside" continues with the way in to the seat in 3D. The walk is part of Plus; anyone can see the map and the stops. The map credits OpenStreetMap contributors (ODbL).
+
 ### Getting there
 
 The pin among the viewer's tools opens Getting there (`js/access.js`, painted by `js/seatplus.js`): how to reach the venue by MRT, KRL, TransJakarta, car or ride-hailing, from public information and written as an illustration, keyed by the venue's name (`ACCESS`). With a seat picked it also gives the way in: from the outside of the venue nearest the seat's block (from behind for the floor) to the seat, its metres and about how many minutes on foot (`wayIn`). Drawing that route in 3D (`SeatScene.setRoute`) comes with Plus, or a demo venue. The promoter's announcement on gates, parking and road closures always comes first, and the panel says so.
