@@ -469,6 +469,9 @@ const CAPS = ['#111214', '#efece4', '#22283a', '#6b1f26'];
 // Hair styles (bits in the hair pieces' prop): 0 short, 1 long, 2 cap, 3 hijab, 4 bun.
 const STYLE = { short: 0, long: 1, cap: 2, hijab: 3, bun: 4 };
 
+// Copies `n` numbers between typed arrays, without making views of them.
+function copy(from, i, to, j, n) { for (let t = 0; t < n; t++) to[j + t] = from[i + t]; }
+
 export class Crowd {
   // Above this many people the overview draws everyone in the lightest figure; from a seat,
   // the light figure goes to the nearest MID_MAX within MID_R metres.
@@ -546,19 +549,16 @@ export class Crowd {
   // Copies the listed people into a mesh.
   _fill(mesh, list, calm = false) {
     if (!mesh) return;
-    const d = this.data, geo = mesh.geometry;
-    const zero = new THREE.Matrix4().makeScale(0, 0, 0).elements;
-    list.forEach((k, j) => {
-      const hide = k === this.hidden || this.skip?.has(k);
-      mesh.instanceMatrix.array.set(hide ? zero : d.matrix.subarray(k * 16, k * 16 + 16), j * 16);
-      for (const [key, name] of Object.entries(mesh.userData.src)) {
-        const a = geo.attributes[name], sz = a.itemSize;
-        a.array.set(d[key].subarray(k * sz, k * sz + sz), j * sz);
-      }
-      if (calm && this.calm?.has(k) && [ACT.stick, ACT.phone, ACT.handsUp].includes(d.anim[k * 4])) {
-        geo.attributes.aAnim.array[j * 4] = k % 2 ? ACT.clap : ACT.dance;
-      }
-    });
+    const d = this.data, geo = mesh.geometry, mat = mesh.instanceMatrix.array, M = d.matrix;
+    const src = Object.entries(mesh.userData.src).map(([key, name]) => [d[key], geo.attributes[name].array, geo.attributes[name].itemSize]);
+    const hidden = this.hidden, skip = this.skip, calmSet = calm ? this.calm : null;
+    const quiet = [ACT.stick, ACT.phone, ACT.handsUp];
+    for (let j = 0; j < list.length; j++) {
+      const k = list[j], o = j * 16;
+      if (k === hidden || skip?.has(k)) { mat.fill(0, o, o + 16); mat[o + 15] = 1; } else copy(M, k * 16, mat, o, 16);
+      for (const [from, to, sz] of src) copy(from, k * sz, to, j * sz, sz);
+      if (calmSet?.has(k) && quiet.includes(d.anim[k * 4])) geo.attributes.aAnim.array[j * 4] = k % 2 ? ACT.clap : ACT.dance;
+    }
     mesh.count = list.length;
     mesh.instanceMatrix.needsUpdate = true;
     for (const name of Object.values(mesh.userData.src)) geo.attributes[name].needsUpdate = true;
@@ -568,15 +568,17 @@ export class Crowd {
   // everyone not near, in a hall), everyone else the lightest.
   _assign() {
     if (!this.far) return;
-    const near = new Set(this.nearSlots);
-    const all = Array.from({ length: this.n }, (_, k) => k).filter(k => !near.has(k));
-    let mid = all, far = [];
+    const near = new Uint8Array(this.n);
+    for (const k of this.nearSlots) near[k] = 1;
+    let mid = [], far = [];
     if (this.tiny && this.midSlots) {
-      const m = new Set(this.midSlots);
-      mid = all.filter(k => m.has(k)); far = all.filter(k => !m.has(k));
+      for (const k of this.midSlots) if (!near[k]) near[k] = 2;
+      for (let k = 0; k < this.n; k++) if (near[k] === 2) mid.push(k); else if (!near[k]) far.push(k);
     } else if (this.tiny && this.n > Crowd.BIG) {
       // A stadium seen from above: everyone in the lightest figure.
-      mid = []; far = all;
+      for (let k = 0; k < this.n; k++) if (!near[k]) far.push(k);
+    } else {
+      for (let k = 0; k < this.n; k++) if (!near[k]) mid.push(k);
     }
     this._fill(this.far, mid);
     this._fill(this.tiny, far);
@@ -592,16 +594,23 @@ export class Crowd {
     if (!this.far) { this.pendingFocus = [eye, look, radius, max, around]; return; }
     this.pendingFocus = null;
     if (!eye) { this.nearSlots = []; this.midSlots = null; this.skip = null; this._assign(); if (this.near) this.near.visible = false; return; }
-    const d = this.data, cand = [];
+    // One pass over everyone, keeping only those within the light figure's reach, then a
+    // sort of just those: the whole crowd sorted made a hitch as the flight to a seat began.
+    const d = this.data, M = d.matrix, R2 = Crowd.MID_R * Crowd.MID_R, r2 = radius * radius;
+    const ex = eye.x, ey = eye.y, ez = eye.z;
+    let dist = this._dist, ids = this._ids;
+    if (!dist || dist.length < this.n) { dist = this._dist = new Float32Array(this.n); ids = this._ids = new Int32Array(this.n); }
+    let m = 0;
     for (let k = 0; k < this.n; k++) {
-      const dx = d.matrix[k * 16 + 12] - eye.x, dy = d.matrix[k * 16 + 13] - eye.y, dz = d.matrix[k * 16 + 14] - eye.z;
-      cand.push([dx * dx + dy * dy + dz * dz, k]);
+      const o = k * 16, dx = M[o + 12] - ex, dy = M[o + 13] - ey, dz = M[o + 14] - ez, q = dx * dx + dy * dy + dz * dz;
+      if (q < R2) { dist[k] = q; ids[m++] = k; }
     }
-    cand.sort((a, b) => a[0] - b[0]);
-    const within = cand.filter(c => c[0] < radius * radius);
+    const near = Array.from(ids.subarray(0, m)).sort((a, b) => dist[a] - dist[b]);
+    const cand = near.map(k => [dist[k], k]);
+    const within = [];
+    for (const c of cand) { if (c[0] < r2) within.push(c); else break; }
     this.nearSlots = within.slice(0, Math.min(max, 900)).map(c => c[1]);
-    const rest = cand.slice(this.nearSlots.length);
-    this.midSlots = rest.filter(c => c[0] < Crowd.MID_R * Crowd.MID_R).slice(0, this.midMax ?? Crowd.MID_MAX).map(c => c[1]);
+    this.midSlots = cand.slice(this.nearSlots.length).slice(0, this.midMax ?? Crowd.MID_MAX).map(c => c[1]);
     // The people right next to you keep their hands down: an arm up a metre from the camera
     // would fill the picture and say nothing about the view from the seat.
     this.calm = new Set(within.filter(c => c[0] < 3.2 * 3.2).map(c => c[1]));
