@@ -1054,6 +1054,15 @@ export class SeatScene {
   _currentAngles() { return this._angles(this.camera.getWorldDirection(new THREE.Vector3())); }
   _applyAngles(yaw, pitch, roll = 0) { this.camera.rotation.set(pitch, yaw, roll, 'YXZ'); }
 
+  // While the camera flies, the lens's ambient occlusion (the costliest pass) rests: it is
+  // invisible in motion, and the frames it frees keep the flight smooth.
+  _lite(on) {
+    const u = this.lensPass?.uniforms;
+    if (!u) return;
+    if (on) { this._liteAO ??= u.uAO.value; u.uAO.value = 0; }
+    else if (this._liteAO != null) { u.uAO.value = this._liteAO; this._liteAO = null; }
+  }
+
   flyToSeat(seat, { quick = false } = {}) {
     const i = this.venue.seatById.get(seat.id);
     if (i === undefined || !this.scene) return;
@@ -1085,13 +1094,14 @@ export class SeatScene {
     const seatedAng = this._lookAngles(eye, this.focus);
     const fovStart = this.camera.fov;
 
-    const flyDur = quick ? 1.0 : THREE.MathUtils.clamp(1.4 + dist / 50, 1.6, 3.0);
-    const turnDur = quick ? 1.0 : 1.9;
+    const flyDur = quick ? 1.0 : THREE.MathUtils.clamp(1.1 + dist / 70, 1.3, 2.3);
+    const turnDur = quick ? 0.9 : 1.4;
     this.flyDur = flyDur;   // read by the story video, to cut before the close pass
     const qa = new THREE.Vector3(), qb = new THREE.Vector3(), target = new THREE.Vector3();
     let turning = false;
     const bank = { roll: 0 };
     this.labels?.forEach(l => { l.visible = false; });
+    this._lite(true);
 
     this.anim = {
       t: 0,
@@ -1129,6 +1139,7 @@ export class SeatScene {
         this.camera.updateProjectionMatrix();
       },
       done: () => {
+        this._lite(false);
         this.mode = 'seat';
         this.settleAt = this.clock.elapsedTime;
         this._fovBack = null;
@@ -1156,12 +1167,13 @@ export class SeatScene {
     this.refreshColors();
     this.moodTarget = 0;
     this.mode = 'flying';
+    this._lite(true);
     this.cb.onMode?.('leaving');
     const qa = new THREE.Vector3(), qb = new THREE.Vector3();
     this.anim = {
-      t: 0, dur: 2.0,
+      t: 0, dur: 1.6,
       step: t => {
-        const k = ease(t / 2.0);
+        const k = ease(t / 1.6);
         qa.lerpVectors(start, ctrl, k); qb.lerpVectors(ctrl, end, k);
         this.camera.position.lerpVectors(qa, qb, k);
         this._applyAngles(startAng.yaw + wrapAngle(endAng.yaw - startAng.yaw) * k, startAng.pitch + (endAng.pitch - startAng.pitch) * k);
@@ -1169,6 +1181,7 @@ export class SeatScene {
         this.camera.updateProjectionMatrix();
       },
       done: () => {
+        this._lite(false);
         if (this.current >= 0) this._occupy(this.current, false);
         this.current = -1;
         this.controls.target.copy(o.target);
@@ -1428,6 +1441,7 @@ export class SeatScene {
         this.camera.updateProjectionMatrix();
       },
       done: () => {
+        this._lite(false);
         this.mode = 'seat';
         this.eye = eye;
         this._fovBack = null;
@@ -1550,9 +1564,11 @@ export class SeatScene {
       this._lens();
     }
     if (this.anim) {
-      this.anim.t += dt;
+      // A slow frame moves the camera on by the time it took, so the flight keeps its pace.
+      this.anim.t += Math.min(this.clock.elapsedTime - (this._animAt ?? this.clock.elapsedTime - dt), 0.1);
       this.anim.step(Math.min(this.anim.t, this.anim.dur));
-      if (this.anim.t >= this.anim.dur) { const a = this.anim; this.anim = null; a.done(); }
+      this._animAt = this.clock.elapsedTime;
+      if (this.anim.t >= this.anim.dur) { const a = this.anim; this.anim = null; this._animAt = null; a.done(); }
     } else if (this.mode === 'seat') {
       const L = this.look;
       L.cy += (L.yaw - L.cy) * Math.min(1, dt * 10);
