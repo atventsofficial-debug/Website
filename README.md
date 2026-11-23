@@ -8,7 +8,7 @@ Atvents does not sell tickets or take payments. Every **Buy on tiket.com** butto
 
 - **One way into the seat view: payment.** On `#unlock` the fan picks the concert, category, section, row and seat, adds their name and email, and pays the access fee (`ACCESS_FEE` in `js/order.js`, Rp25.000). The pass opens as soon as the payment is marked paid. There is no more free unlock through our tiket.com links and no e-ticket upload.
 - **Payments go through Midtrans** (see [Payments](#payments-midtrans)): the fan picks a way to pay on the site (QRIS, GoPay, ShopeePay, bank transfer, card, Alfamart or Indomaret), a small Worker in front of the static site makes the order, the page shows what to pay with in its own design (the card in Midtrans' own form, inside the page), and the pass email goes out once it is paid. Until its server key is set, the site shows the preview sheet that charges nothing (`LocalStore.pay` / `payDemo`); with a Sandbox key, only devices that opened `#paytest` pay, in the Sandbox.
-- **The Node server (`server/`) still has the old claim rules** (order ID, e-ticket) and is not deployed. On Cloudflare run the static front end and the payment Worker (`worker/`); clicks, sign-ups and partner requests still stay in the visitor's browser there.
+- **One back end: the Worker.** The live site is the static front end (`site/`) and the payment Worker (`worker/`) on Cloudflare, with D1 for orders and seat mates. The old Node server with Postgres (`server/`), built for the free unlock with a tiket.com order ID, was retired in November 2026. Clicks, sign-ups and partner requests stay in the visitor's browser.
 - **Concert updates** on the home page (`concertNews` in `js/pages.js`) are built from `js/events.js`: sales opening, shows coming up, sold-out categories.
 - **Footage** (`#footage`) is a coming-soon page with a waiting list (`kind: 'footage'` sign-ups). Nothing can be bought there yet.
 - **Brand**: the Arena emblem lockup, Inter everywhere, and the Backstage / Ember / Flame / Amber / Spotlight / Paper palette (last block of `css/styles.css`).
@@ -42,6 +42,7 @@ The 3D lock is a convenience, not a vault: the venue models are public files. Wh
 A second pass beside the seat view (`PLUS_FEE` in `js/order.js`, Rp49.000): everything the seat pass has, and every seat of the concert open in 3D, so the fan can sit anywhere and compare. A fan with a paid seat pass for a concert still to come upgrades it for the difference (`UPGRADE_FEE`, Rp24.000) from the 3D view, My 3D passes or `#upgrade-<pass id>`; the seat stays the pass's own. `#plus-<concert id>` opens the form with Plus chosen.
 
 - **On sale only with `PASS_PLUS` = `on`** in the Cloudflare dashboard (a plain variable). Until then `/api/config` says nothing of it, the form and the price list show its card as *Coming soon*, the upgrade buttons stay hidden, and the Worker refuses a Plus order or an upgrade (400, `field: 'plan'`).
+- **The team sees it first.** A member signed in on `#admin` sees Plus on sale even with `PASS_PLUS` off, so the form, the checkout and a Plus pass can be checked on the live site before it opens: "Buka gratis (tim)" opens a free Plus pass. A paid Plus order is still refused until `PASS_PLUS` is `on`.
 - The order book keeps the plan (`plan`, `seat` or `plus`) and, for an upgrade, the seat pass it was bought on (`base`). The pass key carries the plan and the amount, so the status check holds a Plus order to its own amount; keys made before plans open as seat passes at the access fee.
 - Team passes are Plus passes.
 - The unlock form also carries a note that the 3D is an illustration built from the promoter's plan, and that changes on the day are not ours to answer for; the consent box says so too.
@@ -69,34 +70,14 @@ The server side is `GET/PUT/DELETE /api/passes/<id>/fans` in `worker/index.mjs` 
 ## Run it
 
 ```bash
-# 1. Postgres 14 or newer. For example with Docker:
-docker run -d --name seatsight-db -e POSTGRES_USER=seatsight -e POSTGRES_PASSWORD=seatsight -p 5432:5432 postgres:16
-
-# 2. Settings
-cp .env.example .env          # DATABASE_URL, ADMIN_TOKEN, AFFILIATE_LINK (see below)
-
-# 3. Start
 npm install
-npm start                     # http://localhost:8080, creates the tables on first start
+npm run build:site            # site/: the static build Cloudflare serves
+npm run dev                   # wrangler dev: the site and the Worker on http://localhost:8787
 ```
 
-Needs Node 18 or newer. The only runtime dependency is `pg`. three.js 0.160.0 is bundled into the static build (`npm run build:site`); pages served by the Node server load it from the jsDelivr CDN through the import map.
+Needs Node 18 or newer. three.js 0.160.0 is bundled into the static build. Settings and secrets for the Worker are under [Payments](#payments-midtrans); `.dev.vars` holds them locally.
 
-Without the server (any static hosting of `index.html`), the site runs in **demo mode**: clicks, passes, partner requests and sign-ups are kept in the browser, and `#admin` shows what that browser stored.
-
-### Settings
-
-| Variable | |
-|---|---|
-| `DATABASE_URL` | Postgres connection string. Required. |
-| `ADMIN_TOKEN` | Opens `#admin` and the admin API (`Authorization: Bearer …`). Without it the admin stays closed. In production, at least 24 characters: `openssl rand -hex 24`. |
-| `AFFILIATE_LINK` | The tiket.com deeplink from the affiliate network. Empty: the buttons use `affiliateLink` in `js/config.js`, or go straight to tiket.com and earn nothing. |
-| `PUBLIC_URL` | The site's address. https in production. |
-| `NODE_ENV` | `production` on a live server: turns on the start-up checks below. |
-| `PORT` | Default 8080. |
-| `TRUST_PROXY` | `true` only behind a reverse proxy you control, so rate limits see the real client address. |
-
-In production the server refuses to start without an `ADMIN_TOKEN` of 24+ characters, with an http `PUBLIC_URL`, or with `RATE_LIMITS=off` (a switch for tests).
+Without the Worker (any static hosting of `index.html`), the site runs in **demo mode**: passes, partner requests and sign-ups are kept in the browser, payments are the preview sheet that charges nothing, and `#admin` shows what that browser stored.
 
 ## Payments (Midtrans)
 
@@ -179,14 +160,14 @@ Involve Asia, for example:
 https://invol.co/aff_m?offer_id=OFFER&aff_id=AFFILIATE&source=deeplink_generator&url={url}&aff_sub={sub}&aff_sub2={src}&aff_sub3={event}
 ```
 
-Set it as `AFFILIATE_LINK` on the server, or as `affiliateLink` in `js/config.js` for static hosting. Anything that is not https or lacks `{url}` and `{sub}` is ignored, and the server refuses to start with it. Links out are `target="_blank" rel="noopener sponsored"`.
+Set it as `affiliateLink` in `js/config.js`. Anything that is not https or lacks `{url}` and `{sub}` is ignored. Links out are `target="_blank" rel="noopener sponsored"`.
 
 Then replace each concert's `official.url` in `js/events.js` (a tiket.com search for now) with the show's own tiket.com page, and check one button: it should go through the network and land on that page.
 
 ## Confirming passes from the affiliate report
 
 1. In the network's dashboard, export the conversion report as CSV with the sub id and status columns.
-2. Open `#admin`, sign in with the admin token, and paste the report or open the file under **Affiliate report**.
+2. Open `#admin` and paste the report or open the file under **Affiliate report**.
 3. **Check the report** says how many rows carry one of our click ids, by status, and how many rows were skipped. **Import** stores them and updates the passes.
 
 The sub id column may be called `aff_sub`, `sub_id`, `sub1`, `click_id` or similar; the status column `status` or `conversion status`. Commas, semicolons or tabs all work. Statuses are read loosely: approved, confirmed, paid and similar count as approved; pending, on hold or in review as pending; rejected, declined, cancelled, invalid, refunded or fraud as rejected. The last row for a click wins. Up to 5,000 rows (1 MB) per import; import again any time, it only adds and updates.
@@ -218,33 +199,7 @@ Add `?quality=low|medium|high` to force a render quality, and `?src=<campaign>` 
 
 ## API
 
-| Route | Rate limit per client | |
-|---|---|---|
-| `GET /api/config` | 600/min | `{ mode, affiliateLink }` |
-| `POST /api/clicks` | 120/min | `{ id, eventId, src }`: a click out to tiket.com |
-| `POST /api/claims` | 10 per 10 min | `{ eventId, cat, qty, orderRef, email, consent, clicks }` → the pass and its key. 409 when another email holds the booking |
-| `GET /api/claims/:id` | 120/min | The pass, for the key in `x-pass-token`. Any mismatch is a 404 |
-| `POST /api/subscribe` | 10 per 10 min | `{ kind: 'newsletter' \| 'alerts', email, eventId? }` |
-| `POST /api/partners` | 5 per 10 min | `{ name, company, email, phone?, website?, kind, volume?, message?, consent }` |
-| `GET /api/admin/summary` | 60/min | Clicks per concert (all time and 30 days) and campaign, passes by status, counts |
-| `GET /api/admin/claims` | 60/min | The latest 2,000 passes |
-| `POST /api/admin/claims/:id` | 60/min | `{ status: 'checking' \| 'confirmed' \| 'rejected' }` |
-| `POST /api/admin/conversions` | 60/min | `{ rows: [{ sub, status }] }`, up to 5,000 rows |
-| `GET /api/admin/leads`, `GET /api/admin/subscribers` | 60/min | Partner requests, sign-ups |
-
-Errors are `{ error, field? }` with a 4xx status. With several server instances, add rate limits at the proxy too.
-
-## Data
-
-`server/schema.sql`, created on start (everything is `IF NOT EXISTS`):
-
-- `clicks`: click id, concert, campaign, time. No IP address or other personal data.
-- `claims`: the passes. Booking (concert and order ID, unique), email, category, tickets, click ids, key hashes, status.
-- `conversions`: the network's verdict per click id, from the imported reports.
-- `partner_leads`: demo requests from the partner page.
-- `subscribers`: concert alerts (`newsletter`) and one-show alerts (`alerts`).
-
-Tables from the earlier version, which sold tickets itself, are left alone on databases that have them.
+The Worker's routes are listed at the top of `worker/index.mjs` (payments, pass status, seat mates, devices, the team). Errors are `{ error, field? }` with a 4xx status.
 
 ## Structure
 
@@ -265,7 +220,7 @@ js/                     front end, plain ES modules
   admin.js              the admin page
   viewer.js             the 3D venue page: the locked peek, seat views, marking your seat
   passes.js             buy links and click ids, the pass wallet on this device
-  store.js              LocalStore (demo, in the browser), PayStore (with Midtrans) and ApiStore (the server)
+  store.js              LocalStore (demo, in the browser) and PayStore (with Midtrans)
   rules.js              checks and formats shared by the browser and the server
   order.js              the pass's price, order id and payment window, and the buyer check, shared with the Worker
   paymethods.js         the ways to pay and how what Midtrans answers is checked, shared with the Worker
@@ -288,20 +243,13 @@ worker/                 the Cloudflare Worker: Midtrans payments for 3D passes (
   passkey.mjs           signed pass keys
   catalog.mjs           seat lookups in catalog.json (built by scripts/worker-catalog.mjs, not in git)
 
-server/                 API and static files, all state in Postgres
-  server.mjs            entry point
-  app.mjs               routes and wiring
-  store.mjs             the records: clicks, passes, the report, requests, sign-ups
-  http.mjs              JSON bodies, security headers, rate limits, admin auth, static files
-  config.mjs            settings and start-up checks
-  db.mjs, schema.sql    pool, transactions, schema
-
 scripts/build-site.mjs      site/ for Cloudflare, and worker/catalog.json
+scripts/security-headers.mjs  the CSP and other headers written into site/_headers
 scripts/worker-catalog.mjs  the concerts and seats the Worker checks orders against
 scripts/build-preview.mjs   dist/preview.html for hosts that wrap the page in their own document
 scripts/event-art.py        a concert's 3:2 and 5:7 artwork from its poster (Pillow)
 scripts/mail-art.py         the JPEG copies of the 3:2 artwork for the pass email (Pillow)
-test/                   api.test.mjs (Postgres), pay.test.mjs, venues.test.mjs, when.test.mjs
+test/                   pay.test.mjs, venues.test.mjs, when.test.mjs and the feature tests
 ```
 
 ## Adding a concert
@@ -330,34 +278,22 @@ Past concerts drop off the lists (Events, My seat 3D, the home page and its venu
 ## Tests
 
 ```bash
-TEST_DATABASE_URL=postgres://seatsight:seatsight@localhost/seatsight_test npm test
+npm test
 ```
 
-The test database's tables are wiped at the start. 58 tests:
+No database needed: the Worker's tests play D1 with SQLite in memory, and Midtrans and Resend with stand-ins.
 
-- Config: a malformed affiliate link is refused and a valid one reaches the page; production refuses a short admin token, http and no rate limits.
-- Clicks: stored once, without personal data; unknown concerts and demo venues refused.
-- Claims: the key stored only as a hash; one booking one pass; the same email gets the same pass with a new key; another email refused; a closed pass frees the booking; 12 claims at once on one booking make one pass with ten keys; bad claims name the field; clicks for another concert dropped.
-- The report: confirms and closes passes, duplicate rows, bad reports refused whole, size limits, manual decisions kept.
-- Admin: every admin route needs the token, checked before the body is read, and stays closed when no token is set; the summary's counts.
-- Partner requests, sign-ups, body rules (415, 400, 413, 404, 405), rate limits, cross-site POSTs, security headers, the static allow-list, no personal data in logs.
-- The demo store in the browser gives the same answers as the server.
 - Venues: unique seat ids and known categories everywhere, every concert linked to tiket.com with every category priced, demos for every layout, seat counts, the home hero's seat on each concert's centre line.
 - Time zones: the venue's clock read from Jakarta, Singapore and London, daylight saving, shows without times, times after midnight.
 - Payments (`pay.test.mjs`, Midtrans and Resend played by stand-ins, D1 by SQLite in memory): off until the key is set; `MIDTRANS_METHODS`; the client key, never a Sandbox one in production; the card's Snap order (card form only) and every other way's Core API charge at the fee whatever the browser sends, open for an hour, with the notification address, and what the page gets to pay with; ways switched off or unknown; a channel Midtrans refuses (409) and answers the page cannot safely show (502); closing an order for another way, an order paid before it could close, an order Midtrans would not close, and who may close one; the same field errors as the page; concerts that are over; origin, JSON and size rules; rate limits; Snap errors logged without the key; settled, pending, challenged, failed and refunded payments; wrong amounts; unpaid orders closing; forged, swapped and old-key pass keys; notifications refused without Midtrans' signature (the signature key's or the server key's) and checked again with Midtrans; keys from the newer Access keys page, with a '~'; the pass email sent once, from the notification or the page, with a link that opens that pass, the concert's poster, the way it was paid and the buyer's name escaped; a failed email tried again; payments working without the order book or the email key; the way back from Midtrans; the Worker's seat list equal to every venue's seats.
 
 ## Security
 
-- Secrets only in the environment. Production start-up checks as above.
-- Every input is checked and length-capped by the same rules in the browser and on the server. Bodies over 32 KB are refused (the report import: 1 MB, read only after the admin token is checked), and so are POSTs that are not JSON.
+- Every input is checked and length-capped by the same rules in the browser and in the Worker. The Worker refuses bodies over its size limit (`MAX_BODY`) and POSTs that are not JSON.
 - Queries are parameterised. Output in the browser is escaped.
-- Pass keys are random, stored only as hashes, compared in the database, and sent in a header, not the URL. Wrong id or wrong key: the same 404.
-- The admin token is compared in constant time and checked before the body is read. No token set: the admin stays closed.
 - Cross-site POSTs are refused by an Origin check. The API uses no cookies.
 - Headers: Content-Security-Policy with no inline scripts (the import map is allowed by its hash) and scripts from elsewhere only from the three.js folders the import map names; `nosniff`, `frame-ancestors 'none'`, Referrer-Policy, Permissions-Policy, COOP and CORP same-origin, HSTS on https.
-- Only `index.html`, `css/`, `js/`, `assets/` and `favicon.ico` are served. Server code, `.env`, tests and `node_modules` are not.
-- Request logs hold method, path, status and time only. Bodies (emails, order IDs, phone numbers) are never logged.
-- Payments: the Midtrans server key and the Resend key are Cloudflare Secrets, sent only to Midtrans and Resend and never logged. The amount is set by the Worker. Pass keys are HMAC-signed and checked in constant time; Midtrans' notifications count only with their SHA-512 signature, and the status is read again from Midtrans before anything changes. The static site's CSP allows scripts and frames from Midtrans' two app hosts only, and images (the QR codes) from its two API hosts (the Node server's allows none); the browser is sent only to Midtrans' own payment page. What Midtrans answers a charge with is checked before the page shows it: digits for numbers, Midtrans' API host for QR codes, GoPay's scheme or ShopeePay's address for app links. Choosing another way to pay closes the old order at Midtrans first, so one pass is never paid twice. Orders and checks are rate-limited per address; orders must come from the site's own origin. The pass email escapes everything the buyer typed and goes only to the buyer, once.
+- Payments: the Midtrans server key and the Resend key are Cloudflare Secrets, sent only to Midtrans and Resend and never logged. The amount is set by the Worker. Pass keys are HMAC-signed and checked in constant time; Midtrans' notifications count only with their SHA-512 signature, and the status is read again from Midtrans before anything changes. The static site's CSP allows scripts and frames from Midtrans' two app hosts only, and images (the QR codes) from its two API hosts; the browser is sent only to Midtrans' own payment page. What Midtrans answers a charge with is checked before the page shows it: digits for numbers, Midtrans' API host for QR codes, GoPay's scheme or ShopeePay's address for app links. Choosing another way to pay closes the old order at Midtrans first, so one pass is never paid twice. Orders and checks are rate-limited per address; orders must come from the site's own origin. The pass email escapes everything the buyer typed and goes only to the buyer, once.
 - `npm audit`: 0 vulnerabilities.
 
 ## Before going live
@@ -369,15 +305,12 @@ The test database's tables are wiped at the start. 58 tests:
 - **Legal pages.** Privacy policy, terms and affiliate disclosure are templates written for Indonesia's Personal Data Protection Law (UU 27/2022). Have a lawyer check them, with your company's name and address.
 - **Keeping data only as long as the policy says.** Once a concert is twelve months past, delete its records:
 
-  ```sql
-  DELETE FROM claims WHERE event_id = 'evt-…';
-  DELETE FROM clicks WHERE event_id = 'evt-…';
-  DELETE FROM conversions c WHERE NOT EXISTS (SELECT 1 FROM clicks k WHERE k.id = c.sub);
+  ```bash
+  npx wrangler d1 execute atvents-orders --remote --command "DELETE FROM orders WHERE event_id = 'evt-…'"
   ```
 
   Partner requests: two years after the last contact. Alert sign-ups: until the person leaves the list, so send alerts from an email service with an unsubscribe link (Brevo, Mailjet), using the CSV from `#admin`.
 - **Artwork.** The concert covers are the promoters' posters, cropped from their listings. Use the files from their media kits, with permission.
-- **Hosting.** Postgres with backups (managed Postgres or Supabase; use the direct connection string), https, `NODE_ENV=production`, rate limits at the proxy, and `TRUST_PROXY=true` behind it.
 - **The report.** Import it at least weekly, and settle the passes still checking by hand.
 
 ## The earlier version
