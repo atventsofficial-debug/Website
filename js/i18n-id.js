@@ -1,6 +1,9 @@
 // Indonesian lines for js/i18n.js, keyed by the English text as it shows on the page.
 // Generated from the translation sheet; names, venues and film titles stay as they are.
 export const EXACT = {
+"Hotels near the venue": "Hotel dekat venue",
+"Flights to Jakarta": "Tiket pesawat ke Jakarta",
+"Coming from out of town? Book a room or a flight on tiket.com.": "Datang dari luar kota? Pesan kamar atau tiket pesawat di tiket.com.",
 "What this browser stored. Paid passes and the team are on the Worker (Cloudflare).": "Data yang tersimpan di browser ini. Pass berbayar dan akses tim ada di Worker (Cloudflare).",
 "Close getting there": "Tutup cara ke sana",
 "Your way in": "Jalan masukmu",

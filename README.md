@@ -15,7 +15,7 @@ Atvents does not sell tickets or take payments. Every **Buy on tiket.com** butto
 
 ## How the site earns
 
-- **Affiliate commission.** tiket.com's affiliate program, run through a network such as Involve Asia, pays on sales made through our links. The fan pays the same price.
+- **Affiliate commission.** tiket.com's affiliate program through Involve Asia (approved November 2026, `affiliateLink` in `js/config.js`) pays on sales made through our links. The fan pays the same price. The event page's Getting there box also links to hotels and flights on tiket.com through the same link (`TRAVEL` / `travelUrl` in `js/passes.js`); those carry `hotel-<event>` or `flight-<event>` as the sub id instead of a click id.
 - **Seat-view licences.** Per ticket, venue licence and white label, on the partner page (`PLANS` in `js/content.js`), with a demo request form.
 
 ## The fan's path

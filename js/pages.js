@@ -8,7 +8,7 @@ import { cardImg, eventImg, kindCover, posterFig, posterImg, thumbImg, coverThum
 import { picker } from './picker.js';
 import { whenOf, startOf, venueClock, gapText, isOver } from './when.js';
 import { waTiles } from './fans.js';
-import { justBought, buyUrl, buyAttrs, buyLink, passes, activePass, upgradable, plusOnSale, claim, holdPass, refresh, passLink, clicksFor, STATUS, markVerified, sendCode, useCode } from './passes.js';
+import { justBought, buyUrl, buyAttrs, buyLink, travelUrl, TRAVEL, passes, activePass, upgradable, plusOnSale, claim, holdPass, refresh, passLink, clicksFor, STATUS, markVerified, sendCode, useCode } from './passes.js';
 import { checkClaim, formatFee } from './rules.js';
 import { ACCESS_FEE, PLUS_FEE, UPGRADE_FEE, PAY_MINUTES, line, email as cleanEmail, isEmail, planOf, feeOf } from './order.js';
 import { signIn, PROVIDERS } from './sso.js';
@@ -586,6 +586,8 @@ export function renderEvent(id) {
           <div><dt>${icon('i-seat')}Categories</dt><dd>${plural(venue.categories.length, 'category', 'categories')}${v.capacity ? ` · ${esc(v.capacity)}` : ''}</dd></div>
           <div><dt>${icon('i-clock')}Doors</dt><dd>${esc(doorsKnown(e) ? `${clock(e, e.doors)}, show at ${w.time}` : timeKnown(e) ? `To be announced, starts ${w.time}` : 'To be announced')}</dd></div>
         </dl>
+        ${live ? `<div class="row-btns venue-trip">${Object.keys(TRAVEL).map(k => `<a class="btn btn-line btn-sm" href="${esc(travelUrl(e, k))}" target="_blank" rel="noopener sponsored" data-trip="${k}">${esc(TRAVEL[k].label)} ${out}</a>`).join('')}</div>
+        <p class="venue-trip-note">Coming from out of town? Book a room or a flight on tiket.com.</p>` : ''}
       </div>
     </div>`;
 

@@ -11,5 +11,5 @@ export const CONFIG = {
   // sales on, {src} the campaign the fan came from, {event} the concert id. Empty: buttons
   // go straight to tiket.com and earn nothing. Involve Asia, for example:
   // 'https://invol.co/aff_m?offer_id=OFFER&aff_id=AFFILIATE&source=deeplink_generator&url={url}&aff_sub={sub}&aff_sub2={src}&aff_sub3={event}'
-  affiliateLink: '',
+  affiliateLink: 'https://invl.app/clo9uqt?aff_sub={sub}&aff_sub2={src}&aff_sub3={event}&url={url}',
 };
