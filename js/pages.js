@@ -90,6 +90,19 @@ export function dotMap(v, { byCat = !!v.zoneColors } = {}) {
 }
 
 // Where the price is printed: the seller's name with it.
+// The official seller's logo, taken from the seller's own site, for the hero's seller note.
+// Logos drawn for a light background sit on a white chip; the rest are light on transparent.
+const SELLER_LOGOS = {
+  'tiket.com': ['tiket-com-logo.webp', 90, 20],
+  'Loket.com': ['loket-logo.webp', 74, 20, true],
+  'TipTip': ['tiptip-logo.webp', 67, 20, true],
+  'Traveloka': ['traveloka-logo.webp', 89, 20],
+  'Cinema XXI': ['cinema-xxi-logo.webp', 97, 17],
+};
+const sellerLogo = e => {
+  const l = SELLER_LOGOS[sellerOf(e)];
+  return l ? `<img class="ev-seller-logo${l[3] ? ' chip' : ''}" src="assets/brand/${l[0]}" alt="${esc(sellerOf(e))}" width="${l[1]}" height="${l[2]}" decoding="async">` : '';
+};
 const priceTag = (e, from) => (from == null ? `<small>Tickets on</small><b>${esc(sellerOf(e))}</b>` : `<small>From, on ${esc(sellerOf(e))}</small><b>${formatRpShort(from)}</b>`);
 
 // The dates a pass stands for, as its corner prints them: "30 JAN 2027", "16 & 17 JAN 2027",
@@ -517,7 +530,7 @@ export function renderEvent(id) {
           ${live && saleInfo(e) ? `<p class="ev-sale">${icon('i-cal')}<span>${esc(saleInfo(e).line)}</span></p>` : ''}
           ${opts.length > 1 ? `<p class="ev-dates ev-opts">Ticket class ${opts.map(x => `<a class="pill" href="#event-${x.id}"${x === e ? ' aria-current="page"' : ''}>${esc(x.option)}<span>${formatRpShort(minPrice(x.id))}</span></a>`).join('')}</p>` : ''}
           ${others.length ? `<p class="ev-dates">Also on ${others.map(x => `<a class="pill" href="#event-${x.id}">${esc(whenOf(x).block.dow)} ${whenOf(x).block.day} ${whenOf(x).block.mon}</a>`).join('')}</p>` : ''}
-          ${live ? `<p class="ev-official">${icon('i-link')}<span>Tickets are sold by ${esc(sellerOf(e))}, the official seller. The 3D view from your seat is sold here for ${formatFee()} and opens as soon as you pay.</span></p>`
+          ${live ? `<p class="ev-official${sellerLogo(e) ? ' has-logo' : ''}">${sellerLogo(e) || icon('i-link')}<span>Tickets are sold by ${esc(sellerOf(e))}, the official seller. The 3D view from your seat is sold here for ${formatFee()} and opens as soon as you pay.</span></p>`
             : '<p class="ev-official">This concert has taken place. Its 3D venue stays open to look round.</p>'}
           <div class="row-btns">${pass?.status === 'confirmed' ? `<a class="btn btn-coral" href="#tour-${esc(pass.id)}">Open my seat view ${icon('i-arrow')}</a>` : live ? `<a class="btn btn-coral ev-unlock-hero" href="#unlock-${id}">Unlock seat view · ${formatFee()} ${icon('i-arrow')}</a>` : ''}${live ? buyLink(e, `Tickets on tiket.com ${out}`, 'btn btn-line') : ''}${live || pass?.status === 'confirmed' ? '' : `<a class="btn btn-line" href="#seats-${id}">Look round in 3D</a>`}</div>
         </div>

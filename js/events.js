@@ -575,7 +575,7 @@ export const EVENTS = [
     blurb: 'JKT48 mark fifteen years, and their 28th single “Ayo Senyumlah”, with an anniversary concert at Graha UNESA in Surabaya: a main stage, a runway to an island stage on the floor, and a numbered seat in every category.',
     about: [
       'From JKT48’s seat plan: CAT 1 on the floor beside the main stage, CAT 2 along both sides of the runway, CAT 3 round the island stage and CAT 5 round CAT 3; in the stands CAT 4 on both sides near the stage, CAT 6 round the back and CAT 7 above it. Every category is a numbered seat; numbers show on the e-voucher at the latest six days before the show.',
-      'General sale on Loket.com: CAT 3 Rp 1,200,000, CAT 4 Rp 1,000,000, CAT 5 Rp 750,000, CAT 6 Rp 550,000, CAT 7 Rp 450,000; CAT 1 (Rp 3,500,000) and CAT 2 (Rp 2,200,000) went in the members’ presale. Before the 10% tax, 5% service fee and platform fee. On 21 November 2026 only CAT 4 was still available.',
+      'General sale on Loket.com: CAT 3 Rp 1,200,000, CAT 4 Rp 1,000,000, CAT 5 Rp 750,000, CAT 6 Rp 550,000, CAT 7 Rp 450,000; CAT 1 (Rp 3,500,000) and CAT 2 (Rp 2,200,000) went in the members’ presale. Before the 10% tax, 5% service fee and platform fee. On 23 November 2026 every category on Loket.com was sold out, CAT 4 included.',
       'Up to four tickets per transaction. The organiser asks wheelchair users to pick a floor category, not the stands.',
       'Prices as announced by the organiser. Sold on Loket.com, not on tiket.com: Loket.com has the live price and stock.',
       MODEL,
@@ -583,7 +583,7 @@ export const EVENTS = [
     runs: [],
     branding: { wall: 'JKT48', sub: 'AYO SENYUMLAH', band: ['JKT48', 'AYO SENYUMLAH', '15TH ANNIVERSARY', 'GRAHA UNESA'] },
     theme: 'maroon5',
-    soldOut: ['cat1', 'cat2', 'cat3', 'cat5', 'cat6', 'cat7'],
+    soldOut: ['cat1', 'cat2', 'cat3', 'cat4', 'cat5', 'cat6', 'cat7'],
     place: GRAHA_UNESA,
     sale: { opens: '2026-11-16T12:00', seller: 'loket', tiket: false },
     official: { name: 'Loket.com', url: 'https://www.loket.com/event/jkt48-ayosenyumlah-concert' },
