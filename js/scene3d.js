@@ -611,12 +611,17 @@ export class SeatScene {
     this.band?.dispose();
     const bandRnd = () => ((seed2 = (seed2 * 16807) % 2147483647) / 2147483647);
     const stadium = venue.kind === 'stadium', S = !stadium && concertStage(venue);
-    this.band = venue.lineup?.length && (!stadium || venue.show === 'end')
-      ? new Band(this.scene, this.bandMat(), venue.lineup, stadium
+    // A 360 stage (BTS) has the line-up round its middle; its band plays out of sight.
+    const round = stadium && venue.show === 'round' && venue.stage?.arm ? venue.stage : null;
+    this.band = venue.lineup?.length && (!stadium || venue.show === 'end' || round)
+      ? new Band(this.scene, this.bandMat(), round ? venue.lineup.filter(m => ['vocals', 'dancer'].includes(m.role)) : venue.lineup, round
+        ? { y: 1.9, round, rnd: bandRnd }
+        : stadium
         // A stadium's end stage is built facing +z at its front edge, then turned to the field.
-        ? { y: 2.2, front: 0, riserY: 2.8, riserZ: -9, risers: true, rnd: bandRnd }
-        : { y: S.h, front: S.front, riserY: S.h + 0.6, riserZ: S.riserZ, spread: S.k, rnd: bandRnd })
+          ? { y: 2.2, front: 0, riserY: 2.8, riserZ: -9, risers: true, rnd: bandRnd }
+          : { y: S.h, front: S.front, riserY: S.h + 0.6, riserZ: S.riserZ, spread: S.k, rnd: bandRnd })
       : null;
+    this.band?.setRoam(this.roam);
     if (this.band && stadium) {
       this.band.group.rotation.y = Math.PI / 2;
       this.band.group.position.set(venue.stageX ?? -40, 0, 0);
@@ -1490,6 +1495,12 @@ export class SeatScene {
     u.uStage.value.set(this.focus?.x || 0, this.focus?.z || 0);
   }
 
+  // 3D Pass Plus: the singers and dancers walk the whole stage (crowd3d.js Band.setRoam).
+  setRoam(on) {
+    this.roam = !!on;
+    this.band?.setRoam(this.roam);
+  }
+
   // From a seat: the show's lights (true) or the house lights up to see the venue (false).
   setShowLights(on) {
     if (this.mode === 'seat') this.moodTarget = on ? 1 : 0;
@@ -1528,6 +1539,7 @@ export class SeatScene {
     }
     for (const fn of this.ticks) fn(time, dt);
     this.people?.update(time, this.moodValue, this.camera, this.focus);
+    this.band?.update(time);
     if (this.seatUniforms) {
       this.seatUniforms.uHideFlat.value = this.showCrowd ? 1 : 0;
       this.seatUniforms.uAllUp.value = this.showCrowd ? 0 : 1;
