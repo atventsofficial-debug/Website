@@ -3,8 +3,7 @@
 // security headers from site/_headers. The Worker (worker/index.mjs) answers only addresses
 // with no file behind them: the Midtrans payments for 3D passes and the pass email. Its
 // secrets, MIDTRANS_SERVER_KEY, MIDTRANS_SIGNATURE_KEY and RESEND_API_KEY, are set in the Cloudflare dashboard as
-// Secrets, never in this file (README, Payments). The Node server in server/ is not part of
-// the deploy.
+// Secrets, never in this file (README, Payments).
 {
   "name": "website",
   "main": "worker/index.mjs",

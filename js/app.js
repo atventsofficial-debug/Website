@@ -1,10 +1,10 @@
 // Boot and routing. Fan pages are drawn by pages.js, the home page's hero by hero.js, the
 // partner page by partners.js, the admin by admin.js and the 3D seat view by viewer.js.
 import { getEvent, isConcert, demoFor } from './events.js';
-import { LocalStore, ApiStore, PayStore } from './store.js';
+import { LocalStore, PayStore } from './store.js';
 import { bindBuyLinks, importPass, passes, refresh } from './passes.js';
 import { bindSoldOut } from './soldpop.js';
-import { validAffiliate, formatFee, PAYMENT_ID, PLUS_FEE, UPGRADE_FEE } from './rules.js';
+import { formatFee, PAYMENT_ID, PLUS_FEE, UPGRADE_FEE } from './rules.js';
 import { stopEventHero, renderHome, renderConcerts, renderEvent, renderUnlock, renderPaid, renderFootage, renderPasses, renderFaq, bindPassButtons, navCount, bindNavSearch } from './pages.js';
 import { startHero, stopHero } from './hero.js';
 import { renderPartners } from './partners.js';
@@ -53,10 +53,6 @@ async function boot() {
         state.payCfg = c;
         if (!c.sandbox || c.staging || payTest() || (c.team && teamKey())) state.store = new PayStore(c);
         if (c.staging) stagingBadge();
-      }
-      else {
-        if (validAffiliate(c.affiliateLink)) state.cfg.affiliateLink = c.affiliateLink;
-        state.store = new ApiStore('');
       }
     }
   } catch { /* static hosting: demo mode, everything stays in this browser */ }

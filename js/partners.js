@@ -103,7 +103,7 @@ function bindPartnerForm(form) {
           <div class="tk-body">
             <div class="tk-top"><i class="tk-vinyl"></i><span class="tk-pill">${esc(ref)}</span></div>
             <p class="tk-label">Thanks, ${esc(lead.name.split(' ')[0])}</p>
-            <p class="tk-was">We reply to ${esc(lead.email)} within one working day.${state.store.mode === 'server' ? '' : ' (Demo: saved in this browser.)'}</p>
+            <p class="tk-was">We reply to ${esc(lead.email)} within one working day. (Demo: saved in this browser.)</p>
             <div class="tk-meta"><span>Next: a 20-minute call, then your venue built from its seating plan.</span></div>
           </div>
         </article>

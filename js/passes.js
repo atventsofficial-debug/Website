@@ -127,7 +127,10 @@ export const plusPass = eventId => passes.all().filter(p => p.eventId === eventI
 export const canView = venue => !!venue.meta.demo || !!plusPass(venue.eventId);
 // A paid seat pass of the concert that can still be upgraded to Plus: none when the concert
 // has a Plus pass on this device already.
-export const plusOnSale = () => !!state.store?.plusOn;
+// On sale with PASS_PLUS on. A member of the team signed in on #admin sees it on sale before
+// that, to check the form and the pass first: the team's own passes are Plus and free, and the
+// Worker still refuses a paid Plus order until PASS_PLUS is on.
+export const plusOnSale = () => !!(state.store?.plusOn || state.store?.teamKey);
 export const upgradable = eventId => (!plusOnSale() || plusPass(eventId) ? null : passes.all().filter(p => p.eventId === eventId && p.status === 'confirmed' && p.plan !== 'plus').at(-1) || null);
 
 // The seats on the fan's e-tickets, marked in the 3D view: as many as the booking has.
@@ -169,7 +172,6 @@ export function holdPass(r) {
 // the Worker does not know (a key it never signed) closes; one open on two other devices
 // asks for the email code ('device').
 export async function refresh(p) {
-  if (state.store.mode === 'server' && !p.token) return;
   // With live payments a pass with no key cannot be checked, so it never opens.
   if (live() && !p.token) return true;
   let r;

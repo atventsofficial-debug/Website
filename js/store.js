@@ -1,7 +1,7 @@
 // What visitors send us: clicks to tiket.com, 3D pass claims, partner requests and sign-ups,
 // and the admin's view of them. LocalStore keeps it all in this browser (demo, static
 // hosting), with the same rules as the server. PayStore is LocalStore with real payments,
-// through the site's Worker (worker/) and Midtrans. ApiStore talks to server/server.mjs.
+// through the site's Worker (worker/) and Midtrans.
 import { clientsOf } from './sso.js';
 import { teamKey } from './team.js';
 import { checkFan, SEAT_TAKEN } from './fanrules.js';
@@ -265,40 +265,4 @@ export class PayStore extends LocalStore {
   // A paid pass open on two other devices: a code to the buyer's email, then the code back.
   passCode(id, token) { return call(`api/passes/${encodeURIComponent(id)}/code`, { method: 'POST', headers: { 'x-pass-token': token, 'x-device': deviceId() } }); }
   passDevice(id, token, code) { return call(`api/passes/${encodeURIComponent(id)}/device`, { method: 'POST', body: { code }, headers: { 'x-pass-token': token, 'x-device': deviceId() } }); }
-}
-
-export class ApiStore {
-  constructor(base = '') {
-    this.base = base;
-    try { this.adminToken = sessionStorage.getItem('atvents:admin') || ''; } catch { this.adminToken = ''; }
-  }
-  get mode() { return 'server'; }
-  get live() { return false; }
-
-  setAdminToken(t) {
-    this.adminToken = t;
-    try { sessionStorage.setItem('atvents:admin', t); } catch { /* memory only */ }
-  }
-
-  req(path, { headers = {}, ...opts } = {}) {
-    const admin = this.adminToken && path.startsWith('api/admin/') ? { authorization: `Bearer ${this.adminToken}` } : {};
-    return call(this.base + path, { ...opts, headers: { ...admin, ...headers } });
-  }
-
-  // keepalive: the fan is on their way to tiket.com, the record must still arrive.
-  click(c) { return this.req('api/clicks', { method: 'POST', body: c, keepalive: true }); }
-  claim(c) { return this.req('api/claims', { method: 'POST', body: c }); }
-  claimStatus(id, token) { return this.req(`api/claims/${encodeURIComponent(id)}`, { headers: { 'x-pass-token': token } }); }
-  // The server creates the order with the payment provider and returns its payment page.
-  pay(d) { return this.req('api/payments', { method: 'POST', body: d }); }
-  paymentStatus(id) { return this.req(`api/payments/${encodeURIComponent(id)}`); }
-  subscribe(s) { return this.req('api/subscribe', { method: 'POST', body: s }); }
-  partnerLead(l) { return this.req('api/partners', { method: 'POST', body: l }); }
-
-  summary() { return this.req('api/admin/summary'); }
-  async claims() { return (await this.req('api/admin/claims')).claims; }
-  setClaim(id, status) { return this.req(`api/admin/claims/${encodeURIComponent(id)}`, { method: 'POST', body: { status } }); }
-  importConversions(rows) { return this.req('api/admin/conversions', { method: 'POST', body: { rows } }); }
-  async leads() { return (await this.req('api/admin/leads')).leads; }
-  async subscribers() { return (await this.req('api/admin/subscribers')).subscribers; }
 }
