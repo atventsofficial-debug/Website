@@ -8,14 +8,10 @@
     "node": ">=18"
   },
   "scripts": {
-    "start": "node server/server.mjs",
     "test": "node --test --test-concurrency=1 test/*.test.mjs",
     "build:preview": "node scripts/build-preview.mjs",
     "build:site": "node scripts/build-site.mjs",
     "dev": "wrangler dev"
-  },
-  "dependencies": {
-    "pg": "8.13.1"
   },
   "devDependencies": {
     "esbuild": "^0.28.2",

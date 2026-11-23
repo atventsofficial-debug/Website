@@ -18,7 +18,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { securityHeaders } from '../server/http.mjs';
+import { securityHeaders } from './security-headers.mjs';
 import { writeWorkerCatalog } from './worker-catalog.mjs';
 import { writeSeatCounts } from './seat-counts.mjs';
 

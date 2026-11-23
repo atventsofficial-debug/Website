@@ -63,39 +63,19 @@ async function renderTeam() {
 export async function renderAdmin() {
   renderTeam();
   const body = $('#admin-body'), st = state.store;
-  $('#admin-mode').textContent = st.mode === 'server'
-    ? 'Live data from the server.'
-    : 'Demo: what this browser stored. On the live server this page shows everyone’s data, behind the admin token.';
-  if (st.mode === 'server' && !st.adminToken) return tokenForm();
+  $('#admin-mode').textContent = 'What this browser stored. Paid passes and the team are on the Worker (Cloudflare).';
   body.innerHTML = '<p class="dash-loading"><span class="spinner"></span>Loading</p>';
   let data;
   try {
     const [summary, claims, leads, subscribers] = await Promise.all([st.summary(), st.claims(), st.leads(), st.subscribers()]);
     data = { summary, claims, leads, subscribers };
   } catch (e) {
-    if (e.status === 401) { st.setAdminToken(''); return tokenForm('That token was not accepted.'); }
     body.innerHTML = `<div class="empty-state"><h3>Could not load.</h3><p>${esc(e.message || 'The server did not answer.')}</p><button class="btn btn-line" type="button" id="admin-retry">Try again</button></div>`;
     $('#admin-retry').addEventListener('click', renderAdmin);
     return;
   }
   if (state.view !== 'admin') return;
   draw(data);
-}
-
-function tokenForm(msg = '') {
-  $('#admin-body').innerHTML = `
-    <form class="form token-form panel-box" id="admin-login">
-      <label>Admin token<input name="token" type="password" autocomplete="current-password" required></label>
-      <button class="btn btn-coral" type="submit">Open</button>
-      ${msg ? `<p class="form-error" role="alert">${esc(msg)}</p>` : ''}
-    </form>`;
-  $('#admin-login').addEventListener('submit', ev => {
-    ev.preventDefault();
-    const t = ev.currentTarget.token.value.trim();
-    if (!t) return;
-    state.store.setAdminToken(t);
-    renderAdmin();
-  });
 }
 
 // The seat a claim names, as the e-ticket would print it.
@@ -214,7 +194,7 @@ function draw({ summary, claims, leads, subscribers }) {
     </section>
 
     <div class="row-btns dash-foot">
-      ${state.store.mode === 'server' ? '<button class="btn btn-line btn-sm" type="button" id="admin-out">Sign out</button>' : '<button class="btn btn-line btn-sm" type="button" id="admin-reset">Clear the demo data</button>'}
+      <button class="btn btn-line btn-sm" type="button" id="admin-reset">Clear the demo data</button>
     </div>`;
   bindDraw({ claims, leads, subscribers });
 }
@@ -232,7 +212,6 @@ function bindDraw(data) {
     if (csv === 'leads') download('partner-requests.csv', toCsv(data.leads, ['createdAt', 'name', 'company', 'kind', 'volume', 'email', 'phone', 'website', 'message']));
     if (csv === 'subscribers') download('alert-sign-ups.csv', toCsv(data.subscribers, ['createdAt', 'email', 'kind', 'eventId']));
   };
-  $('#admin-out')?.addEventListener('click', () => { state.store.setAdminToken(''); renderAdmin(); });
   $('#admin-reset')?.addEventListener('click', async () => { await state.store.reset(); toast('Demo data cleared.'); renderAdmin(); });
 
   const form = $('#conv-form'), msg = $('#conv-msg'), importBtn = $('#conv-import');

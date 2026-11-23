@@ -1,6 +1,7 @@
 // Indonesian lines for js/i18n.js, keyed by the English text as it shows on the page.
 // Generated from the translation sheet; names, venues and film titles stay as they are.
 export const EXACT = {
+"What this browser stored. Paid passes and the team are on the Worker (Cloudflare).": "Data yang tersimpan di browser ini. Pass berbayar dan akses tim ada di Worker (Cloudflare).",
 "Close getting there": "Tutup cara ke sana",
 "Your way in": "Jalan masukmu",
 "Tap a seat on the map to see the way in from the nearest side of the venue.": "Ketuk kursi di peta untuk melihat jalan masuk dari sisi venue terdekat.",
@@ -904,7 +905,6 @@ export const EXACT = {
 "Unlock seat view ·": "Lihat dari Kursimu ·",
 "Unlock seat view": "Lihat dari Kursimu",
 "Events calendar": "Kalender event",
-"Every event by date. Pick a month; each day shows what is on.": "Semua event berdasarkan tanggal. Pilih bulan, lalu klik tanggal untuk lihat acaranya.",
 "Event ended": "Event selesai",
 "Get the alerts": "Aktifkan Notifikasi",
 "Connect with your section": "Kenalan dengan satu bagianmu",
