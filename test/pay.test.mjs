@@ -128,7 +128,7 @@ test('payments stay off until the server key is set', async () => {
   assert.equal((await req('/api/config', { env: env({ MIDTRANS_SERVER_KEY: '' }) })).status, 404);
   assert.equal((await post(order(), { env: env({ MIDTRANS_SERVER_KEY: undefined }) })).status, 503);
   const c = await (await req('/api/config')).json();
-  assert.deepEqual(c, { mode: 'pay', provider: 'midtrans', sandbox: true, fee: 25000, plus: 49000, upgrade: 24000, mail: false, methods: PAY_METHODS.map(m => m.id), sso: {} });
+  assert.deepEqual(c, { mode: 'pay', provider: 'midtrans', sandbox: true, fee: 25000, plus: 50000, upgrade: 25000, mail: false, methods: PAY_METHODS.map(m => m.id), sso: {} });
   assert.equal((await (await req('/api/config', { env: env({ MIDTRANS_SERVER_KEY: 'Mid-server-LIVEKEY0123456789' }) })).json()).sandbox, false);
   assert.equal((await (await req('/api/config', { env: env({ MIDTRANS_ENV: 'production' }) })).json()).sandbox, false);
   const tilde = 'SB-Mid-server-abcdEFGH1234ijkl~mnopQRST';
@@ -977,18 +977,18 @@ test('a Plus order is charged at the Plus fee, and its key says Plus', async () 
   const r = await post(order({ plan: 'plus', amount: 1 }), { env: env(PLUS) });
   assert.equal(r.status, 201);
   const p = await r.json();
-  assert.equal(p.amount, 49000);
+  assert.equal(p.amount, 50000);
   assert.equal(p.plan, 'plus');
   const body = JSON.parse(calls.find(c => c.url.endsWith('/snap/v1/transactions')).init.body);
-  assert.deepEqual(body.transaction_details, { order_id: p.id, gross_amount: 49000 });
-  assert.equal(body.item_details.reduce((a, i) => a + i.price * i.quantity, 0), 49000);
+  assert.deepEqual(body.transaction_details, { order_id: p.id, gross_amount: 50000 });
+  assert.equal(body.item_details.reduce((a, i) => a + i.price * i.quantity, 0), 50000);
   const k = await readPass(KEY, p.token);
   assert.equal(k.plan, 'plus');
-  assert.equal(k.amount, 49000);
+  assert.equal(k.amount, 50000);
   // Paid at the seat fee, a Plus order stays shut; at its own fee it opens, as Plus.
   paid[p.id] = { transaction_status: 'settlement' };
   assert.equal((await (await status(p.id, p.token, { env: env(PLUS) })).json()).status, 'rejected');
-  paid[p.id] = { transaction_status: 'settlement', gross_amount: '49000.00' };
+  paid[p.id] = { transaction_status: 'settlement', gross_amount: '50000.00' };
   const s = await (await status(p.id, p.token)).json();
   assert.equal(s.status, 'confirmed');
   assert.equal(s.plan, 'plus');
@@ -1029,15 +1029,15 @@ test('an upgrade to Plus costs the difference, keeps the seat, and needs a paid 
   r = await up();
   assert.equal(r.status, 201);
   const p = await r.json();
-  assert.equal(p.amount, 24000);
+  assert.equal(p.amount, 25000);
   assert.equal(p.plan, 'plus');
   assert.equal(p.base, base.id);
   assert.equal(p.seat, seat.id, 'the seat of the pass it upgrades');
   const row = DB.rows().find(x => x.id === p.id);
   assert.equal(row.plan, 'plus');
   assert.equal(row.base, base.id);
-  assert.equal(row.amount, 24000);
-  paid[p.id] = { transaction_status: 'settlement', gross_amount: '24000.00' };
+  assert.equal(row.amount, 25000);
+  paid[p.id] = { transaction_status: 'settlement', gross_amount: '25000.00' };
   assert.equal((await (await status(p.id, p.token)).json()).status, 'confirmed');
   // A Plus pass cannot be upgraded again.
   assert.equal((await up({ upgrade: p.id, upgradeToken: p.token })).status, 400);
@@ -1046,8 +1046,8 @@ test('an upgrade to Plus costs the difference, keeps the seat, and needs a paid 
 test('a Plus notification is checked against the amount in the order book, and its email says Plus', async () => {
   const DB = fakeD1(), e = env({ DB, ...MAILING, ...PLUS });
   const p = await (await post(order({ plan: 'plus' }), { env: e })).json();
-  paid[p.id] = { transaction_status: 'settlement', gross_amount: '49000.00' };
-  const n = { order_id: p.id, gross_amount: '49000.00' };
+  paid[p.id] = { transaction_status: 'settlement', gross_amount: '50000.00' };
+  const n = { order_id: p.id, gross_amount: '50000.00' };
   assert.equal((await notify({ ...n, signature_key: sign({ status_code: '200', ...n }) }, { env: e })).status, 200);
   assert.equal(DB.rows()[0].status, 'confirmed');
   assert.equal(mails.length, 1);

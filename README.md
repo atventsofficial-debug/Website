@@ -39,7 +39,7 @@ The 3D lock is a convenience, not a vault: the venue models are public files. Wh
 
 ## 3D Pass Plus
 
-A second pass beside the seat view (`PLUS_FEE` in `js/order.js`, Rp49.000): everything the seat pass has, and every seat of the concert open in 3D, so the fan can sit anywhere and compare. A fan with a paid seat pass for a concert still to come upgrades it for the difference (`UPGRADE_FEE`, Rp24.000) from the 3D view, My 3D passes or `#upgrade-<pass id>`; the seat stays the pass's own. `#plus-<concert id>` opens the form with Plus chosen.
+A second pass beside the seat view (`PLUS_FEE` in `js/order.js`, Rp50.000): everything the seat pass has, and every seat of the concert open in 3D, so the fan can sit anywhere and compare. A fan with a paid seat pass for a concert still to come upgrades it for the difference (`UPGRADE_FEE`, Rp25.000) from the 3D view, My 3D passes or `#upgrade-<pass id>`; the seat stays the pass's own. `#plus-<concert id>` opens the form with Plus chosen.
 
 - **On sale only with `PASS_PLUS` = `on`**, set in `wrangler.jsonc` (`vars`), so each deploy and preview carries it (on since November 2026). Off, `/api/config` says nothing of it, the price list shows its card as *Coming soon*, its Choose button greyed out, the upgrade buttons stay hidden, and the Worker refuses a Plus order or an upgrade (400, `field: 'plan'`).
 - **The team sees it first.** A member signed in on `#admin` sees Plus on sale even with `PASS_PLUS` off, so the form, the checkout and a Plus pass can be checked on the live site before it opens: "Buka gratis (tim)" opens a free Plus pass. A paid Plus order is still refused until `PASS_PLUS` is `on`.
