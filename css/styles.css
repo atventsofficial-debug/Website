@@ -2200,10 +2200,16 @@ body { font-family: var(--font); font-feature-settings: "cv11", "ss01"; }
 .uf-disclaimer { margin: 0 0 14px; padding: 14px 16px; border-radius: 16px; border: 1px dashed rgba(255, 255, 255, 0.22); background: rgba(255, 255, 255, 0.025); }
 .uf-disclaimer b { display: block; margin-bottom: 4px; font-size: 14.5px; font-weight: 600; color: var(--text); }
 .uf-disclaimer p { margin: 0; font-size: 13px; line-height: 1.5; color: #a9a9a9; }
-/* The price list beside the form: the seat view, then 3D Pass Plus. On a wide screen the form
-   stays in view while the price list scrolls past it (js/pages.js sets its top, so a form
-   taller than the window still shows its end). */
-@media (min-width: 961px) { #view-unlock .unlock-main { position: sticky; top: 24px; } }
+/* The price list, at the foot of the page under the form: the seat view and 3D Pass Plus side
+   by side (one under the other on a narrow screen). */
+#view-unlock .host { grid-template-columns: minmax(0, 1fr); }
+.price-list { display: flex; flex-direction: column; gap: var(--s4); margin-top: var(--s6); padding-top: var(--s6); border-top: 1px solid var(--line); }
+.pl-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 24px; }
+.pl-head .eyebrow { margin: 0; }
+.pl-hint { margin: 0; font-size: 13px; color: var(--muted); }
+.pl-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s4); align-items: start; }
+.pl-cards .host-plus { margin-top: 0; }
+@media (max-width: 760px) { .pl-cards { grid-template-columns: minmax(0, 1fr); } }
 .host-plus { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; padding: var(--s5); border-radius: var(--r); border: 1px solid var(--line-2); background: rgba(255, 255, 255, 0.03); }
 .host-plus-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .host-plus > b { font: 600 28px/1 var(--display); letter-spacing: -0.03em; color: var(--text); }
@@ -2231,7 +2237,7 @@ body { font-family: var(--font); font-feature-settings: "cv11", "ss01"; }
 /* The checkout: two columns like a ticket shop's, the ways to pay on the left and the order on
    the right, in light cards on the dark page. The form's side panel steps aside meanwhile. */
 .host.is-paying, .host.is-form { grid-template-columns: minmax(0, 1fr); }
-.host.is-paying .host-side, .host.is-form .host-side { display: none; }
+.host.is-paying .price-list, .host.is-form .price-list { display: none; }
 .pay-sheet {
   --c-bg: #fff; --c-bg-2: #f7f5f2; --c-line: #e6e1da; --c-line-2: #cdc6bc;
   --c-text: #0e0e0e; --c-muted: #6b6560; --c-soft: #fff3ec;
@@ -2779,6 +2785,20 @@ html.has-soldpop { overflow: hidden; }
 .host-plan .plan-gets li, .host-plus .plan-gets li { position: relative; display: flex; flex-direction: column; gap: 2px; padding-left: 30px; font-size: 13px; line-height: 1.45; }
 /* Each line of the price list has its own icon, drawn in the line's own colour. */
 .plan-gets .pg-ic { position: absolute; left: 0; top: 0; width: 19px; height: 19px; color: var(--coral); }
+/* A line with a clip (js/peek.js): it lights up under the pointer or the keyboard, and a small
+   play mark says there is something to see. */
+.plan-gets li[data-peek] { margin: -8px -10px; padding: 8px 34px 8px 40px; border-radius: 12px; cursor: default; outline: none; transition: background-color 0.15s; }
+.plan-gets li[data-peek] .pg-ic { left: 10px; top: 8px; }
+.plan-gets li[data-peek]::after { content: ""; position: absolute; right: 12px; top: 11px; width: 0; height: 0; border-left: 7px solid currentColor; border-top: 4.5px solid transparent; border-bottom: 4.5px solid transparent; opacity: 0.35; transition: opacity 0.15s; }
+.plan-gets li[data-peek]:hover, .plan-gets li[data-peek]:focus-visible, .plan-gets li[data-peek].is-peek { background: rgba(255, 255, 255, 0.06); }
+.plan-gets li[data-peek]:hover::after, .plan-gets li[data-peek]:focus-visible::after, .plan-gets li[data-peek].is-peek::after { opacity: 0.9; color: var(--coral); }
+.plan-gets li[data-peek]:focus-visible { box-shadow: inset 0 0 0 1.5px var(--coral); }
+/* The clip itself: one card over the page, beside the line, never a link or a file to keep. */
+.peek { position: fixed; z-index: 80; left: 0; top: 0; width: min(340px, calc(100vw - 24px)); aspect-ratio: 576 / 342; border-radius: 14px; overflow: hidden; background: #050505; border: 1px solid rgba(255, 255, 255, 0.12); box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55); pointer-events: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; opacity: 0; transform: translateY(6px) scale(0.98); transition: opacity 0.16s, transform 0.16s; }
+.peek.is-on { opacity: 1; transform: none; }
+.peek video { display: block; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+.peek .spinner { position: absolute; left: 50%; top: 50%; margin: -15px 0 0 -15px; }
+.peek.is-ready .spinner { display: none; }
 .host-plan .plan-gets b { font: 600 14px/1.3 var(--display); font-stretch: 100%; letter-spacing: -0.01em; text-transform: none; color: #fff; }
 .host-plan .plan-gets span { color: rgba(245, 242, 238, 0.66); }
 .host-plan .plan-fine { margin-top: 4px; font-size: 12px; color: rgba(245, 242, 238, 0.5); }

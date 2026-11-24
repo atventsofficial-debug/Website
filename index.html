@@ -377,36 +377,38 @@ html:not(.atv-seen) #nav .logo-img{animation:ai-show 0s 2.57s both}
         </form>
         <section class="pay-sheet panel-box" id="pay-sheet" hidden></section>
       </div>
-      <aside class="host-side">
-        <p class="eyebrow">Price list</p>
-        <div class="host-plan">
-          <span class="eyebrow eyebrow-ink">3D seat view</span>
-          <b data-fee>Rp25.000</b>
-          <p>Per seat, per event: a concert, a match or a film. Pay once, and you get:</p>
-          <ul class="plan-gets">
-            <li><svg class="pg-ic" aria-hidden="true"><use href="#i-cube"/></svg><b>Your seat tour in 3D</b><span>The whole venue, then your category, then the view from your own seat, with the crowd around you and the show's lights up.</span></li>
-            <li><svg class="pg-ic" aria-hidden="true"><use href="#i-play"/></svg><b>Your story video</b><span>A 19-second trailer of your show with the music, ending on the view from your seat. Save it for Instagram or TikTok.</span></li>
-            <li><svg class="pg-ic" aria-hidden="true"><use href="#i-camera"/></svg><b>Photos and clips</b><span>Take a photo or a short video of your view, captioned with the show and your seat.</span></li>
-            <li><svg class="pg-ic" aria-hidden="true"><use href="#i-people"/></svg><b>Seat mates</b><span>Find fans with a pass for the same show and their Instagram over their seat, show yours if you like, and join the fan WhatsApp group.</span></li>
-            <li><svg class="pg-ic" aria-hidden="true"><use href="#i-livechat"/></svg><b>Live chat</b><span>Talk with the other fans of your concert while you look round from your seat, each with their category and section.</span></li>
-            <li><svg class="pg-ic" aria-hidden="true"><use href="#i-seat"/></svg><b>Your real seat</b><span>If the venue numbers its seats its own way, set it, or point at your seat yourself.</span></li>
-            <li><svg class="pg-ic" aria-hidden="true"><use href="#i-devices"/></svg><b>On your phone and laptop</b><span>The pass link comes to your email and opens on two devices. Another one gets in with a code from your email.</span></li>
-            <li><svg class="pg-ic" aria-hidden="true"><use href="#i-forever"/></svg><b>Yours for good</b><span>After the show the pass reads Event ended, and the tour and your story still open.</span></li>
-          </ul>
-          <p class="plan-fine">The 3D view does not include a ticket.</p>
-        </div>
-        <div class="host-plus">
-          <div class="host-plus-top"><span class="eyebrow">3D Pass Plus</span><span class="soon-tag plan-soon" hidden>Coming soon</span></div>
-          <b data-plan-fee="plus">Rp49.000</b>
-          <p>Per concert. Everything in the seat view, and more. Already have a seat pass? Upgrade for the difference, <span data-plan-fee="upgrade">Rp24.000</span>.</p>
-          <ul class="plan-gets">
-            <li><svg class="pg-ic" aria-hidden="true"><use href="#i-eye"/></svg><b>Every seat of the concert</b><span>Sit in any seat, not just yours, and look round from there.</span></li>
-            <li><svg class="pg-ic" aria-hidden="true"><use href="#i-compare"/></svg><b>Compare seats</b><span>Two seats side by side, with the distance to the stage, before you buy.</span></li>
-            <li><svg class="pg-ic" aria-hidden="true"><use href="#i-show"/></svg><b>Show mode</b><span>The lights go down, the lightsticks round you glow with the music, and the artist walks every side of the stage.</span></li>
-            <li><svg class="pg-ic" aria-hidden="true"><use href="#i-music"/></svg><b>Setlist</b><span>The songs a recent show of this tour played, each with a short preview to play from your seat.</span></li>
-            <li><svg class="pg-ic" aria-hidden="true"><use href="#i-eye"/></svg><b>Eye height</b><span>Set how tall you are and how tall the people in the rows in front of you are, and see the view you will have.</span></li>
-            <li><svg class="pg-ic" aria-hidden="true"><use href="#i-pin"/></svg><b>Directions</b><span>Trains, buses, parking, the gates and the way to your seat, on a map of the streets round the venue and in 3D.</span></li>
-          </ul>
+      <aside class="price-list" id="price-list" aria-label="Price list">
+        <header class="pl-head"><p class="eyebrow">Price list</p><p class="pl-hint">Hover over a feature, or tap it on a phone, to see a short clip of it.</p></header>
+        <div class="pl-cards">
+          <div class="host-plan">
+            <span class="eyebrow eyebrow-ink">3D seat view</span>
+            <b data-fee>Rp25.000</b>
+            <p>Per seat, per event: a concert, a match or a film. Pay once, and you get:</p>
+            <ul class="plan-gets">
+              <li data-peek="tour" tabindex="0"><svg class="pg-ic" aria-hidden="true"><use href="#i-cube"/></svg><b>Your seat tour in 3D</b><span>The whole venue, then your category, then the view from your own seat, with the crowd around you and the show's lights up.</span></li>
+              <li data-peek="story" tabindex="0"><svg class="pg-ic" aria-hidden="true"><use href="#i-play"/></svg><b>Your story video</b><span>A 19-second trailer of your show with the music, ending on the view from your seat. Save it for Instagram or TikTok.</span></li>
+              <li data-peek="capture" tabindex="0"><svg class="pg-ic" aria-hidden="true"><use href="#i-camera"/></svg><b>Photos and clips</b><span>Take a photo or a short video of your view, captioned with the show and your seat.</span></li>
+              <li data-peek="mates" tabindex="0"><svg class="pg-ic" aria-hidden="true"><use href="#i-people"/></svg><b>Seat mates</b><span>Find fans with a pass for the same show and their Instagram over their seat, show yours if you like, and join the fan WhatsApp group.</span></li>
+              <li data-peek="chat" tabindex="0"><svg class="pg-ic" aria-hidden="true"><use href="#i-livechat"/></svg><b>Live chat</b><span>Talk with the other fans of your concert while you look round from your seat, each with their category and section.</span></li>
+              <li data-peek="realseat" tabindex="0"><svg class="pg-ic" aria-hidden="true"><use href="#i-seat"/></svg><b>Your real seat</b><span>If the venue numbers its seats its own way, set it, or point at your seat yourself.</span></li>
+              <li data-peek="devices" tabindex="0"><svg class="pg-ic" aria-hidden="true"><use href="#i-devices"/></svg><b>On your phone and laptop</b><span>The pass link comes to your email and opens on two devices. Another one gets in with a code from your email.</span></li>
+              <li data-peek="forever" tabindex="0"><svg class="pg-ic" aria-hidden="true"><use href="#i-forever"/></svg><b>Yours for good</b><span>After the show the pass reads Event ended, and the tour and your story still open.</span></li>
+            </ul>
+            <p class="plan-fine">The 3D view does not include a ticket.</p>
+          </div>
+          <div class="host-plus">
+            <div class="host-plus-top"><span class="eyebrow">3D Pass Plus</span><span class="soon-tag plan-soon" hidden>Coming soon</span></div>
+            <b data-plan-fee="plus">Rp49.000</b>
+            <p>Per concert. Everything in the seat view, and more. Already have a seat pass? Upgrade for the difference, <span data-plan-fee="upgrade">Rp24.000</span>.</p>
+            <ul class="plan-gets">
+              <li data-peek="everyseat" tabindex="0"><svg class="pg-ic" aria-hidden="true"><use href="#i-eye"/></svg><b>Every seat of the concert</b><span>Sit in any seat, not just yours, and look round from there.</span></li>
+              <li data-peek="compare" tabindex="0"><svg class="pg-ic" aria-hidden="true"><use href="#i-compare"/></svg><b>Compare seats</b><span>Two seats side by side, with the distance to the stage, before you buy.</span></li>
+              <li data-peek="show" tabindex="0"><svg class="pg-ic" aria-hidden="true"><use href="#i-show"/></svg><b>Show mode</b><span>The lights go down, the lightsticks round you glow with the music, and the artist walks every side of the stage.</span></li>
+              <li data-peek="setlist" tabindex="0"><svg class="pg-ic" aria-hidden="true"><use href="#i-music"/></svg><b>Setlist</b><span>The songs a recent show of this tour played, each with a short preview to play from your seat.</span></li>
+              <li data-peek="eye" tabindex="0"><svg class="pg-ic" aria-hidden="true"><use href="#i-eye"/></svg><b>Eye height</b><span>Set how tall you are and how tall the people in the rows in front of you are, and see the view you will have.</span></li>
+              <li data-peek="directions" tabindex="0"><svg class="pg-ic" aria-hidden="true"><use href="#i-pin"/></svg><b>Directions</b><span>Trains, buses, parking, the gates and the way to your seat, on a map of the streets round the venue and in 3D.</span></li>
+            </ul>
+          </div>
         </div>
       </aside>
     </div>

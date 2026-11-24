@@ -81,6 +81,14 @@ In the 3D view, the **Chat** button in the bar (after Setlist; on a phone, in th
 
 It is made for a full stadium. The Worker gives a paid pass a two-minute ticket (`POST /api/passes/<id>/chat`, the same checks as seat mates), and the browser opens a WebSocket with it (`GET /api/chat/<event>`). The sockets sit on 16 Durable Objects per concert (`ChatRoom` in `worker/chat.mjs`, bound as `CHAT` in `wrangler.jsonc`), with Hibernation, so a quiet chat costs nothing. A message goes to the concert's hub object, which sends one packet every half second to each shard with fans in it: at most 12 messages, picked at random when more came in, with a count of the rest. A fan says one thing every 3 seconds, of up to 150 characters; links are taken out and a few rude words masked. In the browser the column keeps the last 25 messages, adds new ones one per frame and draws nothing while the tab is hidden (`js/chat.js`). Messages are not stored.
 
+## The price list and its clips
+
+The price list sits at the foot of `#unlock`, under the list of concerts to choose from (the form and the payment step leave it out). Every line of it has a clip of a few seconds, filmed in the 3D view (or, for the pass itself, on My 3D passes): a mouse shows it on hover, the keyboard on focus, a phone on a tap (`js/peek.js`, the line's `data-peek`).
+
+The clips are not files to keep. Each is kept scrambled as `assets/peek/<name>.bin` (`js/peekcode.js`), so its link opens nothing playable; the page unscrambles it in memory and plays it from a blob URL in a `<video>` with no controls, no download, no picture-in-picture or casting, and no menu of its own. A screen recording cannot be stopped. A new or changed clip: put `<name>.mp4` files (576 px wide, H.264, no sound) in a folder and run `node scripts/peek-clips.mjs <folder>`. A new line in the price list needs its clip too: `test/peek.test.mjs` checks that every `data-peek` has its file.
+
+**Keep the price list current**: when a feature comes, changes or goes, its line in both the seat view and Plus lists changes with it, and so does its clip.
+
 ## Run it
 
 ```bash

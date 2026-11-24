@@ -228,7 +228,6 @@
 
   /* ---------- checkout: the form, and the pay button kept in reach ---------- */
   #view-unlock .sec-side { display: none; }
-  #view-unlock .host-side { display: none; }
   #view-unlock { padding-bottom: 24px; }
   /* The pay button stays where it is in the form, under the consent box: no floating copy over
      the fields ("Where your pass goes" was showing through it while it was still greyed out). */

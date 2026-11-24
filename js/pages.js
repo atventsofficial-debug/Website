@@ -12,6 +12,7 @@ import { justBought, buyUrl, buyAttrs, buyLink, travelUrl, TRAVEL, passes, activ
 import { checkClaim, formatFee } from './rules.js';
 import { ACCESS_FEE, PLUS_FEE, UPGRADE_FEE, PAY_MINUTES, line, email as cleanEmail, isEmail, planOf, feeOf } from './order.js';
 import { signIn, PROVIDERS } from './sso.js';
+import { bindPeek } from './peek.js';
 import { PAY_GROUPS, PAY_METHODS, payMethod, payDetails, wayName } from './paymethods.js';
 import { loadSnap, embedSnap, hideSnap } from './snap.js';
 import { FAQ_FANS, faqHtml } from './content.js';
@@ -835,17 +836,6 @@ export function renderUnlock(eventId, { plan = '', upgrade = '' } = {}) {
 const seatText = s => (s.standing ? `${s.secName}, standing` : `${s.secName} · Row ${s.row} · Seat ${s.num}`);
 const seatIn = (eventId, seatId) => { const venue = getEvent(eventId), i = venue?.seatById.get(seatId); return i === undefined ? null : venue.seats[i]; };
 
-// Wide screens: the form stays in view while the price list beside it scrolls (css: sticky).
-// A form taller than the window sticks once its end is in view, so nothing is out of reach.
-function stickForm() {
-  const main = $('#view-unlock .unlock-main');
-  if (!main || !('ResizeObserver' in window)) return;
-  const fit = () => { main.style.top = `${Math.min(24, window.innerHeight - main.offsetHeight - 24)}px`; };
-  new ResizeObserver(fit).observe(main);
-  window.addEventListener('resize', fit);
-  fit();
-}
-
 // The pass: the seat view or Plus, with the price on Continue. Upgrading, the plan is Plus,
 // the seat is the pass's own and cannot change, and the price is the difference.
 function paintPlan(form) {
@@ -1521,6 +1511,7 @@ async function paid(form) {
 }
 
 function bindUnlock(form) {
+  bindPeek($('#price-list'));
   form.eventId.addEventListener('change', () => fillCats(form));
   form.cat.addEventListener('change', () => fillSecs(form));
   form.sec.addEventListener('change', () => fillRows(form));
@@ -1553,7 +1544,6 @@ function bindUnlock(form) {
   });
   $('#pay-sheet').addEventListener('change', ev => { if (ev.target.name === 'pm') pickWay(ev.target.value); });
   form.addEventListener('submit', ev => { ev.preventDefault(); startPayment(form); });
-  stickForm();
   form.addEventListener('change', ev => { if (ev.target.name === 'plan') { unlock.plan = planOf(ev.target.value); paintPlan(form); } });
   form.addEventListener('change', () => { $('#unlock-error').hidden = true; ready(form); });
 }

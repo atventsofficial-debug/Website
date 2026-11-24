@@ -1043,6 +1043,7 @@ export const EXACT = {
 "We build each venue from the promoter’s seating plan and announcements, so distances, angles, the stage and the screens are close, not 100% accurate. If the promoter or the venue changes the layout or the seat positions on the day, that is outside our control and not our responsibility. Your ticket decides your seat.": "Kami membuat setiap venue dari denah kursi dan pengumuman promotor, jadi jarak, sudut, panggung, dan layarnya mendekati, tidak 100% akurat. Kalau promotor atau venue mengubah layout atau posisi kursi di hari H, itu di luar kendali kami dan bukan tanggung jawab kami. Tiketmu yang menentukan kursimu.",
 "I understand the 3D is an illustration, and I agree to the": "Saya paham 3D ini ilustrasi, dan saya setuju dengan",
 "Price list": "Daftar harga",
+"Hover over a feature, or tap it on a phone, to see a short clip of it.": "Arahkan kursor ke sebuah fitur, atau ketuk di HP, untuk melihat cuplikan singkatnya.",
 "Per concert. Everything in the seat view, and more. Already have a seat pass? Upgrade for the difference,": "Per konser. Semua isi tampilan kursi, dan lebih banyak lagi. Sudah punya pass kursi? Upgrade dengan bayar selisihnya,",
 "Every seat of the concert": "Semua kursi di konser",
 "Sit in any seat, not just yours, and look round from there.": "Duduk di kursi mana pun, bukan cuma kursimu, dan lihat sekeliling dari sana.",
