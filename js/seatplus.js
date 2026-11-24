@@ -13,6 +13,7 @@ import { compareSeats, pairText } from './compare.js';
 import { accessOf, wayIn } from './access.js';
 import { $, esc, icon, state, share, toast } from './ui.js';
 import { setlistFor } from './setlists.js';
+import { isConcert } from './events.js';
 import { CityMap, KINDS, mapAreaOf } from './citymap.js';
 
 const seatOf = id => { const v = state.venue, i = v?.seatById.get(id); return i === undefined ? null : v.seats[i]; };
@@ -334,7 +335,9 @@ export function showModeFor(mode) {
   if (!btn) return;
   state.show ||= loadShow();
   const inSeat = mode === 'seat';
-  btn.hidden = !inSeat;
+  // In the tour the button is there from the start (on a computer, in the bar at the top; a
+  // phone shows it in the seat's row): before the seat, a tap sits the fan down first.
+  btn.hidden = !inSeat && !state.tour;
   if (mode === 'seat') state.showLights = true;
   if (!inSeat) { panel.hidden = true; btn.setAttribute('aria-expanded', 'false'); btn.classList.remove('is-on'); $('#stage')?.classList.remove('show-open'); }
   // A seat pass keeps the crowd's own light sticks; Plus brings back the fan's choice.
@@ -346,12 +349,16 @@ export function showModeFor(mode) {
   if (!panel.hidden) paintShow();
 }
 
-// A fan with a seat pass (not Plus) sees the Plus buttons with a lock; a tap on one goes
-// straight to the upgrade. Anyone else gets the panel, which says what Plus adds.
+// A Plus button the fan cannot open yet shows a lock, and a tap on it never opens its panel:
+// it goes to pay first. With a seat pass, to the upgrade for the difference; with none, to
+// the concert's Plus page. Only while Plus is not on sale does the panel open, to say so.
 function toUpgrade() {
-  const up = state.venue && !showOpen() ? upgradable(state.venue.meta.id) : null;
-  if (!up) return false;
-  location.hash = `#upgrade-${up.id}`;
+  const v = state.venue;
+  if (!v || showOpen() || !plusOnSale()) return false;
+  const up = upgradable(v.meta.id);
+  if (up) location.hash = `#upgrade-${up.id}`;
+  else if (isConcert(v.meta.id)) location.hash = `#plus-${v.meta.id}`;
+  else return false;
   return true;
 }
 
@@ -382,6 +389,7 @@ export function bindShow() {
   if (!btn) return;
   btn.addEventListener('click', () => {
     if (panel.hidden && toUpgrade()) return;
+    if (panel.hidden && state.tour && state.scene?.mode !== 'seat') { document.dispatchEvent(new CustomEvent('atv:sit', { detail: 'show' })); return; }
     panel.hidden = !panel.hidden;
     btn.setAttribute('aria-expanded', String(!panel.hidden));
     btn.classList.toggle('is-on', !panel.hidden);

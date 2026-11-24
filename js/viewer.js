@@ -394,6 +394,13 @@ function setMode(mode, seat) {
   $('#zoom').hidden = mode !== 'seat' && mode !== 'overview';
   showModeFor(mode);
   paintAccess({ tourSeat });
+  // Show mode or the camera, asked for before the seat: once there.
+  if (mode === 'seat' && state.tour?.after) {
+    const after = state.tour.after;
+    state.tour.after = null;
+    if (after === 'capture') capture();
+    if (after === 'show' && $('#show-panel')?.hidden) $('#show-btn')?.click();
+  }
 }
 
 // A paid seat pass of this concert, on its way to Plus: every seat, for the difference.
@@ -791,13 +798,22 @@ function placeTabs() {
 }
 let tabsFrame = 0;
 const queueTabs = () => { cancelAnimationFrame(tabsFrame); tabsFrame = requestAnimationFrame(placeTabs); };
-// The camera's button is up there in the seat at the end of the tour, as the phone's row has it.
+// The camera's button is up there from the start of the tour (a phone shows it in the seat's
+// row): a photo or video from the fan's own seat, so before the seat a tap sits them down first.
 function syncCapture() {
   const b = $('#t-capture'), t = state.tour;
-  if (b) b.hidden = !(t && t.step === 3 && !t.fan && !t.fanBlock);
+  if (b) b.hidden = !(t && !t.fan && !t.fanBlock);
+}
+function sitFor(what) {
+  const s = state.tour && tourSeat();
+  if (!s || !state.scene) return;
+  state.tour.after = what;
+  state.tour.numOpen = false;
+  if (state.scene.mode === 'overview') state.scene.flyToSeat(s);
 }
 function bindTabs() {
-  $('#t-capture')?.addEventListener('click', capture);
+  $('#t-capture')?.addEventListener('click', () => { if (state.tour && state.scene?.mode !== 'seat') sitFor('capture'); else capture(); });
+  document.addEventListener('atv:sit', e => sitFor(e.detail));
   const watch = new MutationObserver(placeTabs);
   const tools = $('#tools');
   if (tools) watch.observe(tools, { subtree: true, attributes: true, attributeFilter: ['class', 'hidden'] });
