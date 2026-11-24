@@ -3154,7 +3154,7 @@ html.lang-swap body { opacity: .35; }
 .arrive-veil:not([class*="is-"]) { display: none; }
 /* blink: two lids close over the venue and open in the seat */
 .arrive-veil.is-blink { backdrop-filter: blur(var(--blur, 0px)); -webkit-backdrop-filter: blur(var(--blur, 0px)); }
-.arrive-veil .lid { position: absolute; left: -10%; right: -10%; height: 56%; background: #000; }
+.arrive-veil .lid { position: absolute; left: -10%; right: -10%; height: 64%; background: #000; }
 .arrive-veil .lid-top { top: 0; border-radius: 0 0 50% 50% / 0 0 34% 34%; transform: translateY(calc((var(--k, 0) - 1) * 104%)); }
 .arrive-veil .lid-bottom { bottom: 0; border-radius: 50% 50% 0 0 / 34% 34% 0 0; transform: translateY(calc((1 - var(--k, 0)) * 104%)); }
 /* ticket: the fan's ticket comes up, then tears open on the view */
