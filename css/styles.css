@@ -3426,3 +3426,9 @@ html.lang-swap body { opacity: .35; }
 
 /* "(optional)" beside the seat number label. */
 .uf-opt { font-weight: 400; color: var(--dim); }
+
+/* Instagram and TikTok under the footer's logo (and above the legal links on phones). */
+.foot-social { display: flex; flex-wrap: wrap; gap: 10px; margin-top: var(--s5); }
+.foot-social a { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 16px 0 12px; border: 1px solid var(--line); border-radius: 999px; font-size: 14px; color: var(--text); transition: border-color .2s, background-color .2s; }
+.foot-social a:hover, .foot-social a:focus-visible { border-color: rgba(255, 255, 255, 0.32); background: rgba(255, 255, 255, 0.04); }
+.foot-social svg { width: 18px; height: 18px; flex: none; }
