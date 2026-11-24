@@ -921,6 +921,72 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
 .sq-t { position: absolute; top: calc(100% + 4px); left: 50%; transform: translateX(-50%); font: 600 10px/1 var(--font); letter-spacing: 0.01em; color: rgba(244, 240, 238, 0.9); white-space: nowrap; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.6); pointer-events: none; }
 .tools .zoom { position: relative; display: flex; flex-direction: column; gap: 6px; }
 .tools .zoom[hidden], .tools .sq[hidden] { display: none; }
+/* On a computer every button sits in one bar floating along the top, over the venue and a
+   little see-through, as the phone's panels are: the back button and the tour's name first,
+   then the buttons with their words, zoom and the button that hides the panels at the right.
+   Crowd and labels switch on and off (the icon goes coral, off is dimmed); directions, the
+   setlist and show mode turn white while their panel is open, and the panel hangs just under
+   its button with a point towards it (js/viewer.js and seatplus.js place it). The phone keeps
+   its rail. */
+@media (min-width: 961px) {
+  .stage { --bar-t: 14px; --bar-h: 60px; --bar-b: calc(var(--bar-t) + var(--bar-h)); --glass: rgba(20, 18, 18, 0.62); }
+  .app-top { top: var(--bar-t); left: 14px; right: 14px; height: var(--bar-h); padding: 0 10px; display: flex; align-items: center; gap: 8px; border-radius: 20px; background: var(--glass); border: 1px solid rgba(255, 255, 255, 0.12); box-shadow: 0 14px 40px rgba(0, 0, 0, 0.28); -webkit-backdrop-filter: blur(18px) saturate(140%); backdrop-filter: blur(18px) saturate(140%); transition: background .3s, border-color .3s, box-shadow .3s; }
+  .app-top > .sq { width: 40px; height: 40px; border: 0; background: rgba(255, 255, 255, 0.08); }
+  .app-top > .sq:hover { background: rgba(255, 255, 255, 0.16); }
+  .app-top .sq-min { margin-left: auto; }
+  .app-chip { height: 40px; padding: 0 16px 0 12px; background: transparent; border: 0; border-right: 1px solid rgba(255, 255, 255, 0.12); border-radius: 0; }
+  .stage.is-min .app-top { background: transparent; border-color: transparent; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .stage.is-min .app-top > .sq { background: rgba(22, 20, 20, 0.93); }
+  .stage.is-min :is(.show-panel, .access) { opacity: 0; visibility: hidden; pointer-events: none; }
+  #stage .tools { top: var(--bar-t); bottom: auto; left: var(--tabs-x, 340px); right: calc(14px + 10px + 40px + 8px); height: var(--bar-h); z-index: 7; flex-direction: row; flex-wrap: nowrap; align-items: center; justify-content: flex-start; gap: 4px; }
+  .tools-g { display: contents; }
+  .tools .sq { position: relative; width: auto; height: 40px; padding: 0 14px; display: flex; align-items: center; gap: 8px; border: 0; border-radius: 14px; background: transparent; color: rgba(244, 240, 238, 0.62); font: 600 13px/1 var(--font); white-space: nowrap; transition: background .2s, color .2s; }
+  .tools .sq:hover { background: rgba(255, 255, 255, 0.08); border-color: transparent; color: var(--text); }
+  .tools .sq > svg { width: 17px; height: 17px; }
+  .sq-t { position: static; transform: none; font: inherit; letter-spacing: 0; color: inherit; text-shadow: none; }
+  /* Crowd and labels: on is a coral icon and a bright word, off is dimmed. */
+  .tools .sq.is-on { background: transparent; color: var(--text); }
+  .tools .sq.is-on:hover { background: rgba(255, 255, 255, 0.08); }
+  .tools .sq.is-on > svg { color: var(--coral); }
+  /* A panel's button while the panel is open: white, the way a chosen category is, with a
+     point under it towards its panel. */
+  .tools .sq.sq-drop.is-on, .tools .sq.sq-drop.is-on:hover { background: #f4f0ee; color: var(--ink); }
+  .tools .sq.sq-drop.is-on::before { content: ""; position: absolute; left: 50%; top: calc(100% + 16px); width: 18px; height: 9px; margin-left: -9px; background: var(--glass-2, rgba(24, 21, 21, 0.86)); clip-path: polygon(50% 0, 100% 100%, 0 100%); pointer-events: none; }
+  .tools .sq-lock { position: static; width: 16px; height: 16px; box-shadow: none; }
+  .tools .sq.is-playing::after { top: 8px; right: 7px; width: 7px; height: 7px; }
+  /* Zoom at the end, as one soft pill: minus, the word, plus. */
+  .tools .zoom { margin-left: auto; flex-direction: row; align-items: center; gap: 0; height: 40px; border-radius: 14px; background: rgba(255, 255, 255, 0.06); }
+  .tools .zoom .sq { width: 40px; padding: 0; justify-content: center; color: var(--text); }
+  .tools .zoom .sq > svg { width: 16px; height: 16px; }
+  .tools .zoom [data-zoom="8"] { order: 0; }
+  .tools .zoom .sq-t { order: 1; padding: 0 2px; font-size: 12px; color: var(--muted); }
+  .tools .zoom [data-zoom="-8"] { order: 2; }
+  /* In the tour the tour itself starts over (its back button and Whole venue), and the camera
+     is a button up here, so no reset and no buttons at the panel's foot. */
+  .in-tour .tools #t-reset, .in-tour .tour-end { display: none; }
+  /* The panels open under their buttons, as see-through as the bar, above the categories. */
+  .stage { --glass-2: rgba(24, 21, 21, 0.86); }
+  .stage:is(.show-open, .set-open, .access-open) .pov-hint { opacity: 0; }
+  .stage .show-panel, .stage .access { top: calc(var(--bar-b) + 14px); left: var(--drop-x, 14px); right: auto; max-height: calc(100% - var(--bar-b) - 14px - 104px); background: var(--glass-2); border-color: rgba(255, 255, 255, 0.12); border-radius: 22px; -webkit-backdrop-filter: blur(20px) saturate(140%); backdrop-filter: blur(20px) saturate(140%); }
+  .stage.is-seat .show-panel, .stage.is-seat .access, .stage.map-open .access { max-height: calc(100% - var(--bar-b) - 14px - 18px); }
+  .stage :is(.event-card, .compare, .pov-hint) { top: calc(var(--bar-b) + 14px); }
+  /* With the street map open the other buttons stay where they are, dimmed. */
+  .stage.map-open .tools :is(.sq:not(#t-access):not(#t-reset):not([hidden]), .zoom:not([hidden])), body:not(.in-tour) .stage.map-open .tools #t-reset { display: flex; opacity: 0.3; pointer-events: none; }
+}
+/* A narrower computer: the tour's name is cut short and the zoom loses its word; narrower
+   still, the buttons show only their icons (their names come up on hover), except the open one. */
+@media (min-width: 961px) and (max-width: 1240px) {
+  .app-chip { max-width: 210px; }
+  .app-chip span { overflow: hidden; text-overflow: ellipsis; }
+  .tools .zoom .sq-t { display: none; }
+}
+@media (min-width: 961px) and (max-width: 1100px) {
+  .tools .sq:not(.is-on.sq-drop) .sq-t { display: none; }
+  .tools .sq:not(.is-on.sq-drop):not(.zoom .sq) { padding: 0 11px; }
+}
+@media (max-width: 960px) {
+  #t-capture { display: none; }
+}
 
 .sections { position: absolute; z-index: 4; left: max(16px, env(safe-area-inset-left, 0px)); bottom: max(16px, env(safe-area-inset-bottom, 0px)); right: 404px; padding: 10px; display: flex; align-items: center; gap: var(--s4); min-width: 0; border-radius: 999px; }
 .sb-label { padding-left: 10px; }

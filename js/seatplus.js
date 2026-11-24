@@ -119,11 +119,37 @@ let city = null, mapView = false, mapReady = false, mapKind = null, mapStop = nu
 const mapArea = () => mapAreaOf(state.venue?.meta?.place?.name);
 const KIND_LABEL = Object.fromEntries(KINDS.map(([k, label]) => [k, label]));
 
+// On a computer a panel opens under its button in the bar at the top (css/styles.css): its left
+// edge under the button's, or its right edge when it would run off the screen.
+const DROPS = [['#t-access', '#access'], ['#set-btn', '#set-panel'], ['#show-btn', '#show-panel']];
+export function placeDrops() {
+  const stage = $('#stage');
+  if (!stage || !window.matchMedia?.('(min-width: 961px)').matches) return;
+  const st = stage.getBoundingClientRect(), side = $('#app-side');
+  // The tour's card at the bottom right: a panel that would cover it opens the other way.
+  const sr = side && !side.hidden && getComputedStyle(side).opacity !== '0' ? side.getBoundingClientRect() : null;
+  for (const [b, p] of DROPS) {
+    const btn = $(b), panel = $(p);
+    if (!btn || !panel || panel.hidden || btn.hidden) continue;
+    const r = btn.getBoundingClientRect(), w = panel.offsetWidth, foot = panel.getBoundingClientRect().top + panel.offsetHeight;
+    const covers = x => sr && st.left + x + w > sr.left - 12 && foot > sr.top;
+    // Directions opens towards the left: the street map behind it gets the wider side.
+    let x = r.left - st.left;
+    if (p === '#access' || x + w > st.width - 16 || covers(x)) x = r.right - st.left - w;
+    panel.style.setProperty('--drop-x', `${Math.round(Math.max(16, x))}px`);
+  }
+}
+
 function mapInset() {
   const box = $('#access'), stage = $('#stage');
-  if (!box || !stage) return { right: 0, bottom: 0 };
+  if (!box || !stage) return {};
+  placeDrops();
   const b = box.getBoundingClientRect(), st = stage.getBoundingClientRect();
-  return b.width > st.width * 0.7 ? { right: 0, bottom: Math.max(0, st.bottom - b.top) } : { right: Math.max(0, st.right - b.left), bottom: 0 };
+  if (b.width > st.width * 0.7) return { bottom: Math.max(0, st.bottom - b.top) };
+  // On a computer the panel opens under its button in the bar at the top: the map keeps
+  // clear of the bar and of the panel, on whichever side of it has more room.
+  const top = Math.max(0, ($('#stage .app-top')?.getBoundingClientRect().bottom ?? st.top) - st.top);
+  return st.right - b.right >= b.left - st.left ? { top, left: Math.max(0, b.right - st.left) } : { top, right: Math.max(0, st.right - b.left) };
 }
 
 async function openMap(opts) {

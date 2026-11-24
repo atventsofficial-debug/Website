@@ -15,7 +15,7 @@ import { whenOf, isOver } from './when.js';
 import { buyLink, activePass, openPass, passes, canView, plusPass, plusOnSale, upgradable, toggleSeat, STATUS, refresh } from './passes.js';
 import { placeSeat, cleanNumbering, isDefault, numberingOf, numberingSource } from './seatflip.js';
 import { $, esc, icon, state, QUALITY, spotStats, share, toast } from './ui.js';
-import { addCompare, bindAccess, bindCompare, bindSetlist, bindShow, closeAccess, closeSetlist, paintAccess, compareIds, paintCompare, setCompare, showModeFor, stopPreview } from './seatplus.js';
+import { addCompare, bindAccess, bindCompare, bindSetlist, bindShow, closeAccess, closeSetlist, paintAccess, compareIds, paintCompare, placeDrops, setCompare, showModeFor, stopPreview } from './seatplus.js';
 import { pairOf } from './compare.js';
 import { loadMates, matesBlock, bindMates, mateTags, resetMates, mates, startMatesLive, fanCardHtml, fillMatesList } from './fans.js';
 
@@ -268,6 +268,7 @@ export function closeViewer() {
   closeSetlist();
   stopPreview();
   document.body.classList.remove('in-tour');
+  syncCapture();
   resetMates();
   closeFanCard();
   paintFocus();
@@ -521,7 +522,7 @@ export function bindViewer() {
     if (act === 'again') startTour();
     if (act === 'framecat') showCat();
     if (act === 'next') tourNext();
-    if (act === 'capture') import('./capture.js').then(m => m.startCapture(state.scene, { title: state.venue?.meta?.title, seat: seatText(ticketSeat()) })).catch(() => toast('The camera could not start. Please try again.'));
+    if (act === 'capture') capture();
     if (act === 'numopen' || act === 'numclose') setNumOpen(act === 'numopen');
     if (act === 'mini') { state.tour.mini = !state.tour.mini; paintTour(); $('#app-side [data-tour="mini"]')?.focus(); }
     if (act === 'prev') tourBack();
@@ -538,6 +539,7 @@ export function bindViewer() {
   bindShow();
   bindSetlist();
   bindDock();
+  bindTabs();
   bindAccess({ tourSeat });
   $('#fan-card').addEventListener('click', e => {
     const act = e.target.closest('[data-fancard]')?.dataset.fancard;
@@ -768,6 +770,38 @@ function seatNote(p, s) {
   return `<p class="fine seat-note">${esc(text)}</p>`;
 }
 
+function capture() {
+  import('./capture.js').then(m => m.startCapture(state.scene, { title: state.venue?.meta?.title, seat: seatText(ticketSeat()) })).catch(() => toast('The camera could not start. Please try again.'));
+}
+
+// On a computer the buttons sit in the bar along the top (css/styles.css): they start after
+// the tour's name, whatever its length, and a button's panel opens under that button.
+const WIDE = window.matchMedia?.('(min-width: 961px)');
+function placeTabs() {
+  const stage = $('#stage'), chip = $('#app-chip');
+  if (!stage || !chip || !WIDE?.matches) return;
+  stage.style.setProperty('--tabs-x', `${Math.round(chip.getBoundingClientRect().right - stage.getBoundingClientRect().left + 8)}px`);
+  placeDrops();
+}
+let tabsFrame = 0;
+const queueTabs = () => { cancelAnimationFrame(tabsFrame); tabsFrame = requestAnimationFrame(placeTabs); };
+// The camera's button is up there in the seat at the end of the tour, as the phone's row has it.
+function syncCapture() {
+  const b = $('#t-capture'), t = state.tour;
+  if (b) b.hidden = !(t && t.step === 3 && !t.fan && !t.fanBlock);
+}
+function bindTabs() {
+  $('#t-capture')?.addEventListener('click', capture);
+  const watch = new MutationObserver(placeTabs);
+  const tools = $('#tools');
+  if (tools) watch.observe(tools, { subtree: true, attributes: true, attributeFilter: ['class', 'hidden'] });
+  ['#access', '#set-panel', '#show-panel'].forEach(p => { const el = $(p); if (el) watch.observe(el, { attributes: true, attributeFilter: ['hidden'] }); });
+  const chip = $('#app-chip');
+  if (window.ResizeObserver) { const ro = new ResizeObserver(queueTabs); [chip, tools, $('#app-side'), $('#access'), $('#set-panel'), $('#show-panel')].forEach(el => el && ro.observe(el)); }
+  window.addEventListener('resize', queueTabs);
+  WIDE?.addEventListener?.('change', queueTabs);
+}
+
 // On a phone, in the seat, the tour's own tools sit in one row at the foot of the panel, the way
 // a phone's control centre groups them: the camera, the setlist, show mode and directions. The
 // rail on the left keeps Crowd, Labels and zoom. The row's buttons stand in for the rail's (which keep the
@@ -804,6 +838,7 @@ function paintTour() {
   const p = tourPass(), v = state.venue, s = ticketSeat();
   if (!p || !s) return;
   const cat = v.catById[p.cat], step = state.tour.step, e = v.meta;
+  syncCapture();
   if (state.tour.numOpen && step >= 2 && !state.tour.picking && !s.standing) {
     $('#app-side').classList.remove('is-mini');
     $('#app-side').innerHTML = numberingSheet(p, s);

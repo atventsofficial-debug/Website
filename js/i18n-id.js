@@ -79,6 +79,7 @@ export const EXACT = {
 "Capture": "Abadikan",
 "Seat tools": "Alat di kursi",
 "Capture this moment: a photo or video of your view": "Abadikan momen ini: foto atau video dari pandanganmu",
+"Capture this moment": "Abadikan momen ini",
 "Songs of the night": "Lagu malam itu",
 "Close the setlist": "Tutup setlist",
 "Close show mode": "Tutup show mode",
