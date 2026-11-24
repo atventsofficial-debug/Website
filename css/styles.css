@@ -2168,7 +2168,7 @@ body { font-family: var(--font); font-feature-settings: "cv11", "ss01"; }
 .sso-btn.is-busy { opacity: 0.6; cursor: progress; }
 .sso-logo { flex: none; width: 20px; height: 20px; }
 .uf-or { margin: 0; text-align: center; font-size: 13.5px; color: var(--dimtext); }
-.uf-or .link, .uf-who .uf-change, .uf-event .uf-change, .uf-plan-sum .uf-change { font: 500 13.5px/1.4 var(--font); text-transform: none; letter-spacing: 0; color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
+.uf-or .link, .uf-who .uf-change, .uf-event .uf-change { font: 500 13.5px/1.4 var(--font); text-transform: none; letter-spacing: 0; color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
 .uf-who { display: flex; align-items: center; gap: 14px; padding: 12px 16px 12px 12px; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.14); background: rgba(255, 255, 255, 0.035); }
 .uf-av { flex: none; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; background: var(--coral); color: #fff; font: 600 18px/1 var(--font); }
 .uf-who-text { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
@@ -2270,8 +2270,22 @@ body { font-family: var(--font); font-feature-settings: "cv11", "ss01"; }
 }
 .pl-go[aria-disabled="true"] { opacity: 0.55; pointer-events: none; box-shadow: none; }
 /* The pass chosen on the price list, in one row over the concerts and in the form. */
-.uf-plan-sum { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border-radius: 16px; border: 1px solid var(--coral); background: rgba(236, 84, 70, 0.08); }
-.uf-plan-sum .uf-change { flex: none; align-self: center; }
+.uf-plan-sum { display: flex; align-items: center; gap: 14px; padding: 14px 14px 14px 16px; border-radius: 16px; border: 1px solid var(--coral); background: rgba(236, 84, 70, 0.08); }
+/* Laid out like the concert row above it: the pass's name with the price beside it, one line
+   of what it holds, and Change on the right. On a phone, the name, price and Change share the
+   top line and what it holds runs the full width under them. */
+.uf-plan-name { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.uf-plan-sum .uf-plan-fee { padding: 3px 9px; border-radius: 999px; background: var(--coral); color: #fff; font: 700 12.5px/1.2 var(--font); }
+.uf-plan-sum .uf-plan-t small { overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.uf-plan-change { flex: none; display: inline-flex; align-items: center; height: 34px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line-2); color: var(--text); font: 600 13px/1 var(--font); text-decoration: none; transition: border-color 0.15s, background 0.15s; }
+.uf-plan-change:hover { border-color: var(--text); background: rgba(255, 255, 255, 0.06); }
+@media (max-width: 700px) {
+  .uf-plan-sum { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px 12px; }
+  .uf-plan-sum .uf-plan-t { display: contents; }
+  .uf-plan-sum .uf-plan-name { grid-column: 1; grid-row: 1; }
+  .uf-plan-change { grid-column: 2; grid-row: 1; height: 32px; padding: 0 12px; }
+  .uf-plan-sum .uf-plan-t small { grid-column: 1 / -1; grid-row: 2; -webkit-line-clamp: 3; }
+}
 .uf-pick .uf-plan-sum { margin-bottom: 14px; }
 @media (max-width: 760px) { .pl-cards { grid-template-columns: minmax(0, 1fr); } }
 /* 3D Pass Plus in the 3D view's side panel: the upgrade card, and the line under Unlock. */
