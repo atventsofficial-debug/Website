@@ -10,7 +10,7 @@ import { whenOf, startOf, venueClock, gapText, isOver } from './when.js';
 import { waTiles } from './fans.js';
 import { justBought, buyUrl, buyAttrs, buyLink, travelUrl, TRAVEL, passes, activePass, upgradable, plusOnSale, claim, holdPass, refresh, passLink, clicksFor, STATUS, markVerified, sendCode, useCode } from './passes.js';
 import { checkClaim, formatFee } from './rules.js';
-import { ACCESS_FEE, PLUS_FEE, UPGRADE_FEE, PAY_MINUTES, line, email as cleanEmail, isEmail, planOf, feeOf } from './order.js';
+import { PLUS_FEE, UPGRADE_FEE, PAY_MINUTES, line, email as cleanEmail, isEmail, planOf, feeOf } from './order.js';
 import { signIn, PROVIDERS } from './sso.js';
 import { bindPeek } from './peek.js';
 import { PAY_GROUPS, PAY_METHODS, payMethod, payDetails, wayName } from './paymethods.js';
@@ -683,7 +683,7 @@ function openEvSheet(list) {
       <label class="evsheet-find">${icon('i-search')}<input type="search" placeholder="Search an event or venue" aria-label="Search an event"></label>
       ${monthChips(list)}
       <div class="evsheet-body">
-        <ul class="evsheet-grid">${list.map(e => `<li ${pickData(e)}><a href="#unlock-${esc(e.id)}">
+        <ul class="evsheet-grid">${list.map(e => `<li ${pickData(e)}><a href="#unlock-${esc(e.id)}--${unlock.plan}">
           <span class="evsheet-img">${posterImg(e)}</span><b>${esc(e.title)}</b><small>${esc(whenOf(e).date)}</small><small>${esc(e.option ? `${placeOf(e).name} · ${e.option}` : placeOf(e).name)}</small></a></li>`).join('')}</ul>
         <p class="uf-none" hidden>No event matches your search.</p>
       </div>
@@ -738,7 +738,35 @@ function bindPickFilter(root, rows, first) {
   paint();
 }
 
-export function renderUnlock(eventId, { plan = '', upgrade = '' } = {}) {
+// The two passes, as the form's summary row and the concert list name them.
+const PLAN_TEXT = {
+  seat: ['3D seat view', 'The view from your seat, the seat tour and your story video.'],
+  plus: ['3D Pass Plus', 'Everything in the seat view, and every seat of this concert to sit in and compare, show mode, the setlist, eye height and directions.'],
+};
+// The pass chosen on the price list, in one row: its name, what it holds, the price, and Change.
+function planRow(change) {
+  const [name, what] = PLAN_TEXT[unlock.plan] || PLAN_TEXT.seat;
+  return `<span class="uf-plan-t"><b>${name}</b><small>${what}</small></span><b class="uf-plan-fee">${formatFee(feeOf(unlock.plan, false))}</b>${change ? `<a class="link uf-change" href="${change}">Change</a>` : ''}`;
+}
+
+// The price list's own page (#unlock, #unlock-<id>): the two passes, what each holds with a
+// clip of every feature, and Choose. For a concert already chosen (its page's Unlock button),
+// it is named on top and Choose goes straight to the seat form; otherwise to the concerts.
+function paintPriceList(eventId) {
+  const e = isConcert(eventId) ? eventMeta(eventId) : null, soon = !plusOnSale(), box = $('#pl-for');
+  box.hidden = !e;
+  box.innerHTML = e ? `${thumbImg(e)}<span class="uf-event-text"><small>Your pass for</small><b>${esc(e.title)}</b><small>${esc(whenOf(e).date)} · ${esc(placeOf(e).name)}</small></span><a class="link uf-change" href="#unlock">Change</a>` : '';
+  $$('.plan-soon').forEach(el => { el.hidden = !soon; });
+  $$('[data-pl-go]').forEach(a => {
+    const plan = a.dataset.plGo, off = plan === 'plus' && soon;
+    if (off) a.removeAttribute('href');
+    else a.href = e ? `#unlock-${e.id}--${plan}` : `#unlock-${plan}`;
+    a.setAttribute('aria-disabled', String(off));
+    a.querySelector('span').textContent = off ? 'Coming soon' : plan === 'plus' ? 'Choose 3D Pass Plus' : 'Choose 3D seat view';
+  });
+}
+
+export function renderUnlock(eventId, { plan = '', upgrade = '', stage = '' } = {}) {
   const form = $('#unlock-form');
   if (!unlockBound) { unlockBound = true; bindUnlock(form); }
   // #upgrade-<pass id>: a paid seat pass on this device, of a concert still to come, goes Plus
@@ -747,6 +775,8 @@ export function renderUnlock(eventId, { plan = '', upgrade = '' } = {}) {
   unlock.upgrade = up && up.status === 'confirmed' && planOf(up.plan) === 'seat' && upgradable(up.eventId)?.id === up.id && upcoming(eventMeta(up.eventId)) ? up : null;
   if (unlock.upgrade) { eventId = up.eventId; unlock.again = { ...up, email: up.email || form.email.value }; }
   if (plan || unlock.upgrade) unlock.plan = unlock.upgrade ? 'plus' : planOf(plan);
+  // Back to the form from the checkout: the pass that order was for.
+  else if (unlock.again?.plan) unlock.plan = planOf(unlock.again.plan);
   // Plus not on sale yet: its card says Coming soon, and the order is a seat pass.
   if (!plusOnSale()) unlock.plan = 'seat';
   for (const k of ['cat', 'sec', 'row', 'num']) form[k].disabled = false;
@@ -759,12 +789,23 @@ export function renderUnlock(eventId, { plan = '', upgrade = '' } = {}) {
   // cards; one tap opens the form for it (#unlock-<id>), poster and all.
   // A concert that has taken place sells no more passes: its link opens the list instead.
   if (isConcert(eventId) && !upcoming(eventMeta(eventId))) { eventId = ''; unlock.again = null; }
-  const picking = !isConcert(eventId) && !unlock.again;
-  // The price list sits under the form, where the fan picks a pass; the list of concerts leaves it out.
-  $('#unlock-body').classList.toggle('is-form', !picking);
-  $('#uf-pick').hidden = !picking;
-  form.hidden = picking;
-  if (picking) {
+  // Three steps. The price list first (#unlock, or #unlock-<id> from a concert's page), where
+  // the fan chooses the pass; then the concerts for it (#unlock-seat, #unlock-plus) when none
+  // is chosen yet; then the seat form (#unlock-<id>--<plan>, #plus-<id>). Back from the
+  // checkout or upgrading a pass, the form at once: the pass is known.
+  const concert = isConcert(eventId);
+  const step = unlock.again || unlock.upgrade || (concert && stage === 'form') ? 'form' : !concert && stage === 'list' ? 'list' : 'plans';
+  const body = $('#unlock-body');
+  body.classList.toggle('is-plans', step === 'plans');
+  body.classList.toggle('is-form', step === 'form');
+  $('#uf-pick').hidden = step !== 'list';
+  form.hidden = step !== 'form';
+  if (step === 'plans') {
+    $('#unlock-note').hidden = true;
+    paintPriceList(eventId);
+    return;
+  }
+  if (step === 'list') {
     $('#unlock-note').hidden = true;
     // Wider screens: the events as rows, one tap opens the form for it. Phones ("My seat 3D",
     // the middle tab) get a page of their own that is not a second Events list: what the seat
@@ -782,15 +823,16 @@ export function renderUnlock(eventId, { plan = '', upgrade = '' } = {}) {
         <label class="search uf-find">${icon('i-search')}<input type="search" placeholder="Search a concert or venue" aria-label="Search a concert"></label>
         ${monthChips(list)}
       </div>
-      <ul class="uf-pick-list">${list.map(e => `<li ${pickData(e)}><a class="uf-pick-row" href="#unlock-${esc(e.id)}">
+      <div class="uf-plan-sum">${planRow('#unlock')}</div>
+      <ul class="uf-pick-list">${list.map(e => `<li ${pickData(e)}><a class="uf-pick-row" href="#unlock-${esc(e.id)}--${unlock.plan}">
         ${posterImg(e)}<span class="uf-event-text"><b>${esc(e.title)}</b><small>${esc(pickLine(e))}</small></span>${icon('i-arrow')}</a></li>`).join('')}</ul>
       <p class="uf-none" hidden>No event matches your search.</p>
       <button type="button" class="btn btn-line uf-more" hidden></button></div>
       <div class="s3d-m">
         <figure class="s3d-hero"><img src="assets/tour/seat-640.webp" srcset="assets/tour/seat-640.webp 640w, assets/tour/seat.webp 1200w" sizes="92vw" alt="The stage seen from a seat in 3D" decoding="async">
-          <figcaption><span class="s3d-chip">${icon('i-seat')}Seat view in 3D</span><b>See the stage from any seat, before you buy or before the night.</b><small>${formatFee()} · one seat, one concert · opens at once</small></figcaption></figure>
+          <figcaption><span class="s3d-chip">${icon('i-seat')}Seat view in 3D</span><b>See the stage from any seat, before you buy or before the night.</b><small>${unlock.plan === 'plus' ? `3D Pass Plus · ${formatFee(PLUS_FEE)} · every seat of one concert` : `3D seat view · ${formatFee()} · one seat, one concert`} · <a class="u" href="#unlock">Change</a></small></figcaption></figure>
         <ol class="s3d-steps" aria-label="Three steps">
-          <li class="is-on"><i>1</i><span>Concert</span></li><li><i>2</i><span>Your seat</span></li><li><i>3</i><span>Pay &amp; view</span></li>
+          <li class="is-done"><i>1</i><span>Pass</span></li><li class="is-on"><i>2</i><span>Concert</span></li><li><i>3</i><span>Seat &amp; pay</span></li>
         </ol>
         <button type="button" class="uf-field s3d-select" id="s3d-ev" aria-haspopup="dialog"><small>Which concert?</small><b>Choose your concert</b>${icon('i-down')}</button>
         <p class="s3d-note">${icon('i-seat')}<span>Next you pick the seat: the one on your ticket, or one you are thinking of buying. Category, section, row and seat, then pay.</span></p>
@@ -840,16 +882,10 @@ const seatIn = (eventId, seatId) => { const venue = getEvent(eventId), i = venue
 // the seat is the pass's own and cannot change, and the price is the difference.
 function paintPlan(form) {
   const up = unlock.upgrade;
+  // Chosen on the price list: shown here in one row, and Change goes back to it for this concert.
   $('#uf-plans').hidden = !!up;
-  const soon = !plusOnSale();
-  $$('#uf-plans input[name=plan]').forEach(r => {
-    r.disabled = soon && r.value === 'plus';
-    r.checked = r.value === unlock.plan;
-    r.closest('.uf-plan').classList.toggle('is-on', r.checked);
-    r.closest('.uf-plan').classList.toggle('is-soon', r.disabled);
-  });
-  $$('.plan-soon').forEach(el => { el.hidden = !soon; });
-  $('[data-plan-fee="seat"]').textContent = formatFee(ACCESS_FEE);
+  $('#uf-plans').innerHTML = up ? '' : planRow(`#unlock-${esc(form.eventId.value)}`);
+  $$('.plan-soon').forEach(el => { el.hidden = plusOnSale(); });
   $$('[data-plan-fee="plus"]').forEach(el => { el.textContent = formatFee(PLUS_FEE); });
   const box = $('#uf-upgrade'), s = up ? seatIn(up.eventId, up.seat) : null;
   box.hidden = !up;
@@ -1520,7 +1556,7 @@ function bindUnlock(form) {
   form.addEventListener('click', ev => {
     const sso = ev.target.closest('[data-sso]');
     if (sso) { signInWith(form, sso); return; }
-    if (ev.target.closest('#uf-event-change')) { location.hash = '#unlock'; return; }
+    if (ev.target.closest('#uf-event-change')) { location.hash = `#unlock-${unlock.plan}`; return; }
     if (ev.target.closest('#uf-type')) { unlock.typing = true; paintWho(form); ready(form); form.name.focus(); return; }
     if (ev.target.closest('#uf-change')) { unlock.who = null; form.name.value = ''; form.email.value = ''; paintWho(form); ready(form); }
   });
@@ -1544,7 +1580,6 @@ function bindUnlock(form) {
   });
   $('#pay-sheet').addEventListener('change', ev => { if (ev.target.name === 'pm') pickWay(ev.target.value); });
   form.addEventListener('submit', ev => { ev.preventDefault(); startPayment(form); });
-  form.addEventListener('change', ev => { if (ev.target.name === 'plan') { unlock.plan = planOf(ev.target.value); paintPlan(form); } });
   form.addEventListener('change', () => { $('#unlock-error').hidden = true; ready(form); });
 }
 

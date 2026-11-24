@@ -347,10 +347,7 @@ html:not(.atv-seen) #nav .logo-img{animation:ai-show 0s 2.57s both}
             </div>
             <p class="fine" id="seat-note" hidden></p>
             <div class="uf-head uf-head-pass"><h2>Your pass</h2><small>Upgrade later for the difference</small></div>
-            <div class="uf-plans" id="uf-plans" role="radiogroup" aria-label="Your pass">
-              <label class="uf-plan"><input type="radio" name="plan" value="seat" checked><span class="uf-plan-t"><b>3D seat view</b><small>The view from your seat, the seat tour and your story video.</small></span><b class="uf-plan-fee" data-plan-fee="seat">Rp25.000</b></label>
-              <label class="uf-plan"><input type="radio" name="plan" value="plus"><span class="uf-plan-t"><b>3D Pass Plus <span class="soon-tag plan-soon" hidden>Coming soon</span></b><small>Everything in the seat view, and every seat of this concert to sit in and compare, show mode, the setlist, eye height and directions.</small></span><b class="uf-plan-fee" data-plan-fee="plus">Rp49.000</b></label>
-            </div>
+            <div class="uf-plan-sum" id="uf-plans"></div>
             <p class="uf-upgrade" id="uf-upgrade" hidden></p>
             <div class="uf-head uf-head-pass"><h2>Where your pass goes</h2><small>We send the pass link to this email</small></div>
             <div class="uf-sso" id="uf-sso" hidden>
@@ -378,7 +375,8 @@ html:not(.atv-seen) #nav .logo-img{animation:ai-show 0s 2.57s both}
         <section class="pay-sheet panel-box" id="pay-sheet" hidden></section>
       </div>
       <aside class="price-list" id="price-list" aria-label="Price list">
-        <header class="pl-head"><p class="eyebrow">Price list</p><p class="pl-hint">Hover over a feature, or tap it on a phone, to see a short clip of it.</p></header>
+        <header class="pl-head"><div><p class="eyebrow">Price list</p><h2 class="pl-title">Choose your pass</h2></div><p class="pl-hint">Hover over a feature, or tap it on a phone, to see a short clip of it. Then choose the pass, and next your concert and your seat.</p></header>
+        <div class="uf-event pl-for" id="pl-for" hidden></div>
         <div class="pl-cards">
           <div class="host-plan">
             <span class="eyebrow eyebrow-ink">3D seat view</span>
@@ -395,6 +393,7 @@ html:not(.atv-seen) #nav .logo-img{animation:ai-show 0s 2.57s both}
               <li data-peek="forever" tabindex="0"><svg class="pg-ic" aria-hidden="true"><use href="#i-forever"/></svg><b>Yours for good</b><span>After the show the pass reads Event ended, and the tour and your story still open.</span></li>
             </ul>
             <p class="plan-fine">The 3D view does not include a ticket.</p>
+            <a class="btn btn-line pl-go" data-pl-go="seat" href="#unlock-seat"><span>Choose 3D seat view</span> <svg><use href="#i-arrow"/></svg></a>
           </div>
           <div class="host-plus">
             <div class="host-plus-top"><span class="eyebrow">3D Pass Plus</span><span class="soon-tag plan-soon" hidden>Coming soon</span></div>
@@ -408,6 +407,7 @@ html:not(.atv-seen) #nav .logo-img{animation:ai-show 0s 2.57s both}
               <li data-peek="eye" tabindex="0"><svg class="pg-ic" aria-hidden="true"><use href="#i-eye"/></svg><b>Eye height</b><span>Set how tall you are and how tall the people in the rows in front of you are, and see the view you will have.</span></li>
               <li data-peek="directions" tabindex="0"><svg class="pg-ic" aria-hidden="true"><use href="#i-pin"/></svg><b>Directions</b><span>Trains, buses, parking, the gates and the way to your seat, on a map of the streets round the venue and in 3D.</span></li>
             </ul>
+            <a class="btn btn-coral pl-go" data-pl-go="plus" href="#unlock-plus"><span>Choose 3D Pass Plus</span> <svg><use href="#i-arrow"/></svg></a>
           </div>
         </div>
       </aside>
