@@ -2205,9 +2205,14 @@ body { font-family: var(--font); font-feature-settings: "cv11", "ss01"; }
    by side (one under the other on a narrow screen). */
 #view-unlock .host { grid-template-columns: minmax(0, 1fr); }
 .price-list { display: flex; flex-direction: column; gap: var(--s4); margin-top: var(--s6); padding-top: var(--s6); border-top: 1px solid var(--line); }
-.pl-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 24px; }
+/* The same two columns as the page's heading above it, so the hint lines up under its text. */
+.pl-head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: var(--s7); align-items: end; }
+.pl-head > .pl-hint { justify-self: end; width: 100%; max-width: 440px; padding-bottom: 4px; }
+@media (max-width: 760px) { .pl-head { grid-template-columns: minmax(0, 1fr); row-gap: 8px; } .pl-head > .pl-hint { justify-self: start; max-width: none; padding-bottom: 0; } }
+/* Unlock: the heading's rule sits under it, between it and the price list. */
+#view-unlock .sec-head { border-top: 0; padding-top: var(--s4); padding-bottom: var(--s6); margin-bottom: var(--s6); border-bottom: 1px solid var(--line); }
 .pl-head .eyebrow { margin: 0; }
-.pl-hint { margin: 0; font-size: 13px; color: var(--muted); }
+.pl-hint { margin: 0; font-size: 14px; line-height: 1.5; color: var(--muted); }
 .pl-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s4); }
 .pl-title { margin: 6px 0 0; font: 600 clamp(24px, 3vw, 32px)/1.1 var(--display); letter-spacing: -0.03em; color: var(--text); }
 .pl-for { max-width: 560px; }
