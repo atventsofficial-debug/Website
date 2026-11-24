@@ -940,6 +940,9 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
   .app-top .sq-min { margin-left: auto; }
   /* The tour's name in the middle of the bar. */
   .app-chip { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); height: 36px; padding: 0 16px 0 14px; background: rgba(255, 255, 255, 0.06); border: 0; }
+  /* js/viewer.js may move it into the room between the buttons and cut its words short. */
+  .app-chip svg { flex: none; }
+  .app-chip span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   .stage.is-min .app-top { background: transparent; border-color: transparent; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
   .stage.is-min .app-top > .sq { background: rgba(22, 20, 20, 0.93); }
   .stage.is-min :is(.show-panel, .access) { opacity: 0; visibility: hidden; pointer-events: none; }
@@ -996,12 +999,10 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
   /* With the street map open the other buttons stay where they are, dimmed. */
   .stage.map-open .tools :is(.sq:not(#t-access):not(#t-reset):not([hidden]), .zoom:not([hidden])), body:not(.in-tour) .stage.map-open .tools #t-reset { display: flex; opacity: 0.3; pointer-events: none; }
 }
-/* A narrower computer: the tour's name is cut short and the zoom loses its word. When the
-   buttons would still run into the name (js/viewer.js measures), they show only their icons
-   (their names come up on hover), except the open one. */
+/* A narrower computer: the zoom loses its word. js/viewer.js moves the tour's name into the
+   room between the buttons, cut short if it must be; only when even that does not fit do the
+   buttons show just their icons (their names come up on hover), except the open one. */
 @media (min-width: 961px) and (max-width: 1240px) {
-  .app-chip { max-width: 230px; }
-  .app-chip span { overflow: hidden; text-overflow: ellipsis; }
   .tools .zoom .sq-t { display: none; }
 }
 @media (min-width: 961px) {
