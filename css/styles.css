@@ -1481,6 +1481,12 @@ input, select, textarea { border-radius: 0; }
 .app-side .row-btns:has(> :nth-child(2)) .btn.btn-coral:has(> svg:last-child:not(.lead)) { justify-content: space-between; padding-left: 14px; }
 .app-side .row-btns:has(> :nth-child(2)) .btn > svg { flex: none; }
 .app-side .row-btns .btn-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* A pair whose icons lead (the tour's My category and My seat): both icons in the same 24 px
+   circle at the start, 8 px from the left edge, filled in the coral button and tinted in the other,
+   the labels starting at the same place. */
+.app-side .row-btns:has(> :nth-child(2)) .btn:has(> svg.lead) { justify-content: flex-start; padding: 0 16px 0 6.5px; }
+.app-side .row-btns:has(> :nth-child(2)) .btn > svg.lead { box-sizing: content-box; width: 14px; height: 14px; padding: 5px; margin: 0; border-radius: 50%; }
+.app-side .row-btns:has(> :nth-child(2)) .btn-line > svg.lead { background: color-mix(in srgb, var(--coral) 14%, transparent); color: var(--coral); }
 /* the tour's head: back one step, where the fan is, and fold the panel away */
 .tour-head { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 32px; }
 .th-step { flex: 1; min-width: 0; font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

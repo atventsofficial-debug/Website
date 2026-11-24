@@ -181,6 +181,7 @@ export const EXACT = {
 "Sit in my seat": "Duduk di kursiku",
 "Whole venue": "Seluruh venue",
 "Show my category": "Lihat kategoriku",
+"My category": "Kategoriku",
 "Next step": "Langkah berikutnya",
 "Back to the step before": "Kembali ke langkah sebelumnya",
 "Minimise the panel": "Kecilkan panel",
