@@ -519,7 +519,6 @@ export function bindViewer() {
     apply(state[key]);
   });
   toggle($('#t-crowd'), 'crowd', on => state.scene?.setCrowd(on));
-  toggle($('#t-labels'), 'labels', on => state.scene?.setLabels(on));
   // Hides every panel over the venue, so the view fills the screen; the same button brings
   // them back. It stays that way for the visit, from one venue or seat to the next.
   $('#t-min').addEventListener('click', e => {
@@ -801,12 +800,28 @@ function placeTabs() {
   const stage = $('#stage'), chip = $('#app-chip'), tools = $('#tools');
   if (!stage || !chip || !tools) return;
   // The buttons give up their words when, with them, they would run into the tour's name in
-  // the middle of the bar.
-  stage.classList.remove('is-tight');
+  // the middle of the bar: first only the side that runs into it, then both.
+  stage.classList.remove('is-tight', 'is-tight-l', 'is-tight-r');
   if (!WIDE?.matches) return;
-  const c = chip.getBoundingClientRect(), hits = [...tools.querySelectorAll(':scope > .tools-g > .sq, :scope > .tools-g > .zoom')]
-    .some(b => { if (b.offsetParent === null) return false; const r = b.getBoundingClientRect(); return r.right > c.left - 8 && r.left < c.right + 8; });
-  if (hits || tools.scrollWidth > tools.clientWidth + 1) stage.classList.add('is-tight');
+  const c = chip.getBoundingClientRect(), mid = (c.left + c.right) / 2;
+  const hit = () => {
+    const out = { l: false, r: false };
+    for (const b of tools.querySelectorAll(':scope > .tools-g > .sq, :scope > .tools-g > .zoom')) {
+      if (b.offsetParent === null) continue;
+      const r = b.getBoundingClientRect();
+      if (r.right > c.left - 8 && r.left < c.right + 8) out[(r.left + r.right) / 2 < mid ? 'l' : 'r'] = true;
+    }
+    out.over = tools.scrollWidth > tools.clientWidth + 1;
+    return out;
+  };
+  let h = hit();
+  if (h.over) stage.classList.add('is-tight');
+  else if (h.l || h.r) {
+    if (h.l) stage.classList.add('is-tight-l');
+    if (h.r) stage.classList.add('is-tight-r');
+    h = hit();
+    if (h.l || h.r || h.over) stage.classList.add('is-tight');
+  }
   placeDrops();
 }
 let tabsFrame = 0;

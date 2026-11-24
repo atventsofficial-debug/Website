@@ -943,15 +943,15 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
   .stage.is-min .app-top { background: transparent; border-color: transparent; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
   .stage.is-min .app-top > .sq { background: rgba(22, 20, 20, 0.93); }
   .stage.is-min :is(.show-panel, .access) { opacity: 0; visibility: hidden; pointer-events: none; }
-  /* Left of the name: directions first, then crowd, labels and the setlist. Right of it: show
-     mode and the camera in the seat, reset outside the tour, and zoom. */
+  /* Left of the name: directions, the chat and the crowd. Right of it: the setlist, show mode,
+     eye height and the camera in the seat, reset outside the tour, and zoom. The section
+     labels are always on (no button). */
   #stage .tools { top: var(--bar-t); bottom: auto; left: calc(14px + 10px + 40px + 8px); right: calc(14px + 10px + 40px + 8px); height: var(--bar-h); z-index: 7; flex-direction: row; flex-wrap: nowrap; align-items: center; justify-content: flex-start; gap: 4px; }
   #stage .tools::after { content: ""; order: 50; flex: 1 1 0; min-width: 0; }
   .tools-g { display: contents; }
   .tools #t-access { order: 10; }
   .tools #t-crowd { order: 20; }
-  .tools #t-labels { order: 30; }
-  .tools #set-btn { order: 40; }
+  .tools #set-btn { order: 55; }
   .tools #show-btn { order: 60; }
   .tools #eye-btn { order: 65; }
   .tools #t-capture { order: 70; }
@@ -961,10 +961,9 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
   .tools .sq:hover { background: rgba(255, 255, 255, 0.08); border-color: transparent; color: var(--text); }
   .tools .sq > svg { width: 17px; height: 17px; }
   .sq-t { position: static; transform: none; font: inherit; letter-spacing: 0; color: inherit; text-shadow: none; }
-  /* Crowd and labels: on is a coral icon and a bright word, off is dimmed. */
+  /* The crowd: on is a bright icon and word, the colour of the other buttons; off is dimmed. */
   .tools .sq.is-on { background: transparent; color: var(--text); }
   .tools .sq.is-on:hover { background: rgba(255, 255, 255, 0.08); }
-  .tools .sq.is-on > svg { color: var(--coral); }
   /* A panel's button while the panel is open: white, the way a chosen category is, with a
      point under it towards its panel. */
   .tools .sq.sq-drop.is-on, .tools .sq.sq-drop.is-on:hover { background: #f4f0ee; color: var(--ink); }
@@ -1009,6 +1008,13 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
   .stage.is-tight .tools .sq:not(.is-on.sq-drop) .sq-t { display: none; }
   .stage.is-tight .tools .sq:not(.is-on.sq-drop):not(.zoom .sq) { padding: 0 11px; }
   .stage.is-tight .tools .sq-lock { left: 20px; }
+  /* Only one side short of room: that side's buttons alone give up their words. */
+  .stage.is-tight-l .tools :is(#t-access, #chat-btn, #t-crowd):not(.is-on.sq-drop) .sq-t,
+  .stage.is-tight-r .tools :is(#set-btn, #show-btn, #eye-btn, #t-capture, #t-reset):not(.is-on.sq-drop) .sq-t { display: none; }
+  .stage.is-tight-l .tools :is(#t-access, #chat-btn, #t-crowd):not(.is-on.sq-drop),
+  .stage.is-tight-r .tools :is(#set-btn, #show-btn, #eye-btn, #t-capture, #t-reset):not(.is-on.sq-drop) { padding: 0 11px; }
+  .stage.is-tight-l .tools :is(#t-access, #chat-btn, #t-crowd) .sq-lock,
+  .stage.is-tight-r .tools :is(#set-btn, #show-btn, #eye-btn, #t-capture, #t-reset) .sq-lock { left: 20px; }
 }
 @media (max-width: 960px) {
   #t-capture { display: none; }
@@ -2224,8 +2230,8 @@ body { font-family: var(--font); font-feature-settings: "cv11", "ss01"; }
 }
 /* The checkout: two columns like a ticket shop's, the ways to pay on the left and the order on
    the right, in light cards on the dark page. The form's side panel steps aside meanwhile. */
-.host.is-paying { grid-template-columns: minmax(0, 1fr); }
-.host.is-paying .host-side { display: none; }
+.host.is-paying, .host.is-form { grid-template-columns: minmax(0, 1fr); }
+.host.is-paying .host-side, .host.is-form .host-side { display: none; }
 .pay-sheet {
   --c-bg: #fff; --c-bg-2: #f7f5f2; --c-line: #e6e1da; --c-line-2: #cdc6bc;
   --c-text: #0e0e0e; --c-muted: #6b6560; --c-soft: #fff3ec;
@@ -3321,8 +3327,8 @@ html.lang-swap body { opacity: .35; }
 .lc-name label { font-size: 13px; font-weight: 600; }
 .lc-fine { margin: 0; font-size: 12px; color: rgba(244, 240, 238, 0.7); }
 @media (min-width: 961px) {
-  /* In the bar right after the setlist; it opens the column, not a panel under it. */
-  .tools #chat-btn { order: 45; }
+  /* In the bar right after Directions; it opens the column, not a panel under it. */
+  .tools #chat-btn { order: 15; }
   .tools #chat-btn.is-on::before { display: none; }
   /* Over the venue's left side, above the categories; the concert card steps aside. */
   .stage.chat-open .event-card { opacity: 0; pointer-events: none; }
