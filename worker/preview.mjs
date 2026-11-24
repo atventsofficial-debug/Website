@@ -78,7 +78,7 @@ export async function songPreview(url, ctx, json, fetchFn = fetch) {
   const song = (url.searchParams.get('song') || '').trim().slice(0, 120);
   if (!artist || !song) return json(400, { error: 'Name the artist and the song.' });
   const cache = typeof caches !== 'undefined' ? caches.default : null;
-  const key = new Request(`https://preview.atvents.invalid/v3/${encodeURIComponent(plain(artist))}/${encodeURIComponent(plain(song))}`);
+  const key = new Request(`https://preview.atvents.invalid/v4/${encodeURIComponent(plain(artist))}/${encodeURIComponent(plain(song))}`);
   const kept = await cache?.match(key);
   if (kept) return kept;
   const looked = [];

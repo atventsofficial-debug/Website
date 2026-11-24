@@ -146,7 +146,10 @@ export const activePass = eventId => passes.all().filter(p => p.eventId === even
 export const openPass = eventId => passes.all().filter(p => p.eventId === eventId && p.status === 'confirmed').at(-1) || null;
 // A paid 3D Pass Plus opens every seat of its concert, like a demo venue.
 export const plusPass = eventId => passes.all().filter(p => p.eventId === eventId && p.status === 'confirmed' && p.plan === 'plus').at(-1) || null;
-export const canView = venue => !!venue.meta.demo || !!plusPass(venue.eventId);
+// A preview build (workers.dev) opened with ?open shows every seat view and Plus feature, to
+// try a change without a pass. Never on atvents.com.
+const previewOpen = typeof location !== 'undefined' && /\.workers\.dev$/.test(location.hostname) && new URLSearchParams(location.search).has('open');
+export const canView = venue => !!venue.meta.demo || previewOpen || !!plusPass(venue.eventId);
 // A paid seat pass of the concert that can still be upgraded to Plus: none when the concert
 // has a Plus pass on this device already.
 // On sale with PASS_PLUS on. A member of the team signed in on #admin sees it on sale before
