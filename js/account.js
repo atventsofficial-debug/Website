@@ -35,22 +35,29 @@ export function signOut({ idle = false } = {}) {
   meNews.idle = idle;
   emit('me');
 }
-// Why the last sign-out happened, for the page to say so once.
-export const meNews = { idle: false };
+// Why the last sign-out happened, for the page to say so once, and whether the passes of a
+// sign-in are still being checked (the page shows them as on their way).
+export const meNews = { idle: false, loading: 0 };
 
 // The passes of the email come to this device. The ones not here yet are noted, so signing
-// out takes them away again.
+// out takes them away again. The sign-in is kept first, so the page turns to the passes at
+// once; the passes are then checked with the Worker all together, each showing as it comes.
 async function take(r) {
   const before = new Set(passes.all().map(p => p.id));
   const old = read();
   const brought = new Set(old?.email === r.email ? old.brought || [] : []);
-  for (const p of r.passes || []) {
-    if (!before.has(p.id)) brought.add(p.id);
-    try { await importPass(p.id, p.token); } catch { /* offline: next visit */ }
-  }
+  const list = r.passes || [];
+  for (const p of list) if (!before.has(p.id)) brought.add(p.id);
   touch(true);
-  write({ key: r.key ?? old?.key, email: r.email, expiresAt: r.expiresAt, ids: (r.passes || []).map(p => p.id), brought: [...brought] });
+  write({ key: r.key ?? old?.key, email: r.email, expiresAt: r.expiresAt, ids: list.map(p => p.id), brought: [...brought] });
+  meNews.loading = (meNews.loading || 0) + 1;
   emit('me');
+  try {
+    await Promise.all(list.map(p => importPass(p.id, p.token).catch(() => { /* offline: next visit */ })));
+  } finally { meNews.loading -= 1; }
+  // Signed out while they came: the ones brought go again.
+  if (read()?.email !== r.email) for (const id of brought) if (!before.has(id)) passes.remove(id);
+  emit('passes');
   return me();
 }
 

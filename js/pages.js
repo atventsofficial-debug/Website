@@ -1755,6 +1755,14 @@ export function renderPasses({ check = false } = {}) {
   const list = passes.all().filter(p => eventMeta(p.eventId) && (!m || isMine(m, p)))
     .sort((a, b) => past(a) - past(b) || (past(a) ? starts(b) - starts(a) : starts(a) - starts(b)));
   const open = list.filter(p => p.status !== 'rejected').length;
+  // Just signed in: the email's passes are still on their way from the Worker.
+  const coming = m && meNews.loading > 0 ? (m.ids || []).filter(id => !passes.get(id)).length : 0;
+  if (coming && !list.length) {
+    $('#passes-note').textContent = 'Opening your 3D passes…';
+    $('#passes-note').insertAdjacentHTML('beforeend', ` <span class="me-line">Signed in as <b>${esc(m.email)}</b></span>`);
+    $('#passes-body').innerHTML = `<div class="pass-grid" aria-busy="true">${Array.from({ length: Math.min(coming, 3) }, () => '<div class="pass pass-coming" aria-hidden="true"></div>').join('')}</div>`;
+    return;
+  }
   $('#passes-note').textContent = list.length
     ? `${plural(list.length, 'pass', 'passes')} on this device${open < list.length ? `, ${open} open` : ''}. Each opens the seat views of its concert.`
     : m ? 'No paid 3D pass for this email yet.' : 'Passes you unlock appear here, on the device you unlocked them on.';

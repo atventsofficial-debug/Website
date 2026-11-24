@@ -722,6 +722,10 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
 
 /* ---------- 3D passes ---------- */
 .pass-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 560px), 1fr)); gap: var(--s5); }
+/* a pass on its way just after signing in: a soft card that breathes until the pass comes */
+.pass.pass-coming { display: block; min-height: 220px; border-radius: var(--r); background: var(--panel); border: 1px solid var(--line-2); filter: none; animation: pass-coming 1.2s ease-in-out infinite alternate; }
+@keyframes pass-coming { from { opacity: 0.45; } to { opacity: 0.9; } }
+@media (prefers-reduced-motion: reduce) { .pass.pass-coming { animation: none; } }
 .pass { position: relative; display: grid; grid-template-columns: 150px minmax(0, 1fr); color: var(--ink); filter: drop-shadow(0 24px 40px rgba(0, 0, 0, 0.35)); }
 .pass-stub, .pass-body { position: relative; background: var(--paper); }
 .pass-stub { border-radius: 20px 0 0 20px; padding: var(--s5) var(--s4); display: flex; flex-direction: column; gap: 8px; background: var(--ink); color: #fff; box-shadow: inset 1.5px 1.5px 0 rgba(255, 255, 255, 0.28), inset 0 -1.5px 0 rgba(255, 255, 255, 0.28);
