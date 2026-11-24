@@ -441,6 +441,7 @@ export const EXACT = {
 "Your tour": "Turmu",
 "Your tour,": "Turmu,",
 "Seat mates": "Teman Sebangku",
+"Talk with the other fans of your concert while you look round from your seat, each with their category and section.": "Ngobrol dengan fans lain di konsermu sambil melihat-lihat dari kursimu, lengkap dengan kategori dan section mereka.",
 "Your show on the screens": "Pertunjukanmu di layar",
 "Take your seat tour": "Mulai Tur Kursi",
 "Your 3D pass": "Pass 3D-mu",
