@@ -113,7 +113,7 @@ function stagingBadge() {
 // ---------------------------------------------------------------- routing
 
 // Hash routes are plain tokens: #event-<id>, #seats-<id>--<category>, #seats-<id>@<seat>,
-// #demo-<layout>, #unlock-<id>, #plus-<id>, #upgrade-<pass id>, #paid-<order id> (back from the payment page),
+// #demo-<layout>, #unlock-<id>, #unlock-<plan>, #unlock-<id>--<plan>, #plus-<id>, #upgrade-<pass id>, #paid-<order id> (back from the payment page),
 // #pass-<id>-<token>.
 function parse(hash) {
   let h = hash.split('?')[0];
@@ -124,9 +124,15 @@ function parse(hash) {
   if (HOME_ANCHORS.has(h)) return { view: 'home', anchor: h };
   if (PARTNER_ANCHORS.has(h)) return { view: 'partners', anchor: h };
   if (PAGES.has(h)) return { view: h };
+  // #unlock: the price list. #unlock-<id>: the price list for that concert (the concert page's
+  // Unlock button). Choose on it: #unlock-seat / #unlock-plus, the concerts for that pass, or
+  // straight to the seat form, #unlock-<id>--seat / #unlock-<id>--plus.
+  if (h === 'unlock-seat' || h === 'unlock-plus') return { view: 'unlock', plan: h.slice(7), stage: 'list' };
+  const form = /^unlock-(.+)--(seat|plus)$/.exec(h);
+  if (form && isConcert(form[1])) return { view: 'unlock', id: form[1], plan: form[2], stage: 'form' };
   if (h.startsWith('unlock-') && isConcert(h.slice(7))) return { view: 'unlock', id: h.slice(7) };
   // 3D Pass Plus for a concert, and an upgrade to Plus of a pass on this device.
-  if (h.startsWith('plus-') && isConcert(h.slice(5))) return { view: 'unlock', id: h.slice(5), plan: 'plus' };
+  if (h.startsWith('plus-') && isConcert(h.slice(5))) return { view: 'unlock', id: h.slice(5), plan: 'plus', stage: 'form' };
   if (h.startsWith('upgrade-') && /^[A-Za-z0-9_-]{3,40}$/.test(h.slice(8))) return { view: 'unlock', upgrade: h.slice(8) };
   if (h.startsWith('paid-') && PAYMENT_ID.test(h.slice(5))) return { view: 'unlock', paid: h.slice(5), focus: 'pay-sheet' };
   if (h.startsWith('event-') && isConcert(h.slice(6))) return { view: 'event', id: h.slice(6) };
@@ -206,7 +212,7 @@ async function route() {
     case 'concerts': renderConcerts(); break;
     case 'event': renderEvent(r.id); loadScene3d().catch(() => {}); break;   // likely next: the 3D venue
     case 'seats': openViewer(r.id, { cat: r.cat, seat: r.seat, back: state.page, tour: r.tour }); break;
-    case 'unlock': if (r.paid) renderPaid(r.paid); else renderUnlock(r.id, { plan: r.plan || '', upgrade: r.upgrade || '' }); break;
+    case 'unlock': if (r.paid) renderPaid(r.paid); else renderUnlock(r.id, { plan: r.plan || '', upgrade: r.upgrade || '', stage: r.stage || '' }); break;
     case 'footage': renderFootage(); break;
     case 'passes': renderPasses({ check: true }); break;
     case 'partners': renderPartners(); break;

@@ -228,7 +228,6 @@
 
   /* ---------- checkout: the form, and the pay button kept in reach ---------- */
   #view-unlock .sec-side { display: none; }
-  #view-unlock .host-side { display: none; }
   #view-unlock { padding-bottom: 24px; }
   /* The pay button stays where it is in the form, under the consent box: no floating copy over
      the fields ("Where your pass goes" was showing through it while it was still greyed out). */
@@ -396,6 +395,7 @@
   .s3d-steps li { display: flex; align-items: center; justify-content: center; gap: 8px; height: 38px; border-radius: 999px; font: 600 13px/1 var(--font); color: var(--muted); }
   .s3d-steps i { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; border: 1px solid currentColor; font: 700 11px/1 var(--font); font-style: normal; }
   .s3d-steps .is-on { background: var(--text); color: var(--ink); }
+  .s3d-steps .is-done { color: var(--text); }
   .s3d-select { display: grid; grid-template-columns: minmax(0, 1fr) 20px; align-items: center; gap: 4px 10px; width: 100%; padding: 12px 16px; text-align: left; border-color: var(--coral); cursor: pointer; font: inherit; color: var(--text); }
   .s3d-select small { grid-column: 1; font-size: 13px; color: var(--muted); }
   .s3d-select b { grid-column: 1; font: 600 18px/1.25 var(--font); }

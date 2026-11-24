@@ -10,7 +10,7 @@ export const formatFee = (n = ACCESS_FEE) => `Rp${n.toLocaleString('id-ID')}`;
 // the concert, with the show mode and the way to the venue, at PLUS_FEE; a fan who has a paid
 // seat pass for the concert upgrades it for the difference (UPGRADE_FEE). A pass key made
 // before there were plans carries no plan: it is a 'seat' pass.
-export const PLUS_FEE = 49000;
+export const PLUS_FEE = 50000;
 export const UPGRADE_FEE = PLUS_FEE - ACCESS_FEE;
 export const PLANS = ['seat', 'plus'];
 export const planOf = v => (v === 'plus' ? 'plus' : 'seat');
