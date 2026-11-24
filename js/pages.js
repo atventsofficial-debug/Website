@@ -1548,6 +1548,15 @@ async function paid(form) {
 
 function bindUnlock(form) {
   bindPeek($('#price-list'));
+  // Phones: each pass shows its name, price and Choose; its features open on a tap.
+  $('#price-list').addEventListener('click', ev => {
+    const more = ev.target.closest('.pl-more');
+    if (!more) return;
+    const card = more.closest('.pl-card'), open = !card.classList.contains('is-open');
+    card.classList.toggle('is-open', open);
+    more.setAttribute('aria-expanded', String(open));
+    more.querySelector('span').textContent = open ? 'Hide the features' : `See what you get · ${card.querySelectorAll('.pl-gets li').length} features`;
+  });
   form.eventId.addEventListener('change', () => fillCats(form));
   form.cat.addEventListener('change', () => fillSecs(form));
   form.sec.addEventListener('change', () => fillRows(form));
