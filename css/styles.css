@@ -3423,3 +3423,6 @@ html.lang-swap body { opacity: .35; }
   .lc-tx { font-size: 14px; }
 }
 @media (prefers-reduced-motion: reduce) { .lc-m { animation: none; } }
+
+/* "(optional)" beside the seat number label. */
+.uf-opt { font-weight: 400; color: var(--dim); }

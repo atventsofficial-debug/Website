@@ -995,9 +995,10 @@ function fillSecs(form) {
   else if (secs.length === 1) form.sec.value = secs[0][0];
   $('#row-field').hidden = standing;
   $('#num-field').hidden = standing;
-  form.row.required = form.num.required = !standing;
-  $('#seat-note').textContent = standing ? 'A standing area: no row or seat number. Choose the area on your ticket; your tour stands you in the middle of it.' : '';
-  $('#seat-note').hidden = !standing;
+  // The seat number is optional: some promoters print only the category and the row.
+  form.row.required = !standing;
+  form.num.required = false;
+  seatNote(form);
   fillRows(form);
 }
 
@@ -1015,9 +1016,20 @@ function fillNums(form) {
   const venue = getEvent(form.eventId.value), sec = form.sec.value, row = form.row.value, prev = form.num.value;
   const list = row ? seatsIn(venue, form.cat.value).filter(s => s.sec === sec && s.row === row) : [];
   const nums = list.map(s => [s.id, String(s.num)]).sort((a, b) => byNatural(a[1], b[1]));
-  form.num.innerHTML = opts(nums, row ? 'Choose' : 'Row first');
+  form.num.innerHTML = opts(nums, row ? 'Not on my ticket' : 'Row first');
   form.num.disabled = !row;
   if (nums.some(([v]) => v === prev)) form.num.value = prev;
+  seatNote(form);
+}
+
+// The line under the seat fields: a standing area, or a row with no seat number.
+function seatNote(form) {
+  const list = form.sec.value ? seatsIn(getEvent(form.eventId.value), form.cat.value).filter(s => s.sec === form.sec.value) : [];
+  const standing = list.length > 0 && list.every(s => s.standing);
+  const text = standing ? 'A standing area: no row or seat number. Choose the area on your ticket; your tour stands you in the middle of it.'
+    : form.row.value && !form.num.value ? 'No seat number on your ticket? Leave it empty: your tour sits you in the middle of the row.' : '';
+  $('#seat-note').textContent = text;
+  $('#seat-note').hidden = !text;
 }
 
 // The form filled in again from an order on this device: "Start again", "Change details".
@@ -1034,7 +1046,8 @@ function prefill(form, p) {
   if (p.email) form.email.value = p.email;
 }
 
-// The seat id the form points at: the seat chosen, or the middle of a standing area.
+// The seat id the form points at: the seat chosen, the middle of a standing area, or the
+// middle of the row when the ticket gives no seat number.
 function chosenSeat(form) {
   const venue = getEvent(form.eventId.value), list = seatsIn(venue, form.cat.value).filter(s => s.sec === form.sec.value);
   if (!list.length) return '';
@@ -1042,7 +1055,10 @@ function chosenSeat(form) {
     const cx = list.reduce((a, s) => a + s.x, 0) / list.length, cz = list.reduce((a, s) => a + s.z, 0) / list.length;
     return list.reduce((best, s) => (Math.hypot(s.x - cx, s.z - cz) < Math.hypot(best.x - cx, best.z - cz) ? s : best)).id;
   }
-  return form.num.value;
+  if (form.num.value) return form.num.value;
+  // A row with no seat number: the middle seat of that row.
+  const row = list.filter(s => s.row === form.row.value).sort((a, b) => byNatural(String(a.num), String(b.num)));
+  return row.length ? row[Math.floor((row.length - 1) / 2)].id : '';
 }
 
 // The payment, in two steps like a ticket shop's checkout: the form, then the ways to pay
@@ -1565,6 +1581,7 @@ function bindUnlock(form) {
   form.cat.addEventListener('change', () => fillSecs(form));
   form.sec.addEventListener('change', () => fillRows(form));
   form.row.addEventListener('change', () => fillNums(form));
+  form.num.addEventListener('change', () => seatNote(form));
   form.addEventListener('input', () => ready(form));
   form.addEventListener('click', ev => {
     const sso = ev.target.closest('[data-sso]');
