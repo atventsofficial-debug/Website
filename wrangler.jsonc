@@ -36,6 +36,9 @@
   // MIDTRANS_CLIENT_KEY, GOOGLE_CLIENT_ID and MICROSOFT_CLIENT_ID (README, Payments), and
   // FANBASE_WA, the WhatsApp fan group's invite link that paid passes see (README, Seat mates).
   "keep_vars": true,
+  // 3D Pass Plus is on sale (README, 3D Pass Plus). Set here, so every deploy and preview
+  // has it; "off" takes it off sale again.
+  "vars": { "PASS_PLUS": "on" },
   "observability": { "enabled": true },
   // The staging copy (README, Staging): `npx wrangler deploy --env staging` makes a second
   // Worker, website-staging, with its own order book and its own variables, so it never

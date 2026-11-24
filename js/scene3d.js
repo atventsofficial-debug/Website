@@ -1492,6 +1492,27 @@ export class SeatScene {
     this.look.fov = THREE.MathUtils.clamp(this.look.fov + delta, 16, 70);
   }
 
+  // The zoom buttons: in the seat they narrow the view; above the venue they move the camera
+  // in or out towards what it looks at, a quarter at a time, within the overview's own limits.
+  zoomBy(delta) {
+    if (this.mode === 'seat') { this.zoomSeatView(delta); return; }
+    const c = this.controls;
+    if (this.mode !== 'overview' || this.anim || !c?.enabled) return;
+    const tgt = c.target.clone(), off = this.camera.position.clone().sub(tgt), d0 = off.length();
+    const d1 = THREE.MathUtils.clamp(d0 * (delta < 0 ? 0.75 : 1 / 0.75), c.minDistance, c.maxDistance);
+    if (!(d0 > 0) || Math.abs(d1 - d0) < 0.01) return;
+    const dur = 0.35;
+    c.enabled = false;
+    this.anim = {
+      t: 0, dur,
+      step: t => {
+        this.camera.position.copy(tgt).addScaledVector(off, (d0 + (d1 - d0) * smoother(clamp01(t / dur))) / d0);
+        this.camera.lookAt(tgt);
+      },
+      done: () => { c.enabled = this.interactive; c.update(); },
+    };
+  }
+
   // ---------- getting there ----------
 
   // The way in to a seat (access.js): a coral path from the outside of the venue to the seat,

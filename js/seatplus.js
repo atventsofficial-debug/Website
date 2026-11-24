@@ -208,6 +208,17 @@ export function paintAccess(opts = {}) {
   if (!box || box.hidden || !state.venue) return;
   const v = state.venue, info = accessOf(v), seat = accessSeat(opts), open = canView(v);
   const place = v.meta.place || {};
+  const head = `<div class="cmp-head">
+      <div><p class="eyebrow">${icon('i-pin')}Getting there</p><h2>${esc(place.name || v.event?.venue || '')}</h2><p class="acc-addr mono">${esc(place.address || '')}</p></div>
+      <button class="sq sq-sm" type="button" data-acc="close" aria-label="Close getting there"><svg><use href="#i-x"/></svg></button>
+    </div>`;
+  // Directions are Plus: a seat pass (or no pass) sees what they hold, and the way to Plus.
+  if (!open) {
+    box.innerHTML = `${head}
+    <p class="acc-lede">Trains, buses, parking, the gates and the way to your seat, on a map of the streets round the venue and in 3D.</p>
+    ${plusOffer('Directions')}`;
+    return;
+  }
   const rows = info ? `<dl class="acc-rows">${info.map(([k, t]) => `<div><dt>${esc(k)}</dt><dd>${esc(t)}</dd></div>`).join('')}</dl>`
     : `<p class="acc-lede">Travel notes for this venue are coming. Check the promoter’s announcement for gates and parking.</p>`;
   let way = `<div class="acc-way is-empty"><p class="cmp-tag"><b>${icon('i-seat')}</b><span>Your way in</span></p><p class="acc-lede">Tap a seat on the map to see the way in from the nearest side of the venue.</p></div>`;
@@ -221,10 +232,7 @@ export function paintAccess(opts = {}) {
   }
   const hasMap = !!mapArea() && !mapFailed;
   const tabs = hasMap ? `<div class="show-seg acc-views"><button type="button" data-acc="view" data-val="map" aria-pressed="${mapView}">Streets round it</button><button type="button" data-acc="view" data-val="3d" aria-pressed="${!mapView}">The venue in 3D</button></div>` : '';
-  box.innerHTML = `<div class="cmp-head">
-      <div><p class="eyebrow">${icon('i-pin')}Getting there</p><h2>${esc(place.name || v.event?.venue || '')}</h2><p class="acc-addr mono">${esc(place.address || '')}</p></div>
-      <button class="sq sq-sm" type="button" data-acc="close" aria-label="Close getting there"><svg><use href="#i-x"/></svg></button>
-    </div>
+  box.innerHTML = `${head}
     ${tabs}
     ${mapView ? mapHtml(open) : ''}
     ${way}
@@ -238,12 +246,13 @@ export function bindAccess(opts = {}) {
   if (!btn || !box) return;
   btn.addEventListener('click', () => {
     if (!box.hidden) { closeAccess(); return; }
+    if (toUpgrade()) return;
     box.hidden = false;
     btn.setAttribute('aria-pressed', 'true');
     btn.classList.add('is-on');
     $('#stage')?.classList.add('access-open');
     paintAccess(opts);
-    if (mapArea() && !mapFailed) openMap(opts);
+    if (canView(state.venue) && mapArea() && !mapFailed) openMap(opts);
   });
   box.addEventListener('click', e => {
     const b = e.target.closest('[data-acc]');
@@ -299,6 +308,7 @@ export function showModeFor(mode) {
   state.scene?.setRoam(inSeat && roamOn());
   btn.classList.toggle('is-locked', !showOpen());
   $('#set-btn')?.classList.toggle('is-locked', !showOpen());
+  $('#t-access')?.classList.toggle('is-locked', !showOpen());
   if (!panel.hidden) paintShow();
 }
 
@@ -313,7 +323,8 @@ function toUpgrade() {
 
 function paintShow() {
   const panel = $('#show-panel'), o = state.show;
-  const head = `<div class="show-head"><p class="eyebrow">${icon('i-lightstick')}Show mode</p><h2>Light up the crowd</h2></div>`;
+  // Its own close button: on a phone the panel covers the row whose Show button opened it.
+  const head = `<div class="show-head set-head"><p class="eyebrow">${icon('i-lightstick')}Show mode</p><h2>Light up the crowd</h2><button class="sq sq-sm set-x" type="button" data-show-close aria-label="Close show mode" title="Close">${icon('i-x')}</button></div>`;
   if (!showOpen()) {
     panel.innerHTML = `${head}<p class="show-lede">Your fandom's colour on every light stick round your seat, a wave round the stage, the artist walking every side of it, and the house lights up or down.</p>${plusOffer('Show mode')}`;
     return;
@@ -345,6 +356,7 @@ export function bindShow() {
   });
   const apply = () => { saveShow(); state.scene?.setShow(state.show); paintShow(); };
   panel.addEventListener('click', e => {
+    if (e.target.closest('[data-show-close]')) { btn.click(); return; }
     const b = e.target.closest('button[data-show]');
     if (!b || !showOpen()) return;
     const { show: k, val } = b.dataset;

@@ -1050,11 +1050,16 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
   .event-card .label, .ev-stats { display: none; }
   /* Bottom up from above the panels; when the buttons outgrow the room under the top bar
      (in a seat, under the tall last step), they go on in a second column. */
-  /* On a phone the buttons split: four down the left edge, four down the right. */
-  .tools { left: max(22px, env(safe-area-inset-left, 0px)); right: max(22px, env(safe-area-inset-right, 0px)); top: calc(max(16px, env(safe-area-inset-top, 0px)) + 62px + var(--card-h, 0px)); bottom: calc(max(156px, var(--side-h, 0px)) + 86px); flex-direction: row; flex-wrap: nowrap; justify-content: space-between; align-items: flex-end; align-content: stretch; }
+  /* On a phone the rail keeps to the left edge, without Reset (the back button does that).
+     In the tour, Directions, the setlist and show mode move to the row at the foot of the
+     panel in the seat (.dock), so the rail is only Crowd, Labels and zoom. */
+  .tools { left: max(22px, env(safe-area-inset-left, 0px)); top: calc(max(16px, env(safe-area-inset-top, 0px)) + 62px + var(--card-h, 0px)); bottom: calc(max(156px, var(--side-h, 0px)) + 86px); gap: 20px 16px; }
   .tools-g { gap: 20px; }
+  .tools #t-reset, .in-tour .tools :is(#t-access, #set-btn, #show-btn) { display: none; }
+  .in-tour .tour-end { display: none; }
+  .app-side .dock { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; width: 100%; margin-top: 2px; }
   /* A sheet from the bottom (show mode, the setlist) takes the panel's place while open. */
-  .stage:is(.show-open, .set-open) .app-side { opacity: 0; pointer-events: none; }
+  .stage:is(.show-open, .set-open) .app-side, .in-tour .stage.is-seat:is(.show-open, .set-open) .app-side { opacity: 0; pointer-events: none; }
   .tools .sq { width: 42px; height: 42px; }
   .tools .sq svg { width: 19px; height: 19px; }
   .stage.is-seat .tools { top: calc(max(16px, env(safe-area-inset-top, 0px)) + 62px); bottom: calc(max(12px, env(safe-area-inset-bottom, 0px)) + var(--seat-h, 0px) + 28px); }
@@ -1351,6 +1356,20 @@ input, select, textarea { border-radius: 0; }
 .tour-act.is-capture svg, .tour-act.is-capture span { color: #fff; }
 .tour-act.is-capture span { opacity: .85; }
 .tour-act.is-capture:hover, .tour-act.is-capture:focus-visible { border-color: #fff; background: var(--coral); }
+/* The phone's row of tour tools, grouped as a control centre groups them (shown on phones only).
+   The icon's corners follow the tile's: its radius is the tile's less the gap between them. */
+.dock { display: none; }
+.dock-b { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-width: 0; padding: 10px 4px 9px; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 22px; background: rgba(255, 255, 255, 0.06); color: var(--text); font: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background .15s, border-color .15s, transform .15s; }
+.dock-b[hidden] { display: none; }
+.dock-b:hover, .dock-b:focus-visible { background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.22); outline: none; }
+.dock-b:active { transform: scale(.96); }
+.dock-ic { position: relative; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: rgba(255, 255, 255, 0.14); color: #fff; transition: background .15s, color .15s; }
+.dock-ic > svg { width: 19px; height: 19px; }
+.dock-t { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 11px/1.15 var(--font); letter-spacing: 0.01em; color: rgba(244, 240, 238, 0.92); }
+.dock-b:is(.is-on, [aria-pressed="true"], [aria-expanded="true"]) .dock-ic { background: #fff; color: var(--coral); }
+.dock-b.is-capture .dock-ic { background: var(--coral); color: #fff; }
+.dock-b.is-locked .sq-lock { display: grid; }
+.dock-b.is-playing .dock-ic::after { content: ""; position: absolute; top: 0; right: 0; width: 10px; height: 10px; border-radius: 50%; background: var(--ok, #3ddc84); box-shadow: 0 0 0 2px rgba(22, 20, 20, 0.93); animation: setPulse 1s ease-in-out infinite; }
 .cat-pill.is-off { opacity: 0.35; cursor: not-allowed; }
 .cat-pill.is-off:hover { border-color: var(--line-2); }
 .cat-pill.is-own:not([aria-pressed="true"]) { border-color: var(--coral); }
