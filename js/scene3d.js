@@ -24,9 +24,10 @@ const SEAT_FOV = 50;
 // body above the seat grows (the seat stays where it is); standing, the whole person does.
 export const EYE_REF_CM = 170;
 const HIP_SEATED = 0.48;
-const eyeLift = (seat, cm = EYE_REF_CM) => {
+// `up`: the fan stands at a seated venue (show mode's Standing, setShow).
+const eyeLift = (seat, cm = EYE_REF_CM, up = false) => {
   const f = (cm || EYE_REF_CM) / EYE_REF_CM;
-  return seat.standing ? (SEATED_EYE + STAND_LIFT) * f : HIP_SEATED + (SEATED_EYE - HIP_SEATED) * f;
+  return seat.standing || up ? (SEATED_EYE + STAND_LIFT) * f : HIP_SEATED + (SEATED_EYE - HIP_SEATED) * f;
 };
 const MAP_FOV = 42;
 
@@ -634,16 +635,22 @@ export class SeatScene {
     const runway = stadium
       ? (thrust.length ? Math.max(...thrust, ...bstage) : null)
       : cw ? cw.len + (cw.island ? cw.island - 0.5 : 0) : null;
+    // A stadium's walkways and B-stage stand lower than its 2.2 m deck (venues3d.js, 2.0 m
+    // unless the plan says): the performers step down onto them.
+    const lowest = [...(venue.stage?.thrust || []).filter(t => mid(t.x0) && mid(t.x1) && t.z0 < 0.5), ...(venue.stage?.bstage || []).filter(b => mid(b.x))].map(t => t.h ?? 2.0);
+    const runwayDy = stadium && lowest.length ? Math.min(...lowest) - 2.2 : 0;
     this.band = venue.lineup?.length && (!stadium || venue.show === 'end' || round)
       ? new Band(this.scene, this.bandMat(), round ? venue.lineup.filter(m => ['vocals', 'dancer'].includes(m.role)) : venue.lineup, round
         ? { y: 1.9, round, rnd: bandRnd }
         : stadium
         // A stadium's end stage is built facing +z at its front edge, then turned to the field.
-          ? { y: 2.2, front: 0, riserY: 2.8, riserZ: -9, risers: true, deckHalf: 26, deckDepth: 16, runway, rnd: bandRnd }
+          ? { y: 2.2, front: 0, riserY: 2.8, riserZ: -9, risers: true, deckHalf: 26, deckDepth: 16, runway, runwayDy, rnd: bandRnd }
           : { y: S.h, front: S.front, riserY: S.h + 0.6, riserZ: S.riserZ, spread: S.k, deckHalf: S.w / 2, deckDepth: S.d, runway, rnd: bandRnd })
       : null;
     this.band?.setRoam(this.roam);
-    if (this.band && stadium) {
+    // An end stage is built facing +z and turned to the field at its end; a 360 stage is
+    // already in the middle of the field, where its line-up stands.
+    if (this.band && stadium && !round) {
       this.band.group.rotation.y = Math.PI / 2;
       this.band.group.position.set(venue.stageX ?? -40, 0, 0);
     }
@@ -653,6 +660,7 @@ export class SeatScene {
       for (let i = 0; i < seats.length; i++) upAttr.array[i] = this.crowdSlot.has(i) ? 0 : 1;
       upAttr.needsUpdate = true;
     }
+    if (this.standUp) { this.standUp = false; this._standUp(true); }
     this.crowd = [];
   }
 
@@ -1120,7 +1128,7 @@ export class SeatScene {
     const chest = seatBase.clone().add(new THREE.Vector3(0, 0.7, 0));
     // The flight looks at the top of the seat, not into its back, so the last metres are not a close-up of upholstery.
     const over = seatBase.clone().add(new THREE.Vector3(0, 1.05, 0));
-    const eye = seatBase.clone().addScaledVector(fwd, -0.05).add(new THREE.Vector3(0, eyeLift(seat, this.eyeOpts?.me), 0));
+    const eye = seatBase.clone().addScaledVector(fwd, -0.05).add(new THREE.Vector3(0, eyeLift(seat, this.eyeOpts?.me, this.standUp), 0));
     this._eyeTo = null;
     // The people around the seat get their detailed figures before the camera gets there.
     this.people?.focusOn(eye, this.focus, this.level === 2 ? 24 : 14, this.level === 2 ? 900 : 320);
@@ -1520,10 +1528,10 @@ export class SeatScene {
     this.eyeOpts = o || null;
     const seat = this.current >= 0 ? this.venue?.seats[this.current] : null;
     if (!seat || this.mode !== 'seat' || !this.eye) { this._eyeTo = null; return; }
-    this._eyeTo = seat.y + eyeLift(seat, o?.me);
+    this._eyeTo = seat.y + eyeLift(seat, o?.me, this.standUp);
     const f = (o?.front || EYE_REF_CM) / EYE_REF_CM, rows = o?.rows || 3;
     // Rows in a stand are about 0.85 m deep; a standing floor packs people a little closer.
-    const depth = 0.35 + rows * (seat.standing ? 0.7 : 0.85);
+    const depth = 0.35 + rows * (seat.standing ? 0.7 : 0.85) + (this.standUp ? 0.3 : 0);
     this.people?.setAhead(Math.abs(f - 1) < 0.005 ? null : { eye: this.eye, look: this.focus, f, depth });
   }
 
@@ -1582,6 +1590,21 @@ export class SeatScene {
   setShow(opts = {}) {
     this.show = { ...(this.show || { color: '#ffffff', mix: 0, fx: 'beat', ocean: 0 }), ...opts };
     this._applyShow();
+    if ('stand' in opts) this._standUp(!!opts.stand);
+  }
+
+  // Show mode, Plus: everyone at a seated venue on their feet, the fan too. The people step
+  // in front of their chairs, the seats flip up, and the fan's eye rises to standing height.
+  _standUp(on) {
+    if (on === !!this.standUp) return;
+    this.standUp = on;
+    this.people?.setStanding(on);
+    const upAttr = this.seatMesh?.geometry.attributes.aUp;
+    if (upAttr && this.crowdSlot) {
+      for (let i = 0; i < upAttr.count; i++) upAttr.array[i] = on || !this.crowdSlot.has(i) ? 1 : 0;
+      upAttr.needsUpdate = true;
+    }
+    if (this.mode === 'seat') this.setEye(this.eyeOpts);
   }
 
   _applyShow() {

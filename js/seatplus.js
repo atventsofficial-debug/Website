@@ -320,7 +320,7 @@ const COLORS = [
 ];
 const FX = [['beat', 'On the beat'], ['steady', 'Steady'], ['wave', 'Wave']];
 const KEY = 'atv-show';
-const DEFAULT = { color: '#a259ff', mix: 0, fx: 'beat', ocean: 0, roam: true };
+const DEFAULT = { color: '#a259ff', mix: 0, fx: 'beat', ocean: 0, roam: true, stand: false };
 
 function loadShow() {
   try { return { ...DEFAULT, ...JSON.parse(localStorage.getItem(KEY) || '{}') }; } catch { return { ...DEFAULT }; }
@@ -331,6 +331,8 @@ const showOpen = () => !!state.venue && canView(state.venue);
 // The performers walk the stage with Plus, unless the fan keeps them on their spots.
 const roamOn = () => showOpen() && state.show?.roam !== false;
 const hasBand = () => !!state.scene?.band;
+// A venue with seats, where the crowd can sit or stand (show mode's Everyone).
+const hasSeats = () => !!state.venue?.seats.some(s => !s.standing);
 
 // Called on every change of the view's mode: show mode belongs to the seat.
 export function showModeFor(mode) {
@@ -345,7 +347,7 @@ export function showModeFor(mode) {
   if (!inSeat) { panel.hidden = true; btn.setAttribute('aria-expanded', 'false'); btn.classList.remove('is-on'); $('#stage')?.classList.remove('show-open'); }
   eyeModeFor(mode);
   // A seat pass keeps the crowd's own light sticks; Plus brings back the fan's choice.
-  state.scene?.setShow(showOpen() ? state.show : { ...state.show, mix: 0, ocean: 0, fx: 'beat' });
+  state.scene?.setShow(showOpen() ? { ...state.show, stand: !!state.show.stand && hasSeats() } : { ...state.show, mix: 0, ocean: 0, fx: 'beat', stand: false });
   state.scene?.setRoam(inSeat && roamOn());
   btn.classList.toggle('is-locked', !showOpen());
   $('#set-btn')?.classList.toggle('is-locked', !showOpen());
@@ -382,6 +384,7 @@ function paintShow() {
           <label class="show-sw show-custom" title="Your own colour"${o.mix > 0 && !COLORS.some(([c]) => c === o.color) ? ' data-on="true"' : ''}><input type="color" value="${esc(o.color)}" data-show="custom" aria-label="Your own colour"><svg aria-hidden="true"><use href="#i-plus"/></svg></label></div>
         ${seg('mix', [['0', 'Mixed'], ['1', 'All my colour']], o.mix > 0 ? '1' : '0')}</dd></div>
       <div><dt>Effect</dt><dd>${seg('fx', FX, o.fx)}</dd></div>
+      ${hasSeats() ? `<div><dt>Everyone</dt><dd>${seg('stand', [['0', 'Seated'], ['1', 'Standing up']], o.stand ? '1' : '0')}</dd></div>` : ''}
       <div><dt>Crowd</dt><dd>${seg('ocean', [['0', 'As it is'], ['0.85', 'Light-stick ocean']], o.ocean > 0 ? '0.85' : '0')}</dd></div>
       ${hasBand() ? `<div><dt>Artist</dt><dd>${seg('roam', [['1', 'Walk the stage'], ['0', 'Stay put']], o.roam === false ? '0' : '1')}</dd></div>` : ''}
       <div><dt>Lights</dt><dd>${seg('lights', [['1', 'Show lights'], ['0', 'House lights up']], state.showLights === false ? '0' : '1')}</dd></div>
@@ -410,6 +413,7 @@ export function bindShow() {
     if (k === 'mix') state.show.mix = +val;
     if (k === 'fx') state.show.fx = val;
     if (k === 'ocean') state.show.ocean = +val;
+    if (k === 'stand') state.show.stand = val === '1';
     if (k === 'roam') { state.show.roam = val === '1'; saveShow(); state.scene?.setRoam(roamOn()); paintShow(); return; }
     if (k === 'lights') { state.showLights = val === '1'; state.scene?.setShowLights(state.showLights); paintShow(); return; }
     apply();

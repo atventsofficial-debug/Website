@@ -491,6 +491,7 @@ export class Crowd {
     const m = new THREE.Matrix4(), q = new THREE.Quaternion(), v = new THREE.Vector3(), s = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
     const pick = list => list[Math.floor(rnd() * list.length)];
     const hex = h => parseInt(h.slice(1), 16);
+    this.seatedIdx = spots.flatMap((p, k) => (p.standing ? [] : [k]));
     spots.forEach((p, k) => {
       // A standing crowd is no grid: people drift off their spots and turn more freely.
       const loose = p.standing ? 0.42 : 0.05, turn = p.standing ? 0.7 : 0.3;
@@ -662,6 +663,27 @@ export class Crowd {
     this._assign();
   }
 
+  // Show mode's Standing: everyone in a seat gets up and stands a step in front of their
+  // chair (and back down). The people in front (setAhead) are let go first; the scene sets
+  // them again for the new height.
+  setStanding(on) {
+    on = !!on;
+    if (on === !!this.allUp) return;
+    this._restoreAhead();
+    this.allUp = on;
+    const M = this.data.matrix, L = this.data.look, s = on ? 1 : -1;
+    for (const k of this.seatedIdx) {
+      const o = k * 16, w = Math.hypot(M[o + 8], M[o + 10]) || 1;
+      L[k * 4] += 16 * s;
+      M[o + 12] -= (M[o + 8] / w) * 0.3 * s;
+      M[o + 13] += STAND_LIFT_LOCAL * s;
+      M[o + 14] -= (M[o + 10] / w) * 0.3 * s;
+    }
+    if (!this.far) return;
+    if (this.near) this._fill(this.near, this.nearSlots, true);
+    this._assign();
+  }
+
   _restoreAhead() {
     if (!this._ahead) return;
     for (const [k, m] of this._ahead) this.data.matrix.set(m, k * 16);
@@ -811,7 +833,101 @@ export function stageRoute({ front = -34, spread = 1, deckHalf = null, deckDepth
     const a = pts[i - 1], b = pts[i % pts.length];
     cum.push(cum[i - 1] + Math.hypot(b[0] - a[0], b[1] - a[1]));
   }
-  return { pts, cum, length: cum[pts.length], stops: stopAt.map(i => cum[i]), mode: round ? 'line' : 'group', file: !round && runway ? [cum[4], cum[6]] : null };
+  return { pts, cum, length: cum[pts.length], stops: stopAt.map(i => cum[i]), mode: round ? 'line' : 'group', file: !round && runway ? [cum[4], cum[6]] : null, runwayEnd: !round && runway ? pts[5][1] : null };
+}
+
+// A group (two walkers or more, as a boy or girl group) does not walk as one crowd: it splits
+// into small squads, two or so each, that go out to the stage's sides (the wings and the
+// runway of an end stage, the runways of a 360 stage) and sing there, then all walk to the
+// middle at the front and sing together; next time round every squad takes the next side.
+// Keyframes: where each walker stands (x, z and a lift `y`), how long they stay, and which
+// way they face there ('crowd' for an end stage, 'out' from the middle for a 360 stage).
+export const SPLIT_HOLD = 6, TOGETHER_HOLD = 7;
+export function squadSizes(n, max) {
+  const k = Math.max(1, Math.min(max, Math.ceil(n / 2))), base = Math.floor(n / k), extra = n % k;
+  return Array.from({ length: k }, (_, j) => base + (j < extra ? 1 : 0));
+}
+export function groupPlan(n, R, round = null) {
+  const sizes = squadSizes(n, round ? 4 : (R.runwayEnd ? 5 : 4));
+  const frames = [];
+  if (round) {
+    // Out on each runway's tip lift (venues3d.js: 1.4 m round, 0.955 of the way out, 0.1 m
+    // over the deck); together on the big lift in the middle (0.2 m over the deck).
+    const { arm: { tip: [tx, tz] } } = round, L = Math.hypot(tx, tz), k = 0.955;
+    const arms = [[1, 1], [-1, 1], [-1, -1], [1, -1]];
+    const ringR = n <= 4 ? 1.8 : 2.6;
+    for (let c = 0; c < arms.length; c++) {
+      const spread = [], together = [];
+      sizes.forEach((size, j) => {
+        const [sx, sz] = arms[(j + c) % arms.length], ux = sx * tx / L, uz = sz * tz / L, ang = Math.atan2(ux, uz);
+        for (let m = 0; m < size; m++) {
+          const off = (m - (size - 1) / 2) * 1.1;
+          spread.push({ x: sx * tx * k - uz * off, z: sz * tz * k + ux * off, y: 0.1 });
+          const a = ang + (m - (size - 1) / 2) * 0.5;
+          together.push({ x: Math.sin(a) * ringR, z: Math.cos(a) * ringR, y: 0.2 });
+        }
+      });
+      frames.push({ at: spread, hold: SPLIT_HOLD, face: 'out' }, { at: together, hold: TOGETHER_HOLD, face: 'out' });
+    }
+  } else {
+    const [[, zF], [X], [, zB]] = [R.pts[0], [Math.abs(R.pts[1][0])], R.pts[2]];
+    const spots = [[-X, zF, 'x'], [X, zF, 'x'], ...(R.runwayEnd ? [[0, R.runwayEnd - 0.8, 'z']] : []), [-X, zB, 'x'], [X, zB, 'x']];
+    const F = formation(n);
+    for (let c = 0; c < spots.length; c++) {
+      const spread = [];
+      sizes.forEach((size, j) => {
+        const [x, z, axis] = spots[(j + c) % spots.length];
+        for (let m = 0; m < size; m++) {
+          const off = (m - (size - 1) / 2) * 1.5;
+          spread.push(axis === 'x' ? { x: x + off, z, y: 0 } : { x, z: z - m * 1.5, y: 0 });
+        }
+      });
+      frames.push({ at: spread, hold: SPLIT_HOLD, face: 'crowd' }, { at: F.map(([ox, oz]) => ({ x: ox, z: zF + oz, y: 0 })), hold: TOGETHER_HOLD, face: 'crowd' });
+    }
+  }
+  // Each walk takes as long as the longest of its paths at an easy pace.
+  const legs = frames.map((f, i) => {
+    const g = frames[(i + 1) % frames.length];
+    const far = Math.max(...f.at.map((p, w) => Math.hypot(g.at[w].x - p.x, g.at[w].z - p.z)));
+    return { ...f, walk: Math.max(2.5, far / WALK_SPEED) };
+  });
+  // On and off a runway, by its root at the middle of the front edge, never across the air.
+  const gate = !round && R.runwayEnd ? { x: 0, z: R.pts[0][1] + 2.4 - 0.6, front: R.pts[0][1] + 2.4 } : null;
+  if (gate) legs.forEach((f, i) => {
+    const g = legs[(i + 1) % legs.length];
+    const far = Math.max(...f.at.map((p, w) => pathOf(p, g.at[w], gate).len));
+    f.walk = Math.max(2.5, far / WALK_SPEED);
+  });
+  return { frames: legs, length: legs.reduce((a, l) => a + l.hold + l.walk, 0), gate };
+}
+
+// The way from a to b: straight, or by the runway's root when one end is out on it.
+function pathOf(a, b, gate) {
+  const pts = gate && (a.z > gate.front) !== (b.z > gate.front) ? [a, gate, b] : [a, b];
+  let len = 0;
+  for (let i = 1; i < pts.length; i++) len += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].z - pts[i - 1].z);
+  return { pts, len };
+}
+
+// Where walker `w` of a group plan is `t` seconds in: standing at a keyframe, or on the way
+// to the next one.
+export function planAt(P, w, t) {
+  let r = ((Math.max(0, t) % P.length) + P.length) % P.length;
+  for (let i = 0; i < P.frames.length; i++) {
+    const f = P.frames[i], g = P.frames[(i + 1) % P.frames.length], a = f.at[w], b = g.at[w];
+    if (r < f.hold) return { x: a.x, z: a.z, y: a.y, step: 0, face: f.face, dx: 0, dz: 0 };
+    r -= f.hold;
+    if (r < f.walk) {
+      const u = r / f.walk, e = smooth(u), { pts, len } = pathOf(a, b, P.gate);
+      let d = e * len, j = 1;
+      for (; j < pts.length - 1; j++) { const s = Math.hypot(pts[j].x - pts[j - 1].x, pts[j].z - pts[j - 1].z); if (d <= s) break; d -= s; }
+      const p0 = pts[j - 1], p1 = pts[j], s = Math.hypot(p1.x - p0.x, p1.z - p0.z) || 1, q = Math.min(1, d / s);
+      return { x: p0.x + (p1.x - p0.x) * q, z: p0.z + (p1.z - p0.z) * q, y: a.y + (b.y - a.y) * e, step: Math.min(1, 6 * u * (1 - u)), face: g.face, dx: p1.x - p0.x, dz: p1.z - p0.z };
+    }
+    r -= f.walk;
+  }
+  const a = P.frames[0].at[w];
+  return { x: a.x, z: a.z, y: a.y, step: 0, face: P.frames[0].face, dx: 0, dz: 0 };
 }
 
 // The point `d` metres along a stage route (round and round), and the way it is going.
@@ -847,8 +963,11 @@ export function walkAt(R, t) {
 }
 
 export class Band {
-  constructor(scene, material, lineup, { y = 1.8, front = -34, riserY = 2.4, riserZ = -44, risers = false, spread = 1, deckHalf = null, deckDepth = null, runway = null, round = null, rnd = Math.random } = {}) {
+  constructor(scene, material, lineup, { y = 1.8, front = -34, riserY = 2.4, riserZ = -44, risers = false, spread = 1, deckHalf = null, deckDepth = null, runway = null, runwayDy = 0, round = null, rnd = Math.random } = {}) {
     this.scene = scene;
+    // Out on a runway the deck may be lower or higher than the stage's (runwayDy, metres).
+    this.front = front;
+    this.runwayDy = round ? 0 : runwayDy;
     this.material = material;
     this.group = new THREE.Group();
     scene.add(this.group);
@@ -861,6 +980,8 @@ export class Band {
     const half = this.offsets.reduce((a, [x]) => Math.max(a, Math.abs(x)), 0);
     this.route = stageRoute(round ? { round } : { front, spread, deckHalf, deckDepth, riserZ, half, runway });
     this.round = !!round;
+    // Two walkers or more split up across the stage and come together (groupPlan).
+    this.plan = this.walkers.length >= 2 ? groupPlan(this.walkers.length, this.route, round) : null;
     this.roam = false;
     // A stage without band risers of its own gets them under the drums and keys.
     if (risers) {
@@ -918,6 +1039,14 @@ export class Band {
   // Where walker `i` of the group is `t` seconds into the walk, which way it faces, and how
   // much in its stride.
   walkerAt(i, t) {
+    if (this.plan) {
+      const p = planAt(this.plan, i, t);
+      // Standing: to the crowd (an end stage, a little in toward its middle) or out from the
+      // middle (a 360 stage); walking, the way they go.
+      const out = p.face === 'out' ? Math.atan2(p.x, p.z) : Math.atan2(-p.x, 40);
+      const along = p.step > 0 ? Math.atan2(p.dx, p.dz) : out;
+      return { x: p.x, z: p.z, y: this.round ? p.y : this._runwayY(p.z), turn: out + angleDiff(out, along) * Math.min(1, p.step * 1.6), step: p.step };
+    }
     const R = this.route, w = walkAt(R, t);
     if (R.mode === 'line') {
       // One behind the other, a couple of paces apart.
@@ -945,7 +1074,7 @@ export class Band {
     }
     // Standing: to the crowd, a little in toward its middle from a corner.
     const out = Math.atan2(-x, 40), along = Math.atan2(dx, dz);
-    return { x, z, turn: out + angleDiff(out, along) * Math.min(1, w.step * 1.6), step: w.step };
+    return { x, z, y: this._runwayY(z), turn: out + angleDiff(out, along) * Math.min(1, w.step * 1.6), step: w.step };
   }
 
   update(t) {
@@ -964,7 +1093,7 @@ export class Band {
       const step = gather < 1 ? (far ? Math.min(1, 4 * g0 * (1 - g0) + 0.3) : 0) : at.step;
       const turn = gather < 1 ? (far ? Math.atan2(at.x - p.x, at.z - p.z) : p.turn) : at.turn;
       q.setFromAxisAngle(up, Math.PI + turn);
-      pos.set(p.x + (at.x - p.x) * gather, p.y, p.z + (at.z - p.z) * gather);
+      pos.set(p.x + (at.x - p.x) * gather, p.y + (at.y || 0) * gather, p.z + (at.z - p.z) * gather);
       sc.setScalar(p.h || 1.04);
       m.compose(pos, q, sc);
       mesh.setMatrixAt(k, m);
@@ -975,6 +1104,9 @@ export class Band {
   }
 
   // Everyone back on their own spot, standing still.
+  // Off the front edge of an end stage, out on its runway: that deck's height.
+  _runwayY(z) { return this.runwayDy && z > (this.front ?? 0) + 0.05 ? this.runwayDy : 0; }
+
   _home() {
     const mesh = this.mesh;
     if (!mesh) return;
