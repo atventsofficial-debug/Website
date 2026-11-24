@@ -796,6 +796,9 @@ export function renderUnlock(eventId, { plan = '', upgrade = '', stage = '' } = 
   // checkout or upgrading a pass, the form at once: the pass is known.
   const concert = isConcert(eventId);
   const step = unlock.again || unlock.upgrade || (concert && stage === 'form') ? 'form' : !concert && stage === 'list' ? 'list' : 'plans';
+  // The heading's right column follows the step: the intro on the price list and the concerts,
+  // the note that the 3D is an illustration on the seat form.
+  $('#view-unlock').dataset.step = step;
   const body = $('#unlock-body');
   body.classList.toggle('is-plans', step === 'plans');
   body.classList.toggle('is-form', step === 'form');
