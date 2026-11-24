@@ -60,7 +60,7 @@ export async function findPreview(artist, song, fetchFn = fetch, looked = []) {
     if (hit && /^https:\/\/[a-z0-9.-]+\.apple\.com\//.test(hit.url)) return { ...hit, from: 'Apple Music' };
   }
   try {
-    const q = new URLSearchParams({ q: `artist:"${artist}" track:"${String(song).replace(/\([^)]*\)|\[[^\]]*\]/g, ' ').replace(/"/g, '').trim()}"`, limit: '15' });
+    const q = new URLSearchParams({ q: term, limit: '25' });
     const res = await fetchFn(`https://api.deezer.com/search?${q}`, { headers: { accept: 'application/json' } });
     const data = res.ok ? await res.json().catch(() => null) : null;
     // Deezer answers 200 with an error object when it is busy.
@@ -85,8 +85,9 @@ export async function songPreview(url, ctx, json, fetchFn = fetch) {
   const hit = await findPreview(artist, song, fetchFn, looked);
   // Kept: a clip, or Apple's own answer that it has none. Not kept: Apple not answering.
   const answered = looked.some(l => l.status === 200);
+  // Deezer's clip links are signed for about an hour; Apple's last.
   const res = hit
-    ? json(200, hit, { 'cache-control': 'public, max-age=604800' })
+    ? json(200, hit, { 'cache-control': `public, max-age=${hit.from === 'Deezer' ? 1800 : 604800}` })
     : answered
       ? json(404, { error: 'No preview for this song.', code: 'none', looked }, { 'cache-control': 'public, max-age=86400' })
       : json(502, { error: 'The preview could not be found just now.', looked });
