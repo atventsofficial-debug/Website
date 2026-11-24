@@ -921,6 +921,13 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
 .sq-t { position: absolute; top: calc(100% + 4px); left: 50%; transform: translateX(-50%); font: 600 10px/1 var(--font); letter-spacing: 0.01em; color: rgba(244, 240, 238, 0.9); white-space: nowrap; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.6); pointer-events: none; }
 .tools .zoom { position: relative; display: flex; flex-direction: column; gap: 6px; }
 .tools .zoom[hidden], .tools .sq[hidden] { display: none; }
+/* On a computer the word sits to the right of its button, so the buttons stack closer; a
+   second column (a short window) leaves room for the words of the first. */
+@media (min-width: 961px) {
+  .tools { gap: 14px 96px; }
+  .tools-g { gap: 14px; }
+  .sq-t { top: 50%; left: calc(100% + 10px); transform: translateY(-50%); font-size: 11px; }
+}
 
 .sections { position: absolute; z-index: 4; left: max(16px, env(safe-area-inset-left, 0px)); bottom: max(16px, env(safe-area-inset-bottom, 0px)); right: 404px; padding: 10px; display: flex; align-items: center; gap: var(--s4); min-width: 0; border-radius: 999px; }
 .sb-label { padding-left: 10px; }
