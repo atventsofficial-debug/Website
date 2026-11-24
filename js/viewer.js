@@ -15,7 +15,7 @@ import { whenOf, isOver } from './when.js';
 import { buyLink, activePass, openPass, passes, canView, plusPass, plusOnSale, upgradable, toggleSeat, STATUS, refresh } from './passes.js';
 import { placeSeat, cleanNumbering, isDefault, numberingOf, numberingSource } from './seatflip.js';
 import { $, esc, icon, state, QUALITY, spotStats, share, toast } from './ui.js';
-import { addCompare, bindAccess, bindCompare, bindShow, closeAccess, paintAccess, compareIds, paintCompare, setCompare, showModeFor } from './seatplus.js';
+import { addCompare, bindAccess, bindCompare, bindSetlist, bindShow, closeAccess, closeSetlist, paintAccess, compareIds, paintCompare, setCompare, showModeFor, stopPreview } from './seatplus.js';
 import { pairOf } from './compare.js';
 import { loadMates, matesBlock, bindMates, mateTags, resetMates, mates, startMatesLive, fanCardHtml, fillMatesList } from './fans.js';
 
@@ -265,6 +265,8 @@ export function closeViewer() {
   state.compare = [];
   paintCompare();
   closeAccess();
+  closeSetlist();
+  stopPreview();
   document.body.classList.remove('in-tour');
   resetMates();
   closeFanCard();
@@ -485,6 +487,12 @@ export function bindViewer() {
   // changes (the seat tour's panel is taller), so they follow its measured height.
   const side = $('#app-side');
   if (side && window.ResizeObserver) new ResizeObserver(() => side.parentElement.style.setProperty('--side-h', `${side.offsetHeight}px`)).observe(side);
+  // Likewise the seat's card, under the buttons on a phone while sitting in a seat.
+  const seatCard = $('#seatcard');
+  if (seatCard && window.ResizeObserver) new ResizeObserver(() => seatCard.parentElement.style.setProperty('--seat-h', `${seatCard.offsetHeight}px`)).observe(seatCard);
+  // And the event's card, above them (gone in a seat and in the seat tour).
+  const evCard = $('#stage .event-card');
+  if (evCard && window.ResizeObserver) new ResizeObserver(() => evCard.parentElement.style.setProperty('--card-h', `${evCard.offsetHeight ? evCard.offsetHeight + 16 : 0}px`)).observe(evCard);
   const toggle = (btn, key, apply) => btn.addEventListener('click', () => {
     state[key] = !state[key];
     btn.classList.toggle('is-on', state[key]);
@@ -527,6 +535,7 @@ export function bindViewer() {
   bindMates($('#app-side'), { pass: matesPass, repaint: paintViewer });
   bindCompare({ repaint: () => { state.scene?.setMine([...markedIds(), ...(state.peek ? [state.peek.id] : [])]); if (state.viewing || state.peek) fillSeatCard(state.viewing || state.peek); } });
   bindShow();
+  bindSetlist();
   bindAccess({ tourSeat });
   $('#fan-card').addEventListener('click', e => {
     const act = e.target.closest('[data-fancard]')?.dataset.fancard;

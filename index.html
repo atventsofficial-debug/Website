@@ -791,10 +791,21 @@ html:not(.atv-seen) #nav .logo-img{animation:ai-show 0s 2.57s both}
     </section>
 
     <div class="tools" id="tools">
-      <button class="sq" id="t-reset" aria-label="Reset view" title="Reset view"><svg><use href="#i-reset"/></svg></button>
-      <button class="sq is-on" id="t-crowd" aria-label="Show crowd" aria-pressed="true" title="Show crowd"><svg><use href="#i-people"/></svg></button>
-      <button class="sq is-on" id="t-labels" aria-label="Show section labels" aria-pressed="true" title="Section labels"><svg><use href="#i-tag"/></svg></button>
-      <button class="sq" id="t-access" type="button" aria-pressed="false" aria-controls="access" aria-label="Getting there" title="Getting there"><svg><use href="#i-pin"/></svg></button>
+      <div class="tools-g">
+        <button class="sq" id="t-reset" aria-label="Reset view" title="Reset view"><svg><use href="#i-reset"/></svg><span class="sq-t" aria-hidden="true">Reset</span></button>
+        <button class="sq is-on" id="t-crowd" aria-label="Show crowd" aria-pressed="true" title="Show crowd"><svg><use href="#i-people"/></svg><span class="sq-t" aria-hidden="true">Crowd</span></button>
+        <button class="sq is-on" id="t-labels" aria-label="Show section labels" aria-pressed="true" title="Section labels"><svg><use href="#i-tag"/></svg><span class="sq-t" aria-hidden="true">Labels</span></button>
+        <button class="sq" id="t-access" type="button" aria-pressed="false" aria-controls="access" aria-label="Getting there" title="Getting there"><svg><use href="#i-pin"/></svg><span class="sq-t" aria-hidden="true">Directions</span></button>
+      </div>
+      <div class="tools-g">
+        <button class="sq" id="set-btn" type="button" aria-expanded="false" aria-controls="set-panel" aria-label="Setlist" title="Setlist"><svg><use href="#i-music"/></svg><span class="sq-lock" aria-hidden="true"><svg><use href="#i-lock"/></svg></span><span class="sq-t" aria-hidden="true">Setlist</span></button>
+        <button class="sq" id="show-btn" type="button" aria-expanded="false" aria-controls="show-panel" aria-label="Show mode" title="Show mode" hidden><svg><use href="#i-lightstick"/></svg><span class="sq-lock" aria-hidden="true"><svg><use href="#i-lock"/></svg></span><span class="sq-t" aria-hidden="true">Show</span></button>
+        <div class="zoom" id="zoom" role="group" aria-label="Zoom" hidden>
+          <button class="sq" type="button" data-zoom="-8" aria-label="Zoom in" title="Zoom in"><svg><use href="#i-plus"/></svg></button>
+          <button class="sq" type="button" data-zoom="8" aria-label="Zoom out" title="Zoom out"><svg><use href="#i-minus"/></svg></button>
+          <span class="sq-t" aria-hidden="true">Zoom</span>
+        </div>
+      </div>
     </div>
 
     <section class="sections panel" id="sections">
@@ -825,12 +836,8 @@ html:not(.atv-seen) #nav .logo-img{animation:ai-show 0s 2.57s both}
     </section>
 
     <div class="pov-hint mono" id="pov-hint" hidden>DRAG TO LOOK · SCROLL TO ZOOM · CLICK ANOTHER SEAT TO MOVE</div>
-    <div class="zoom" id="zoom" hidden>
-      <button class="sq" id="show-btn" type="button" aria-expanded="false" aria-controls="show-panel" aria-label="Show mode" title="Show mode"><svg><use href="#i-lightstick"/></svg></button>
-      <button class="sq" data-zoom="-8" aria-label="Zoom in"><svg><use href="#i-plus"/></svg></button>
-      <button class="sq" data-zoom="8" aria-label="Zoom out"><svg><use href="#i-minus"/></svg></button>
-    </div>
     <section class="show-panel panel" id="show-panel" aria-label="Show mode" hidden></section>
+    <section class="show-panel set-panel panel" id="set-panel" aria-label="Setlist" hidden></section>
     <section class="compare panel" id="compare" aria-label="Compare seats" hidden></section>
     <section class="access panel" id="access" aria-label="Getting there" hidden></section>
     <div class="tooltip" id="tooltip" hidden></div>

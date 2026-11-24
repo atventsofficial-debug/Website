@@ -37,6 +37,9 @@ const TAG_POS = new THREE.Vector3();
 
 const ease = t => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
 const easeOut = t => 1 - (1 - t) ** 3;
+// Smootherstep: no jolt at either end (its speed and its acceleration both start and end at 0).
+const smoother = t => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * t * (t * (t * 6 - 15) + 10));
+const clamp01 = t => (t < 0 ? 0 : t > 1 ? 1 : t);
 const wrapAngle = a => Math.atan2(Math.sin(a), Math.cos(a));
 // Venue kinds drawn with the live crowd, the camera feel and the concert atmosphere
 // (crowd3d.js, post.js); the others keep the simpler figures for now.
@@ -1054,13 +1057,30 @@ export class SeatScene {
   _currentAngles() { return this._angles(this.camera.getWorldDirection(new THREE.Vector3())); }
   _applyAngles(yaw, pitch, roll = 0) { this.camera.rotation.set(pitch, yaw, roll, 'YXZ'); }
 
-  // While the camera flies, the lens's ambient occlusion (the costliest pass) rests: it is
-  // invisible in motion, and the frames it frees keep the flight smooth.
+  // While the camera flies, what is invisible in motion rests, and the frames it frees keep
+  // the flight smooth: the lens's ambient occlusion (the costliest pass), the key light's
+  // shadow map (redrawn every frame otherwise: every seat and person once more), and on a
+  // sharp screen a third of the pixels. All come back on arrival, once the camera is still.
   _lite(on) {
     const u = this.lensPass?.uniforms;
-    if (!u) return;
-    if (on) { this._liteAO ??= u.uAO.value; u.uAO.value = 0; }
-    else if (this._liteAO != null) { u.uAO.value = this._liteAO; this._liteAO = null; }
+    if (on) {
+      if (u) { this._liteAO ??= u.uAO.value; u.uAO.value = 0; }
+      if (this.renderer.shadowMap.enabled) this.renderer.shadowMap.autoUpdate = false;
+      const r = this.renderer.getPixelRatio();
+      if (this._liteRatio == null && r > 1.01 && !this.pendingRatio) {
+        this._liteRatio = r;
+        this._setRatio(Math.max(1, r * 0.67));
+      }
+      return;
+    }
+    if (this._liteRatio != null) { this._setRatio(this._liteRatio); this._liteRatio = null; }
+    if (u && this._liteAO != null) { u.uAO.value = this._liteAO; this._liteAO = null; }
+    this.renderer.shadowMap.autoUpdate = true;
+  }
+  _setRatio(r) {
+    this.renderer.setPixelRatio(r);
+    this.composer?.setPixelRatio(r);
+    this.resize();
   }
 
   flyToSeat(seat, { quick = false } = {}) {
@@ -1078,8 +1098,10 @@ export class SeatScene {
     const seatBase = new THREE.Vector3(seat.x, seat.y, seat.z);
     const fwd = new THREE.Vector3(-Math.sin(seat.yaw), 0, -Math.cos(seat.yaw));
     // Arrive standing in the row in front of the seat, facing it; then turn round and sit.
-    const stand = seatBase.clone().addScaledVector(fwd, 0.48).add(new THREE.Vector3(0, STANDING_EYE, 0));
+    const stand = seatBase.clone().addScaledVector(fwd, 0.55).add(new THREE.Vector3(0, STANDING_EYE + 0.2, 0));
     const chest = seatBase.clone().add(new THREE.Vector3(0, 0.7, 0));
+    // The flight looks at the top of the seat, not into its back, so the last metres are not a close-up of upholstery.
+    const over = seatBase.clone().add(new THREE.Vector3(0, 1.05, 0));
     const eye = seatBase.clone().addScaledVector(fwd, -0.05).add(new THREE.Vector3(0, seat.standing ? SEATED_EYE + STAND_LIFT : SEATED_EYE, 0));
     // The people around the seat get their detailed figures before the camera gets there.
     this.people?.focusOn(eye, this.focus, this.level === 2 ? 24 : 14, this.level === 2 ? 900 : 320);
@@ -1090,52 +1112,60 @@ export class SeatScene {
     const lift = Math.min(22, 2 + dist * 0.3);
     const ctrl = start.clone().lerp(stand, 0.6).add(new THREE.Vector3(0, lift, 0));
     const startLook = start.clone().add(this.camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(Math.max(8, dist * 0.5)));
-    const standAng = this._lookAngles(stand, chest);
     const seatedAng = this._lookAngles(eye, this.focus);
     const fovStart = this.camera.fov;
 
-    const flyDur = quick ? 1.0 : THREE.MathUtils.clamp(1.1 + dist / 70, 1.3, 2.3);
-    const turnDur = quick ? 0.9 : 1.4;
+    const flyDur = quick ? 1.0 : THREE.MathUtils.clamp(1.2 + dist / 65, 1.4, 2.5);
+    const turnDur = quick ? 0.9 : 1.5;
+    // One movement, not two: the turn to the stage and the sit begin while the flight is still
+    // slowing down, so the camera never stops between them.
+    const overlap = quick ? 0.45 : 0.9, turnFrom = flyDur - overlap, total = turnFrom + turnDur;
     this.flyDur = flyDur;   // read by the story video, to cut before the close pass
-    const qa = new THREE.Vector3(), qb = new THREE.Vector3(), target = new THREE.Vector3();
-    let turning = false;
-    const bank = { roll: 0 };
+    const qa = new THREE.Vector3(), qb = new THREE.Vector3(), target = new THREE.Vector3(), at = new THREE.Vector3();
+    const down = new THREE.Vector3().subVectors(eye, stand);
+    // Where the flight is at time t, and where it looks: a pure function of t, so a slow frame
+    // moves the camera on along the same path instead of jolting it.
+    const flightAt = (t, out) => {
+      const k = smoother(clamp01(t / flyDur));
+      qa.lerpVectors(start, ctrl, k); qb.lerpVectors(ctrl, stand, k);
+      return out.lerpVectors(qa, qb, k);
+    };
+    const flightLook = t => {
+      const k = smoother(clamp01(t / flyDur));
+      flightAt(t, at);
+      target.copy(startLook).lerp(over, smoother(clamp01(k * 1.25)));
+      const look = this._lookAngles(at, target), blend = smoother(clamp01((t / flyDur) * 1.6));
+      return { yaw: startAng.yaw + wrapAngle(look.yaw - startAng.yaw) * blend, pitch: startAng.pitch + (look.pitch - startAng.pitch) * blend };
+    };
     this.labels?.forEach(l => { l.visible = false; });
     this._lite(true);
+    // The heavy recolouring now, before the camera moves, not as it turns: a hitch mid-flight
+    // shows; one on the click does not. The show's lights come up during the flight.
+    this.realColors = true;
+    this.refreshColors();
+    this.moodTarget = 1;
+    let turning = false;
 
     this.anim = {
       t: 0,
-      dur: flyDur + turnDur,
+      dur: total,
       step: t => {
-        if (t < flyDur) {
-          const k = ease(t / flyDur);
-          qa.lerpVectors(start, ctrl, k); qb.lerpVectors(ctrl, stand, k);
-          this.camera.position.lerpVectors(qa, qb, k);
-          target.copy(startLook).lerp(chest, Math.min(1, k * 1.2));
-          const look = this._lookAngles(this.camera.position, target);
-          const blend = Math.min(1, (t / flyDur) * 2.5);
-          const yaw = startAng.yaw + wrapAngle(look.yaw - startAng.yaw) * blend;
-          // Bank into the turn, as a body or a drone does, and level out before landing.
-          const dt = Math.max(1e-3, t - (bank.t ?? t - 0.016));
-          const want = this.realistic ? THREE.MathUtils.clamp(-wrapAngle(yaw - (bank.yaw ?? yaw)) / dt * 0.05, -0.09, 0.09) * Math.sin(Math.PI * Math.min(1, t / flyDur)) : 0;
-          bank.roll += (want - bank.roll) * Math.min(1, dt * 4);
-          bank.t = t; bank.yaw = yaw;
-          this._applyAngles(yaw, startAng.pitch + (look.pitch - startAng.pitch) * blend, bank.roll);
-          this.camera.fov = fovStart + (SEAT_FOV - fovStart) * k;
-        } else {
-          if (!turning) {
-            turning = true;
-            this.realColors = true;
-            this.refreshColors();
-            this.moodTarget = 1;
-            this.cb.onMode?.('turning', seat);
-          }
-          const k = ease((t - flyDur) / turnDur);
-          // Rise slightly mid-turn, then sit: reads as a body, not a drone.
-          const sit = Math.sin(Math.min(1, k * 1.4) * Math.PI) * 0.06;
-          this.camera.position.lerpVectors(stand, eye, k).y += sit;
-          this._applyAngles(standAng.yaw + wrapAngle(seatedAng.yaw - standAng.yaw) * k, standAng.pitch + (seatedAng.pitch - standAng.pitch) * k);
+        if (!turning && t >= turnFrom) { turning = true; this.cb.onMode?.('turning', seat); }
+        const w = smoother(clamp01((t - turnFrom) / turnDur));
+        // Position: the flight, and the step down into the seat on top of its last part.
+        flightAt(t, this.camera.position).addScaledVector(down, w);
+        this.camera.position.y += Math.sin(Math.min(1, w * 1.4) * Math.PI) * 0.05;
+        // Looking: the flight's own heading, turning to the stage as the camera sits.
+        const f = flightLook(t);
+        // Bank into the turn, as a body or a drone does, from the path's own rate of turn
+        // (not frame to frame, which jitters), level again before landing.
+        let roll = 0;
+        if (this.realistic && t < flyDur) {
+          const rate = wrapAngle(flightLook(Math.min(flyDur, t + 0.04)).yaw - flightLook(Math.max(0, t - 0.04)).yaw) / 0.08;
+          roll = THREE.MathUtils.clamp(-rate * 0.05, -0.09, 0.09) * Math.sin(Math.PI * clamp01(t / flyDur)) * (1 - w);
         }
+        this._applyAngles(f.yaw + wrapAngle(seatedAng.yaw - f.yaw) * w, f.pitch + (seatedAng.pitch - f.pitch) * w, roll);
+        this.camera.fov = fovStart + (SEAT_FOV - fovStart) * smoother(clamp01(t / flyDur));
         this.camera.updateProjectionMatrix();
       },
       done: () => {
@@ -1147,7 +1177,6 @@ export class SeatScene {
         this.eye = eye;
         this.realColors = true;
         this.moodTarget = 1;
-        this.refreshColors();
         this.cb.onMode?.('seat', seat);
         this.cb.onArrive?.(seat, eye.distanceTo(this.focus));
       },
@@ -1580,14 +1609,17 @@ export class SeatScene {
         // Held by a person: breathing lifts the view a few millimetres, the hands wander a
         // little on three axes, and the turn to the stage settles with a small overshoot.
         const n = (f, p) => Math.sin(time * f + p) * 0.6 + Math.sin(time * f * 2.13 + p * 1.7) * 0.3 + Math.sin(time * f * 4.71 + p * 0.3) * 0.1;
-        const st = this.settleAt == null ? 9 : time - this.settleAt, settle = Math.exp(-st * 2.6) * Math.sin(st * 6.5);
-        this.camera.position.copy(this.eye).add(TAG_POS.set(n(0.37, 1) * 0.005, Math.sin(time * 1.55) * 0.004 + n(0.6, 4) * 0.002, n(0.29, 7) * 0.004));
-        this._applyAngles(L.baseYaw - L.cy + n(0.33, 2) * 0.0045 + settle * 0.012 + Math.sin(since * 0.16) * d,
-          L.basePitch + L.cp + n(0.47, 5) * 0.003 - settle * 0.004 + Math.sin(since * 0.11) * d * 0.3, n(0.27, 9) * 0.004);
+        // The hands come in gently after the flight lands (no snap from still to moving).
+        const st = this.settleAt == null ? 9 : time - this.settleAt, h = smoother(clamp01(st / 1.2));
+        const settle = Math.exp(-st * 2.6) * Math.sin(st * 6.5) * (1 - Math.exp(-st * 6));
+        this.camera.position.copy(this.eye).add(TAG_POS.set(n(0.37, 1) * 0.005 * h, (Math.sin(time * 1.55) * 0.004 + n(0.6, 4) * 0.002) * h, n(0.29, 7) * 0.004 * h));
+        this._applyAngles(L.baseYaw - L.cy + n(0.33, 2) * 0.0045 * h + settle * 0.012 + Math.sin(since * 0.16) * d,
+          L.basePitch + L.cp + n(0.47, 5) * 0.003 * h - settle * 0.004 + Math.sin(since * 0.11) * d * 0.3, n(0.27, 9) * 0.004 * h);
       } else {
-        this.camera.position.copy(this.eye).add(new THREE.Vector3(Math.sin(time * 0.31) * 0.006, Math.sin(time * 1.1) * 0.006, 0));
-        this._applyAngles(L.baseYaw - L.cy + Math.sin(time * 0.23) * 0.003 + Math.sin(since * 0.16) * d,
-          L.basePitch + L.cp + Math.sin(time * 0.37) * 0.002 + Math.sin(since * 0.11) * d * 0.3);
+        const h = smoother(clamp01((this.settleAt == null ? 9 : time - this.settleAt) / 1.2));
+        this.camera.position.copy(this.eye).add(TAG_POS.set(Math.sin(time * 0.31) * 0.006 * h, Math.sin(time * 1.1) * 0.006 * h, 0));
+        this._applyAngles(L.baseYaw - L.cy + Math.sin(time * 0.23) * 0.003 * h + Math.sin(since * 0.16) * d,
+          L.basePitch + L.cp + Math.sin(time * 0.37) * 0.002 * h + Math.sin(since * 0.11) * d * 0.3);
       }
       if (Math.abs(this.camera.fov - L.fov) > 0.01) {
         this.camera.fov += (L.fov - this.camera.fov) * Math.min(1, dt * 8);

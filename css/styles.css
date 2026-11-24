@@ -905,7 +905,22 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
 .ev-stats dd { margin: 0; font-size: 14px; font-weight: 600; }
 .ev-stats dd small { display: block; font-size: 12.5px; font-weight: 400; color: var(--muted); }
 
-.tools { position: absolute; z-index: 4; left: max(16px, env(safe-area-inset-left, 0px)); top: 50%; transform: translateY(-10%); display: flex; flex-direction: column; gap: 6px; }
+/* The view's buttons, in a column on the left from the first step to the last: bottom up from
+   above the bar of categories, below the event's card. When they outgrow the room (a short
+   window, or a seat's longer list) they go on in a second column. */
+.tools { position: absolute; z-index: 4; left: max(24px, env(safe-area-inset-left, 0px)); top: calc(max(16px, env(safe-area-inset-top, 0px)) + 64px + var(--card-h, 0px)); bottom: 112px; display: flex; flex-direction: column; flex-wrap: wrap; justify-content: flex-end; align-content: flex-start; align-items: center; gap: 22px 18px; pointer-events: none; }
+.tools > *, .tools-g { pointer-events: none; }
+.tools-g { display: flex; flex-direction: column; align-items: center; gap: 22px; }
+.tools .sq, .tools .zoom { pointer-events: auto; }
+/* A Plus button a seat pass cannot open yet: a small lock on it, and a tap goes to the upgrade. */
+.sq-lock { position: absolute; top: -3px; right: -3px; width: 17px; height: 17px; display: none; place-items: center; border-radius: 50%; background: var(--coral); color: #fff; box-shadow: 0 0 0 2px rgba(22, 20, 20, 0.93); }
+.sq-lock svg { width: 9px !important; height: 9px !important; }
+.sq.is-locked .sq-lock { display: grid; }
+/* Each round button says what it does in a word below it (the caption is not a tap target). */
+.tools .sq { position: relative; }
+.sq-t { position: absolute; top: calc(100% + 4px); left: 50%; transform: translateX(-50%); font: 600 10px/1 var(--font); letter-spacing: 0.01em; color: rgba(244, 240, 238, 0.9); white-space: nowrap; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.6); pointer-events: none; }
+.tools .zoom { position: relative; display: flex; flex-direction: column; gap: 6px; }
+.tools .zoom[hidden], .tools .sq[hidden] { display: none; }
 
 .sections { position: absolute; z-index: 4; left: max(16px, env(safe-area-inset-left, 0px)); bottom: max(16px, env(safe-area-inset-bottom, 0px)); right: 404px; padding: 10px; display: flex; align-items: center; gap: var(--s4); min-width: 0; border-radius: 999px; }
 .sb-label { padding-left: 10px; }
@@ -946,7 +961,6 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
 .sc-actions > * { flex: 1 1 150px; }
 
 .pov-hint { position: absolute; z-index: 4; top: 80px; left: 50%; transform: translateX(-50%); height: 34px; padding: 0 16px; border-radius: 999px; display: flex; align-items: center; font: 600 10px var(--mono); letter-spacing: 0.04em; color: var(--text); white-space: nowrap; background: rgba(22, 20, 20, 0.8); border: 1px solid var(--line-2); }
-.zoom { position: absolute; z-index: 4; right: max(16px, env(safe-area-inset-right, 0px)); top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 6px; }
 .tooltip { position: absolute; z-index: 7; pointer-events: none; padding: 8px 12px; border-radius: 12px; background: #fff; color: var(--ink); font-size: 13px; white-space: nowrap; transform: translate(14px, 14px); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35); }
 .tooltip b { font-weight: 700; }
 .tooltip span { font-size: 12px; color: var(--ink-muted); }
@@ -957,9 +971,11 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
 @keyframes spin { to { transform: rotate(360deg); } }
 /* In a seat the panels step aside; a locked seat's card covers only the bottom ones. */
 .event-card, .sections, .app-side, .tools { transition: opacity .35s, transform .35s; }
-.stage.is-seat .event-card, .stage.is-seat .sections, .stage.is-seat .app-side, .stage.is-seat .tools,
+.stage.is-seat .event-card, .stage.is-seat .sections, .stage.is-seat .app-side,
 .stage.is-peek .sections, .stage.is-peek .app-side { opacity: 0; pointer-events: none; transform: translateY(8px); }
-.stage.is-seat .tools { transform: translateY(-10%); }
+/* The buttons stay from the first step to the last: in a seat the bar of categories is gone,
+   so they sit lower. */
+.stage.is-seat .tools { top: calc(max(16px, env(safe-area-inset-top, 0px)) + 64px); bottom: max(30px, env(safe-area-inset-bottom, 0px)); }
 
 /* ---------- responsive ---------- */
 @media (max-width: 1180px) {
@@ -1032,8 +1048,17 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
   .event-card { top: 74px; right: max(16px, env(safe-area-inset-right, 0px)); width: auto; padding: var(--s3) var(--s4); gap: var(--s2); }
   .event-card h1 { font-size: 20px; }
   .event-card .label, .ev-stats { display: none; }
-  .tools { top: auto; bottom: calc(max(156px, var(--side-h, 0px)) + 96px); transform: none; }
-  .stage.is-seat .tools { transform: none; }
+  /* Bottom up from above the panels; when the buttons outgrow the room under the top bar
+     (in a seat, under the tall last step), they go on in a second column. */
+  /* On a phone the buttons split: four down the left edge, four down the right. */
+  .tools { left: max(22px, env(safe-area-inset-left, 0px)); right: max(22px, env(safe-area-inset-right, 0px)); top: calc(max(16px, env(safe-area-inset-top, 0px)) + 62px + var(--card-h, 0px)); bottom: calc(max(156px, var(--side-h, 0px)) + 86px); flex-direction: row; flex-wrap: nowrap; justify-content: space-between; align-items: flex-end; align-content: stretch; }
+  .tools-g { gap: 20px; }
+  /* A sheet from the bottom (show mode, the setlist) takes the panel's place while open. */
+  .stage:is(.show-open, .set-open) .app-side { opacity: 0; pointer-events: none; }
+  .tools .sq { width: 42px; height: 42px; }
+  .tools .sq svg { width: 19px; height: 19px; }
+  .stage.is-seat .tools { top: calc(max(16px, env(safe-area-inset-top, 0px)) + 62px); bottom: calc(max(12px, env(safe-area-inset-bottom, 0px)) + var(--seat-h, 0px) + 28px); }
+  .in-tour .stage .tools, .in-tour .stage.is-seat .tools { bottom: calc(max(12px, env(safe-area-inset-bottom, 0px)) + var(--side-h, 0px) + 28px); }
   .sections { left: max(12px, env(safe-area-inset-left, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); bottom: calc(max(156px, var(--side-h, 0px)) + 12px); padding: 6px; border-radius: 26px; }
   .sb-label { display: none; }
   .app-side { left: max(12px, env(safe-area-inset-left, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); bottom: max(12px, env(safe-area-inset-bottom, 0px)); width: auto; padding: var(--s4); gap: var(--s2); }
@@ -1432,11 +1457,6 @@ input, select, textarea { border-radius: 0; }
 .in-tour .stage.is-seat .app-side { opacity: 1; pointer-events: auto; transform: none; }
 /* the seat tour shows no event card: the chip on top names the tour */
 .in-tour .stage .event-card { display: none; }
-/* ...so the zoom buttons sit beside it on a wide screen, and above it on a narrow one. */
-.in-tour .zoom { top: auto; bottom: max(16px, env(safe-area-inset-bottom, 0px)); right: calc(max(16px, env(safe-area-inset-right, 0px)) + 384px); transform: none; }
-@media (max-width: 960px) {
-  .in-tour .zoom { right: max(12px, env(safe-area-inset-right, 0px)); bottom: calc(max(12px, env(safe-area-inset-bottom, 0px)) + var(--side-h, 0px) + 12px); }
-}
 
 /* ---------- home: how it works, the two routes, the tour ---------- */
 .steps-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
@@ -2870,7 +2890,7 @@ body:has(#fan-list:not([hidden])) .demo-bar, body:has(#fan-card:not([hidden])) .
 /* A fan lit up from the list: the panels and buttons step aside, the picture is theirs, and
    their card sits at the bottom as a sheet (no dimmed backdrop: the view can still be
    dragged round them). */
-.stage.is-fanfocus :is(.event-card, .sections, .tools, .app-side, .zoom, .pov-hint, .app-chip, .sq-min) { opacity: 0 !important; visibility: hidden !important; pointer-events: none !important; }
+.stage.is-fanfocus :is(.event-card, .sections, .app-side, .pov-hint, .app-chip, .sq-min) { opacity: 0 !important; visibility: hidden !important; pointer-events: none !important; }
 body:has(.stage.is-fanfocus) .demo-bar { display: none; }
 .fan-card.is-sheet { place-items: end center; padding: 0 12px calc(12px + env(safe-area-inset-bottom)); background: none; pointer-events: none; }
 .fan-card.is-sheet .fan-card-in { pointer-events: auto; width: min(420px, 100%); padding: 18px 18px 16px; border-radius: 22px; animation: fc-up .22s ease-out; }
@@ -2940,9 +2960,9 @@ html.lang-swap body { opacity: .35; }
 /* From a seat the tray is only the switcher between the two seats. */
 .stage.is-seat .compare :is(.cmp-lede, .cmp-score, .cmp-rows, .cmp-foot, .cmp-note) { display: none; }
 .stage.is-seat .compare h2 { font-size: 18px; }
-.in-tour .compare, .stage.show-open .compare { display: none; }
+.in-tour .compare, .stage.show-open .compare, .stage.set-open .compare { display: none; }
 
-.show-panel { right: calc(max(16px, env(safe-area-inset-right, 0px)) + 58px); top: 50%; transform: translateY(-50%); width: 340px; max-height: calc(100% - 140px); }
+.show-panel { left: calc(max(24px, env(safe-area-inset-left, 0px)) + 66px); top: 80px; width: 340px; max-height: calc(100% - 104px - var(--seat-h, 0px)); }
 .show-lede { font-size: 14px; color: rgba(244, 240, 238, 0.82); }
 .show-rows { margin: 0; display: flex; flex-direction: column; }
 .show-rows > div { display: flex; flex-direction: column; gap: 10px; padding: 12px 0; border-top: 1px solid var(--line-2); }
@@ -2970,6 +2990,28 @@ html.lang-swap body { opacity: .35; }
 .show-set-list li:last-child { border-bottom: 0; }
 .show-set-src { margin: 0; font-size: 11.5px; line-height: 1.45; color: rgba(244, 240, 238, 0.5); }
 .show-set-src a { color: rgba(244, 240, 238, 0.78); text-decoration: underline; text-underline-offset: 2px; }
+/* The setlist on its own, each song with a preview to play. */
+.set-head { position: relative; padding-right: 48px; }
+.set-x { position: absolute; top: 0; right: 0; }
+.set-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; }
+.set-list li { position: relative; display: grid; grid-template-columns: 32px 22px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+.set-list li:last-child { border-bottom: 0; }
+.set-list li::after { content: ""; position: absolute; left: 0; bottom: -1px; height: 2px; width: calc(var(--p, 0) * 100%); background: var(--coral); border-radius: 2px; }
+.set-play { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 50%; border: 1px solid var(--line-2); background: transparent; color: var(--text); cursor: pointer; padding: 0; transition: background .2s, border-color .2s; }
+.set-play svg { width: 13px; height: 13px; }
+.set-play:hover { border-color: rgba(255, 255, 255, 0.45); }
+.set-play:disabled { opacity: 0.35; cursor: default; }
+.set-list li.is-playing .set-play { background: var(--coral); border-color: var(--coral); color: #fff; }
+.set-list li.is-loading .set-play { animation: setPulse 0.9s ease-in-out infinite; }
+@keyframes setPulse { 50% { opacity: 0.4; } }
+.set-n { font: 700 10.5px/1 var(--mono, ui-monospace, monospace); letter-spacing: 0.04em; color: var(--coral); font-variant-numeric: tabular-nums; }
+.set-t { font: 600 13.5px/1.3 var(--font); color: var(--text); min-width: 0; overflow-wrap: anywhere; }
+.set-t small { display: block; font: 500 11px/1.3 var(--font); color: rgba(244, 240, 238, 0.5); }
+.set-list li.is-playing .set-t { color: #fff; }
+.set-am { font: 600 10.5px/1 var(--font); color: rgba(244, 240, 238, 0.6); text-decoration: none; padding: 6px 8px; border-radius: 999px; border: 1px solid var(--line-2); white-space: nowrap; }
+.set-am:hover { color: var(--text); border-color: rgba(255, 255, 255, 0.45); }
+/* While a preview plays, the Setlist button keeps a small beat. */
+.sq.is-playing::after { content: ""; position: absolute; top: 2px; right: 2px; width: 9px; height: 9px; border-radius: 50%; background: var(--ok, #3ddc84); box-shadow: 0 0 0 2px rgba(22, 20, 20, 0.93); animation: setPulse 1s ease-in-out infinite; }
 
 @media (max-width: 960px) {
   .stage.has-compare .sections { opacity: 0; pointer-events: none; }
@@ -3019,9 +3061,9 @@ html.lang-swap body { opacity: .35; }
 .cm-zoom { position: absolute; left: max(16px, env(safe-area-inset-left, 0px)); bottom: 88px; display: flex; flex-direction: column; gap: 6px; }
 .cm-attr { position: absolute; left: max(16px, env(safe-area-inset-left, 0px)); bottom: 62px; margin: 0; font: 500 10px/1.3 var(--font); color: rgba(244, 240, 238, 0.5); }
 .cm-attr a { color: inherit; }
-.stage.map-open .tools, .stage.map-open .sections, .stage.map-open .app-side, .stage.map-open .seatcard, .stage.map-open .zoom, .stage.map-open .event-card, .stage.map-open .pov-hint { opacity: 0; pointer-events: none; }
-.stage.map-open .tools { opacity: 1; pointer-events: auto; }
-.stage.map-open .tools > :not(#t-access) { display: none; }
+.stage.map-open .tools, .stage.map-open .sections, .stage.map-open .app-side, .stage.map-open .seatcard, .stage.map-open .event-card, .stage.map-open .pov-hint { opacity: 0; pointer-events: none; }
+.stage.map-open .tools { opacity: 1; }
+.stage.map-open .tools :is(.sq:not(#t-access), .zoom) { display: none; }
 .acc-views { margin-top: -4px; }
 .acc-map { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 14px; background: rgba(255, 255, 255, 0.06); }
 .acc-map.is-loading { background: transparent; border: 1.5px dashed var(--line-2); }
@@ -3114,3 +3156,4 @@ html.lang-swap body { opacity: .35; }
   .me-box-float .sso-btn { height: 50px; }
   .me-box-float .fine { font-size: 13px; }
 }
+
