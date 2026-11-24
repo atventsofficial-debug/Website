@@ -402,6 +402,7 @@ html:not(.atv-seen) #nav .logo-img{animation:ai-show 0s 2.57s both}
             <li><svg class="pg-ic" aria-hidden="true"><use href="#i-compare"/></svg><b>Compare seats</b><span>Two seats side by side, with the distance to the stage, before you buy.</span></li>
             <li><svg class="pg-ic" aria-hidden="true"><use href="#i-lightstick"/></svg><b>Show mode</b><span>The lights go down and the lightsticks round you glow with the music.</span></li>
             <li><svg class="pg-ic" aria-hidden="true"><use href="#i-music"/></svg><b>Setlist</b><span>The songs a recent show of this tour played, each with a short preview to play from your seat.</span></li>
+            <li><svg class="pg-ic" aria-hidden="true"><use href="#i-eye"/></svg><b>Eye height</b><span>Set how tall you are and how tall the people in the rows in front of you are, and see the view you will have.</span></li>
             <li><svg class="pg-ic" aria-hidden="true"><use href="#i-pin"/></svg><b>Directions</b><span>Trains, buses, parking, the gates and the way to your seat, on a map of the streets round the venue and in 3D.</span></li>
           </ul>
         </div>
@@ -801,6 +802,7 @@ html:not(.atv-seen) #nav .logo-img{animation:ai-show 0s 2.57s both}
       <div class="tools-g">
         <button class="sq" id="set-btn" type="button" aria-expanded="false" aria-controls="set-panel" aria-label="Setlist" title="Setlist"><svg><use href="#i-music"/></svg><span class="sq-lock" aria-hidden="true"><svg><use href="#i-lock"/></svg></span><span class="sq-t" aria-hidden="true">Setlist</span></button>
         <button class="sq" id="show-btn" type="button" aria-expanded="false" aria-controls="show-panel" aria-label="Show mode" title="Show mode" hidden><svg><use href="#i-lightstick"/></svg><span class="sq-lock" aria-hidden="true"><svg><use href="#i-lock"/></svg></span><span class="sq-t" aria-hidden="true">Show</span></button>
+        <button class="sq" id="eye-btn" type="button" aria-expanded="false" aria-controls="eye-panel" aria-label="Eye height" title="Eye height" hidden><svg><use href="#i-eye"/></svg><span class="sq-lock" aria-hidden="true"><svg><use href="#i-lock"/></svg></span><span class="sq-t" aria-hidden="true">Height</span></button>
         <div class="zoom" id="zoom" role="group" aria-label="Zoom" hidden>
           <button class="sq" type="button" data-zoom="-8" aria-label="Zoom in" title="Zoom in"><svg><use href="#i-plus"/></svg></button>
           <button class="sq" type="button" data-zoom="8" aria-label="Zoom out" title="Zoom out"><svg><use href="#i-minus"/></svg></button>
@@ -839,6 +841,7 @@ html:not(.atv-seen) #nav .logo-img{animation:ai-show 0s 2.57s both}
     <div class="pov-hint mono" id="pov-hint" hidden>DRAG TO LOOK · SCROLL TO ZOOM · CLICK ANOTHER SEAT TO MOVE</div>
     <section class="show-panel panel" id="show-panel" aria-label="Show mode" hidden></section>
     <section class="show-panel set-panel panel" id="set-panel" aria-label="Setlist" hidden></section>
+    <section class="show-panel eye-panel panel" id="eye-panel" aria-label="Eye height" hidden></section>
     <section class="compare panel" id="compare" aria-label="Compare seats" hidden></section>
     <section class="access panel" id="access" aria-label="Getting there" hidden></section>
     <div class="tooltip" id="tooltip" hidden></div>

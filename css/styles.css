@@ -1055,11 +1055,11 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
      panel in the seat (.dock), so the rail is only Crowd, Labels and zoom. */
   .tools { left: max(22px, env(safe-area-inset-left, 0px)); top: calc(max(16px, env(safe-area-inset-top, 0px)) + 62px + var(--card-h, 0px)); bottom: calc(max(156px, var(--side-h, 0px)) + 86px); gap: 20px 16px; }
   .tools-g { gap: 20px; }
-  .tools #t-reset, .in-tour .tools :is(#t-access, #set-btn, #show-btn) { display: none; }
+  .tools #t-reset, .in-tour .tools :is(#t-access, #set-btn, #show-btn, #eye-btn) { display: none; }
   .in-tour .tour-end { display: none; }
   .app-side .dock { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; width: 100%; margin-top: 2px; }
   /* A sheet from the bottom (show mode, the setlist) takes the panel's place while open. */
-  .stage:is(.show-open, .set-open) .app-side, .in-tour .stage.is-seat:is(.show-open, .set-open) .app-side { opacity: 0; pointer-events: none; }
+  .stage:is(.show-open, .set-open, .eye-open) .app-side, .in-tour .stage.is-seat:is(.show-open, .set-open, .eye-open) .app-side { opacity: 0; pointer-events: none; }
   .tools .sq { width: 42px; height: 42px; }
   .tools .sq svg { width: 19px; height: 19px; }
   .stage.is-seat .tools { top: calc(max(16px, env(safe-area-inset-top, 0px)) + 62px); bottom: calc(max(12px, env(safe-area-inset-bottom, 0px)) + var(--seat-h, 0px) + 28px); }
@@ -2979,7 +2979,7 @@ html.lang-swap body { opacity: .35; }
 /* From a seat the tray is only the switcher between the two seats. */
 .stage.is-seat .compare :is(.cmp-lede, .cmp-score, .cmp-rows, .cmp-foot, .cmp-note) { display: none; }
 .stage.is-seat .compare h2 { font-size: 18px; }
-.in-tour .compare, .stage.show-open .compare, .stage.set-open .compare { display: none; }
+.in-tour .compare, .stage.show-open .compare, .stage.set-open .compare, .stage.eye-open .compare { display: none; }
 
 .show-panel { left: calc(max(24px, env(safe-area-inset-left, 0px)) + 66px); top: 80px; width: 340px; max-height: calc(100% - 104px - var(--seat-h, 0px)); }
 .show-lede { font-size: 14px; color: rgba(244, 240, 238, 0.82); }
@@ -3029,6 +3029,13 @@ html.lang-swap body { opacity: .35; }
 .set-list li.is-playing .set-t { color: #fff; }
 .set-am { font: 600 10.5px/1 var(--font); color: rgba(244, 240, 238, 0.6); text-decoration: none; padding: 6px 8px; border-radius: 999px; border: 1px solid var(--line-2); white-space: nowrap; }
 .set-am:hover { color: var(--text); border-color: rgba(255, 255, 255, 0.45); }
+/* Eye height (3D Pass Plus): two sliders in centimetres and the rows they reach. */
+.eye-val { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.eye-val b { font: 700 18px/1 var(--mono, ui-monospace, monospace); color: #fff; font-variant-numeric: tabular-nums; }
+.eye-val span { font-size: 12px; color: rgba(244, 240, 238, 0.66); }
+.eye-range { width: 100%; height: 28px; margin: 0; accent-color: var(--coral); cursor: pointer; touch-action: pan-x; }
+.eye-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 12px; border-top: 1px solid var(--line-2); }
+.eye-foot .link { flex: none; font-size: 12.5px; }
 /* While a preview plays, the Setlist button keeps a small beat. */
 .sq.is-playing::after { content: ""; position: absolute; top: 2px; right: 2px; width: 9px; height: 9px; border-radius: 50%; background: var(--ok, #3ddc84); box-shadow: 0 0 0 2px rgba(22, 20, 20, 0.93); animation: setPulse 1s ease-in-out infinite; }
 
