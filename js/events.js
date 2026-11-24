@@ -569,6 +569,8 @@ export const EVENTS = [
   },
   {
     id: 'evt-jkt48-15th', venue: 'unesa-jkt48',
+    // A girl group: twelve singers with handheld microphones, no band on stage.
+    lineup: Array.from({ length: 12 }, () => ({ role: 'vocals', female: true })),
     title: 'JKT48', subtitle: 'AYO SENYUMLAH · 15th Anniversary Concert',
     dateISO: '2026-12-19T18:30', time: '18:30', doors: 'TBA', ends: '20:30', age: '',
     host: 'JKT48', hostNote: 'Organiser',
@@ -591,6 +593,8 @@ export const EVENTS = [
   },
   {
     id: 'evt-westlife-jakarta', venue: 'gbk-westlife',
+    // Four singers out front, the band behind them.
+    lineup: [{ role: 'vocals' }, { role: 'vocals' }, { role: 'vocals' }, { role: 'vocals' }, { role: 'guitar' }, { role: 'bass' }, { role: 'keys' }, { role: 'drums' }],
     title: 'Westlife', subtitle: '25: The Anniversary World Tour',
     dateISO: '2027-01-23T00:00', time: 'TBA', doors: 'TBA', ends: '', age: '',
     host: 'Sound Rhythm', hostNote: 'Promoter, with Folago Pro',
