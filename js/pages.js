@@ -746,7 +746,7 @@ const PLAN_TEXT = {
 // The pass chosen on the price list, in one row: its name, what it holds, the price, and Change.
 function planRow(change) {
   const [name, what] = PLAN_TEXT[unlock.plan] || PLAN_TEXT.seat;
-  return `<span class="uf-plan-t"><b>${name}</b><small>${what}</small></span><b class="uf-plan-fee">${formatFee(feeOf(unlock.plan, false))}</b>${change ? `<a class="link uf-change" href="${change}">Change</a>` : ''}`;
+  return `<span class="uf-plan-t"><b>${name}</b><small>${what}</small></span><span class="uf-plan-end"><b class="uf-plan-fee">${formatFee(feeOf(unlock.plan, false))}</b>${change ? `<a class="link uf-change" href="${change}">Change</a>` : ''}</span>`;
 }
 
 // The price list's own page (#unlock, #unlock-<id>): the two passes, what each holds with a
