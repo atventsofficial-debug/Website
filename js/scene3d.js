@@ -625,13 +625,22 @@ export class SeatScene {
     const stadium = venue.kind === 'stadium', S = !stadium && concertStage(venue);
     // A 360 stage (BTS) has the line-up round its middle; its band plays out of sight.
     const round = stadium && venue.show === 'round' && venue.stage?.arm ? venue.stage : null;
+    // A runway or catwalk straight out from the middle of an end stage, for the artist's walk:
+    // how far its end (or the B-stage or island on it) is from the stage's front edge.
+    const mid = v => Math.abs(v) < 0.5;
+    const thrust = (venue.stage?.thrust || []).filter(t => mid(t.x0) && mid(t.x1) && t.z0 < 0.5).map(t => t.z1);
+    const bstage = (venue.stage?.bstage || []).filter(b => mid(b.x)).map(b => b.z);
+    const cw = venue.stage?.catwalk || venue.hall?.stage?.catwalk;
+    const runway = stadium
+      ? (thrust.length ? Math.max(...thrust, ...bstage) : null)
+      : cw ? cw.len + (cw.island ? cw.island - 0.5 : 0) : null;
     this.band = venue.lineup?.length && (!stadium || venue.show === 'end' || round)
       ? new Band(this.scene, this.bandMat(), round ? venue.lineup.filter(m => ['vocals', 'dancer'].includes(m.role)) : venue.lineup, round
         ? { y: 1.9, round, rnd: bandRnd }
         : stadium
         // A stadium's end stage is built facing +z at its front edge, then turned to the field.
-          ? { y: 2.2, front: 0, riserY: 2.8, riserZ: -9, risers: true, rnd: bandRnd }
-          : { y: S.h, front: S.front, riserY: S.h + 0.6, riserZ: S.riserZ, spread: S.k, rnd: bandRnd })
+          ? { y: 2.2, front: 0, riserY: 2.8, riserZ: -9, risers: true, deckHalf: 26, deckDepth: 16, runway, rnd: bandRnd }
+          : { y: S.h, front: S.front, riserY: S.h + 0.6, riserZ: S.riserZ, spread: S.k, deckHalf: S.w / 2, deckDepth: S.d, runway, rnd: bandRnd })
       : null;
     this.band?.setRoam(this.roam);
     if (this.band && stadium) {

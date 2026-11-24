@@ -344,12 +344,13 @@ else if (act == 10.) {
   aL = mix(Lp, Ln, f); aR = mix(Rp, Rn, f); eL = eR = 0.4 + 0.5 * f;
 }
 // Walking the stage (Band.update, 3D Pass Plus): aLook.y above 1 is how far into a stride a
-// performer is. The arms swing against the legs; a singer keeps the microphone up.
+// performer is. The arms swing against the legs.
 float walk = act > 5.5 ? clamp(aLook.y - 1., 0., 1.) : 0.;
 float stride = sin(uTime * 5.4 + ph * 6.283);
 if (walk > 0.001) {
-  aL = mix(aL, vec3(0.06 - 0.38 * stride, 0., -0.06), walk); eL = mix(eL, 0.35, walk);
-  if (act != 6.) { aR = mix(aR, vec3(0.06 + 0.38 * stride, 0., 0.06), walk); eR = mix(eR, 0.35, walk); }
+  // A singer keeps the microphone up, a singer at the guitar keeps playing it.
+  if (act != 7.) { aL = mix(aL, vec3(0.06 - 0.38 * stride, 0., -0.06), walk); eL = mix(eL, 0.35, walk); }
+  if (act != 6. && act != 7.) { aR = mix(aR, vec3(0.06 + 0.38 * stride, 0., 0.06), walk); eR = mix(eR, 0.35, walk); }
 }
 aL = mix(restL, aL, on); aR = mix(restR, aR, on); eL = mix(restE, eL, on); eR = mix(restE, eR, on);
 gMaL = rotZ(aL.z) * rotY(aL.y) * rotX(aL.x);
@@ -737,42 +738,80 @@ export class Crowd {
 // (singing at a stand with a guitar on), 'guitar', 'bass', 'drums', 'keys' or 'dancer'.
 // `stage`: the deck's top (y), its front edge (front) and the band risers (riserY, riserZ).
 const STAGE_WEAR = ['#0c0c0e', '#121215', '#e8e4dc', '#1c1d22', '#3a1216', '#20252f', '#2b2b2e', '#5a4a3a', '#0f1a2e'];
-const FRONT_ROLES = ['vocals', 'dancer'];
 const angleDiff = (a, b) => { let d = (b - a) % (Math.PI * 2); if (d > Math.PI) d -= Math.PI * 2; if (d < -Math.PI) d += Math.PI * 2; return d; };
+const smooth = u => u * u * (3 - 2 * u);
+
+// Who walks the stage (3D Pass Plus): in a band only the singers, never the players, and with
+// no singer out front the one singing at the guitar takes it along. A group without
+// instruments (a boy or girl group, dancers) walks it all together.
+export function walkersOf(lineup) {
+  const front = lineup.map((m, k) => [m, k]).filter(([m]) => m.role === 'vocals' || m.role === 'dancer');
+  return (front.length ? front : lineup.map((m, k) => [m, k]).filter(([m]) => m.role === 'vocals-guitar')).map(([, k]) => k);
+}
+
+// Where the walkers stand round the middle of their group as it walks an end stage: one row
+// of up to five, else two (three past ten), a step and a half apart, each row a pace behind.
+export function formation(n) {
+  const per = n <= 5 ? n : n <= 10 ? Math.ceil(n / 2) : Math.ceil(n / 3), out = [];
+  for (let i = 0; i < n; i++) {
+    const r = Math.floor(i / per), inRow = Math.min(per, n - r * per), c = i - r * per;
+    out.push([(c - (inRow - 1) / 2) * 1.6, -r * 1.5]);
+  }
+  return out;
+}
 
 // The walk round a stage, in the band's own frame, as a closed loop of [x, z] points with its
-// running length. An end stage: along the front edge to one wing, back along a line a step
-// further in, to the other. A 360 stage: round the main stage's edge, out along each runway to
-// its end and back.
-export function stageRoute({ front = -34, spread = 1, round = null }) {
-  let pts;
+// running length, and the distances along it where the walkers stop to sing (`stops`).
+// An end stage (`mode` 'group'): the middle of the group goes from the centre out to the front
+// corner on one side, back up the wing to the back corner, back to the centre and the same on
+// the other side; `half` is the group's half width, so its outside walker reaches the edge.
+// A 360 stage (`mode` 'line'): round the main stage's edge, out along each runway to its end
+// and back, the members one behind the other; they stop at every corner and runway end.
+export function stageRoute({ front = -34, spread = 1, deckHalf = null, deckDepth = null, riserZ = null, half = 0, runway = null, round = null }) {
+  let pts, stopAt;
   if (round) {
-    const { half, arm } = round, e = half - 1.2, [tx, tz] = arm.tip;
+    const { half: h, arm } = round, e = h - 1.2, [tx, tz] = arm.tip;
     const k = (L => (L - 2.2) / L)(Math.hypot(tx, tz));
     // Where each runway's centre line leaves the main stage's edge.
     const exitZ = e * tz / tx;
-    pts = [];
+    pts = []; stopAt = [];
     for (const [sx, sz] of [[1, 1], [-1, 1], [-1, -1], [1, -1]]) {
       // up this side to the runway, out to its end, back, on to the corner
       pts.push([sx * e, sz * exitZ], [sx * tx * k, sz * tz * k], [sx * e, sz * exitZ], [sx * e, sz * e]);
+      stopAt.push(pts.length - 3, pts.length - 1);
       // the next corner along (counter-clockwise), down to the next runway
       if (sx === 1 && sz === 1) pts.push([-e, e]);
       else if (sx === -1 && sz === 1) pts.push([-e, -e]);
       else if (sx === -1 && sz === -1) pts.push([e, -e]);
       else pts.push([e, e]);
+      stopAt.push(pts.length - 1);
     }
-    // Drop repeats so every leg has a length.
-    pts = pts.filter((p, i) => i === 0 || Math.hypot(p[0] - pts[i - 1][0], p[1] - pts[i - 1][1]) > 0.01);
+    // Drop repeats so every leg has a length (and keep the stops on the points they name).
+    const keep = pts.map((p, i) => i === 0 || Math.hypot(p[0] - pts[i - 1][0], p[1] - pts[i - 1][1]) > 0.01);
+    const idx = []; let j = -1;
+    pts.forEach((p, i) => { if (keep[i]) j++; idx.push(j); });
+    pts = pts.filter((p, i) => keep[i]);
+    stopAt = [...new Set(stopAt.map(i => idx[i]))].sort((a, b) => a - b);
   } else {
-    const X = 18 * Math.max(spread, 0.55) - 2.6, z1 = front - 2.4, z2 = front - 3.9;
-    pts = [[-X, z1], [X, z1], [X, z2], [-X, z2]];
+    const X = Math.max(0, (deckHalf ?? 18 * Math.max(spread, 0.55)) - 1.4 - half), zF = front - 2.4;
+    // The wings run back beside the band to the deck's back corners, short of the screen.
+    const zB = front - (deckDepth ? Math.max(3.5, deckDepth - 5) : riserZ == null ? 5.5 : Math.min(7, Math.max(3.5, (front - riserZ) * 0.6)));
+    if (runway) {
+      // A runway or catwalk down the middle (`runway`: how far its end is from the front edge):
+      // after the first side, out to its end and back, one behind the other (`file`).
+      pts = [[0, zF], [-X, zF], [-X, zB], [-X, zF], [0, zF], [0, front + runway], [0, zF], [X, zF], [X, zB], [X, zF]];
+      stopAt = [0, 1, 2, 4, 5, 7, 8];
+    } else {
+      pts = [[0, zF], [-X, zF], [-X, zB], [-X, zF], [0, zF], [X, zF], [X, zB], [X, zF]];
+      stopAt = [0, 1, 2, 4, 5, 6];
+    }
   }
   const cum = [0];
   for (let i = 1; i <= pts.length; i++) {
     const a = pts[i - 1], b = pts[i % pts.length];
     cum.push(cum[i - 1] + Math.hypot(b[0] - a[0], b[1] - a[1]));
   }
-  return { pts, cum, length: cum[pts.length] };
+  return { pts, cum, length: cum[pts.length], stops: stopAt.map(i => cum[i]), mode: round ? 'line' : 'group', file: !round && runway ? [cum[4], cum[6]] : null };
 }
 
 // The point `d` metres along a stage route (round and round), and the way it is going.
@@ -784,16 +823,43 @@ export function routeAt(R, d) {
   return { x: a[0] + (b[0] - a[0]) * f, z: a[1] + (b[1] - a[1]) * f, dx: b[0] - a[0], dz: b[1] - a[1] };
 }
 
+// How far along its route the group is `t` seconds into the walk, and how much in its stride
+// (0 standing, 1 full pace): from one stop to the next at an easy walk, then a pause to sing.
+export const WALK_SPEED = 1.4, WALK_PAUSE = 4.5;
+export function walkAt(R, t) {
+  const S = R.stops?.length ? R.stops : [0], L = R.length;
+  const legs = S.map((s, i) => { const len = ((i + 1 < S.length ? S[i + 1] : S[0] + L) - s); return { s, len, walk: Math.max(1.2, len / WALK_SPEED) }; });
+  const T = legs.reduce((a, l) => a + l.walk + WALK_PAUSE, 0);
+  if (t <= 0) return { d: S[0], step: 0, stopped: true };
+  let r = t % T;
+  const lap = Math.floor(t / T) * L;
+  for (const l of legs) {
+    // The pause comes first: at this stop, singing.
+    if (r < WALK_PAUSE) return { d: lap + l.s, step: 0, stopped: true };
+    r -= WALK_PAUSE;
+    if (r < l.walk) {
+      const u = r / l.walk;
+      return { d: lap + l.s + l.len * smooth(u), step: Math.min(1, 6 * u * (1 - u)), stopped: false };
+    }
+    r -= l.walk;
+  }
+  return { d: lap + L + S[0], step: 0, stopped: true };
+}
+
 export class Band {
-  constructor(scene, material, lineup, { y = 1.8, front = -34, riserY = 2.4, riserZ = -44, risers = false, spread = 1, round = null, rnd = Math.random } = {}) {
+  constructor(scene, material, lineup, { y = 1.8, front = -34, riserY = 2.4, riserZ = -44, risers = false, spread = 1, deckHalf = null, deckDepth = null, runway = null, round = null, rnd = Math.random } = {}) {
     this.scene = scene;
     this.material = material;
     this.group = new THREE.Group();
     scene.add(this.group);
     const spots = round ? this._placeRound(lineup, y, round) : this._place(lineup, { y, front, riserY, riserZ, spread });
     this.spots = spots;
-    // The walk round the stage (setRoam): the front line, along a loop over the whole deck.
-    this.route = stageRoute(round ? { round } : { front, spread });
+    // The walk round the stage (setRoam): who walks it (walkersOf), where each stands in the
+    // group (formation, an end stage) and the way round the deck.
+    this.walkers = walkersOf(spots);
+    this.offsets = formation(this.walkers.length);
+    const half = this.offsets.reduce((a, [x]) => Math.max(a, Math.abs(x)), 0);
+    this.route = stageRoute(round ? { round } : { front, spread, deckHalf, deckDepth, riserZ, half, runway });
     this.round = !!round;
     this.roam = false;
     // A stage without band risers of its own gets them under the drums and keys.
@@ -837,40 +903,66 @@ export class Band {
     });
   }
 
-  // 3D Pass Plus: the singers and dancers walk the stage, out to the wings, along the runways
-  // and back, stopping every few steps to sing to that side. Off, everyone is back on their
-  // own spot. The band's own clock (seconds) drives it, from SeatScene's tick.
+  // 3D Pass Plus: the act walks the stage. In a band only the singer goes, out to the
+  // corners of the deck and up the wings; a group without instruments goes together, in
+  // its formation, and round a 360 stage one behind the other out to every runway's end.
+  // They stop at each corner to sing to that side. Off, everyone is back on their own spot.
+  // The band's own clock (seconds) drives it, from SeatScene's tick.
   setRoam(on) {
     const was = this.roam;
-    this.roam = !!on && this.route.length > 0;
+    this.roam = !!on && this.route.length > 0 && this.walkers.length > 0;
     if (this.roam && !was) this.t0 = null;
     if (!this.roam) this._home();
+  }
+
+  // Where walker `i` of the group is `t` seconds into the walk, which way it faces, and how
+  // much in its stride.
+  walkerAt(i, t) {
+    const R = this.route, w = walkAt(R, t);
+    if (R.mode === 'line') {
+      // One behind the other, a couple of paces apart.
+      const at = routeAt(R, w.d - i * 1.9);
+      const out = Math.atan2(at.x, at.z), along = Math.atan2(at.dx, at.dz);
+      return { x: at.x, z: at.z, turn: out + angleDiff(out, along) * Math.min(1, w.step * 1.6), step: w.step };
+    }
+    const at = routeAt(R, w.d), [ox, oz] = this.offsets[i];
+    let x = at.x + ox, z = at.z + oz, dx = at.dx, dz = at.dz;
+    // Out along a runway the group goes one behind the other, then spreads out again once
+    // the last of them is back on the deck.
+    if (R.file) {
+      const GAP = 1.6, back = (this.walkers.length - 1) * GAP, s = ((w.d % R.length) + R.length) % R.length;
+      const [a, b] = R.file;
+      const f = s < a ? 0 : s < a + 3 ? smooth((s - a) / 3) : s < b + back ? 1 : s < b + back + 3 ? 1 - smooth((s - b - back) / 3) : 0;
+      if (f > 0) {
+        const me = routeAt(R, w.d - i * GAP);
+        // Keeping to the right on the runway, so the way out and the way back pass each other.
+        const zC = R.pts[4][1], zT = R.pts[5][1], dl = Math.hypot(me.dx, me.dz) || 1;
+        const lane = 0.5 * Math.max(0, Math.min(1, (zT - me.z) / 1.5, (me.z - zC) / 1.5));
+        me.x += (me.dz / dl) * lane; me.z -= (me.dx / dl) * lane;
+        x += (me.x - x) * f; z += (me.z - z) * f;
+        if (f > 0.5) { dx = me.dx; dz = me.dz; }
+      }
+    }
+    // Standing: to the crowd, a little in toward its middle from a corner.
+    const out = Math.atan2(-x, 40), along = Math.atan2(dx, dz);
+    return { x, z, turn: out + angleDiff(out, along) * Math.min(1, w.step * 1.6), step: w.step };
   }
 
   update(t) {
     const mesh = this.mesh;
     if (!this.roam || !mesh) return;
-    const walkers = this.spots.map((p, k) => [p, k]).filter(([p]) => FRONT_ROLES.includes(p.role));
-    if (!walkers.length) return;
-    const R = this.route, L = R.length;
-    // Turned on: everyone walks over from their own spot to their place on the loop first.
+    // Turned on: everyone walks over from their own spot to their place in the group first,
+    // then the walk starts from the middle of the stage.
     if (this.t0 == null) this.t0 = t;
-    const g0 = Math.min(1, (t - this.t0) / 2.5), gather = g0 * g0 * (3 - 2 * g0);
-    // Walk for 7 s, stop for 5 s: about 8 m a cycle, at an easy 1.2 m/s.
-    const CYCLE = 12, WALK = 7, STEP = 8.4;
-    const n = Math.floor(t / CYCLE), u = Math.min(1, (t - n * CYCLE) / WALK);
-    const eased = u * u * (3 - 2 * u);
-    const d0 = n * STEP + eased * STEP;
-    const moving = u < 1 ? Math.sin(Math.PI * u) : 0;
+    const GATHER = 2.5, g0 = Math.min(1, (t - this.t0) / GATHER), gather = smooth(g0);
+    const tw = t - this.t0 - GATHER;
     const m = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), pos = new THREE.Vector3(), sc = new THREE.Vector3();
     const look = mesh.geometry.attributes.aLook;
-    walkers.forEach(([p, k], i) => {
-      const at = routeAt(R, d0 + (i * L) / walkers.length);
-      // Facing: along the way while walking, out to the crowd while singing.
-      const out = this.round ? Math.atan2(at.x, at.z) : 0;
-      const along = Math.atan2(at.dx, at.dz);
-      const step = gather < 1 ? 1 : moving;
-      const turn = gather < 1 ? Math.atan2(at.x - p.x, at.z - p.z) : out + angleDiff(out, along) * Math.min(1, moving * 1.6);
+    this.walkers.forEach((k, i) => {
+      const p = this.spots[k], at = this.walkerAt(i, Math.max(0, tw));
+      const far = Math.hypot(at.x - p.x, at.z - p.z) > 0.3;
+      const step = gather < 1 ? (far ? Math.min(1, 4 * g0 * (1 - g0) + 0.3) : 0) : at.step;
+      const turn = gather < 1 ? (far ? Math.atan2(at.x - p.x, at.z - p.z) : p.turn) : at.turn;
       q.setFromAxisAngle(up, Math.PI + turn);
       pos.set(p.x + (at.x - p.x) * gather, p.y, p.z + (at.z - p.z) * gather);
       sc.setScalar(p.h || 1.04);
@@ -887,13 +979,13 @@ export class Band {
     const mesh = this.mesh;
     if (!mesh) return;
     const m = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), look = mesh.geometry.attributes.aLook;
-    this.spots.forEach((p, k) => {
-      if (!FRONT_ROLES.includes(p.role)) return;
+    for (const k of this.walkers) {
+      const p = this.spots[k];
       q.setFromAxisAngle(up, Math.PI + p.turn);
       m.compose(new THREE.Vector3(p.x, p.y, p.z), q, new THREE.Vector3().setScalar(p.h || 1.04));
       mesh.setMatrixAt(k, m);
       look.array[k * 4 + 1] = 0.6;
-    });
+    }
     mesh.instanceMatrix.needsUpdate = true;
     look.needsUpdate = true;
   }
@@ -915,7 +1007,8 @@ export class Band {
   _place(lineup, { y, front, riserY, riserZ, spread = 1 }) {
     const out = [];
     const frontLine = lineup.filter(m => ['vocals', 'vocals-guitar', 'dancer'].includes(m.role));
-    const dancers = frontLine.every(m => m.role === 'dancer') && frontLine.length > 4;
+    // A dance group, or any front line too long for one row, stands in two.
+    const dancers = (frontLine.every(m => m.role === 'dancer') && frontLine.length > 4) || frontLine.length > 6;
     const rows = dancers ? [frontLine.slice(0, Math.ceil(frontLine.length / 2)), frontLine.slice(Math.ceil(frontLine.length / 2))] : [frontLine];
     rows.forEach((row, r) => {
       const gapX = row.length > 3 ? 2.1 : 2.6;
