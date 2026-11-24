@@ -2200,6 +2200,8 @@ body { font-family: var(--font); font-feature-settings: "cv11", "ss01"; }
 /* What the 3D is, before the fan agrees: close, not exact; the promoter decides on the day. */
 /* The illustration note, in the right column of the page heading where the intro used to be. */
 #view-unlock .sec-side.uf-disclaimer { gap: 6px; }
+/* One right column at a time: the intro, or the note on the seat form. */
+#view-unlock:not([data-step="form"]) .uf-disclaimer, #view-unlock[data-step="form"] .uf-intro { display: none; }
 .uf-disclaimer b { display: block; margin: 0; font-size: 15px; font-weight: 600; color: var(--text); }
 .uf-disclaimer p { margin: 0; font-size: 13.5px; line-height: 1.55; }
 /* The price list, at the foot of the page under the form: the seat view and 3D Pass Plus side
