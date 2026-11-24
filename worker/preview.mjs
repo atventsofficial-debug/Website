@@ -34,15 +34,20 @@ export function pickPreview(results, artist, song) {
   return best ? { url: best.previewUrl, link: best.trackViewUrl || '', track: best.trackName, artist: best.artistName } : null;
 }
 
-export async function findPreview(artist, song, fetchFn = fetch) {
+// The clip, or null; `looked` gets what each store answered (its HTTP status and how many
+// songs), so an answer of none can tell "Apple has no clip" from "Apple did not answer".
+export async function findPreview(artist, song, fetchFn = fetch, looked = []) {
   const term = `${artist} ${String(song).replace(/\([^)]*\)|\[[^\]]*\]/g, ' ')}`.replace(/\s+/g, ' ').trim();
   for (const country of COUNTRIES) {
     const q = new URLSearchParams({ term, entity: 'song', limit: '15', country });
     let res;
-    try { res = await fetchFn(`${SEARCH}?${q}`, { headers: { accept: 'application/json' } }); } catch { continue; }
-    if (!res.ok) continue;
-    const data = await res.json().catch(() => null);
-    const hit = pickPreview(data?.results, artist, song);
+    try {
+      res = await fetchFn(`${SEARCH}?${q}`, { headers: { accept: 'application/json', 'user-agent': 'Atvents/1.0 (+https://atvents.com)' } });
+    } catch { looked.push({ country, status: 0 }); continue; }
+    const data = res.ok ? await res.json().catch(() => null) : null;
+    looked.push({ country, status: res.status, songs: data?.results?.length ?? 0 });
+    if (!data) continue;
+    const hit = pickPreview(data.results, artist, song);
     // Apple's clips are served over https only from its own hosts.
     if (hit && /^https:\/\/[a-z0-9.-]+\.apple\.com\//.test(hit.url)) return hit;
   }
@@ -55,13 +60,18 @@ export async function songPreview(url, ctx, json, fetchFn = fetch) {
   const song = (url.searchParams.get('song') || '').trim().slice(0, 120);
   if (!artist || !song) return json(400, { error: 'Name the artist and the song.' });
   const cache = typeof caches !== 'undefined' ? caches.default : null;
-  const key = new Request(`https://preview.atvents.invalid/${encodeURIComponent(plain(artist))}/${encodeURIComponent(plain(song))}`);
+  const key = new Request(`https://preview.atvents.invalid/v2/${encodeURIComponent(plain(artist))}/${encodeURIComponent(plain(song))}`);
   const kept = await cache?.match(key);
   if (kept) return kept;
-  const hit = await findPreview(artist, song, fetchFn);
+  const looked = [];
+  const hit = await findPreview(artist, song, fetchFn, looked);
+  // Kept: a clip, or Apple's own answer that it has none. Not kept: Apple not answering.
+  const answered = looked.some(l => l.status === 200);
   const res = hit
     ? json(200, hit, { 'cache-control': 'public, max-age=604800' })
-    : json(404, { error: 'No preview for this song.', code: 'none' }, { 'cache-control': 'public, max-age=86400' });
-  if (cache) ctx?.waitUntil?.(cache.put(key, res.clone()));
+    : answered
+      ? json(404, { error: 'No preview for this song.', code: 'none', looked }, { 'cache-control': 'public, max-age=86400' })
+      : json(502, { error: 'The preview could not be found just now.', looked });
+  if (cache && (hit || answered)) ctx?.waitUntil?.(cache.put(key, res.clone()));
   return res;
 }
