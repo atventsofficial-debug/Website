@@ -760,7 +760,7 @@ export function renderUnlock(eventId, { plan = '', upgrade = '' } = {}) {
   // A concert that has taken place sells no more passes: its link opens the list instead.
   if (isConcert(eventId) && !upcoming(eventMeta(eventId))) { eventId = ''; unlock.again = null; }
   const picking = !isConcert(eventId) && !unlock.again;
-  // The price list is for choosing: once the concert is chosen, the form has the page to itself.
+  // The price list sits under the form, where the fan picks a pass; the list of concerts leaves it out.
   $('#unlock-body').classList.toggle('is-form', !picking);
   $('#uf-pick').hidden = !picking;
   form.hidden = picking;

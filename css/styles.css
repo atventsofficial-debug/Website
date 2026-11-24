@@ -2237,7 +2237,7 @@ body { font-family: var(--font); font-feature-settings: "cv11", "ss01"; }
 /* The checkout: two columns like a ticket shop's, the ways to pay on the left and the order on
    the right, in light cards on the dark page. The form's side panel steps aside meanwhile. */
 .host.is-paying, .host.is-form { grid-template-columns: minmax(0, 1fr); }
-.host.is-paying .price-list, .host.is-form .price-list { display: none; }
+.host.is-paying .price-list, .host:not(.is-form) .price-list { display: none; }
 .pay-sheet {
   --c-bg: #fff; --c-bg-2: #f7f5f2; --c-line: #e6e1da; --c-line-2: #cdc6bc;
   --c-text: #0e0e0e; --c-muted: #6b6560; --c-soft: #fff3ec;

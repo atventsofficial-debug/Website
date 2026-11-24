@@ -83,7 +83,7 @@ It is made for a full stadium. The Worker gives a paid pass a two-minute ticket 
 
 ## The price list and its clips
 
-The price list sits at the foot of `#unlock`, under the list of concerts to choose from (the form and the payment step leave it out). Every line of it has a clip of a few seconds, filmed in the 3D view (or, for the pass itself, on My 3D passes): a mouse shows it on hover, the keyboard on focus, a phone on a tap (`js/peek.js`, the line's `data-peek`).
+The price list sits at the foot of the unlock form (`#unlock-<concert>`), under Continue to payment, where the fan picks the seat view or Plus; the list of concerts and the payment step leave it out. Every line of it has a clip of a few seconds, filmed in the 3D view (or, for the pass itself, on My 3D passes): a mouse shows it on hover, the keyboard on focus, a phone on a tap (`js/peek.js`, the line's `data-peek`).
 
 The clips are not files to keep. Each is kept scrambled as `assets/peek/<name>.bin` (`js/peekcode.js`), so its link opens nothing playable; the page unscrambles it in memory and plays it from a blob URL in a `<video>` with no controls, no download, no picture-in-picture or casting, and no menu of its own. A screen recording cannot be stopped. A new or changed clip: put `<name>.mp4` files (576 px wide, H.264, no sound) in a folder and run `node scripts/peek-clips.mjs <folder>`. A new line in the price list needs its clip too: `test/peek.test.mjs` checks that every `data-peek` has its file.
 
