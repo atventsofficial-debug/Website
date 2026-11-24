@@ -909,7 +909,13 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
    above the bar of categories, below the event's card. When they outgrow the room (a short
    window, or a seat's longer list) they go on in a second column. */
 .tools { position: absolute; z-index: 4; left: max(24px, env(safe-area-inset-left, 0px)); top: calc(max(16px, env(safe-area-inset-top, 0px)) + 64px + var(--card-h, 0px)); bottom: 112px; display: flex; flex-direction: column; flex-wrap: wrap; justify-content: flex-end; align-content: flex-start; align-items: center; gap: 22px 18px; pointer-events: none; }
-.tools > * { pointer-events: auto; }
+.tools > *, .tools-g { pointer-events: none; }
+.tools-g { display: flex; flex-direction: column; align-items: center; gap: 22px; }
+.tools .sq, .tools .zoom { pointer-events: auto; }
+/* A Plus button a seat pass cannot open yet: a small lock on it, and a tap goes to the upgrade. */
+.sq-lock { position: absolute; top: -3px; right: -3px; width: 17px; height: 17px; display: none; place-items: center; border-radius: 50%; background: var(--coral); color: #fff; box-shadow: 0 0 0 2px rgba(22, 20, 20, 0.93); }
+.sq-lock svg { width: 9px !important; height: 9px !important; }
+.sq.is-locked .sq-lock { display: grid; }
 /* Each round button says what it does in a word below it (the caption is not a tap target). */
 .tools .sq { position: relative; }
 .sq-t { position: absolute; top: calc(100% + 4px); left: 50%; transform: translateX(-50%); font: 600 10px/1 var(--font); letter-spacing: 0.01em; color: rgba(244, 240, 238, 0.9); white-space: nowrap; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.6); pointer-events: none; }
@@ -1044,7 +1050,9 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
   .event-card .label, .ev-stats { display: none; }
   /* Bottom up from above the panels; when the buttons outgrow the room under the top bar
      (in a seat, under the tall last step), they go on in a second column. */
-  .tools { left: max(22px, env(safe-area-inset-left, 0px)); top: calc(max(16px, env(safe-area-inset-top, 0px)) + 62px + var(--card-h, 0px)); bottom: calc(max(156px, var(--side-h, 0px)) + 86px); gap: 20px 16px; }
+  /* On a phone the buttons split: four down the left edge, four down the right. */
+  .tools { left: max(22px, env(safe-area-inset-left, 0px)); right: max(22px, env(safe-area-inset-right, 0px)); top: calc(max(16px, env(safe-area-inset-top, 0px)) + 62px + var(--card-h, 0px)); bottom: calc(max(156px, var(--side-h, 0px)) + 86px); flex-direction: row; flex-wrap: nowrap; justify-content: space-between; align-items: flex-end; align-content: stretch; }
+  .tools-g { gap: 20px; }
   /* A sheet from the bottom (show mode, the setlist) takes the panel's place while open. */
   .stage:is(.show-open, .set-open) .app-side { opacity: 0; pointer-events: none; }
   .tools .sq { width: 42px; height: 42px; }
@@ -3055,7 +3063,7 @@ html.lang-swap body { opacity: .35; }
 .cm-attr a { color: inherit; }
 .stage.map-open .tools, .stage.map-open .sections, .stage.map-open .app-side, .stage.map-open .seatcard, .stage.map-open .event-card, .stage.map-open .pov-hint { opacity: 0; pointer-events: none; }
 .stage.map-open .tools { opacity: 1; }
-.stage.map-open .tools > :not(#t-access) { display: none; }
+.stage.map-open .tools :is(.sq:not(#t-access), .zoom) { display: none; }
 .acc-views { margin-top: -4px; }
 .acc-map { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 14px; background: rgba(255, 255, 255, 0.06); }
 .acc-map.is-loading { background: transparent; border: 1.5px dashed var(--line-2); }
@@ -3149,48 +3157,3 @@ html.lang-swap body { opacity: .35; }
   .me-box-float .fine { font-size: 13px; }
 }
 
-/* ------------------------------------------------ reaching the seat (demo: scene3d.js _arrive) */
-.arrive-veil { position: absolute; inset: 0; z-index: 7; pointer-events: none; overflow: hidden; }
-.arrive-veil:not([class*="is-"]) { display: none; }
-/* blink: two lids close over the venue and open in the seat */
-.arrive-veil.is-blink { backdrop-filter: blur(var(--blur, 0px)); -webkit-backdrop-filter: blur(var(--blur, 0px)); }
-.arrive-veil .lid { position: absolute; left: -10%; right: -10%; height: 64%; background: #000; }
-.arrive-veil .lid-top { top: 0; border-radius: 0 0 50% 50% / 0 0 34% 34%; transform: translateY(calc((var(--k, 0) - 1) * 104%)); }
-.arrive-veil .lid-bottom { bottom: 0; border-radius: 50% 50% 0 0 / 34% 34% 0 0; transform: translateY(calc((1 - var(--k, 0)) * 104%)); }
-/* ticket: the fan's ticket comes up, then tears open on the view */
-.arrive-veil.is-ticket { display: grid; place-items: center; background: rgba(8, 7, 7, var(--dim, 0)); }
-.av-tk { display: flex; width: min(560px, 86vw); min-height: 168px; opacity: min(1, calc(var(--in, 0) * 1.6)); transform: scale(calc(0.84 + var(--in, 0) * 0.16)); filter: drop-shadow(0 30px 60px rgba(0, 0, 0, 0.55)); }
-.av-tk-main, .av-tk-stub { position: relative; transition: none; }
-.av-tk-main { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 6px; padding: 22px 26px; background: #f4f0ee; color: #141212; border-radius: 18px 4px 4px 18px; transform: translate(calc(var(--tear, 0) * -46vw), calc(var(--tear, 0) * 22vh)) rotate(calc(var(--tear, 0) * -16deg)); opacity: calc(1 - var(--tear, 0) * 0.6); }
-.av-tk-eyebrow { font: 700 10px/1 var(--display); letter-spacing: 0.16em; text-transform: uppercase; color: var(--coral); }
-.av-tk-title { font: 900 30px/0.95 var(--display); font-stretch: 118%; letter-spacing: -0.03em; text-transform: uppercase; overflow-wrap: anywhere; }
-.av-tk-sub { font-size: 13px; color: rgba(20, 18, 18, 0.6); }
-.av-tk-seat { margin-top: 6px; font: 700 12px/1.2 var(--mono, ui-monospace, monospace); letter-spacing: 0.04em; text-transform: uppercase; }
-.av-tk-stub { width: 108px; flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; background: var(--coral); color: #fff; border-radius: 4px 18px 18px 4px; border-left: 2px dashed rgba(20, 18, 18, 0.45); transform: translate(calc(var(--tear, 0) * 40vw), calc(var(--tear, 0) * -18vh)) rotate(calc(var(--tear, 0) * 22deg)); opacity: calc(1 - var(--tear, 0) * 0.6); }
-.av-tk-stub span { font: 700 10px/1 var(--display); letter-spacing: 0.18em; }
-.av-tk-stub b { font: 900 26px/1 var(--display); font-stretch: 118%; }
-/* spot: the house goes dark but for a spotlight on the seat */
-.arrive-veil.is-spot { background: radial-gradient(circle var(--r, 60vmax) at var(--x, 50%) var(--y, 50%), rgba(255, 236, 196, 0.12) 0, rgba(255, 236, 196, 0.05) 62%, rgba(0, 0, 0, var(--dark, 0)) 100%); }
-.arrive-veil .beam { position: absolute; width: 18vmax; transform-origin: 50% 0; clip-path: polygon(46% 0, 54% 0, 100% 100%, 0 100%); background: linear-gradient(to bottom, rgba(255, 240, 214, 0.02), rgba(255, 240, 214, 0.26)); opacity: var(--beam, 0); mix-blend-mode: screen; filter: blur(6px); }
-/* walk: a moment of dark at the end of the row */
-.arrive-veil.is-walk { background: rgba(0, 0, 0, var(--dark, 0)); }
-@media (max-width: 760px) {
-  .av-tk { min-height: 140px; }
-  .av-tk-main { padding: 18px 18px; }
-  .av-tk-title { font-size: 22px; }
-  .av-tk-stub { width: 78px; }
-  .av-tk-stub b { font-size: 20px; }
-}
-
-.arrive-demo { position: absolute; z-index: 9; top: calc(max(16px, env(safe-area-inset-top, 0px)) + 52px); left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 4px; padding: 4px; border-radius: 999px; background: rgba(22, 20, 20, 0.93); border: 1px dashed rgba(236, 84, 70, 0.7); max-width: calc(100% - 24px); overflow-x: auto; scrollbar-width: none; }
-.arrive-demo[hidden] { display: none; }
-.arrive-demo span { padding: 0 8px 0 10px; font: 700 9px/1 var(--display); letter-spacing: 0.14em; text-transform: uppercase; color: var(--coral); white-space: nowrap; }
-.arrive-demo button { height: 30px; padding: 0 12px; border: 0; border-radius: 999px; background: transparent; color: var(--text); font: 600 12px/1 var(--font); white-space: nowrap; cursor: pointer; }
-.arrive-demo button[aria-pressed="true"] { background: #fff; color: var(--ink); }
-.stage.is-fanfocus .arrive-demo { display: none; }
-@media (min-width: 761px) { .arrive-demo { top: 124px; } }
-@media (max-width: 760px) {
-  .stage.has-demo .tools { margin-top: 48px; }
-  .arrive-demo span { display: none; }
-  .arrive-demo button { padding: 0 9px; font-size: 11.5px; }
-}

@@ -298,7 +298,17 @@ export function showModeFor(mode) {
   state.scene?.setShow(showOpen() ? state.show : { ...state.show, mix: 0, ocean: 0, fx: 'beat' });
   state.scene?.setRoam(inSeat && roamOn());
   btn.classList.toggle('is-locked', !showOpen());
+  $('#set-btn')?.classList.toggle('is-locked', !showOpen());
   if (!panel.hidden) paintShow();
+}
+
+// A fan with a seat pass (not Plus) sees the Plus buttons with a lock; a tap on one goes
+// straight to the upgrade. Anyone else gets the panel, which says what Plus adds.
+function toUpgrade() {
+  const up = state.venue && !showOpen() ? upgradable(state.venue.meta.id) : null;
+  if (!up) return false;
+  location.hash = `#upgrade-${up.id}`;
+  return true;
 }
 
 function paintShow() {
@@ -326,6 +336,7 @@ export function bindShow() {
   const btn = $('#show-btn'), panel = $('#show-panel');
   if (!btn) return;
   btn.addEventListener('click', () => {
+    if (panel.hidden && toUpgrade()) return;
     panel.hidden = !panel.hidden;
     btn.setAttribute('aria-expanded', String(!panel.hidden));
     btn.classList.toggle('is-on', !panel.hidden);
@@ -465,6 +476,7 @@ export function bindSetlist() {
   btn.addEventListener('click', () => {
     const open = panel.hidden;
     if (!open) { closeSetlist(); return; }
+    if (toUpgrade()) return;
     // One panel at a time beside the buttons: the setlist takes show mode's place.
     const show = $('#show-panel');
     if (show && !show.hidden) $('#show-btn')?.click();
