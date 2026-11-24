@@ -861,7 +861,7 @@ function paintPlan(form) {
   $$('[data-plan-fee="plus"]').forEach(el => { el.textContent = formatFee(PLUS_FEE); });
   const box = $('#uf-upgrade'), s = up ? seatIn(up.eventId, up.seat) : null;
   box.hidden = !up;
-  box.innerHTML = up ? `${icon('i-eye')}<span><b>Upgrading to 3D Pass Plus</b><small>${s ? `Your seat stays: ${esc(seatText(s))}. ` : ''}Every seat of this concert opens, with show mode, the setlist and directions, and you pay only the difference: ${formatFee(UPGRADE_FEE)}.</small></span>` : '';
+  box.innerHTML = up ? `${icon('i-eye')}<span><b>Upgrading to 3D Pass Plus</b><small>${s ? `Your seat stays: ${esc(seatText(s))}. ` : ''}Every seat of this concert opens, with show mode, the setlist, eye height and directions, and you pay only the difference: ${formatFee(UPGRADE_FEE)}.</small></span>` : '';
   if (up) {
     for (const k of ['cat', 'sec', 'row', 'num']) form[k].disabled = true;
     const change = $('#uf-event-change');
