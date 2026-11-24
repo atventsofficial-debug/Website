@@ -2202,7 +2202,13 @@ body { font-family: var(--font); font-feature-settings: "cv11", "ss01"; }
 #view-unlock .sec-side.uf-disclaimer { gap: 6px; }
 /* One right column at a time: the intro, or the note on the seat form. */
 #view-unlock:not([data-step="form"]) .uf-disclaimer, #view-unlock[data-step="form"] .uf-intro { display: none; }
-.uf-disclaimer b { display: block; margin: 0; font-size: 15px; font-weight: 600; color: var(--text); }
+/* Sits on the bottom of the heading, level with the last line of the title. */
+#view-unlock .sec-head > .uf-disclaimer { align-self: end; padding-bottom: 6px; }
+/* A live-style dot marks it as a notice: a solid dot with a ring that pulses out. */
+.uf-disclaimer b { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 15px; font-weight: 600; color: var(--text); }
+.uf-disclaimer b::before { content: ""; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--coral); box-shadow: 0 0 0 0 rgba(236, 84, 70, 0.6); animation: uf-live 1.6s ease-out infinite; }
+@keyframes uf-live { 0% { box-shadow: 0 0 0 0 rgba(236, 84, 70, 0.6); opacity: 1; } 50% { opacity: 0.55; } 70% { box-shadow: 0 0 0 7px rgba(236, 84, 70, 0); } 100% { box-shadow: 0 0 0 0 rgba(236, 84, 70, 0); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .uf-disclaimer b::before { animation: none; } }
 .uf-disclaimer p { margin: 0; font-size: 13.5px; line-height: 1.55; }
 /* The price list, at the foot of the page under the form: the seat view and 3D Pass Plus side
    by side (one under the other on a narrow screen). */
