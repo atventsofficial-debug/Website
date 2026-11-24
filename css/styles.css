@@ -2209,24 +2209,52 @@ body { font-family: var(--font); font-feature-settings: "cv11", "ss01"; }
 .pl-head .eyebrow { margin: 0; }
 .pl-hint { margin: 0; font-size: 13px; color: var(--muted); }
 .pl-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s4); }
-.pl-cards .host-plus { margin-top: 0; }
 .pl-title { margin: 6px 0 0; font: 600 clamp(24px, 3vw, 32px)/1.1 var(--display); letter-spacing: -0.03em; color: var(--text); }
 .pl-for { max-width: 560px; }
 .pl-for .uf-event-text small:first-child { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
 .pl-cards { align-items: stretch; }
 .pl-go { margin-top: auto; align-self: stretch; }
+/* The two passes. Plus stands out: a coral glow and a badge. */
+.pl-card { position: relative; display: flex; flex-direction: column; gap: 18px; padding: 32px; border-radius: 26px; background: #1a1717; border: 1px solid var(--line); }
+.pl-card.is-plus { background: radial-gradient(120% 80% at 100% 0%, rgba(236, 84, 70, 0.35), transparent 60%), linear-gradient(180deg, #241a19, #171313); border: 1.5px solid rgba(236, 84, 70, 0.7); box-shadow: 0 30px 80px -30px rgba(236, 84, 70, 0.55); }
+.pl-badge { position: absolute; top: -13px; left: 32px; padding: 6px 12px; border-radius: 999px; background: var(--coral); color: #fff; font: 700 11px/1 var(--font); letter-spacing: 0.08em; text-transform: uppercase; }
+.pl-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.pl-nm { font: 600 13px/1 var(--font); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.is-plus .pl-nm { color: #ffb3a8; }
+.pl-pr { display: flex; align-items: baseline; gap: 8px; margin: 0; }
+.pl-pr b { font: 700 46px/1 var(--display); letter-spacing: -0.04em; color: var(--text); }
+.pl-pr small { font-size: 14px; color: var(--muted); }
+.pl-lead { margin: 0; font-size: 14.5px; line-height: 1.5; color: var(--muted); }
+.pl-inc { display: flex; align-items: center; gap: 8px; margin: 0; padding: 10px 14px; border-radius: 12px; background: rgba(255, 255, 255, 0.05); font-size: 13.5px; color: var(--text); }
+.pl-inc svg { width: 15px; height: 15px; color: var(--coral); flex: none; }
+.pl-fine { margin: -6px 0 0; font-size: 12px; color: var(--dim); }
+/* Each feature: its icon, its name and one line. With a mouse, a line plays a short clip of
+   itself (js/peek.js) and says so on hover; phones show the list only. */
+.pl-gets { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.pl-gets li { display: flex; align-items: center; gap: 14px; padding: 12px 6px; border-top: 1px solid rgba(255, 255, 255, 0.06); outline: none; transition: background-color 0.15s; }
+.pl-gets li:first-child { border-top-color: transparent; }
+.pl-ic { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: rgba(236, 84, 70, 0.12); flex: none; }
+.pl-ic svg { width: 18px; height: 18px; color: var(--coral); }
+.pl-tx { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pl-tx b { font: 600 15px/1.25 var(--font); color: var(--text); }
+.pl-tx small { font-size: 13px; line-height: 1.4; color: var(--muted); }
+.pl-watch { display: none; margin-left: auto; padding-left: 10px; font: 600 12.5px/1 var(--font); color: var(--coral); white-space: nowrap; opacity: 0; transition: opacity 0.15s; }
+.pl-watch::before { content: "\25B6"; margin-right: 6px; font-size: 10px; }
+@media (hover: hover) and (pointer: fine) {
+  .pl-watch { display: block; }
+  .pl-gets li:hover, .pl-gets li:focus-visible, .pl-gets li.is-peek { padding-left: 12px; padding-right: 12px; border-radius: 12px; border-top-color: transparent; background: rgba(255, 255, 255, 0.05); }
+  .pl-gets li:hover + li, .pl-gets li:focus-visible + li, .pl-gets li.is-peek + li { border-top-color: transparent; }
+  .pl-gets li:hover .pl-watch, .pl-gets li:focus-visible .pl-watch, .pl-gets li.is-peek .pl-watch { opacity: 1; }
+  .pl-gets li:focus-visible { box-shadow: inset 0 0 0 1.5px var(--coral); }
+}
+@media (hover: none), (pointer: coarse) { .pl-hover { display: none; } }
+@media (max-width: 760px) { .pl-card { padding: 26px 20px; } .pl-pr b { font-size: 38px; } .pl-cards { gap: 28px; } }
 .pl-go[aria-disabled="true"] { opacity: 0.55; pointer-events: none; box-shadow: none; }
 /* The pass chosen on the price list, in one row over the concerts and in the form. */
 .uf-plan-sum { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border-radius: 16px; border: 1px solid var(--coral); background: rgba(236, 84, 70, 0.08); }
 .uf-plan-sum .uf-change { flex: none; align-self: center; }
 .uf-pick .uf-plan-sum { margin-bottom: 14px; }
 @media (max-width: 760px) { .pl-cards { grid-template-columns: minmax(0, 1fr); } }
-.host-plus { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; padding: var(--s5); border-radius: var(--r); border: 1px solid var(--line-2); background: rgba(255, 255, 255, 0.03); }
-.host-plus-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.host-plus > b { font: 600 28px/1 var(--display); letter-spacing: -0.03em; color: var(--text); }
-.host-plus p { margin: 0; font-size: 14px; color: var(--muted); }
-.host-plus .plan-gets b { font: 600 14px/1.3 var(--display); letter-spacing: -0.01em; color: var(--text); }
-.host-plus .plan-gets span { color: var(--muted); }
 /* 3D Pass Plus in the 3D view's side panel: the upgrade card, and the line under Unlock. */
 .plus-up { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; padding: 14px; border-radius: var(--r-sm); border: 1px solid var(--line-2); background: rgba(255, 255, 255, 0.03); }
 .plus-up p { display: flex; flex-direction: column; gap: 4px; margin: 0; }
@@ -2793,28 +2821,12 @@ html.has-soldpop { overflow: hidden; }
 }
 @media (prefers-reduced-motion: reduce) { .soldpop-card { animation: none; } }
 
-/* Unlock: what the one price gets you */
-.host-plan .plan-gets, .host-plus .plan-gets { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
-.host-plan .plan-gets li, .host-plus .plan-gets li { position: relative; display: flex; flex-direction: column; gap: 2px; padding-left: 30px; font-size: 13px; line-height: 1.45; }
-/* Each line of the price list has its own icon, drawn in the line's own colour. */
-.plan-gets .pg-ic { position: absolute; left: 0; top: 0; width: 19px; height: 19px; color: var(--coral); }
-/* A line with a clip (js/peek.js): it lights up under the pointer or the keyboard, and a small
-   play mark says there is something to see. */
-.plan-gets li[data-peek] { margin: -8px -10px; padding: 8px 34px 8px 40px; border-radius: 12px; cursor: default; outline: none; transition: background-color 0.15s; }
-.plan-gets li[data-peek] .pg-ic { left: 10px; top: 8px; }
-.plan-gets li[data-peek]::after { content: ""; position: absolute; right: 12px; top: 11px; width: 0; height: 0; border-left: 7px solid currentColor; border-top: 4.5px solid transparent; border-bottom: 4.5px solid transparent; opacity: 0.35; transition: opacity 0.15s; }
-.plan-gets li[data-peek]:hover, .plan-gets li[data-peek]:focus-visible, .plan-gets li[data-peek].is-peek { background: rgba(255, 255, 255, 0.06); }
-.plan-gets li[data-peek]:hover::after, .plan-gets li[data-peek]:focus-visible::after, .plan-gets li[data-peek].is-peek::after { opacity: 0.9; color: var(--coral); }
-.plan-gets li[data-peek]:focus-visible { box-shadow: inset 0 0 0 1.5px var(--coral); }
 /* The clip itself: one card over the page, beside the line, never a link or a file to keep. */
 .peek { position: fixed; z-index: 80; left: 0; top: 0; width: min(340px, calc(100vw - 24px)); aspect-ratio: 576 / 342; border-radius: 14px; overflow: hidden; background: #050505; border: 1px solid rgba(255, 255, 255, 0.12); box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55); pointer-events: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; opacity: 0; transform: translateY(6px) scale(0.98); transition: opacity 0.16s, transform 0.16s; }
 .peek.is-on { opacity: 1; transform: none; }
 .peek video { display: block; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
 .peek .spinner { position: absolute; left: 50%; top: 50%; margin: -15px 0 0 -15px; }
 .peek.is-ready .spinner { display: none; }
-.host-plan .plan-gets b { font: 600 14px/1.3 var(--display); font-stretch: 100%; letter-spacing: -0.01em; text-transform: none; color: #fff; }
-.host-plan .plan-gets span { color: rgba(245, 242, 238, 0.66); }
-.host-plan .plan-fine { margin-top: 4px; font-size: 12px; color: rgba(245, 242, 238, 0.5); }
 
 /* The team (js/team.js): its box on #admin, its button on the checkout, and the staging badge. */
 .team-box { margin-bottom: var(--s5); padding: var(--s5); }

@@ -1,6 +1,6 @@
 // The price list on #unlock (index.html, #price-list): each line with a clip (data-peek) plays a
 // few seconds of that feature, filmed in the 3D view, in a card beside it. A mouse shows it on
-// hover, the keyboard on focus, a phone on a tap (a second tap, or a tap anywhere else, closes it).
+// hover, the keyboard on focus; a phone shows the list only, with no clip.
 //
 // A clip is not a file to keep. Its file (assets/peek/<name>.bin, from scripts/peek-clips.mjs)
 // is scrambled, so its link opens nothing playable; it is unscrambled here, in memory, and
@@ -101,16 +101,10 @@ export function bindPeek(root) {
     const li = lineOf(e.target);
     if (li && !li.contains(e.relatedTarget)) { clearTimeout(timer); if (li === on) hide(); }
   });
-  // A tap opens the line's clip, or closes it; with a mouse the pointer already did.
-  // The keyboard opens it on focus.
+  // The keyboard opens it on focus. A tap on a phone opens nothing: phones show the list only.
   let by = 'key';
   document.addEventListener('pointerdown', e => { by = e.pointerType || 'mouse'; }, { capture: true, passive: true });
   document.addEventListener('keydown', () => { by = 'key'; }, { capture: true });
-  root.addEventListener('click', e => {
-    const li = lineOf(e.target);
-    if (!li || by === 'mouse' || by === 'key') return;
-    if (li === on) hide(); else show(li);
-  });
   root.addEventListener('focusin', e => { const li = lineOf(e.target); if (by === 'key' && li && li !== on) show(li); });
   root.addEventListener('focusout', e => { const li = lineOf(e.target); if (by === 'key' && li === on) hide(); });
   root.addEventListener('keydown', e => { if (e.key === 'Escape') hide(); });
