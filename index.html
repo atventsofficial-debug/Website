@@ -328,7 +328,7 @@ html:not(.atv-seen) #nav .logo-img{animation:ai-show 0s 2.57s both}
   <section class="sec page-top">
     <header class="sec-head">
       <h1 class="big big-xl"><span class="fade">Unlock</span> <span class="ol">your seat view</span></h1>
-      <div class="sec-side"><p>Tell us your seat, your name and your email, then pay <b data-fee>Rp25.000</b>. The 3D tour opens straight away: the whole venue, then your category, then the view from your seat.</p></div>
+      <div class="sec-side uf-disclaimer" role="note"><b>The 3D is an illustration, not an exact copy</b><p>Distances, angles, the stage and the screens are close, not 100% exact. If the promoter changes the layout on the day, that is outside our control. Your ticket decides your seat.</p></div>
     </header>
     <div class="host" id="unlock-body">
       <div class="unlock-main">
@@ -361,10 +361,6 @@ html:not(.atv-seen) #nav .logo-img{animation:ai-show 0s 2.57s both}
               <label class="uf-field uf-half">Email<input name="email" type="email" required autocomplete="email" maxlength="160" placeholder="you@example.com"></label>
             </div>
           </div>
-          <div class="uf-disclaimer" role="note">
-            <b>The 3D is an illustration, not an exact copy</b>
-            <p>We build each venue from the promoter’s seating plan and announcements, so distances, angles, the stage and the screens are close, not 100% accurate. If the promoter or the venue changes the layout or the seat positions on the day, that is outside our control and not our responsibility. Your ticket decides your seat.</p>
-          </div>
           <label class="check"><input type="checkbox" name="consent" required><span>I understand the 3D is an illustration, and I agree to the <a class="u" href="#terms">terms</a> and the <a class="u" href="#privacy">privacy policy</a>.</span></label>
           <p class="form-error" id="unlock-error" role="alert" hidden></p>
           <p class="fine pay-test" id="pay-test" hidden>Test mode: this payment goes to the Midtrans Sandbox, and nothing is charged.</p>
@@ -375,7 +371,7 @@ html:not(.atv-seen) #nav .logo-img{animation:ai-show 0s 2.57s both}
         <section class="pay-sheet panel-box" id="pay-sheet" hidden></section>
       </div>
       <aside class="price-list" id="price-list" aria-label="Price list">
-        <header class="pl-head"><div><p class="eyebrow">Price list</p><h2 class="pl-title">Choose your pass</h2></div><p class="pl-hint"><span class="pl-hover">Hover over a feature to see a short clip of it. </span>Choose a pass, then your concert and your seat.</p></header>
+        <header class="pl-head"><div><p class="eyebrow">Price list</p><h2 class="pl-title">Choose your pass</h2></div><p class="pl-hint">Choose a pass, then your concert and your seat. The 3D tour opens as soon as you pay.</p></header>
         <div class="uf-event pl-for" id="pl-for" hidden></div>
         <div class="pl-cards">
           <div class="pl-card">

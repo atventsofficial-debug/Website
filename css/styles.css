@@ -2198,16 +2198,22 @@ body { font-family: var(--font); font-feature-settings: "cv11", "ss01"; }
 .uf-plan.is-soon:hover { border-color: rgba(255, 255, 255, 0.14); }
 .uf-plan-t .soon-tag { margin-left: 6px; vertical-align: 2px; }
 /* What the 3D is, before the fan agrees: close, not exact; the promoter decides on the day. */
-.uf-disclaimer { margin: 0 0 14px; padding: 14px 16px; border-radius: 16px; border: 1px dashed rgba(255, 255, 255, 0.22); background: rgba(255, 255, 255, 0.025); }
-.uf-disclaimer b { display: block; margin-bottom: 4px; font-size: 14.5px; font-weight: 600; color: var(--text); }
-.uf-disclaimer p { margin: 0; font-size: 13px; line-height: 1.5; color: #a9a9a9; }
+/* The illustration note, in the right column of the page heading where the intro used to be. */
+#view-unlock .sec-side.uf-disclaimer { gap: 6px; }
+.uf-disclaimer b { display: block; margin: 0; font-size: 15px; font-weight: 600; color: var(--text); }
+.uf-disclaimer p { margin: 0; font-size: 13.5px; line-height: 1.55; }
 /* The price list, at the foot of the page under the form: the seat view and 3D Pass Plus side
    by side (one under the other on a narrow screen). */
 #view-unlock .host { grid-template-columns: minmax(0, 1fr); }
 .price-list { display: flex; flex-direction: column; gap: var(--s4); margin-top: var(--s6); padding-top: var(--s6); border-top: 1px solid var(--line); }
-.pl-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 24px; }
+/* The same two columns as the page's heading above it, so the hint lines up under its text. */
+.pl-head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: var(--s7); align-items: end; margin-bottom: var(--s5); }
+.pl-head > .pl-hint { justify-self: end; width: 100%; max-width: 440px; padding-bottom: 4px; }
+@media (max-width: 760px) { .pl-head { grid-template-columns: minmax(0, 1fr); row-gap: 8px; } .pl-head > .pl-hint { justify-self: start; max-width: none; padding-bottom: 0; } }
+/* Unlock: the heading's rule sits under it, between it and the price list. */
+#view-unlock .sec-head { border-top: 0; padding-top: var(--s4); padding-bottom: var(--s6); margin-bottom: var(--s5); border-bottom: 1px solid var(--line); }
 .pl-head .eyebrow { margin: 0; }
-.pl-hint { margin: 0; font-size: 13px; color: var(--muted); }
+.pl-hint { margin: 0; font-size: 14px; line-height: 1.5; color: var(--muted); }
 .pl-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s4); }
 .pl-title { margin: 6px 0 0; font: 600 clamp(24px, 3vw, 32px)/1.1 var(--display); letter-spacing: -0.03em; color: var(--text); }
 .pl-for { max-width: 560px; }
@@ -2246,7 +2252,6 @@ body { font-family: var(--font); font-feature-settings: "cv11", "ss01"; }
   .pl-gets li:hover .pl-watch, .pl-gets li:focus-visible .pl-watch, .pl-gets li.is-peek .pl-watch { opacity: 1; }
   .pl-gets li:focus-visible { box-shadow: inset 0 0 0 1.5px var(--coral); }
 }
-@media (hover: none), (pointer: coarse) { .pl-hover { display: none; } }
 .pl-more { display: none; }
 @media (max-width: 760px) {
   .pl-card { gap: 14px; padding: 24px 20px; }

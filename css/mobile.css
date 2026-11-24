@@ -227,7 +227,8 @@
   .tk-out .tk-buy { border-color: currentColor; color: inherit; }
 
   /* ---------- checkout: the form, and the pay button kept in reach ---------- */
-  #view-unlock .sec-side { display: none; }
+  #view-unlock .sec-side:not(.uf-disclaimer) { display: none; }
+  #view-unlock .sec-side.uf-disclaimer { margin-top: 10px; }
   #view-unlock { padding-bottom: 24px; }
   /* The pay button stays where it is in the form, under the consent box: no floating copy over
      the fields ("Where your pass goes" was showing through it while it was still greyed out). */
