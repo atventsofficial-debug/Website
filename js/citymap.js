@@ -123,7 +123,7 @@ export class CityMap {
     this._size();
     const c = this.venue ? this.venue.c : [0, 0];
     const span = this.venue ? this._span(this.venue.ring) : 200;
-    const W = this.W, H = this.H, room = Math.min(W - this.inset.right, H - this.inset.bottom);
+    const { w: rw, h: rh } = this._room(), room = Math.min(rw, rh);
     const from = { x: c[0], y: c[1], s: (room * 0.95) / span };
     const to = this._fitAround(c, Math.max(420, ...this.walks.slice(0, 6).map(s => Math.hypot(s.x - c[0], s.y - c[1]) * 1.3)));
     this.view = { ...from };
@@ -141,8 +141,9 @@ export class CityMap {
     this._loop(false);
   }
 
-  // The space the panel takes (right on a wide screen, below on a phone), kept clear.
-  setInset(inset) { this.inset = inset; this.dirty = true; }
+  // The space the panel takes (beside it on a wide screen, below on a phone), kept clear: any
+  // of left, top, right and bottom, in pixels.
+  setInset(inset) { this.inset = { left: 0, top: 0, right: 0, bottom: 0, ...inset }; this.dirty = true; }
 
   // Picks a stop (by its id in walks) or none: the city dims, the walk lights up.
   pick(id) {
@@ -174,17 +175,18 @@ export class CityMap {
     this.W = Math.max(1, r.width); this.H = Math.max(1, r.height); this.dpr = dpr;
     for (const c of [this.canvas, this.base]) { c.width = Math.round(this.W * dpr); c.height = Math.round(this.H * dpr); }
     this.canvas.style.width = `${this.W}px`; this.canvas.style.height = `${this.H}px`;
-    this.inset ||= { right: 0, bottom: 0 };
+    this.inset ||= { left: 0, top: 0, right: 0, bottom: 0 };
   }
   _span(ring) { const xs = ring.filter((_, i) => i % 2 === 0), ys = ring.filter((_, i) => i % 2); return Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)); }
   _len(pts) { let L = 0; for (let i = 1; i < pts.length; i++) L += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); return L; }
   // The view centred on the clear part of the screen.
-  _centreFor(cx, cy, s) { return { x: cx + this.inset.right / 2 / s, y: cy + this.inset.bottom / 2 / s, s }; }
-  _fitAround(c, r) { const room = Math.min(this.W - this.inset.right, this.H - this.inset.bottom) - 48; return this._centreFor(c[0], c[1], Math.max(0.08, room / (2 * r))); }
+  _room() { const i = this.inset; return { w: this.W - i.left - i.right, h: this.H - i.top - i.bottom }; }
+  _centreFor(cx, cy, s) { const i = this.inset; return { x: cx + (i.right - i.left) / 2 / s, y: cy + (i.bottom - i.top) / 2 / s, s }; }
+  _fitAround(c, r) { const { w, h } = this._room(), room = Math.min(w, h) - 48; return this._centreFor(c[0], c[1], Math.max(0.08, room / (2 * r))); }
   _fitBox(x0, y0, x1, y1) {
     // Room for the pins' names, which hang to the right of their points.
     const pad = Math.min(96, this.W * 0.14), label = Math.min(130, this.W * 0.2), w = Math.max(60, x1 - x0), h = Math.max(60, y1 - y0);
-    const s = Math.max(0.08, Math.min((this.W - this.inset.right - 2 * pad - label) / w, (this.H - this.inset.bottom - 2 * pad) / h, 4));
+    const room = this._room(), s = Math.max(0.08, Math.min((room.w - 2 * pad - label) / w, (room.h - 2 * pad) / h, 4));
     const v = this._centreFor((x0 + x1) / 2, (y0 + y1) / 2, s);
     v.x += label / 2 / s;
     return v;
@@ -233,7 +235,7 @@ export class CityMap {
     }, { passive: false });
     this.el.addEventListener('click', e => {
       const z = e.target.closest('[data-cm]')?.dataset.cm;
-      if (z) { const r = this.el.getBoundingClientRect(); this._zoomAt(r.left + (this.W - this.inset.right) / 2, r.top + (this.H - this.inset.bottom) / 2, z === 'in' ? 1.6 : 1 / 1.6, true); return; }
+      if (z) { const r = this.el.getBoundingClientRect(), i = this.inset, room = this._room(); this._zoomAt(r.left + i.left + room.w / 2, r.top + i.top + room.h / 2, z === 'in' ? 1.6 : 1 / 1.6, true); return; }
       const pin = e.target.closest('[data-stop]');
       if (pin) this.onPick?.(+pin.dataset.stop);
     });

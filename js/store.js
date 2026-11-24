@@ -44,6 +44,10 @@ export class LocalStore {
     let saved = {};
     try { saved = JSON.parse(localStorage.getItem(DB)) || {}; } catch { /* private mode: memory only */ }
     this.db = { clicks: [], claims: [], conversions: {}, leads: [], subscribers: [], payments: [], ...saved };
+    // A preview build (workers.dev, no payment keys) sells Plus in the demo too, so the way from
+    // a locked button to the upgrade can be tried there. Never on atvents.com; PayStore sets
+    // its own from /api/config.
+    this.plusOn = typeof location !== 'undefined' && /\.workers\.dev$/.test(location.hostname);
   }
   get mode() { return 'demo'; }
   get live() { return false; }

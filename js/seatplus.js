@@ -13,6 +13,7 @@ import { compareSeats, pairText } from './compare.js';
 import { accessOf, wayIn } from './access.js';
 import { $, esc, icon, state, share, toast } from './ui.js';
 import { setlistFor } from './setlists.js';
+import { isConcert } from './events.js';
 import { CityMap, KINDS, mapAreaOf } from './citymap.js';
 
 const seatOf = id => { const v = state.venue, i = v?.seatById.get(id); return i === undefined ? null : v.seats[i]; };
@@ -119,11 +120,45 @@ let city = null, mapView = false, mapReady = false, mapKind = null, mapStop = nu
 const mapArea = () => mapAreaOf(state.venue?.meta?.place?.name);
 const KIND_LABEL = Object.fromEntries(KINDS.map(([k, label]) => [k, label]));
 
+// On a computer a panel opens under its button in the bar at the top (css/styles.css): its left
+// edge under the button's, or its right edge when it would run off the screen.
+const DROPS = [['#t-access', '#access'], ['#set-btn', '#set-panel'], ['#show-btn', '#show-panel']];
+export function placeDrops() {
+  const stage = $('#stage');
+  if (!stage) return;
+  let over = false;
+  if (window.matchMedia?.('(min-width: 961px)').matches) {
+    const st = stage.getBoundingClientRect(), side = $('#app-side');
+    // The tour's card at the bottom right: a panel that would cover it opens the other way, and
+    // if it covers it either way the card steps aside while the panel is open, as on a phone.
+    const mine = stage.classList.contains('drop-over');
+    const sr = side && !side.hidden && (mine || getComputedStyle(side).opacity !== '0') ? side.getBoundingClientRect() : null;
+    for (const [b, p] of DROPS) {
+      const btn = $(b), panel = $(p);
+      if (!btn || !panel || panel.hidden || btn.hidden) continue;
+      const r = btn.getBoundingClientRect(), w = panel.offsetWidth, foot = panel.getBoundingClientRect().top + panel.offsetHeight;
+      const covers = x => !!sr && st.left + x + w > sr.left - 12 && foot > sr.top;
+      // Directions opens towards the left: the street map behind it gets the wider side.
+      let x = r.left - st.left;
+      if (p === '#access' || x + w > st.width - 16 || covers(x)) x = r.right - st.left - w;
+      x = Math.max(16, x);
+      if (covers(x)) over = true;
+      panel.style.setProperty('--drop-x', `${Math.round(x)}px`);
+    }
+  }
+  stage.classList.toggle('drop-over', over);
+}
+
 function mapInset() {
   const box = $('#access'), stage = $('#stage');
-  if (!box || !stage) return { right: 0, bottom: 0 };
+  if (!box || !stage) return {};
+  placeDrops();
   const b = box.getBoundingClientRect(), st = stage.getBoundingClientRect();
-  return b.width > st.width * 0.7 ? { right: 0, bottom: Math.max(0, st.bottom - b.top) } : { right: Math.max(0, st.right - b.left), bottom: 0 };
+  if (b.width > st.width * 0.7) return { bottom: Math.max(0, st.bottom - b.top) };
+  // On a computer the panel opens under its button in the bar at the top: the map keeps
+  // clear of the bar and of the panel, on whichever side of it has more room.
+  const top = Math.max(0, ($('#stage .app-top')?.getBoundingClientRect().bottom ?? st.top) - st.top);
+  return st.right - b.right >= b.left - st.left ? { top, left: Math.max(0, b.right - st.left) } : { top, right: Math.max(0, st.right - b.left) };
 }
 
 async function openMap(opts) {
@@ -300,7 +335,9 @@ export function showModeFor(mode) {
   if (!btn) return;
   state.show ||= loadShow();
   const inSeat = mode === 'seat';
-  btn.hidden = !inSeat;
+  // In the tour the button is there from the start (on a computer, in the bar at the top; a
+  // phone shows it in the seat's row): before the seat, a tap sits the fan down first.
+  btn.hidden = !inSeat && !state.tour;
   if (mode === 'seat') state.showLights = true;
   if (!inSeat) { panel.hidden = true; btn.setAttribute('aria-expanded', 'false'); btn.classList.remove('is-on'); $('#stage')?.classList.remove('show-open'); }
   // A seat pass keeps the crowd's own light sticks; Plus brings back the fan's choice.
@@ -312,19 +349,23 @@ export function showModeFor(mode) {
   if (!panel.hidden) paintShow();
 }
 
-// A fan with a seat pass (not Plus) sees the Plus buttons with a lock; a tap on one goes
-// straight to the upgrade. Anyone else gets the panel, which says what Plus adds.
+// A Plus button the fan cannot open yet shows a lock, and a tap on it never opens its panel:
+// it goes to pay first. With a seat pass, to the upgrade for the difference; with none, to
+// the concert's Plus page. Only while Plus is not on sale does the panel open, to say so.
 function toUpgrade() {
-  const up = state.venue && !showOpen() ? upgradable(state.venue.meta.id) : null;
-  if (!up) return false;
-  location.hash = `#upgrade-${up.id}`;
+  const v = state.venue;
+  if (!v || showOpen() || !plusOnSale()) return false;
+  const up = upgradable(v.meta.id);
+  if (up) location.hash = `#upgrade-${up.id}`;
+  else if (isConcert(v.meta.id)) location.hash = `#plus-${v.meta.id}`;
+  else return false;
   return true;
 }
 
 function paintShow() {
   const panel = $('#show-panel'), o = state.show;
   // Its own close button: on a phone the panel covers the row whose Show button opened it.
-  const head = `<div class="show-head set-head"><p class="eyebrow">${icon('i-lightstick')}Show mode</p><h2>Light up the crowd</h2><button class="sq sq-sm set-x" type="button" data-show-close aria-label="Close show mode" title="Close">${icon('i-x')}</button></div>`;
+  const head = `<div class="show-head set-head"><p class="eyebrow">${icon('i-show')}Show mode</p><h2>Light up the crowd</h2><button class="sq sq-sm set-x" type="button" data-show-close aria-label="Close show mode" title="Close">${icon('i-x')}</button></div>`;
   if (!showOpen()) {
     panel.innerHTML = `${head}<p class="show-lede">Your fandom's colour on every light stick round your seat, a wave round the stage, the artist walking every side of it, and the house lights up or down.</p>${plusOffer('Show mode')}`;
     return;
@@ -348,6 +389,7 @@ export function bindShow() {
   if (!btn) return;
   btn.addEventListener('click', () => {
     if (panel.hidden && toUpgrade()) return;
+    if (panel.hidden && state.tour && state.scene?.mode !== 'seat') { document.dispatchEvent(new CustomEvent('atv:sit', { detail: 'show' })); return; }
     panel.hidden = !panel.hidden;
     btn.setAttribute('aria-expanded', String(!panel.hidden));
     btn.classList.toggle('is-on', !panel.hidden);
