@@ -124,20 +124,28 @@ const KIND_LABEL = Object.fromEntries(KINDS.map(([k, label]) => [k, label]));
 const DROPS = [['#t-access', '#access'], ['#set-btn', '#set-panel'], ['#show-btn', '#show-panel']];
 export function placeDrops() {
   const stage = $('#stage');
-  if (!stage || !window.matchMedia?.('(min-width: 961px)').matches) return;
-  const st = stage.getBoundingClientRect(), side = $('#app-side');
-  // The tour's card at the bottom right: a panel that would cover it opens the other way.
-  const sr = side && !side.hidden && getComputedStyle(side).opacity !== '0' ? side.getBoundingClientRect() : null;
-  for (const [b, p] of DROPS) {
-    const btn = $(b), panel = $(p);
-    if (!btn || !panel || panel.hidden || btn.hidden) continue;
-    const r = btn.getBoundingClientRect(), w = panel.offsetWidth, foot = panel.getBoundingClientRect().top + panel.offsetHeight;
-    const covers = x => sr && st.left + x + w > sr.left - 12 && foot > sr.top;
-    // Directions opens towards the left: the street map behind it gets the wider side.
-    let x = r.left - st.left;
-    if (p === '#access' || x + w > st.width - 16 || covers(x)) x = r.right - st.left - w;
-    panel.style.setProperty('--drop-x', `${Math.round(Math.max(16, x))}px`);
+  if (!stage) return;
+  let over = false;
+  if (window.matchMedia?.('(min-width: 961px)').matches) {
+    const st = stage.getBoundingClientRect(), side = $('#app-side');
+    // The tour's card at the bottom right: a panel that would cover it opens the other way, and
+    // if it covers it either way the card steps aside while the panel is open, as on a phone.
+    const mine = stage.classList.contains('drop-over');
+    const sr = side && !side.hidden && (mine || getComputedStyle(side).opacity !== '0') ? side.getBoundingClientRect() : null;
+    for (const [b, p] of DROPS) {
+      const btn = $(b), panel = $(p);
+      if (!btn || !panel || panel.hidden || btn.hidden) continue;
+      const r = btn.getBoundingClientRect(), w = panel.offsetWidth, foot = panel.getBoundingClientRect().top + panel.offsetHeight;
+      const covers = x => !!sr && st.left + x + w > sr.left - 12 && foot > sr.top;
+      // Directions opens towards the left: the street map behind it gets the wider side.
+      let x = r.left - st.left;
+      if (p === '#access' || x + w > st.width - 16 || covers(x)) x = r.right - st.left - w;
+      x = Math.max(16, x);
+      if (covers(x)) over = true;
+      panel.style.setProperty('--drop-x', `${Math.round(x)}px`);
+    }
   }
+  stage.classList.toggle('drop-over', over);
 }
 
 function mapInset() {

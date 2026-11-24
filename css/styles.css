@@ -934,12 +934,24 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
   .app-top > .sq { width: 40px; height: 40px; border: 0; background: rgba(255, 255, 255, 0.08); }
   .app-top > .sq:hover { background: rgba(255, 255, 255, 0.16); }
   .app-top .sq-min { margin-left: auto; }
-  .app-chip { height: 40px; padding: 0 16px 0 12px; background: transparent; border: 0; border-right: 1px solid rgba(255, 255, 255, 0.12); border-radius: 0; }
+  /* The tour's name in the middle of the bar. */
+  .app-chip { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); height: 36px; padding: 0 16px 0 14px; background: rgba(255, 255, 255, 0.06); border: 0; }
   .stage.is-min .app-top { background: transparent; border-color: transparent; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
   .stage.is-min .app-top > .sq { background: rgba(22, 20, 20, 0.93); }
   .stage.is-min :is(.show-panel, .access) { opacity: 0; visibility: hidden; pointer-events: none; }
-  #stage .tools { top: var(--bar-t); bottom: auto; left: var(--tabs-x, 340px); right: calc(14px + 10px + 40px + 8px); height: var(--bar-h); z-index: 7; flex-direction: row; flex-wrap: nowrap; align-items: center; justify-content: flex-start; gap: 4px; }
+  /* Left of the name: directions first, then crowd, labels and the setlist. Right of it: show
+     mode and the camera in the seat, reset outside the tour, and zoom. */
+  #stage .tools { top: var(--bar-t); bottom: auto; left: calc(14px + 10px + 40px + 8px); right: calc(14px + 10px + 40px + 8px); height: var(--bar-h); z-index: 7; flex-direction: row; flex-wrap: nowrap; align-items: center; justify-content: flex-start; gap: 4px; }
+  #stage .tools::after { content: ""; order: 50; flex: 1 1 0; min-width: 0; }
   .tools-g { display: contents; }
+  .tools #t-access { order: 10; }
+  .tools #t-crowd { order: 20; }
+  .tools #t-labels { order: 30; }
+  .tools #set-btn { order: 40; }
+  .tools #show-btn { order: 60; }
+  .tools #t-capture { order: 70; }
+  .tools #t-reset { order: 80; }
+  .tools .zoom { order: 90; }
   .tools .sq { position: relative; width: auto; height: 40px; padding: 0 14px; display: flex; align-items: center; gap: 8px; border: 0; border-radius: 14px; background: transparent; color: rgba(244, 240, 238, 0.62); font: 600 13px/1 var(--font); white-space: nowrap; transition: background .2s, color .2s; }
   .tools .sq:hover { background: rgba(255, 255, 255, 0.08); border-color: transparent; color: var(--text); }
   .tools .sq > svg { width: 17px; height: 17px; }
@@ -955,7 +967,7 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
   .tools .sq-lock { position: static; width: 16px; height: 16px; box-shadow: none; }
   .tools .sq.is-playing::after { top: 8px; right: 7px; width: 7px; height: 7px; }
   /* Zoom at the end, as one soft pill: minus, the word, plus. */
-  .tools .zoom { margin-left: auto; flex-direction: row; align-items: center; gap: 0; height: 40px; border-radius: 14px; background: rgba(255, 255, 255, 0.06); }
+  .tools .zoom { margin-left: 4px; flex-direction: row; align-items: center; gap: 0; height: 40px; border-radius: 14px; background: rgba(255, 255, 255, 0.06); }
   .tools .zoom .sq { width: 40px; padding: 0; justify-content: center; color: var(--text); }
   .tools .zoom .sq > svg { width: 16px; height: 16px; }
   .tools .zoom [data-zoom="8"] { order: 0; }
@@ -970,19 +982,21 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
   .stage .show-panel, .stage .access { top: calc(var(--bar-b) + 14px); left: var(--drop-x, 14px); right: auto; max-height: calc(100% - var(--bar-b) - 14px - 104px); background: var(--glass-2); border-color: rgba(255, 255, 255, 0.12); border-radius: 22px; -webkit-backdrop-filter: blur(20px) saturate(140%); backdrop-filter: blur(20px) saturate(140%); }
   .stage.is-seat .show-panel, .stage.is-seat .access, .stage.map-open .access { max-height: calc(100% - var(--bar-b) - 14px - 18px); }
   .stage :is(.event-card, .compare, .pov-hint) { top: calc(var(--bar-b) + 14px); }
+  #stage.drop-over .app-side { opacity: 0; pointer-events: none; transform: translateY(8px); }
   /* With the street map open the other buttons stay where they are, dimmed. */
   .stage.map-open .tools :is(.sq:not(#t-access):not(#t-reset):not([hidden]), .zoom:not([hidden])), body:not(.in-tour) .stage.map-open .tools #t-reset { display: flex; opacity: 0.3; pointer-events: none; }
 }
-/* A narrower computer: the tour's name is cut short and the zoom loses its word; narrower
-   still, the buttons show only their icons (their names come up on hover), except the open one. */
+/* A narrower computer: the tour's name is cut short and the zoom loses its word. When the
+   buttons would still run into the name (js/viewer.js measures), they show only their icons
+   (their names come up on hover), except the open one. */
 @media (min-width: 961px) and (max-width: 1240px) {
-  .app-chip { max-width: 210px; }
+  .app-chip { max-width: 230px; }
   .app-chip span { overflow: hidden; text-overflow: ellipsis; }
   .tools .zoom .sq-t { display: none; }
 }
-@media (min-width: 961px) and (max-width: 1100px) {
-  .tools .sq:not(.is-on.sq-drop) .sq-t { display: none; }
-  .tools .sq:not(.is-on.sq-drop):not(.zoom .sq) { padding: 0 11px; }
+@media (min-width: 961px) {
+  .stage.is-tight .tools .sq:not(.is-on.sq-drop) .sq-t { display: none; }
+  .stage.is-tight .tools .sq:not(.is-on.sq-drop):not(.zoom .sq) { padding: 0 11px; }
 }
 @media (max-width: 960px) {
   #t-capture { display: none; }

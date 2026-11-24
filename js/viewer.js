@@ -774,13 +774,19 @@ function capture() {
   import('./capture.js').then(m => m.startCapture(state.scene, { title: state.venue?.meta?.title, seat: seatText(ticketSeat()) })).catch(() => toast('The camera could not start. Please try again.'));
 }
 
-// On a computer the buttons sit in the bar along the top (css/styles.css): they start after
-// the tour's name, whatever its length, and a button's panel opens under that button.
+// On a computer the buttons sit in the bar along the top (css/styles.css), either side of the
+// tour's name in the middle, and a button's panel opens under that button.
 const WIDE = window.matchMedia?.('(min-width: 961px)');
 function placeTabs() {
-  const stage = $('#stage'), chip = $('#app-chip');
-  if (!stage || !chip || !WIDE?.matches) return;
-  stage.style.setProperty('--tabs-x', `${Math.round(chip.getBoundingClientRect().right - stage.getBoundingClientRect().left + 8)}px`);
+  const stage = $('#stage'), chip = $('#app-chip'), tools = $('#tools');
+  if (!stage || !chip || !tools) return;
+  // The buttons give up their words when, with them, they would run into the tour's name in
+  // the middle of the bar.
+  stage.classList.remove('is-tight');
+  if (!WIDE?.matches) return;
+  const c = chip.getBoundingClientRect(), hits = [...tools.querySelectorAll(':scope > .tools-g > .sq, :scope > .tools-g > .zoom')]
+    .some(b => { if (b.offsetParent === null) return false; const r = b.getBoundingClientRect(); return r.right > c.left - 8 && r.left < c.right + 8; });
+  if (hits || tools.scrollWidth > tools.clientWidth + 1) stage.classList.add('is-tight');
   placeDrops();
 }
 let tabsFrame = 0;
