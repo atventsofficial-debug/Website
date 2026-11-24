@@ -313,7 +313,8 @@ function toUpgrade() {
 
 function paintShow() {
   const panel = $('#show-panel'), o = state.show;
-  const head = `<div class="show-head"><p class="eyebrow">${icon('i-lightstick')}Show mode</p><h2>Light up the crowd</h2></div>`;
+  // Its own close button: on a phone the panel covers the row whose Show button opened it.
+  const head = `<div class="show-head set-head"><p class="eyebrow">${icon('i-lightstick')}Show mode</p><h2>Light up the crowd</h2><button class="sq sq-sm set-x" type="button" data-show-close aria-label="Close show mode" title="Close">${icon('i-x')}</button></div>`;
   if (!showOpen()) {
     panel.innerHTML = `${head}<p class="show-lede">Your fandom's colour on every light stick round your seat, a wave round the stage, the artist walking every side of it, and the house lights up or down.</p>${plusOffer('Show mode')}`;
     return;
@@ -345,6 +346,7 @@ export function bindShow() {
   });
   const apply = () => { saveShow(); state.scene?.setShow(state.show); paintShow(); };
   panel.addEventListener('click', e => {
+    if (e.target.closest('[data-show-close]')) { btn.click(); return; }
     const b = e.target.closest('button[data-show]');
     if (!b || !showOpen()) return;
     const { show: k, val } = b.dataset;

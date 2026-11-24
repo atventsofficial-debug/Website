@@ -536,6 +536,7 @@ export function bindViewer() {
   bindCompare({ repaint: () => { state.scene?.setMine([...markedIds(), ...(state.peek ? [state.peek.id] : [])]); if (state.viewing || state.peek) fillSeatCard(state.viewing || state.peek); } });
   bindShow();
   bindSetlist();
+  bindDock();
   bindAccess({ tourSeat });
   $('#fan-card').addEventListener('click', e => {
     const act = e.target.closest('[data-fancard]')?.dataset.fancard;
@@ -766,6 +767,39 @@ function seatNote(p, s) {
   return `<p class="fine seat-note">${esc(text)}</p>`;
 }
 
+// On a phone, the tour's own tools sit in one row at the foot of the panel, the way a phone's
+// control centre groups them: the camera, the setlist, show mode and directions. The rail on the
+// left keeps Crowd, Labels and zoom. The row's buttons stand in for the rail's (which keep the
+// state and open the panels) and copy how those look: on, locked, playing or hidden.
+const DOCK = { set: '#set-btn', show: '#show-btn', access: '#t-access' };
+function dock(camera) {
+  const b = (key, ic, label) => `<button class="dock-b" type="button" data-dock="${key}"><span class="dock-ic">${icon(ic)}<span class="sq-lock" aria-hidden="true">${icon('i-lock')}</span></span><span class="dock-t" aria-hidden="true">${label}</span></button>`;
+  return `<div class="dock" role="group" aria-label="Seat tools">
+      ${camera ? `<button class="dock-b is-capture" type="button" data-tour="capture" aria-label="Capture this moment: a photo or video of your view"><span class="dock-ic">${icon('i-camera')}</span><span class="dock-t" aria-hidden="true">Capture</span></button>` : ''}
+      ${b('set', 'i-music', 'Setlist')}${b('show', 'i-lightstick', 'Show')}${b('access', 'i-pin', 'Directions')}
+    </div>`;
+}
+function syncDock() {
+  const row = $('#app-side .dock');
+  if (!row) return;
+  row.querySelectorAll('[data-dock]').forEach(b => {
+    const o = $(DOCK[b.dataset.dock]);
+    if (!o) { b.hidden = true; return; }
+    b.hidden = o.hidden;
+    for (const c of ['is-on', 'is-locked', 'is-playing']) b.classList.toggle(c, o.classList.contains(c));
+    for (const a of ['aria-expanded', 'aria-pressed', 'aria-label']) { const val = o.getAttribute(a); if (val === null) b.removeAttribute(a); else b.setAttribute(a, val); }
+  });
+  row.dataset.n = row.querySelectorAll('.dock-b:not([hidden])').length;
+}
+function bindDock() {
+  const watch = new MutationObserver(syncDock);
+  Object.values(DOCK).forEach(sel => { const o = $(sel); if (o) watch.observe(o, { attributes: true, attributeFilter: ['class', 'hidden', 'aria-expanded', 'aria-pressed', 'aria-label'] }); });
+  $('#app-side').addEventListener('click', e => {
+    const key = e.target.closest('[data-dock]')?.dataset.dock;
+    if (key) $(DOCK[key])?.click();
+  });
+}
+
 function paintTour() {
   const p = tourPass(), v = state.venue, s = ticketSeat();
   if (!p || !s) return;
@@ -828,7 +862,9 @@ function paintTour() {
       </div>`;
   // Seat mates (the Instagram profile on the seat) at the end of the tour, in the seat.
   const matesHtml = step === 3 || t.fanBlock ? matesBlock(p, { cats: v.catById, compact: !!t.fanBlock }) : '';
-  $('#app-side').innerHTML = `${bar}${body}${matesHtml}`;
+  const dockHtml = step === 2 && t.picking ? '' : dock(step === 3 && !t.fan && !t.fanBlock);
+  $('#app-side').innerHTML = `${bar}${body}${dockHtml}${matesHtml}`;
+  syncDock();
   if (matesHtml && state.scene) {
     fillMatesList($('#app-side'), {
       passId: `${p.id}|${t.fanBlock || ''}`, fans: (mates.data?.fans || []).filter(f => !f.mine && (!t.fanBlock || seatOf(f.seat)?.sec === t.fanBlock)),
