@@ -833,7 +833,7 @@ function dock() {
   const b = (key, ic, label) => `<button class="dock-b" type="button" data-dock="${key}"><span class="dock-ic">${icon(ic)}<span class="sq-lock" aria-hidden="true">${icon('i-lock')}</span></span><span class="dock-t" aria-hidden="true">${label}</span></button>`;
   return `<div class="dock" role="group" aria-label="Seat tools">
       <button class="dock-b is-capture" type="button" data-tour="capture" aria-label="Capture this moment: a photo or video of your view"><span class="dock-ic">${icon('i-camera')}</span><span class="dock-t" aria-hidden="true">Capture</span></button>
-      ${b('set', 'i-music', 'Setlist')}${b('show', 'i-lightstick', 'Show')}${b('access', 'i-pin', 'Directions')}
+      ${b('set', 'i-music', 'Setlist')}${b('show', 'i-show', 'Show')}${b('access', 'i-pin', 'Directions')}
     </div>`;
 }
 function syncDock() {

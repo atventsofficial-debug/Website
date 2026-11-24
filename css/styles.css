@@ -969,8 +969,6 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
   .tools .sq.is-locked { gap: 11px; }
   .tools .sq-lock { left: 23px; top: 6px; right: auto; width: 13px; height: 13px; box-shadow: 0 0 0 2px rgba(30, 27, 27, 1); }
   .tools .sq:hover .sq-lock { box-shadow: 0 0 0 2px #2c2929; }
-  /* The light stick's head is up on the right: there the lock sits below it. */
-  .tools #show-btn .sq-lock { top: 20px; }
   .tools .sq-lock svg { width: 8px !important; height: 8px !important; }
   .tools .sq.sq-drop.is-on .sq-lock { box-shadow: 0 0 0 2px #f4f0ee; }
   .tools .sq.is-playing::after { top: 8px; right: 7px; width: 7px; height: 7px; }
