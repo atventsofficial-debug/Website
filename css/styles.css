@@ -2211,7 +2211,7 @@ body { font-family: var(--font); font-feature-settings: "cv11", "ss01"; }
 .pl-head > .pl-hint { justify-self: end; width: 100%; max-width: 440px; padding-bottom: 4px; }
 @media (max-width: 760px) { .pl-head { grid-template-columns: minmax(0, 1fr); row-gap: 8px; } .pl-head > .pl-hint { justify-self: start; max-width: none; padding-bottom: 0; } }
 /* Unlock: the heading's rule sits under it, between it and the price list. */
-#view-unlock .sec-head { border-top: 0; padding-top: var(--s4); padding-bottom: var(--s6); margin-bottom: var(--s6); border-bottom: 1px solid var(--line); }
+#view-unlock .sec-head { border-top: 0; padding-top: var(--s4); padding-bottom: var(--s6); margin-bottom: var(--s5); border-bottom: 1px solid var(--line); }
 .pl-head .eyebrow { margin: 0; }
 .pl-hint { margin: 0; font-size: 14px; line-height: 1.5; color: var(--muted); }
 .pl-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s4); }
