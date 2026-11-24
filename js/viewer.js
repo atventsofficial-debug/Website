@@ -799,29 +799,43 @@ const WIDE = window.matchMedia?.('(min-width: 961px)');
 function placeTabs() {
   const stage = $('#stage'), chip = $('#app-chip'), tools = $('#tools');
   if (!stage || !chip || !tools) return;
-  // The buttons give up their words when, with them, they would run into the tour's name in
-  // the middle of the bar: first only the side that runs into it, then both.
+  // Every button keeps its word when it can. The tour's name sits in the middle of the bar, or,
+  // when one side has more buttons, in the middle of the room left between the two sides, cut
+  // short if it must be. Only when even a short name would not fit do the buttons give up their
+  // words: first the side that runs into it, then both.
   stage.classList.remove('is-tight', 'is-tight-l', 'is-tight-r');
+  chip.style.left = ''; chip.style.maxWidth = '';
   if (!WIDE?.matches) return;
-  const c = chip.getBoundingClientRect(), mid = (c.left + c.right) / 2;
-  const hit = () => {
-    const out = { l: false, r: false };
+  const bar = chip.offsetParent || stage, MIN = 160, PAD = 12;
+  const sides = () => {
+    const t = bar.getBoundingClientRect(), mid = t.left + t.width / 2;
+    let l = t.left, r = t.right;
     for (const b of tools.querySelectorAll(':scope > .tools-g > .sq, :scope > .tools-g > .zoom')) {
       if (b.offsetParent === null) continue;
-      const r = b.getBoundingClientRect();
-      if (r.right > c.left - 8 && r.left < c.right + 8) out[(r.left + r.right) / 2 < mid ? 'l' : 'r'] = true;
+      const x = b.getBoundingClientRect();
+      if (Number(getComputedStyle(b).order) < 50) l = Math.max(l, x.right); else r = Math.min(r, x.left);
     }
-    out.over = tools.scrollWidth > tools.clientWidth + 1;
-    return out;
+    return { t, mid, l, r, over: tools.scrollWidth > tools.clientWidth + 1 };
   };
-  let h = hit();
-  if (h.over) stage.classList.add('is-tight');
-  else if (h.l || h.r) {
-    if (h.l) stage.classList.add('is-tight-l');
-    if (h.r) stage.classList.add('is-tight-r');
-    h = hit();
-    if (h.l || h.r || h.over) stage.classList.add('is-tight');
+  const place = s => {
+    const room = s.r - s.l - 2 * PAD;
+    if (s.over || room < MIN) return false;
+    const w = Math.min(chip.scrollWidth, room);
+    if (w < chip.scrollWidth) chip.style.maxWidth = `${Math.floor(room)}px`;
+    const c = Math.min(Math.max(s.mid, s.l + PAD + w / 2), s.r - PAD - w / 2);
+    chip.style.left = `${Math.round(c - s.t.left)}px`;
+    return true;
+  };
+  let s = sides();
+  if (place(s)) { placeDrops(); return; }
+  // Not even a short name fits: the side nearer to running into it gives up its words first.
+  if (!s.over) {
+    stage.classList.add(s.mid - s.l > s.r - s.mid ? 'is-tight-r' : 'is-tight-l');
+    if (place(s = sides())) { placeDrops(); return; }
   }
+  stage.classList.remove('is-tight-l', 'is-tight-r');
+  stage.classList.add('is-tight');
+  place(sides());
   placeDrops();
 }
 let tabsFrame = 0;
