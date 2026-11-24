@@ -3271,3 +3271,53 @@ html.lang-swap body { opacity: .35; }
   .me-box-float .fine { font-size: 13px; }
 }
 
+
+/* Live chat (js/chat.js): the chat button in the bar opens a column on the left, over the
+   venue with no box behind it, as live comments on TikTok or YouTube. Each message carries
+   the sender's category, in its colour, and their section. Only moving and fading, no
+   blur: the venue behind is already a lot for a phone to draw. */
+.chat-badge { position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--coral); color: #fff; font: 700 10px/18px var(--font); text-align: center; box-shadow: 0 0 0 2px rgba(22, 20, 20, 0.93); pointer-events: none; }
+.chat-badge[hidden] { display: none; }
+.live-chat { position: absolute; z-index: 5; left: max(18px, env(safe-area-inset-left, 0px)); bottom: 104px; width: min(340px, calc(100% - 36px)); max-height: min(52%, 460px); display: flex; flex-direction: column; gap: 8px; color: #fff; pointer-events: none; }
+.live-chat[hidden] { display: none; }
+.live-chat > * { pointer-events: auto; }
+.lc-head { display: flex; align-items: center; gap: 8px; }
+.lc-live { display: inline-flex; align-items: center; gap: 7px; height: 26px; padding: 0 10px; border-radius: 999px; background: rgba(0, 0, 0, 0.45); font: 700 11px/1 var(--font); letter-spacing: 0.04em; text-transform: uppercase; }
+.lc-live i { width: 7px; height: 7px; border-radius: 50%; background: var(--coral); box-shadow: 0 0 0 3px rgba(236, 84, 70, 0.3); }
+.lc-x { width: 26px; height: 26px; display: grid; place-items: center; border: 0; border-radius: 50%; background: rgba(0, 0, 0, 0.45); color: #fff; cursor: pointer; }
+.lc-x svg { width: 13px; height: 13px; }
+.lc-list { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; justify-content: flex-end; gap: 9px; overflow: hidden; -webkit-mask-image: linear-gradient(transparent 0, #000 34%); mask-image: linear-gradient(transparent 0, #000 34%); pointer-events: none; }
+.lc-m { flex: none; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9), 0 0 10px rgba(0, 0, 0, 0.55); animation: lc-in .26s ease-out both; }
+@keyframes lc-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.lc-who { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 12.5px; color: rgba(255, 255, 255, 0.86); }
+.lc-who b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lc-chip { flex: none; padding: 3px 6px; border-radius: 5px; font: 700 10.5px/1 var(--font); text-shadow: none; white-space: nowrap; }
+.lc-tx { margin: 2px 0 0; font-size: 15px; font-weight: 500; line-height: 1.35; overflow-wrap: anywhere; }
+.lc-m.is-mine .lc-tx { color: #ffd7c6; }
+.lc-more { margin: 0; font-size: 12px; font-weight: 600; color: rgba(255, 255, 255, 0.75); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9); }
+.lc-row { display: flex; gap: 8px; align-items: center; }
+.lc-row input { flex: 1; min-width: 0; height: 42px; padding: 0 15px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.35); background: rgba(0, 0, 0, 0.35); color: #fff; font: 16px var(--font); }
+.lc-row input::placeholder { color: rgba(255, 255, 255, 0.7); }
+.lc-row input:focus-visible { outline: 2px solid var(--coral); outline-offset: 1px; }
+.lc-send { flex: none; width: 42px; height: 42px; display: grid; place-items: center; border: 0; border-radius: 50%; background: var(--coral); color: #fff; cursor: pointer; }
+.lc-send svg { width: 17px; height: 17px; transform: rotate(-90deg); }
+.lc-send:disabled { opacity: 0.45; cursor: default; }
+.lc-note, .lc-name { padding: 14px 16px; border-radius: 18px; background: rgba(22, 20, 20, 0.82); text-shadow: none; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+.lc-note p { margin: 0; font-size: 14px; color: rgba(244, 240, 238, 0.86); }
+.lc-name { align-items: stretch; }
+.lc-name label { font-size: 13px; font-weight: 600; }
+.lc-fine { margin: 0; font-size: 12px; color: rgba(244, 240, 238, 0.7); }
+@media (min-width: 961px) {
+  /* In the bar right after the setlist; it opens the column, not a panel under it. */
+  .tools #chat-btn { order: 45; }
+  .tools #chat-btn.is-on::before { display: none; }
+  /* Over the venue's left side, above the categories; the concert card steps aside. */
+  .stage.chat-open .event-card { opacity: 0; pointer-events: none; }
+  .stage.chat-open .live-chat { top: auto; }
+}
+@media (max-width: 960px) {
+  /* The phone's buttons are a rail on the left: the chat sits beside it, above the panels at the foot. */
+  .live-chat { left: calc(max(24px, env(safe-area-inset-left, 0px)) + 58px); width: min(300px, calc(100% - 100px)); top: calc(max(16px, env(safe-area-inset-top, 0px)) + 64px + var(--card-h, 0px) + 8px); bottom: auto; max-height: 40%; }
+  .lc-tx { font-size: 14px; }
+}
+@media (prefers-reduced-motion: reduce) { .lc-m { animation: none; } }

@@ -21,11 +21,16 @@
   // The order book (worker/orders.mjs). With no database_id, Cloudflare makes the database
   // on the first deploy and keeps using it; its table is made on first use.
   "d1_databases": [{ "binding": "DB", "database_name": "atvents-orders" }],
+  // The live chat in the 3D view (worker/chat.mjs): one room per concert and its shards, each
+  // a Durable Object of ChatRoom, made on first use. Its sockets hibernate when quiet.
+  "durable_objects": { "bindings": [{ "name": "CHAT", "class_name": "ChatRoom" }] },
+  "migrations": [{ "tag": "chat-v1", "new_sqlite_classes": ["ChatRoom"] }],
   // Preview builds (`wrangler preview`, run by Workers Builds for pull requests) need their
   // own rate-limit namespaces and their own order book, so a preview never shares
   // production's counters or writes to its orders.
   "previews": {
     "d1_databases": [{ "binding": "DB", "database_name": "atvents-orders-preview", "database_id": "b5d7c503-f92e-47a0-a2d9-08bbd9815b30" }],
+    "durable_objects": { "bindings": [{ "name": "CHAT", "class_name": "ChatRoom" }] },
     "ratelimits": [
       { "name": "PAY_LIMIT", "namespace_id": "3001", "simple": { "limit": 30, "period": 60 } },
       { "name": "STATUS_LIMIT", "namespace_id": "3002", "simple": { "limit": 60, "period": 60 } },
@@ -55,6 +60,7 @@
         { "name": "FANS_LIMIT", "namespace_id": "2003", "simple": { "limit": 40, "period": 60 } }
       ],
       "d1_databases": [{ "binding": "DB", "database_name": "atvents-orders-staging" }],
+      "durable_objects": { "bindings": [{ "name": "CHAT", "class_name": "ChatRoom" }] },
       "observability": { "enabled": true }
     }
   }

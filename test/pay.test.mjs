@@ -1055,3 +1055,45 @@ test('a Plus notification is checked against the amount in the order book, and i
   const link = new RegExp(`${ORIGIN}/#pass-(${p.id})-([A-Za-z0-9_.-]+)`).exec(mails[0].text);
   assert.equal((await readPass(KEY, link[2])).plan, 'plus');
 });
+
+// ---------------------------------------------------------------- live chat (chat.mjs)
+
+test('live chat: a ticket only for a paid pass, with a name; the socket only with a good ticket', async () => {
+  const DB = fakeD1();
+  const rooms = [];
+  const CHAT = { idFromName: n => n, get: n => ({ fetch: async (url, init) => { rooms.push({ n, url, who: JSON.parse(new Headers(init.headers).get('x-chat-who')) }); return new Response('upgraded', { status: 200 }); } }) };
+  const e = env({ DB, CHAT });
+  const a = await (await post(order(), { env: e })).json();
+  const ticket = (p, body = { name: 'Rani' }, headers = {}) => req(`/api/passes/${p.id}/chat`, {
+    method: 'POST', env: e, headers: { 'x-pass-token': p.token, origin: ORIGIN, 'content-type': 'application/json', ...headers }, body: JSON.stringify(body),
+  });
+  const socket = (t, ev = live.id, headers = { upgrade: 'websocket' }) => req(`/api/chat/${ev}?ticket=${encodeURIComponent(t)}`, { env: e, headers: { origin: ORIGIN, ...headers } });
+
+  // Off without the binding.
+  assert.equal((await req(`/api/passes/${a.id}/chat`, { method: 'POST', headers: { 'x-pass-token': a.token, 'content-type': 'application/json' }, body: '{"name":"Rani"}' })).status, 503);
+  // Not paid yet.
+  assert.equal((await ticket(a)).status, 403);
+  paid[a.id] = { transaction_status: 'settlement' };
+  // No name, or another site.
+  const noName = await ticket(a, { name: ' ' });
+  assert.equal(noName.status, 400);
+  assert.equal((await noName.json()).field, 'name');
+  assert.equal((await ticket(a, { name: 'Rani' }, { origin: 'https://evil.example' })).status, 403);
+
+  const r = await ticket(a, { name: '  Rani  ' });
+  assert.equal(r.status, 200);
+  const d = await r.json();
+  assert.equal(d.name, 'Rani');
+  assert.equal(d.eventId, live.id);
+  await settled();
+
+  // The socket: only a WebSocket, only with the ticket, only for its concert.
+  assert.equal((await socket(d.ticket, live.id, {})).status, 426);
+  assert.equal((await socket('nope')).status, 403);
+  assert.equal((await socket(d.ticket, 'another-show')).status, 403);
+  assert.equal((await socket(d.ticket)).status, 200);
+  assert.deepEqual(rooms.at(-1).who, { id: a.id, name: 'Rani', cat: seat.cat, seat: seat.id });
+  assert.match(rooms.at(-1).n, new RegExp(`^${live.id}:\\d+$`));
+  // Nothing of the order beyond the seat and the chosen name goes to the room.
+  assert.equal(JSON.stringify(rooms).includes('rani@example.com'), false);
+});

@@ -10,6 +10,8 @@
 //   POST /api/passes/<id>/cancel  the fan picks another way to pay: Midtrans closes this one
 //   GET/PUT/DELETE /api/passes/<id>/fans  seat mates: the concert's fans who show their
 //                               Instagram on their seat, and its WhatsApp group (fans.mjs)
+//   POST /api/passes/<id>/chat  { name }: a ticket into the concert's live chat, for a paid pass
+//   GET  /api/chat/<event>?ticket=  the live chat's WebSocket (chat.mjs)
 //   POST /api/passes/<id>/code  a paid pass, open on two devices already: email the buyer a
 //                               code that opens it on this one (devices.mjs)
 //   POST /api/passes/<id>/device  { code }: this device gets in, the least used one goes
@@ -42,6 +44,10 @@ import { mailerOf, passEmail, codeEmail, signInEmail } from './mail.mjs';
 import { emailOf, paidOrders, newSignCode, useSignCode, openAll, signFan, readFan, SIGN_MINUTES } from './account.mjs';
 import { googleEmail, onTeam, signTeam, readTeam, teamOf } from './team.mjs';
 import { songPreview } from './preview.mjs';
+import { ChatRoom, cleanName, signTicket, readTicket, shardOf, roomName } from './chat.mjs';
+
+// The live chat's rooms (wrangler.jsonc, durable_objects).
+export { ChatRoom };
 
 const MAX_BODY = 4096, NOTIFY_BODY = 16384;
 const PAY_WINDOW = PAY_MINUTES * 6e4;
@@ -76,6 +82,10 @@ export default {
       // A seat mate's Instagram picture, for the same paid pass, of a fan in its own category.
       const pic = /^\/api\/passes\/([^/]{1,40})\/fans\/pic\/([A-Za-z0-9._]{1,30})$/.exec(path);
       if (pic) return method === 'GET' ? await seatMates(request, env, ctx, url, pic[1], pic[2]) : notAllowed('GET');
+      const chat = /^\/api\/passes\/([^/]{1,40})\/chat$/.exec(path);
+      if (chat) return method === 'POST' ? await chatTicket(request, env, ctx, url, chat[1]) : notAllowed('POST');
+      const room = /^\/api\/chat\/([A-Za-z0-9_-]{1,80})$/.exec(path);
+      if (room) return method === 'GET' ? await chatSocket(request, env, url, room[1]) : notAllowed('GET');
       const code = /^\/api\/passes\/([^/]{1,40})\/code$/.exec(path);
       if (code) return method === 'POST' ? await sendCode(request, env, url, code[1]) : notAllowed('POST');
       const device = /^\/api\/passes\/([^/]{1,40})\/device$/.exec(path);
@@ -502,6 +512,53 @@ async function seatMates(request, env, ctx, url, id, picOf = '') {
     mineSeat: me ? me.seat : null,
   });
   return new Response(`${head.slice(0, -1)},"fans":${view.fans},"others":${view.others}}`, { status: 200, headers: { ...HEADERS, ...vh } });
+}
+
+// Live chat (chat.mjs). A ticket for a paid pass, checked as seat mates are: paid, on one of
+// its devices, and the concert not long over. The name is the one the fan typed for the chat.
+async function chatTicket(request, env, ctx, url, id) {
+  const pay = paymentsOf(env);
+  if (!pay || !env.CHAT) return fail(503, 'Live chat is not switched on yet.');
+  const origin = request.headers.get('origin');
+  if (origin && origin !== url.origin) return fail(403, 'Forbidden');
+  if (await tooMany(env, 'STATUS_LIMIT', request, id)) return slowDown();
+  const p = await passOf(pay, request, id);
+  if (!p) return fail(404, 'Pass not found');
+  if (!paidSeen(env, id)) {
+    const known = await statusOf(env, id);
+    if (known === 'revoked') return fail(403, 'Live chat opens once your pass is paid.');
+    if (known !== 'confirmed') {
+      const status = passStateOf(await midtrans(pay).status(id), { id, amount: p.amount });
+      if (status !== 'confirmed') return fail(403, 'Live chat opens once your pass is paid.');
+      later(ctx, settle(env, pay, id, status));
+    }
+  }
+  paidSeen(env, id, true);
+  const locked = await deviceLock(env, request, id, p);
+  if (locked) return locked;
+  const show = concert(p.eventId);
+  if (!show || show.start + KEEP_AFTER < Date.now()) return fail(410, 'The live chat for this concert has closed.');
+  const d = await readJson(request);
+  if (d instanceof Response) return d;
+  const name = cleanName(d.name);
+  if (!name) return fail(400, 'Please enter the name other fans will see (2 to 24 characters).', { field: 'name' });
+  const ticket = await signTicket(pay.key, { id, eventId: p.eventId, cat: p.cat, seat: p.seat, name });
+  return json(200, { ticket, eventId: p.eventId, name, cat: p.cat, seat: p.seat });
+}
+
+// The chat's WebSocket: a ticket from above, from this site, onto the pass's own shard.
+async function chatSocket(request, env, url, eventId) {
+  const pay = paymentsOf(env);
+  if (!pay || !env.CHAT) return fail(503, 'Live chat is not switched on yet.');
+  if ((request.headers.get('upgrade') || '').toLowerCase() !== 'websocket') return fail(426, 'Expected a WebSocket.');
+  const origin = request.headers.get('origin');
+  if (origin && origin !== url.origin) return fail(403, 'Forbidden');
+  const t = await readTicket(pay.key, url.searchParams.get('ticket'));
+  if (!t || t.eventId !== eventId) return fail(403, 'This chat ticket has run out. Reconnecting.');
+  const n = shardOf(t.id);
+  const headers = new Headers(request.headers);
+  headers.set('x-chat-who', JSON.stringify({ id: t.id, name: t.name, cat: t.cat, seat: t.seat }));
+  return env.CHAT.get(env.CHAT.idFromName(roomName(eventId, n))).fetch(`https://chat/${encodeURIComponent(eventId)}/${n}/ws`, { headers });
 }
 
 // Passes this Worker has seen paid, for a few minutes: a fan with the 3D view open asks

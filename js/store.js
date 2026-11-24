@@ -274,6 +274,8 @@ export class PayStore extends LocalStore {
     return token ? call(`api/passes/${encodeURIComponent(id)}`, { headers: { 'x-pass-token': token, 'x-device': deviceId() } }) : super.claimStatus(id);
   }
   // A paid pass open on two other devices: a code to the buyer's email, then the code back.
+  // Live chat (js/chat.js): a short-lived ticket into the concert's chat, with the name to show.
+  chatTicket(p, name) { return call(`api/passes/${encodeURIComponent(p.id)}/chat`, { method: 'POST', body: { name }, headers: { 'x-pass-token': p.token, 'x-device': deviceId() } }); }
   passCode(id, token) { return call(`api/passes/${encodeURIComponent(id)}/code`, { method: 'POST', headers: { 'x-pass-token': token, 'x-device': deviceId() } }); }
   passDevice(id, token, code) { return call(`api/passes/${encodeURIComponent(id)}/device`, { method: 'POST', body: { code }, headers: { 'x-pass-token': token, 'x-device': deviceId() } }); }
 }
