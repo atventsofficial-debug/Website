@@ -1043,7 +1043,6 @@ export const EXACT = {
 "Price list": "Daftar harga",
 "See the view from your seat before the night. Pay once and the 3D tour opens straight away, then stays yours after the show.": "Lihat pemandangan dari kursimu sebelum hari H. Bayar sekali, tur 3D langsung terbuka dan tetap jadi milikmu setelah konser.",
 "Distances, angles, the stage and the screens are close, not 100% exact. If the promoter changes the layout on the day, that is outside our control. Your ticket decides your seat.": "Jarak, sudut, panggung, dan layar dibuat semirip mungkin, tapi tidak 100% persis. Jika promotor mengubah layout di hari H, itu di luar kendali kami. Kursimu tetap mengikuti tiket.",
-"Choose a pass, then your concert and your seat. The 3D tour opens as soon as you pay.": "Pilih paket, lalu konser dan kursimu. Tur 3D langsung terbuka begitu kamu bayar.",
 "Most complete": "Paling lengkap",
 "/ seat": "/ kursi",
 "/ concert": "/ konser",
