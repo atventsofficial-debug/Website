@@ -17,6 +17,7 @@ import { placeSeat, cleanNumbering, isDefault, numberingOf, numberingSource } fr
 import { $, esc, icon, state, QUALITY, spotStats, share, toast } from './ui.js';
 import { addCompare, bindAccess, bindCompare, bindEye, bindSetlist, bindShow, closeAccess, closeEye, closeSetlist, paintAccess, compareIds, paintCompare, placeDrops, setCompare, showModeFor, stopPreview } from './seatplus.js';
 import { pairOf } from './compare.js';
+import { bindChat, closeChat, syncChat } from './chat.js';
 import { loadMates, matesBlock, bindMates, mateTags, resetMates, mates, startMatesLive, fanCardHtml, fillMatesList } from './fans.js';
 
 const FOCUS_NAME = { concert: 'stage', cinema: 'screen', combat: 'octagon', stadium: 'centre spot' };
@@ -70,6 +71,12 @@ function paintTags() {
   // The fan picked lights up in the crowd: no marker over them.
   sc.setFans([]);
 }
+// The tag on a chat message: the sender's category, in its colour, and their section.
+const chatChip = (cat, seat) => {
+  const c = state.venue?.catById?.[cat], s = seatOf(seat);
+  const where = s ? (s.standing ? s.secName : `Sec ${secCode(s)}`) : '';
+  return { label: [c?.name, where].filter(Boolean).join(' · '), color: c?.color || '#f4f0ee' };
+};
 const secCode = s => (s.tag || s.sec).replace(/^(RS|CS)-/, '$1 ').replace(/^VIP-/, 'VIP ').replace(/^FA-/, 'FA ');
 function blockPins(p) {
   const d = mates.data;
@@ -89,6 +96,7 @@ function blockPins(p) {
   return [...by.values()];
 }
 function paintMates() {
+  syncChat();
   const p = matesPass();
   if (p) {
     loadMates(p, paintViewer);
@@ -271,6 +279,7 @@ export function closeViewer() {
   document.body.classList.remove('in-tour');
   syncCapture();
   resetMates();
+  closeChat();
   closeFanCard();
   paintFocus();
   import('./capture.js').then(m => m.stopCapture());
@@ -546,6 +555,7 @@ export function bindViewer() {
   bindCompare({ repaint: () => { state.scene?.setMine([...markedIds(), ...(state.peek ? [state.peek.id] : [])]); if (state.viewing || state.peek) fillSeatCard(state.viewing || state.peek); } });
   bindShow();
   bindSetlist();
+  bindChat({ pass: matesPass, chip: chatChip });
   bindEye();
   bindDock();
   bindTabs();

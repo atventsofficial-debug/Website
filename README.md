@@ -75,6 +75,12 @@ Fans with a paid 3D pass for the same concert can find each other before the sho
 
 The server side is `GET/PUT/DELETE /api/passes/<id>/fans` in `worker/index.mjs` (the pass key in `x-pass-token`; the order must be paid, by the order book or Midtrans) and the `fans` table in D1 (`worker/fans.mjs`, made on first use). The rules for a profile are `checkFan` in `js/fanrules.js`, the same in the browser and the Worker. A month after the show the concert's rows are deleted the next time anyone asks, as the privacy policy says. In demo mode (no Worker) the profiles stay in the browser.
 
+## Live chat
+
+In the 3D view, the **Chat** button in the bar (after Setlist; on a phone, in the rail) opens a live chat on the left, over the venue with no box behind it, like live comments on TikTok or YouTube. Each message shows the sender's category, in its colour, and their section. Only a paid 3D pass can read and write; others see a short note and the way to a pass. The fan types a name for the chat once (kept on the device).
+
+It is made for a full stadium. The Worker gives a paid pass a two-minute ticket (`POST /api/passes/<id>/chat`, the same checks as seat mates), and the browser opens a WebSocket with it (`GET /api/chat/<event>`). The sockets sit on 16 Durable Objects per concert (`ChatRoom` in `worker/chat.mjs`, bound as `CHAT` in `wrangler.jsonc`), with Hibernation, so a quiet chat costs nothing. A message goes to the concert's hub object, which sends one packet every half second to each shard with fans in it: at most 12 messages, picked at random when more came in, with a count of the rest. A fan says one thing every 3 seconds, of up to 150 characters; links are taken out and a few rude words masked. In the browser the column keeps the last 25 messages, adds new ones one per frame and draws nothing while the tab is hidden (`js/chat.js`). Messages are not stored.
+
 ## Run it
 
 ```bash
