@@ -1,5 +1,5 @@
 // A song's short preview for the setlist panel (js/seatplus.js): Apple's own 30-second clip,
-// found through the iTunes Search API, with the song's page on Apple Music. The clip is played
+// found through the iTunes Search API, with the song's page on Apple Music; else Deezer's. The clip is played
 // straight from Apple; nothing of the song passes through or is kept by Atvents. Apple lets
 // these previews be played to promote the song, with a link to it on Apple Music.
 //
@@ -34,6 +34,14 @@ export function pickPreview(results, artist, song) {
   return best ? { url: best.previewUrl, link: best.trackViewUrl || '', track: best.trackName, artist: best.artistName } : null;
 }
 
+// Deezer's 30-second preview, when Apple does not answer (it limits requests from shared
+// cloud addresses such as the Worker's). Same shape as Apple's, with where it is from.
+export function pickDeezer(data, artist, song) {
+  const rows = (data || []).map(d => ({ previewUrl: d.preview, trackViewUrl: d.link, trackName: d.title, artistName: d.artist?.name }));
+  const hit = pickPreview(rows, artist, song);
+  return hit ? { ...hit, from: 'Deezer' } : null;
+}
+
 // The clip, or null; `looked` gets what each store answered (its HTTP status and how many
 // songs), so an answer of none can tell "Apple has no clip" from "Apple did not answer".
 export async function findPreview(artist, song, fetchFn = fetch, looked = []) {
@@ -49,8 +57,18 @@ export async function findPreview(artist, song, fetchFn = fetch, looked = []) {
     if (!data) continue;
     const hit = pickPreview(data.results, artist, song);
     // Apple's clips are served over https only from its own hosts.
-    if (hit && /^https:\/\/[a-z0-9.-]+\.apple\.com\//.test(hit.url)) return hit;
+    if (hit && /^https:\/\/[a-z0-9.-]+\.apple\.com\//.test(hit.url)) return { ...hit, from: 'Apple Music' };
   }
+  try {
+    const q = new URLSearchParams({ q: `artist:"${artist}" track:"${String(song).replace(/\([^)]*\)|\[[^\]]*\]/g, ' ').replace(/"/g, '').trim()}"`, limit: '15' });
+    const res = await fetchFn(`https://api.deezer.com/search?${q}`, { headers: { accept: 'application/json' } });
+    const data = res.ok ? await res.json().catch(() => null) : null;
+    // Deezer answers 200 with an error object when it is busy.
+    const ok = res.ok && data && !data.error;
+    looked.push({ country: 'deezer', status: ok ? 200 : res.status === 200 ? 503 : res.status, songs: data?.data?.length ?? 0 });
+    const hit = ok ? pickDeezer(data.data, artist, song) : null;
+    if (hit && /^https:\/\/[a-z0-9.-]+\.dzcdn\.net\//.test(hit.url)) return hit;
+  } catch { looked.push({ country: 'deezer', status: 0 }); }
   return null;
 }
 
@@ -60,7 +78,7 @@ export async function songPreview(url, ctx, json, fetchFn = fetch) {
   const song = (url.searchParams.get('song') || '').trim().slice(0, 120);
   if (!artist || !song) return json(400, { error: 'Name the artist and the song.' });
   const cache = typeof caches !== 'undefined' ? caches.default : null;
-  const key = new Request(`https://preview.atvents.invalid/v2/${encodeURIComponent(plain(artist))}/${encodeURIComponent(plain(song))}`);
+  const key = new Request(`https://preview.atvents.invalid/v3/${encodeURIComponent(plain(artist))}/${encodeURIComponent(plain(song))}`);
   const kept = await cache?.match(key);
   if (kept) return kept;
   const looked = [];

@@ -40,7 +40,7 @@ test('tries Indonesia first, then the US store, and only takes Apple-hosted clip
   assert.match(hit.url, /^https:\/\/audio-ssl\.itunes\.apple\.com\//);
   assert.match(hit.link, /^https:\/\/music\.apple\.com\//);
 
-  const evil = async () => new Response(JSON.stringify({ results: [song('Simple Plan', 'Perfect', 'https://evil.example/p.m4a')] }));
+  const evil = async () => new Response(JSON.stringify({ results: [song('Simple Plan', 'Perfect', 'https://evil.example/p.m4a')], data: [{ title: 'Perfect', preview: 'https://evil.example/p.mp3', artist: { name: 'Simple Plan' } }] }));
   assert.equal(await findPreview('Simple Plan', 'Perfect', evil), null);
   assert.equal(await findPreview('Simple Plan', 'Perfect', async () => { throw new Error('offline'); }), null);
 });
@@ -56,4 +56,15 @@ test('GET /api/preview answers the clip, 404 when there is none, 400 without a s
   assert.equal(none.status, 404);
   const bad = await songPreview(new URL('https://atvents.com/api/preview?artist=Maroon%205'), null, json, fetchFn);
   assert.equal(bad.status, 400);
+});
+
+test('Deezer answers when Apple is busy', async () => {
+  const fetchFn = async url => url.includes('itunes')
+    ? new Response('{}', { status: 429 })
+    : new Response(JSON.stringify({ data: [{ title: 'Butter', preview: 'https://cdnt-preview.dzcdn.net/api/1/1/a/b/c/0/x.mp3', link: 'https://www.deezer.com/track/1', artist: { name: 'BTS' } }] }));
+  const looked = [];
+  const hit = await findPreview('BTS', 'Butter', fetchFn, looked);
+  assert.equal(hit.from, 'Deezer');
+  assert.match(hit.url, /dzcdn\.net/);
+  assert.deepEqual(looked.map(l => l.status), [429, 429, 200]);
 });

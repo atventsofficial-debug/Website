@@ -413,11 +413,11 @@ function paintSet() {
         <button class="set-play" type="button" data-song="${i}" aria-label="Play a preview of ${esc(t)}"${f === null ? ' disabled' : ''}>${icon('i-play')}</button>
         <span class="set-n">${String(i + 1).padStart(2, '0')}</span>
         <span class="set-t">${esc(t)}${f === null ? '<small>No preview</small>' : ''}</span>
-        ${f?.link ? `<a class="set-am" href="${esc(f.link)}" target="_blank" rel="noopener noreferrer" aria-label="${esc(t)} on Apple Music">Apple Music</a>` : ''}
+        ${f?.link ? `<a class="set-am" href="${esc(f.link)}" target="_blank" rel="noopener noreferrer" aria-label="${esc(t)} on ${esc(f.from || 'Apple Music')}">${esc(f.from || 'Apple Music')}</a>` : ''}
       </li>`;
     }).join('')}</ol>
     ${l.partial ? '<p class="show-set-note">Part of the set: the rest has not been posted.</p>' : ''}
-    <p class="show-set-src">Source: <a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.from)}</a>. Previews courtesy of Apple Music.</p>`;
+    <p class="show-set-src">Source: <a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.from)}</a>. Previews courtesy of Apple Music and Deezer.</p>`;
   paintPlaying(player.audio && player.audio.duration ? player.audio.currentTime / player.audio.duration : 0);
 }
 

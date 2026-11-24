@@ -39,8 +39,8 @@ export function securityHeaders(root, isHttps, { midtrans = false, analytics = f
     "font-src 'self'",
     `img-src 'self' data: blob:${qr}${gaImg}`,
     // The story video plays in its sheet straight from the recording in memory (js/story.js);
-    // the setlist's song previews play straight from Apple (worker/preview.mjs).
-    "media-src 'self' blob: https://*.apple.com",
+    // the setlist's song previews play straight from Apple or Deezer (worker/preview.mjs).
+    "media-src 'self' blob: https://*.apple.com https://*.dzcdn.net",
     `connect-src 'self'${ga}${cfReport}`,
     `frame-src ${pay || "'none'"}`,
     "object-src 'none'",
