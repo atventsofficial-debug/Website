@@ -606,7 +606,8 @@ const STEPS = ['Your category', 'Your seat'];
 
 // The tour has two steps: the fan's category (step 2 here), then their seat (step 3). It opens
 // on the whole venue from above, the category marked; the first button then flies to the
-// category (`framed`), and only then becomes Sit in my seat.
+// category (`framed`), and only then becomes Sit in my seat. My Seat is beside it from
+// the start; the seat's numbering options wait for the seat itself.
 function startTour() {
   const sc = state.scene, p = tourPass();
   if (!sc || !p) return;
@@ -905,8 +906,7 @@ function paintTour() {
       <p>Your seat is marked in coral: <b>${esc(seatText(s))}</b>. Tap it to sit down.</p>
       <div class="row-btns">${t.framed
         ? `<button class="btn btn-coral btn-sm" type="button" data-tour="seat"><span class="btn-t">Sit in my seat</span>${icon('i-seat')}</button>`
-        : `<button class="btn btn-coral btn-sm" type="button" data-tour="framecat"><span class="btn-t">Show my category</span>${icon('i-pin')}</button>`}<button class="btn btn-line btn-sm" type="button" data-tour="again">${icon('i-venue')}<span class="btn-t">Whole venue</span></button></div>
-      ${numberingControls(p, s)}`
+        : `<button class="btn btn-coral btn-sm" type="button" data-tour="framecat">${icon('i-tag', 'lead')}<span class="btn-t">My Category</span></button><button class="btn btn-line btn-sm" type="button" data-tour="seat">${icon('i-seat', 'lead')}<span class="btn-t">My Seat</span></button>`}</div>`
       : t.fan ? `
       <p class="fine"><b>${esc(t.fan.name)}</b> sits in ${esc(seatText(seatOf(t.fan.seat) || s))}. They light up green in the crowd.</p>
       <div class="row-btns"><button class="btn btn-coral btn-sm" type="button" data-tour="fanclear">Back to my view ${icon('i-seat')}</button></div>`
