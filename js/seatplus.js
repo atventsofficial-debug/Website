@@ -11,7 +11,7 @@ import { formatFee, PLUS_FEE, UPGRADE_FEE } from './rules.js';
 import { canView, plusOnSale, upgradable } from './passes.js';
 import { compareSeats, pairText } from './compare.js';
 import { accessOf, wayIn } from './access.js';
-import { $, esc, icon, state, share } from './ui.js';
+import { $, esc, icon, state, share, toast } from './ui.js';
 import { setlistFor } from './setlists.js';
 import { CityMap, KINDS, mapAreaOf } from './citymap.js';
 
@@ -305,7 +305,7 @@ function paintShow() {
   const panel = $('#show-panel'), o = state.show;
   const head = `<div class="show-head"><p class="eyebrow">${icon('i-lightstick')}Show mode</p><h2>Light up the crowd</h2></div>`;
   if (!showOpen()) {
-    panel.innerHTML = `${head}<p class="show-lede">Your fandom's colour on every light stick round your seat, a wave round the stage, the artist walking every side of it, the songs of the night, and the house lights up or down.</p>${plusOffer('Show mode')}`;
+    panel.innerHTML = `${head}<p class="show-lede">Your fandom's colour on every light stick round your seat, a wave round the stage, the artist walking every side of it, and the house lights up or down.</p>${plusOffer('Show mode')}`;
     return;
   }
   const seg = (group, opts, cur) => `<div class="show-seg">${opts.map(([val, label]) => `<button type="button" data-show="${group}" data-val="${esc(val)}" aria-pressed="${String(val) === String(cur)}">${esc(label)}</button>`).join('')}</div>`;
@@ -319,21 +319,7 @@ function paintShow() {
       <div><dt>Crowd</dt><dd>${seg('ocean', [['0', 'As it is'], ['0.85', 'Light-stick ocean']], o.ocean > 0 ? '0.85' : '0')}</dd></div>
       ${hasBand() ? `<div><dt>Artist</dt><dd>${seg('roam', [['1', 'Walk the stage'], ['0', 'Stay put']], o.roam === false ? '0' : '1')}</dd></div>` : ''}
       <div><dt>Lights</dt><dd>${seg('lights', [['1', 'Show lights'], ['0', 'House lights up']], state.showLights === false ? '0' : '1')}</dd></div>
-    </dl>
-    ${setlistHtml()}`;
-}
-
-// The songs of the night: a recent set from the same tour (setlists.js), with its source.
-function setlistHtml() {
-  const l = setlistFor(state.venue?.meta?.id);
-  const top = `<p class="eyebrow">${icon('i-music')}Setlist</p>`;
-  if (!l) return `<section class="show-set">${top}<p class="show-set-note">No set from this tour has been posted yet. We add it once the tour plays its first nights.</p></section>`;
-  return `<section class="show-set">${top}
-    <p class="show-set-note">Expected, from a recent show of this tour. The night's songs and order can change.</p>
-    <ol class="show-set-list">${l.songs.map(t => `<li>${esc(t)}</li>`).join('')}</ol>
-    ${l.partial ? '<p class="show-set-note">Part of the set: the rest has not been posted.</p>' : ''}
-    <p class="show-set-src">Source: <a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.from)}</a></p>
-  </section>`;
+    </dl>`;
 }
 
 export function bindShow() {
@@ -344,7 +330,7 @@ export function bindShow() {
     btn.setAttribute('aria-expanded', String(!panel.hidden));
     btn.classList.toggle('is-on', !panel.hidden);
     $('#stage')?.classList.toggle('show-open', !panel.hidden);
-    if (!panel.hidden) paintShow();
+    if (!panel.hidden) { closeSetlist(); paintShow(); }
   });
   const apply = () => { saveShow(); state.scene?.setShow(state.show); paintShow(); };
   panel.addEventListener('click', e => {
@@ -368,4 +354,129 @@ export function bindShow() {
     e.target.parentElement.dataset.on = 'true';
   });
   panel.addEventListener('change', e => { if (e.target.dataset.show === 'custom') paintShow(); });
+}
+
+// ---------------------------------------------------------------- setlist
+//
+// The songs of the night in a panel of their own, from any step: a recent set from the same
+// tour (setlists.js), with its source. Each song plays a short preview: Apple's own 30-second
+// clip, found by the Worker (worker/preview.mjs) and played straight from Apple, with a link
+// to the song on Apple Music. It comes with Plus, as it did inside show mode.
+
+const player = { audio: null, i: -1, found: new Map() };
+const setArtist = () => setlistFor(state.venue?.meta?.id)?.artist || state.venue?.meta?.title || '';
+
+export function closeSetlist() {
+  const btn = $('#set-btn'), panel = $('#set-panel');
+  if (!panel || panel.hidden) return;
+  panel.hidden = true;
+  btn?.setAttribute('aria-expanded', 'false');
+  btn?.classList.remove('is-on');
+  $('#stage')?.classList.remove('set-open');
+}
+
+// Stops the song: leaving the 3D venue, or another song started.
+export function stopPreview() {
+  const a = player.audio;
+  if (a) { a.pause(); a.removeAttribute('src'); a.load(); }
+  player.i = -1;
+  $('#set-btn')?.classList.remove('is-playing');
+  paintPlaying();
+}
+
+function paintPlaying(progress = 0) {
+  $('#set-panel')?.querySelectorAll('.set-list li').forEach(li => {
+    const on = +li.dataset.i === player.i, b = li.querySelector('.set-play');
+    li.classList.toggle('is-playing', on);
+    li.style.setProperty('--p', on ? progress : 0);
+    if (!b) return;
+    b.querySelector('use')?.setAttribute('href', on ? '#i-pause' : '#i-play');
+    b.setAttribute('aria-label', `${on ? 'Pause' : 'Play'} a preview of ${li.dataset.title}`);
+  });
+}
+
+function paintSet() {
+  const panel = $('#set-panel');
+  if (!panel || !state.venue) return;
+  const head = `<div class="show-head set-head"><p class="eyebrow">${icon('i-music')}Setlist</p><h2>Songs of the night</h2><button class="sq sq-sm set-x" type="button" data-set-close aria-label="Close the setlist" title="Close">${icon('i-x')}</button></div>`;
+  if (!showOpen()) {
+    panel.innerHTML = `${head}<p class="show-lede">The songs a recent show of this tour played, in order, each with a short preview to play while you look round from your seat.</p>${plusOffer('The setlist')}`;
+    return;
+  }
+  const l = setlistFor(state.venue.meta?.id);
+  if (!l) { panel.innerHTML = `${head}<p class="show-set-note">No set from this tour has been posted yet. We add it once the tour plays its first nights.</p>`; return; }
+  panel.innerHTML = `${head}
+    <p class="show-set-note">Expected, from a recent show of this tour. The night's songs and order can change. Tap a song to hear a short preview.</p>
+    <ol class="set-list">${l.songs.map((t, i) => {
+      const f = player.found.get(`${setArtist()}|${t}`);
+      return `<li data-i="${i}" data-title="${esc(t)}"${f === null ? ' class="is-none"' : ''}>
+        <button class="set-play" type="button" data-song="${i}" aria-label="Play a preview of ${esc(t)}"${f === null ? ' disabled' : ''}>${icon('i-play')}</button>
+        <span class="set-n">${String(i + 1).padStart(2, '0')}</span>
+        <span class="set-t">${esc(t)}${f === null ? '<small>No preview</small>' : ''}</span>
+        ${f?.link ? `<a class="set-am" href="${esc(f.link)}" target="_blank" rel="noopener noreferrer" aria-label="${esc(t)} on Apple Music">Apple Music</a>` : ''}
+      </li>`;
+    }).join('')}</ol>
+    ${l.partial ? '<p class="show-set-note">Part of the set: the rest has not been posted.</p>' : ''}
+    <p class="show-set-src">Source: <a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.from)}</a>. Previews courtesy of Apple Music.</p>`;
+  paintPlaying(player.audio && player.audio.duration ? player.audio.currentTime / player.audio.duration : 0);
+}
+
+async function playSong(i) {
+  const l = setlistFor(state.venue?.meta?.id), title = l?.songs[i];
+  if (!title) return;
+  if (player.i === i && player.audio && !player.audio.paused) { player.audio.pause(); return; }
+  if (player.i === i && player.audio?.src) { player.audio.play().catch(() => {}); return; }
+  stopPreview();
+  player.i = i;
+  paintPlaying();
+  const key = `${setArtist()}|${title}`;
+  let f = player.found.get(key);
+  if (f === undefined) {
+    $(`#set-panel li[data-i="${i}"]`)?.classList.add('is-loading');
+    try {
+      const r = await fetch(`/api/preview?${new URLSearchParams({ artist: setArtist(), song: title })}`);
+      f = r.ok ? await r.json() : r.status === 404 ? null : undefined;
+    } catch { f = undefined; }
+    if (f !== undefined) player.found.set(key, f);
+    $(`#set-panel li[data-i="${i}"]`)?.classList.remove('is-loading');
+  }
+  if (player.i !== i) return;   // another song was tapped meanwhile
+  if (!f?.url) { player.i = -1; paintSet(); if (f === undefined) toast('The preview could not load. Please try again.'); return; }
+  if (!player.audio) {
+    const a = player.audio = new Audio();
+    a.preload = 'auto';
+    a.addEventListener('timeupdate', () => paintPlaying(a.duration ? a.currentTime / a.duration : 0));
+    a.addEventListener('play', () => $('#set-btn')?.classList.add('is-playing'));
+    a.addEventListener('pause', () => { $('#set-btn')?.classList.remove('is-playing'); });
+    a.addEventListener('ended', () => {
+      // On to the next song with a preview, as a setlist plays.
+      const next = player.i + 1, list = setlistFor(state.venue?.meta?.id);
+      if (list && next < list.songs.length) playSong(next); else stopPreview();
+    });
+  }
+  player.audio.src = f.url;
+  player.audio.play().catch(() => { stopPreview(); });
+  paintSet();
+}
+
+export function bindSetlist() {
+  const btn = $('#set-btn'), panel = $('#set-panel');
+  if (!btn || !panel) return;
+  btn.addEventListener('click', () => {
+    const open = panel.hidden;
+    if (!open) { closeSetlist(); return; }
+    // One panel at a time beside the buttons: the setlist takes show mode's place.
+    const show = $('#show-panel');
+    if (show && !show.hidden) $('#show-btn')?.click();
+    panel.hidden = false;
+    btn.setAttribute('aria-expanded', 'true');
+    btn.classList.add('is-on');
+    $('#stage')?.classList.add('set-open');
+    paintSet();
+  });
+  panel.addEventListener('click', e => {
+    if (e.target.closest('[data-set-close]')) { closeSetlist(); btn.focus(); return; }
+    const b = e.target.closest('[data-song]');
+    if (b && showOpen()) playSong(+b.dataset.song);
+  });
 }

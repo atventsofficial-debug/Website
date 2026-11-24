@@ -38,6 +38,8 @@ const TAG_POS = new THREE.Vector3();
 const ease = t => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
 const easeOut = t => 1 - (1 - t) ** 3;
 const wrapAngle = a => Math.atan2(Math.sin(a), Math.cos(a));
+export const ARRIVALS = ['fly', 'blink', 'ticket', 'spot', 'walk'];
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 // Venue kinds drawn with the live crowd, the camera feel and the concert atmosphere
 // (crowd3d.js, post.js); the others keep the simpler figures for now.
 // Concerts in a hall, and stadium concerts (a stadium with a show on it, not a match).
@@ -82,6 +84,7 @@ export class SeatScene {
     this.drift = drift;
     this.lens = { at: 0, to: 0 };   // see setShift
     this.frameGap = 1000 / fps;
+    this.arriveStyle = 'fly';
     this.lastFrame = 0;
     this.ready = false;
     this.running = false;
@@ -1054,13 +1057,32 @@ export class SeatScene {
   _currentAngles() { return this._angles(this.camera.getWorldDirection(new THREE.Vector3())); }
   _applyAngles(yaw, pitch, roll = 0) { this.camera.rotation.set(pitch, yaw, roll, 'YXZ'); }
 
-  // While the camera flies, the lens's ambient occlusion (the costliest pass) rests: it is
-  // invisible in motion, and the frames it frees keep the flight smooth.
-  _lite(on) {
+  // While the camera flies, what is invisible in motion rests, and the frames it frees keep
+  // the flight smooth: the lens's ambient occlusion (the costliest pass), the key light's
+  // shadow map (redrawn every frame otherwise: every seat and person once more), and on a
+  // sharp screen a third of the pixels. `sharp`: only the pixels come back (as the camera
+  // slows to sit), the rest on arrival.
+  _lite(on, { sharp = false } = {}) {
     const u = this.lensPass?.uniforms;
-    if (!u) return;
-    if (on) { this._liteAO ??= u.uAO.value; u.uAO.value = 0; }
-    else if (this._liteAO != null) { u.uAO.value = this._liteAO; this._liteAO = null; }
+    if (on) {
+      if (u) { this._liteAO ??= u.uAO.value; u.uAO.value = 0; }
+      if (this.renderer.shadowMap.enabled) this.renderer.shadowMap.autoUpdate = false;
+      const r = this.renderer.getPixelRatio();
+      if (this._liteRatio == null && r > 1.01 && !this.pendingRatio) {
+        this._liteRatio = r;
+        this._setRatio(Math.max(1, r * 0.67));
+      }
+      return;
+    }
+    if (this._liteRatio != null) { this._setRatio(this._liteRatio); this._liteRatio = null; }
+    if (sharp) return;
+    if (u && this._liteAO != null) { u.uAO.value = this._liteAO; this._liteAO = null; }
+    this.renderer.shadowMap.autoUpdate = true;
+  }
+  _setRatio(r) {
+    this.renderer.setPixelRatio(r);
+    this.composer?.setPixelRatio(r);
+    this.resize();
   }
 
   flyToSeat(seat, { quick = false } = {}) {
@@ -1074,6 +1096,8 @@ export class SeatScene {
     this.controls.enabled = false;
     this.mode = 'flying';
     this.cb.onMode?.('flying', seat);
+
+    if (!quick && ARRIVALS.includes(this.arriveStyle) && this.arriveStyle !== 'fly') { this._arrive(seat, this.arriveStyle); return; }
 
     const seatBase = new THREE.Vector3(seat.x, seat.y, seat.z);
     const fwd = new THREE.Vector3(-Math.sin(seat.yaw), 0, -Math.cos(seat.yaw));
@@ -1125,6 +1149,7 @@ export class SeatScene {
         } else {
           if (!turning) {
             turning = true;
+            this._lite(false, { sharp: true });
             this.realColors = true;
             this.refreshColors();
             this.moodTarget = 1;
@@ -1152,6 +1177,188 @@ export class SeatScene {
         this.cb.onArrive?.(seat, eye.distanceTo(this.focus));
       },
     };
+  }
+
+  // ---------- other ways to reach the seat (a demo: ?arrive=blink|ticket|spot|walk) ----------
+  //
+  // blink:  the eyes close over the venue and open in the seat.
+  // ticket: the fan's ticket comes up, the view is set behind it, and it tears open.
+  // spot:   the house goes dark but for a spotlight on the seat; from right above it the
+  //         camera comes straight down and turns to the stage.
+  // walk:   from the end of the row, along it to the seat, and sit.
+  // All but walk move the camera through the venue only behind a cover, so few frames of the
+  // whole venue in motion are drawn: lighter than the flight on a weak device.
+
+  _veil() {
+    if (this.veilEl?.isConnected) return this.veilEl;
+    const el = this.veilEl = document.createElement('div');
+    el.className = 'arrive-veil';
+    el.setAttribute('aria-hidden', 'true');
+    // Over the panels too (the stage the canvas sits in), so it covers the whole view.
+    (this.container.parentElement || this.container).appendChild(el);
+    return el;
+  }
+
+  // The seat's eye, where it looks, and the people round it ready, as the flight has them.
+  _seatPose(seat) {
+    const seatBase = new THREE.Vector3(seat.x, seat.y, seat.z);
+    const fwd = new THREE.Vector3(-Math.sin(seat.yaw), 0, -Math.cos(seat.yaw));
+    const eye = seatBase.clone().addScaledVector(fwd, -0.05).add(new THREE.Vector3(0, seat.standing ? SEATED_EYE + STAND_LIFT : SEATED_EYE, 0));
+    this.people?.focusOn(eye, this.focus, this.level === 2 ? 24 : 14, this.level === 2 ? 900 : 320);
+    return { seatBase, fwd, eye, seatedAng: this._lookAngles(eye, this.focus) };
+  }
+
+  _turnColors(seat) {
+    this.realColors = true;
+    this.refreshColors();
+    this.moodTarget = 1;
+    this.cb.onMode?.('turning', seat);
+  }
+
+  _sat(seat, eye, seatedAng) {
+    this._lite(false);
+    this.mode = 'seat';
+    this.settleAt = this.clock.elapsedTime;
+    this._fovBack = null;
+    this.camera.position.copy(eye);
+    this._applyAngles(seatedAng.yaw, seatedAng.pitch);
+    this.camera.fov = SEAT_FOV;
+    this.camera.updateProjectionMatrix();
+    this.look = { yaw: 0, pitch: 0, cy: 0, cp: 0, baseYaw: seatedAng.yaw, basePitch: seatedAng.pitch, fov: SEAT_FOV };
+    this.eye = eye;
+    this.realColors = true;
+    this.moodTarget = 1;
+    this.refreshColors();
+    this.cb.onMode?.('seat', seat);
+    this.cb.onArrive?.(seat, eye.distanceTo(this.focus));
+  }
+
+  _arrive(seat, style) {
+    const pose = this._seatPose(seat), { eye, seatedAng } = pose;
+    const veil = this._veil();
+    veil.className = `arrive-veil is-${style}`;
+    veil.innerHTML = '';
+    veil.style.cssText = '';
+    this.labels?.forEach(l => { l.visible = false; });
+    this._lite(true);
+    const sit = () => {
+      this.camera.position.copy(eye);
+      this._applyAngles(seatedAng.yaw, seatedAng.pitch);
+      this.camera.fov = SEAT_FOV;
+      this.camera.updateProjectionMatrix();
+    };
+    const clear = () => { veil.className = 'arrive-veil'; veil.innerHTML = ''; veil.style.cssText = ''; };
+    let jumped = false;
+    const jump = () => { if (jumped) return; jumped = true; sit(); this._turnColors(seat); };
+    const set = (k, v) => veil.style.setProperty(k, v);
+
+    if (style === 'blink') {
+      veil.innerHTML = '<i class="lid lid-top"></i><i class="lid lid-bottom"></i>';
+      const close = 0.32, hold = 0.12, open = 0.75;
+      this.flyDur = close;
+      this.anim = { t: 0, dur: close + hold + open, step: t => {
+        if (t < close) set('--k', easeOut(t / close).toFixed(3));
+        else if (t < close + hold) { set('--k', '1'); jump(); }
+        else { jump(); const k = ease((t - close - hold) / open); set('--k', (1 - k).toFixed(3)); set('--blur', `${(1 - k) * 6}px`); }
+      }, done: () => { clear(); this._sat(seat, eye, seatedAng); } };
+      return;
+    }
+
+    if (style === 'ticket') {
+      const meta = this.venue.meta || {};
+      const where = seat.standing ? esc(seat.secName) : `${esc(seat.secName)} · Row ${esc(seat.row)} · Seat ${esc(seat.num)}`;
+      veil.innerHTML = `<div class="av-tk"><div class="av-tk-main"><span class="av-tk-eyebrow">Your seat</span><b class="av-tk-title">${esc(meta.title || '')}</b><span class="av-tk-sub">${esc(meta.subtitle || '')}</span><span class="av-tk-seat">${where}</span></div><div class="av-tk-stub"><span>ADMIT</span><b>ONE</b></div></div>`;
+      const into = 0.5, hold = 0.75, tear = 0.9;
+      this.flyDur = into;
+      this.anim = { t: 0, dur: into + hold + tear, step: t => {
+        if (t < into) { const k = easeOut(t / into); set('--in', k.toFixed(3)); set('--dim', (k * 0.96).toFixed(3)); }
+        else if (t < into + hold) { set('--in', '1'); set('--dim', '0.96'); jump(); }
+        else { jump(); const k = ease((t - into - hold) / tear); set('--in', '1'); set('--tear', k.toFixed(3)); set('--dim', ((1 - k) * 0.96).toFixed(3)); }
+      }, done: () => { clear(); this._sat(seat, eye, seatedAng); } };
+      return;
+    }
+
+    if (style === 'spot') {
+      // From right above the seat, looking down at it, the camera comes down and turns to the stage.
+      const above = eye.clone().add(new THREE.Vector3(0, 16, 0)).addScaledVector(pose.fwd, -3);
+      const aboveAng = this._lookAngles(above, pose.seatBase);
+      veil.innerHTML = '<i class="beam"></i>';
+      const beam = veil.firstChild;
+      // Where the seat is on screen, for the light's circle, and the beam from the rig above to it.
+      const at = () => {
+        const p = TAG_POS.set(seat.x, seat.y + 0.5, seat.z).project(this.camera);
+        const W = veil.clientWidth || 1, H = veil.clientHeight || 1, x = (p.x + 1) / 2 * W, y = (1 - p.y) / 2 * H;
+        const ox = W * 0.5, oy = -H * 0.12, len = Math.hypot(x - ox, y - oy), ang = Math.atan2(x - ox, y - oy);
+        beam.style.cssText = `left:${ox}px;top:${oy}px;height:${len.toFixed(0)}px;transform:translateX(-50%) rotate(${(-ang).toFixed(4)}rad)`;
+        return [`${(x / W * 100).toFixed(1)}%`, `${(y / H * 100).toFixed(1)}%`];
+      };
+      const dark = 0.55, shut = 0.25, reopen = 0.35, down = 1.7, lift = 0.5;
+      const T1 = dark, T2 = T1 + shut, T3 = T2 + reopen, T4 = T3 + down, T5 = T4 + lift;
+      let moved = false;
+      this.flyDur = T2;
+      this.anim = { t: 0, dur: T5, step: t => {
+        if (t < T1) { const [x, y] = at(); set('--x', x); set('--y', y); const k = easeOut(t / T1); set('--dark', (k * 0.94).toFixed(3)); set('--r', `${(60 - k * 52).toFixed(1)}vmax`); set('--beam', k.toFixed(3)); }
+        else if (t < T2) { set('--dark', '0.94'); set('--r', `${(8 * (1 - (t - T1) / shut)).toFixed(2)}vmax`); set('--beam', (1 - (t - T1) / shut).toFixed(3)); }
+        else {
+          if (!moved) {
+            moved = true;
+            this.camera.position.copy(above);
+            this._applyAngles(aboveAng.yaw, aboveAng.pitch);
+            this.camera.fov = SEAT_FOV;
+            this.camera.updateProjectionMatrix();
+          }
+          if (t < T3) { const [x, y] = at(); set('--x', x); set('--y', y); const k = easeOut((t - T2) / reopen); set('--r', `${(k * 10).toFixed(2)}vmax`); set('--beam', k.toFixed(3)); }
+          else if (t < T4) {
+            const k = ease((t - T3) / down);
+            this.camera.position.lerpVectors(above, eye, k);
+            this._applyAngles(aboveAng.yaw + wrapAngle(seatedAng.yaw - aboveAng.yaw) * Math.min(1, k * 1.3), aboveAng.pitch + (seatedAng.pitch - aboveAng.pitch) * Math.min(1, k * 1.15));
+            if (k > 0.55) jump();
+            const [x, y] = at(); set('--x', x); set('--y', y); set('--r', `${(10 + k * 70).toFixed(1)}vmax`); set('--beam', (1 - k).toFixed(3));
+            set('--dark', (0.94 * (1 - Math.max(0, k - 0.5) * 2 * 0.6)).toFixed(3));
+          } else { jump(); sit(); const k = (t - T4) / lift; set('--r', '90vmax'); set('--beam', '0'); set('--dark', (0.38 * (1 - k)).toFixed(3)); }
+        }
+      }, done: () => { clear(); this._sat(seat, eye, seatedAng); } };
+      return;
+    }
+
+    if (style === 'walk') {
+      // Along the row: from its nearer end (a few seats away at least), standing, in the gap in
+      // front of the seats, then turn to the stage and sit.
+      const right = new THREE.Vector3(Math.cos(seat.yaw), 0, -Math.sin(seat.yaw));
+      const row = this.venue.seats.filter(o => o.sec === seat.sec && o.row === seat.row && !o.standing);
+      let lo = 0, hi = 0;
+      for (const o of row) { const d = (o.x - seat.x) * right.x + (o.z - seat.z) * right.z; lo = Math.min(lo, d); hi = Math.max(hi, d); }
+      let side = Math.abs(lo) <= hi ? lo - 1.1 : hi + 1.1;
+      if (Math.abs(side) < 3.5) side = Math.sign(side || 1) * 3.5;
+      side = THREE.MathUtils.clamp(side, -14, 14);
+      const stand = pose.seatBase.clone().addScaledVector(pose.fwd, 0.48).add(new THREE.Vector3(0, STANDING_EYE, 0));
+      const from = stand.clone().addScaledVector(right, side);
+      const walkAng = this._lookAngles(from, stand.clone().addScaledVector(pose.fwd, 0.6).add(new THREE.Vector3(0, -0.5, 0)));
+      walkAng.yaw = this._lookAngles(from, stand).yaw;
+      const fade = 0.35, walk = THREE.MathUtils.clamp(Math.abs(side) / 3.2, 1.3, 3.4), turn = 1.3;
+      this.flyDur = fade;
+      let moved = false;
+      this.anim = { t: 0, dur: fade * 2 + walk + turn, step: t => {
+        if (t < fade) { set('--dark', easeOut(t / fade).toFixed(3)); return; }
+        if (!moved) { moved = true; this._turnColors(seat); jumped = true; }
+        const w = t - fade;
+        if (w < fade) set('--dark', (1 - easeOut(w / fade)).toFixed(3)); else set('--dark', '0');
+        if (w < walk) {
+          const k = THREE.MathUtils.smoothstep(w / walk, 0, 1);
+          this.camera.position.lerpVectors(from, stand, k);
+          this.camera.position.y += Math.abs(Math.sin(w * Math.PI * 1.9)) * 0.035;
+          this._applyAngles(walkAng.yaw, -0.12 + Math.sin(w * 1.3) * 0.02);
+          this.camera.fov = SEAT_FOV + 6;
+        } else {
+          const k = ease((w - walk) / turn), standAng = { yaw: walkAng.yaw, pitch: -0.12 };
+          this.camera.position.lerpVectors(stand, eye, k).y += Math.sin(Math.min(1, k * 1.4) * Math.PI) * 0.06;
+          this._applyAngles(standAng.yaw + wrapAngle(seatedAng.yaw - standAng.yaw) * k, standAng.pitch + (seatedAng.pitch - standAng.pitch) * k);
+          this.camera.fov = SEAT_FOV + 6 * (1 - k);
+        }
+        this.camera.updateProjectionMatrix();
+      }, done: () => { clear(); this._sat(seat, eye, seatedAng); } };
+      return;
+    }
   }
 
   backToOverview() {

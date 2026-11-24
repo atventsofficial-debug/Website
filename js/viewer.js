@@ -15,7 +15,7 @@ import { whenOf, isOver } from './when.js';
 import { buyLink, activePass, openPass, passes, canView, plusPass, plusOnSale, upgradable, toggleSeat, STATUS, refresh } from './passes.js';
 import { placeSeat, cleanNumbering, isDefault, numberingOf, numberingSource } from './seatflip.js';
 import { $, esc, icon, state, QUALITY, spotStats, share, toast } from './ui.js';
-import { addCompare, bindAccess, bindCompare, bindShow, closeAccess, paintAccess, compareIds, paintCompare, setCompare, showModeFor } from './seatplus.js';
+import { addCompare, bindAccess, bindCompare, bindSetlist, bindShow, closeAccess, closeSetlist, paintAccess, compareIds, paintCompare, setCompare, showModeFor, stopPreview } from './seatplus.js';
 import { pairOf } from './compare.js';
 import { loadMates, matesBlock, bindMates, mateTags, resetMates, mates, startMatesLive, fanCardHtml, fillMatesList } from './fans.js';
 
@@ -238,6 +238,7 @@ export async function openViewer(id, { cat, seat, back, tour } = {}) {
         $('#sc-dist').textContent = `${Math.round(dist)} m to the ${FOCUS_NAME[state.venue.show ? 'concert' : state.venue.kind]} · eye height ${(s.y + (s.standing ? 1.62 : 1.2)).toFixed(1)} m${s.standing ? ' · free standing: stand anywhere on the floor' : ''}`;
       },
     });
+    state.scene.arriveStyle = arriveStyle();
   }
   // Let the loading screen paint before the heavy build.
   await new Promise(r => requestAnimationFrame(() => setTimeout(r, 30)));
@@ -259,12 +260,54 @@ export async function openViewer(id, { cat, seat, back, tour } = {}) {
   paintCompare();
 }
 
+// ---------- a demo: other ways to reach the seat than the flight ----------
+// ?arrive=blink|ticket|spot|walk picks one; on a preview (workers.dev) or with ?arrive, a bar on
+// top switches between them and plays the chosen one again from above.
+const ARRIVE = [['fly', 'Fly'], ['blink', 'Blink'], ['ticket', 'Ticket'], ['spot', 'Spotlight'], ['walk', 'Walk in']];
+const arriveDemo = () => new URLSearchParams(location.search).has('arrive') || /\.workers\.dev$|^localhost$|^127\.0\.0\.1$/.test(location.hostname);
+function arriveStyle() {
+  const q = new URLSearchParams(location.search).get('arrive');
+  let saved = '';
+  try { saved = localStorage.getItem('atv-arrive') || ''; } catch { /* private mode */ }
+  const pick = [q, arriveDemo() ? saved : ''].find(v => ARRIVE.some(([k]) => k === v));
+  return pick || 'fly';
+}
+function paintArriveDemo() {
+  const bar = $('#arrive-demo');
+  if (!bar) return;
+  bar.hidden = !arriveDemo();
+  $('#stage')?.classList.toggle('has-demo', !bar.hidden);
+  if (bar.hidden) return;
+  const cur = state.scene?.arriveStyle || arriveStyle();
+  bar.innerHTML = `<span>Camera</span>${ARRIVE.map(([k, n]) => `<button type="button" data-arrive="${k}" aria-pressed="${k === cur}">${n}</button>`).join('')}`;
+}
+function bindArriveDemo() {
+  const bar = $('#arrive-demo');
+  if (!bar) return;
+  paintArriveDemo();
+  bar.addEventListener('click', e => {
+    const k = e.target.closest('[data-arrive]')?.dataset.arrive, sc = state.scene;
+    if (!k || !sc) return;
+    sc.arriveStyle = k;
+    try { localStorage.setItem('atv-arrive', k); } catch { /* private mode */ }
+    paintArriveDemo();
+    // Play it again: back up above the venue, then to the same seat the new way.
+    const seat = state.tour ? tourSeat() : state.viewing;
+    if (!seat || sc.mode !== 'seat') return;
+    sc.backToOverview();
+    const again = () => (sc.disposed ? null : sc.mode === 'overview' && !sc.anim ? (state.tour ? tourPick(seat) : sc.flyToSeat(seat)) : setTimeout(again, 120));
+    setTimeout(again, 300);
+  });
+}
+
 // Drop the scene when leaving the viewer: it is heavy.
 export function closeViewer() {
   state.tour = null;
   state.compare = [];
   paintCompare();
   closeAccess();
+  closeSetlist();
+  stopPreview();
   document.body.classList.remove('in-tour');
   resetMates();
   closeFanCard();
@@ -485,6 +528,12 @@ export function bindViewer() {
   // changes (the seat tour's panel is taller), so they follow its measured height.
   const side = $('#app-side');
   if (side && window.ResizeObserver) new ResizeObserver(() => side.parentElement.style.setProperty('--side-h', `${side.offsetHeight}px`)).observe(side);
+  // Likewise the seat's card, under the buttons on a phone while sitting in a seat.
+  const seatCard = $('#seatcard');
+  if (seatCard && window.ResizeObserver) new ResizeObserver(() => seatCard.parentElement.style.setProperty('--seat-h', `${seatCard.offsetHeight}px`)).observe(seatCard);
+  // And the event's card, above them (gone in a seat and in the seat tour).
+  const evCard = $('#stage .event-card');
+  if (evCard && window.ResizeObserver) new ResizeObserver(() => evCard.parentElement.style.setProperty('--card-h', `${evCard.offsetHeight ? evCard.offsetHeight + 16 : 0}px`)).observe(evCard);
   const toggle = (btn, key, apply) => btn.addEventListener('click', () => {
     state[key] = !state[key];
     btn.classList.toggle('is-on', state[key]);
@@ -527,6 +576,8 @@ export function bindViewer() {
   bindMates($('#app-side'), { pass: matesPass, repaint: paintViewer });
   bindCompare({ repaint: () => { state.scene?.setMine([...markedIds(), ...(state.peek ? [state.peek.id] : [])]); if (state.viewing || state.peek) fillSeatCard(state.viewing || state.peek); } });
   bindShow();
+  bindSetlist();
+  bindArriveDemo();
   bindAccess({ tourSeat });
   $('#fan-card').addEventListener('click', e => {
     const act = e.target.closest('[data-fancard]')?.dataset.fancard;

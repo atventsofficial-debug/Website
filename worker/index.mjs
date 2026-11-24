@@ -41,6 +41,7 @@ import { igPicture } from './igcheck.mjs';
 import { mailerOf, passEmail, codeEmail, signInEmail } from './mail.mjs';
 import { emailOf, paidOrders, newSignCode, useSignCode, openAll, signFan, readFan, SIGN_MINUTES } from './account.mjs';
 import { googleEmail, onTeam, signTeam, readTeam, teamOf } from './team.mjs';
+import { songPreview } from './preview.mjs';
 
 const MAX_BODY = 4096, NOTIFY_BODY = 16384;
 const PAY_WINDOW = PAY_MINUTES * 6e4;
@@ -87,6 +88,7 @@ export default {
       if (path === '/api/me/code') return method === 'POST' ? await meCode(request, env, url) : notAllowed('POST');
       if (path === '/api/me/session') return method === 'POST' ? await meSession(request, env, url) : notAllowed('POST');
       if (path === '/api/me/passes') return method === 'GET' ? await mePasses(request, env) : notAllowed('GET');
+      if (path === '/api/preview') return method === 'GET' ? await songPreview(url, ctx, json) : notAllowed('GET');
       if (path.startsWith('/api/')) return fail(404, 'Not found');
     } catch (err) {
       // Midtrans' own message, never the key: it is only ever in the Authorization header.
