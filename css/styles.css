@@ -1356,13 +1356,14 @@ input, select, textarea { border-radius: 0; }
 .tour-act.is-capture svg, .tour-act.is-capture span { color: #fff; }
 .tour-act.is-capture span { opacity: .85; }
 .tour-act.is-capture:hover, .tour-act.is-capture:focus-visible { border-color: #fff; background: var(--coral); }
-/* The phone's row of tour tools, grouped as a control centre groups them (shown on phones only). */
+/* The phone's row of tour tools, grouped as a control centre groups them (shown on phones only).
+   The icon's corners follow the tile's: its radius is the tile's less the gap between them. */
 .dock { display: none; }
 .dock-b { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-width: 0; padding: 10px 4px 9px; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 22px; background: rgba(255, 255, 255, 0.06); color: var(--text); font: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background .15s, border-color .15s, transform .15s; }
 .dock-b[hidden] { display: none; }
 .dock-b:hover, .dock-b:focus-visible { background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.22); outline: none; }
 .dock-b:active { transform: scale(.96); }
-.dock-ic { position: relative; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: rgba(255, 255, 255, 0.14); color: #fff; transition: background .15s, color .15s; }
+.dock-ic { position: relative; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: rgba(255, 255, 255, 0.14); color: #fff; transition: background .15s, color .15s; }
 .dock-ic > svg { width: 19px; height: 19px; }
 .dock-t { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 11px/1.15 var(--font); letter-spacing: 0.01em; color: rgba(244, 240, 238, 0.92); }
 .dock-b:is(.is-on, [aria-pressed="true"], [aria-expanded="true"]) .dock-ic { background: #fff; color: var(--coral); }
