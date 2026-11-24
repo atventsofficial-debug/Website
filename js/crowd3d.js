@@ -491,6 +491,7 @@ export class Crowd {
     const m = new THREE.Matrix4(), q = new THREE.Quaternion(), v = new THREE.Vector3(), s = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
     const pick = list => list[Math.floor(rnd() * list.length)];
     const hex = h => parseInt(h.slice(1), 16);
+    this.seatedIdx = spots.flatMap((p, k) => (p.standing ? [] : [k]));
     spots.forEach((p, k) => {
       // A standing crowd is no grid: people drift off their spots and turn more freely.
       const loose = p.standing ? 0.42 : 0.05, turn = p.standing ? 0.7 : 0.3;
@@ -658,6 +659,27 @@ export class Crowd {
         M[o16 + 13] += standing ? STAND_LIFT_LOCAL * h * (f - 1) : 0.48 * h * (1 - f);
       }
     }
+    if (this.near) this._fill(this.near, this.nearSlots, true);
+    this._assign();
+  }
+
+  // Show mode's Standing: everyone in a seat gets up and stands a step in front of their
+  // chair (and back down). The people in front (setAhead) are let go first; the scene sets
+  // them again for the new height.
+  setStanding(on) {
+    on = !!on;
+    if (on === !!this.allUp) return;
+    this._restoreAhead();
+    this.allUp = on;
+    const M = this.data.matrix, L = this.data.look, s = on ? 1 : -1;
+    for (const k of this.seatedIdx) {
+      const o = k * 16, w = Math.hypot(M[o + 8], M[o + 10]) || 1;
+      L[k * 4] += 16 * s;
+      M[o + 12] -= (M[o + 8] / w) * 0.3 * s;
+      M[o + 13] += STAND_LIFT_LOCAL * s;
+      M[o + 14] -= (M[o + 10] / w) * 0.3 * s;
+    }
+    if (!this.far) return;
     if (this.near) this._fill(this.near, this.nearSlots, true);
     this._assign();
   }
