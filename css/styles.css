@@ -2203,7 +2203,7 @@ body { font-family: var(--font); font-feature-settings: "cv11", "ss01"; }
 /* One right column at a time: the intro, or the note on the seat form. */
 #view-unlock:not([data-step="form"]) .uf-disclaimer, #view-unlock[data-step="form"] .uf-intro { display: none; }
 /* Sits on the bottom of the heading, level with the last line of the title. */
-#view-unlock .sec-head > .uf-disclaimer { align-self: end; padding-bottom: 6px; }
+#view-unlock .sec-head > .sec-side { align-self: end; padding-bottom: 6px; }
 /* A live-style dot marks it as a notice: a solid dot with a ring that pulses out. */
 .uf-disclaimer b { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 15px; font-weight: 600; color: var(--text); }
 .uf-disclaimer b::before { content: ""; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--coral); box-shadow: 0 0 0 0 rgba(236, 84, 70, 0.6); animation: uf-live 1.6s ease-out infinite; }
