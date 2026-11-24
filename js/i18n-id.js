@@ -23,6 +23,7 @@ export const EXACT = {
 "Signed in. Your 3D passes are on this device.": "Berhasil masuk. 3D pass-mu sudah ada di perangkat ini.",
 "Signed out. Your passes are hidden on this device.": "Kamu sudah keluar. Pass-mu disembunyikan di perangkat ini.",
 "No paid 3D pass for this email yet.": "Belum ada 3D pass berbayar untuk email ini.",
+"Opening your 3D passes…": "Membuka 3D pass-mu…",
 "Signed in as": "Masuk sebagai",
 "Sign out": "Keluar",
 "Hotels near the venue": "Hotel dekat venue",
