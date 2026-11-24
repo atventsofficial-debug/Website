@@ -635,12 +635,16 @@ export class SeatScene {
     const runway = stadium
       ? (thrust.length ? Math.max(...thrust, ...bstage) : null)
       : cw ? cw.len + (cw.island ? cw.island - 0.5 : 0) : null;
+    // A stadium's walkways and B-stage stand lower than its 2.2 m deck (venues3d.js, 2.0 m
+    // unless the plan says): the performers step down onto them.
+    const lowest = [...(venue.stage?.thrust || []).filter(t => mid(t.x0) && mid(t.x1) && t.z0 < 0.5), ...(venue.stage?.bstage || []).filter(b => mid(b.x))].map(t => t.h ?? 2.0);
+    const runwayDy = stadium && lowest.length ? Math.min(...lowest) - 2.2 : 0;
     this.band = venue.lineup?.length && (!stadium || venue.show === 'end' || round)
       ? new Band(this.scene, this.bandMat(), round ? venue.lineup.filter(m => ['vocals', 'dancer'].includes(m.role)) : venue.lineup, round
         ? { y: 1.9, round, rnd: bandRnd }
         : stadium
         // A stadium's end stage is built facing +z at its front edge, then turned to the field.
-          ? { y: 2.2, front: 0, riserY: 2.8, riserZ: -9, risers: true, deckHalf: 26, deckDepth: 16, runway, rnd: bandRnd }
+          ? { y: 2.2, front: 0, riserY: 2.8, riserZ: -9, risers: true, deckHalf: 26, deckDepth: 16, runway, runwayDy, rnd: bandRnd }
           : { y: S.h, front: S.front, riserY: S.h + 0.6, riserZ: S.riserZ, spread: S.k, deckHalf: S.w / 2, deckDepth: S.d, runway, rnd: bandRnd })
       : null;
     this.band?.setRoam(this.roam);

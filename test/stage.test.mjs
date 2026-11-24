@@ -90,6 +90,49 @@ test('round the 360 stage the members follow each other out to every runway end'
   assert.equal(tips.size, 4);
 });
 
+test('a group splits up across the 360 stage, two or so a runway, then sings together in the middle', { skip: !crowd }, () => {
+  const { half, lift = 6, arm: { tip: [tx, tz], w } } = BTS_STAGE;
+  const onDeck = (x, z) => {
+    if (Math.abs(x) <= half && Math.abs(z) <= half) return true;
+    const ax = Math.abs(x), az = Math.abs(z), L = Math.hypot(tx, tz);
+    const along = (ax * tx + az * tz) / L, across = Math.abs(ax * tz - az * tx) / L;
+    return along <= L && across <= w / 2;
+  };
+  assert.deepEqual(crowd.squadSizes(7, 4), [2, 2, 2, 1]);
+  const R = crowd.stageRoute({ round: BTS_STAGE }), P = crowd.groupPlan(7, R, BTS_STAGE);
+  for (let t = 0; t < P.length; t += 0.25) {
+    for (let i = 0; i < 7; i++) { const p = crowd.planAt(P, i, t); assert.ok(onDeck(p.x, p.z), `${i} at ${t}: ${p.x.toFixed(1)},${p.z.toFixed(1)}`); }
+  }
+  const tipsOf = f => new Set(f.at.filter(p => Math.hypot(p.x, p.z) > 30).map(p => `${Math.sign(p.x)},${Math.sign(p.z)}`));
+  const spread = P.frames.filter((_, k) => k % 2 === 0), together = P.frames.filter((_, k) => k % 2 === 1);
+  // Out on all four runways at once, never all on one, and each runway gets every squad in turn.
+  for (const f of spread) assert.equal(tipsOf(f).size, 4);
+  // Together on the lift in the middle, a pace or more apart.
+  for (const f of together) {
+    assert.ok(f.at.every(p => Math.hypot(p.x, p.z) < lift - 1));
+    for (let a = 0; a < 7; a++) for (let b = a + 1; b < 7; b++) assert.ok(Math.hypot(f.at[a].x - f.at[b].x, f.at[a].z - f.at[b].z) > 0.9);
+  }
+});
+
+test('on an end stage a group goes out to both wings in pairs and comes to the front middle', { skip: !crowd }, () => {
+  for (const runway of [null, 17]) {
+    const F = crowd.formation(7), half = Math.max(...F.map(([x]) => Math.abs(x)));
+    const R = crowd.stageRoute({ front: 0, deckHalf: 26, deckDepth: 16, riserZ: -9, half, runway });
+    const P = crowd.groupPlan(7, R);
+    const first = P.frames[0].at;
+    assert.ok(first.filter(p => p.x < -10).length >= 2 && first.filter(p => p.x > 10).length >= 2, 'both wings');
+    const mid = P.frames[1].at;
+    assert.ok(mid.every(p => Math.abs(p.x) < 6 && p.z > -4), 'together at the front middle');
+    for (let t = 0; t < P.length; t += 0.25) {
+      for (let i = 0; i < 7; i++) {
+        const p = crowd.planAt(P, i, t);
+        if (p.z > 0.05) assert.ok(runway && Math.abs(p.x) <= 1.1 && p.z <= runway, `${runway} ${i} at ${t}: ${p.x.toFixed(2)},${p.z.toFixed(2)}`);
+        else assert.ok(Math.abs(p.x) <= 26 && p.z > -16, `${runway} ${i} at ${t}`);
+      }
+    }
+  }
+});
+
 test('every setlist names its source and has songs', () => {
   const ids = EVENTS.filter(e => !e.demo).map(e => e.id);
   const lists = ids.map(setlistFor).filter(Boolean);
