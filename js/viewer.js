@@ -15,7 +15,7 @@ import { whenOf, isOver } from './when.js';
 import { buyLink, activePass, openPass, passes, canView, plusPass, plusOnSale, upgradable, toggleSeat, STATUS, refresh } from './passes.js';
 import { placeSeat, cleanNumbering, isDefault, numberingOf, numberingSource } from './seatflip.js';
 import { $, esc, icon, state, QUALITY, spotStats, share, toast } from './ui.js';
-import { addCompare, bindAccess, bindCompare, bindSetlist, bindShow, closeAccess, closeSetlist, paintAccess, compareIds, paintCompare, placeDrops, setCompare, showModeFor, stopPreview } from './seatplus.js';
+import { addCompare, bindAccess, bindCompare, bindEye, bindSetlist, bindShow, closeAccess, closeEye, closeSetlist, paintAccess, compareIds, paintCompare, placeDrops, setCompare, showModeFor, stopPreview } from './seatplus.js';
 import { pairOf } from './compare.js';
 import { loadMates, matesBlock, bindMates, mateTags, resetMates, mates, startMatesLive, fanCardHtml, fillMatesList } from './fans.js';
 
@@ -266,6 +266,7 @@ export function closeViewer() {
   paintCompare();
   closeAccess();
   closeSetlist();
+  closeEye();
   stopPreview();
   document.body.classList.remove('in-tour');
   syncCapture();
@@ -545,6 +546,7 @@ export function bindViewer() {
   bindCompare({ repaint: () => { state.scene?.setMine([...markedIds(), ...(state.peek ? [state.peek.id] : [])]); if (state.viewing || state.peek) fillSeatCard(state.viewing || state.peek); } });
   bindShow();
   bindSetlist();
+  bindEye();
   bindDock();
   bindTabs();
   bindAccess({ tourSeat });
@@ -817,23 +819,23 @@ function bindTabs() {
   const watch = new MutationObserver(placeTabs);
   const tools = $('#tools');
   if (tools) watch.observe(tools, { subtree: true, attributes: true, attributeFilter: ['class', 'hidden'] });
-  ['#access', '#set-panel', '#show-panel'].forEach(p => { const el = $(p); if (el) watch.observe(el, { attributes: true, attributeFilter: ['hidden'] }); });
+  ['#access', '#set-panel', '#show-panel', '#eye-panel'].forEach(p => { const el = $(p); if (el) watch.observe(el, { attributes: true, attributeFilter: ['hidden'] }); });
   const chip = $('#app-chip');
-  if (window.ResizeObserver) { const ro = new ResizeObserver(queueTabs); [chip, tools, $('#app-side'), $('#access'), $('#set-panel'), $('#show-panel')].forEach(el => el && ro.observe(el)); }
+  if (window.ResizeObserver) { const ro = new ResizeObserver(queueTabs); [chip, tools, $('#app-side'), $('#access'), $('#set-panel'), $('#show-panel'), $('#eye-panel')].forEach(el => el && ro.observe(el)); }
   window.addEventListener('resize', queueTabs);
   WIDE?.addEventListener?.('change', queueTabs);
 }
 
 // On a phone, in the seat, the tour's own tools sit in one row at the foot of the panel, the way
-// a phone's control centre groups them: the camera, the setlist, show mode and directions. The
+// a phone's control centre groups them: the camera, the setlist, show mode, eye height and directions. The
 // rail on the left keeps Crowd, Labels and zoom. The row's buttons stand in for the rail's (which keep the
 // state and open the panels) and copy how those look: on, locked, playing or hidden.
-const DOCK = { set: '#set-btn', show: '#show-btn', access: '#t-access' };
+const DOCK = { set: '#set-btn', show: '#show-btn', eye: '#eye-btn', access: '#t-access' };
 function dock() {
   const b = (key, ic, label) => `<button class="dock-b" type="button" data-dock="${key}"><span class="dock-ic">${icon(ic)}<span class="sq-lock" aria-hidden="true">${icon('i-lock')}</span></span><span class="dock-t" aria-hidden="true">${label}</span></button>`;
   return `<div class="dock" role="group" aria-label="Seat tools">
       <button class="dock-b is-capture" type="button" data-tour="capture" aria-label="Capture this moment: a photo or video of your view"><span class="dock-ic">${icon('i-camera')}</span><span class="dock-t" aria-hidden="true">Capture</span></button>
-      ${b('set', 'i-music', 'Setlist')}${b('show', 'i-show', 'Show')}${b('access', 'i-pin', 'Directions')}
+      ${b('set', 'i-music', 'Setlist')}${b('show', 'i-show', 'Show')}${b('eye', 'i-eye', 'Height')}${b('access', 'i-pin', 'Directions')}
     </div>`;
 }
 function syncDock() {

@@ -949,6 +949,7 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
   .tools #t-labels { order: 30; }
   .tools #set-btn { order: 40; }
   .tools #show-btn { order: 60; }
+  .tools #eye-btn { order: 65; }
   .tools #t-capture { order: 70; }
   .tools #t-reset { order: 80; }
   .tools .zoom { order: 90; }
@@ -984,7 +985,7 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
   .in-tour .tools #t-reset, .in-tour .tour-end { display: none; }
   /* The panels open under their buttons, as see-through as the bar, above the categories. */
   .stage { --glass-2: rgba(24, 21, 21, 0.86); }
-  .stage:is(.show-open, .set-open, .access-open) .pov-hint { opacity: 0; }
+  .stage:is(.show-open, .set-open, .eye-open, .access-open) .pov-hint { opacity: 0; }
   .stage .show-panel, .stage .access { top: calc(var(--bar-b) + 14px); left: var(--drop-x, 14px); right: auto; max-height: calc(100% - var(--bar-b) - 14px - 104px); background: var(--glass-2); border-color: rgba(255, 255, 255, 0.12); border-radius: 22px; -webkit-backdrop-filter: blur(20px) saturate(140%); backdrop-filter: blur(20px) saturate(140%); }
   .stage.is-seat .show-panel, .stage.is-seat .access, .stage.map-open .access { max-height: calc(100% - var(--bar-b) - 14px - 18px); }
   .stage :is(.event-card, .compare, .pov-hint) { top: calc(var(--bar-b) + 14px); }
@@ -1142,11 +1143,11 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
      panel in the seat (.dock), so the rail is only Crowd, Labels and zoom. */
   .tools { left: max(22px, env(safe-area-inset-left, 0px)); top: calc(max(16px, env(safe-area-inset-top, 0px)) + 62px + var(--card-h, 0px)); bottom: calc(max(156px, var(--side-h, 0px)) + 86px); gap: 20px 16px; }
   .tools-g { gap: 20px; }
-  .tools #t-reset, .in-tour .tools :is(#t-access, #set-btn, #show-btn) { display: none; }
+  .tools #t-reset, .in-tour .tools :is(#t-access, #set-btn, #show-btn, #eye-btn) { display: none; }
   .in-tour .tour-end { display: none; }
   .app-side .dock { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; width: 100%; margin-top: 2px; }
   /* A sheet from the bottom (show mode, the setlist) takes the panel's place while open. */
-  .stage:is(.show-open, .set-open) .app-side, .in-tour .stage.is-seat:is(.show-open, .set-open) .app-side { opacity: 0; pointer-events: none; }
+  .stage:is(.show-open, .set-open, .eye-open) .app-side, .in-tour .stage.is-seat:is(.show-open, .set-open, .eye-open) .app-side { opacity: 0; pointer-events: none; }
   .tools .sq { width: 42px; height: 42px; }
   .tools .sq svg { width: 19px; height: 19px; }
   .stage.is-seat .tools { top: calc(max(16px, env(safe-area-inset-top, 0px)) + 62px); bottom: calc(max(12px, env(safe-area-inset-bottom, 0px)) + var(--seat-h, 0px) + 28px); }
@@ -3066,7 +3067,7 @@ html.lang-swap body { opacity: .35; }
 /* From a seat the tray is only the switcher between the two seats. */
 .stage.is-seat .compare :is(.cmp-lede, .cmp-score, .cmp-rows, .cmp-foot, .cmp-note) { display: none; }
 .stage.is-seat .compare h2 { font-size: 18px; }
-.in-tour .compare, .stage.show-open .compare, .stage.set-open .compare { display: none; }
+.in-tour .compare, .stage.show-open .compare, .stage.set-open .compare, .stage.eye-open .compare { display: none; }
 
 .show-panel { left: calc(max(24px, env(safe-area-inset-left, 0px)) + 66px); top: 80px; width: 340px; max-height: calc(100% - 104px - var(--seat-h, 0px)); }
 .show-lede { font-size: 14px; color: rgba(244, 240, 238, 0.82); }
@@ -3116,6 +3117,13 @@ html.lang-swap body { opacity: .35; }
 .set-list li.is-playing .set-t { color: #fff; }
 .set-am { font: 600 10.5px/1 var(--font); color: rgba(244, 240, 238, 0.6); text-decoration: none; padding: 6px 8px; border-radius: 999px; border: 1px solid var(--line-2); white-space: nowrap; }
 .set-am:hover { color: var(--text); border-color: rgba(255, 255, 255, 0.45); }
+/* Eye height (3D Pass Plus): two sliders in centimetres and the rows they reach. */
+.eye-val { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.eye-val b { font: 700 18px/1 var(--mono, ui-monospace, monospace); color: #fff; font-variant-numeric: tabular-nums; }
+.eye-val span { font-size: 12px; color: rgba(244, 240, 238, 0.66); }
+.eye-range { width: 100%; height: 28px; margin: 0; accent-color: var(--coral); cursor: pointer; touch-action: pan-x; }
+.eye-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 12px; border-top: 1px solid var(--line-2); }
+.eye-foot .link { flex: none; font-size: 12.5px; }
 /* While a preview plays, the Setlist button keeps a small beat. */
 .sq.is-playing::after { content: ""; position: absolute; top: 2px; right: 2px; width: 9px; height: 9px; border-radius: 50%; background: var(--ok, #3ddc84); box-shadow: 0 0 0 2px rgba(22, 20, 20, 0.93); animation: setPulse 1s ease-in-out infinite; }
 

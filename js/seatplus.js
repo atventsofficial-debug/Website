@@ -7,6 +7,9 @@
 // Show mode: from a seat, the light sticks round you in a colour you pick (or the crowd's
 // own), on the beat, steady or in a wave round the stage, a light-stick ocean, and the house
 // lights up or down. It comes with Plus, and is open on the demo venues.
+//
+// Eye height: from a seat, how tall the fan is and how tall the people a few rows in front
+// are, so the view is the one they will have on the night (or a clearer one). Plus too.
 import { formatFee, PLUS_FEE, UPGRADE_FEE } from './rules.js';
 import { canView, plusOnSale, upgradable } from './passes.js';
 import { compareSeats, pairText } from './compare.js';
@@ -122,7 +125,7 @@ const KIND_LABEL = Object.fromEntries(KINDS.map(([k, label]) => [k, label]));
 
 // On a computer a panel opens under its button in the bar at the top (css/styles.css): its left
 // edge under the button's, or its right edge when it would run off the screen.
-const DROPS = [['#t-access', '#access'], ['#set-btn', '#set-panel'], ['#show-btn', '#show-panel']];
+const DROPS = [['#t-access', '#access'], ['#set-btn', '#set-panel'], ['#show-btn', '#show-panel'], ['#eye-btn', '#eye-panel']];
 export function placeDrops() {
   const stage = $('#stage');
   if (!stage) return;
@@ -340,6 +343,7 @@ export function showModeFor(mode) {
   btn.hidden = !inSeat && !state.tour;
   if (mode === 'seat') state.showLights = true;
   if (!inSeat) { panel.hidden = true; btn.setAttribute('aria-expanded', 'false'); btn.classList.remove('is-on'); $('#stage')?.classList.remove('show-open'); }
+  eyeModeFor(mode);
   // A seat pass keeps the crowd's own light sticks; Plus brings back the fan's choice.
   state.scene?.setShow(showOpen() ? state.show : { ...state.show, mix: 0, ocean: 0, fx: 'beat' });
   state.scene?.setRoam(inSeat && roamOn());
@@ -394,7 +398,7 @@ export function bindShow() {
     btn.setAttribute('aria-expanded', String(!panel.hidden));
     btn.classList.toggle('is-on', !panel.hidden);
     $('#stage')?.classList.toggle('show-open', !panel.hidden);
-    if (!panel.hidden) { closeSetlist(); paintShow(); }
+    if (!panel.hidden) { closeSetlist(); closeEye(); paintShow(); }
   });
   const apply = () => { saveShow(); state.scene?.setShow(state.show); paintShow(); };
   panel.addEventListener('click', e => {
@@ -534,6 +538,7 @@ export function bindSetlist() {
     // One panel at a time beside the buttons: the setlist takes show mode's place.
     const show = $('#show-panel');
     if (show && !show.hidden) $('#show-btn')?.click();
+    closeEye();
     panel.hidden = false;
     btn.setAttribute('aria-expanded', 'true');
     btn.classList.add('is-on');
@@ -545,4 +550,110 @@ export function bindSetlist() {
     const b = e.target.closest('[data-song]');
     if (b && showOpen()) playSong(+b.dataset.song);
   });
+}
+
+// ---------------------------------------------------------------- eye height
+//
+// How tall you are and how tall the people a few rows in front of you are. The camera sits
+// at your eye height (scene3d.js setEye); the people in front grow or shrink on their spots
+// (crowd3d.js setAhead). Kept on this device for every concert. With a seat pass (no Plus)
+// the view keeps the model's own heights, and the button carries a lock.
+
+const EYE_KEY = 'atv-eye';
+// The height the 3D view is modelled at (scene3d.js EYE_REF_CM; that file loads late, with three.js).
+const EYE_REF_CM = 170;
+const EYE_MIN = 140, EYE_MAX = 200;
+const EYE_DEFAULT = { me: EYE_REF_CM, front: EYE_REF_CM, rows: 3 };
+const ROWS = [[1, '1 row'], [3, '3 rows'], [5, '5 rows']];
+const clampCm = v => Math.min(EYE_MAX, Math.max(EYE_MIN, Math.round(+v || EYE_REF_CM)));
+
+function loadEye() {
+  try {
+    const o = { ...EYE_DEFAULT, ...JSON.parse(localStorage.getItem(EYE_KEY) || '{}') };
+    return { me: clampCm(o.me), front: clampCm(o.front), rows: ROWS.some(([n]) => n === +o.rows) ? +o.rows : 3 };
+  } catch { return { ...EYE_DEFAULT }; }
+}
+const saveEye = () => { try { localStorage.setItem(EYE_KEY, JSON.stringify(state.eye)); } catch { /* private mode */ } };
+const applyEye = () => state.scene?.setEye(showOpen() ? state.eye : null);
+
+export function closeEye() {
+  const btn = $('#eye-btn'), panel = $('#eye-panel');
+  if (!panel || panel.hidden) return;
+  panel.hidden = true;
+  btn?.setAttribute('aria-expanded', 'false');
+  btn?.classList.remove('is-on');
+  $('#stage')?.classList.remove('eye-open');
+}
+
+// Called with show mode's on every change of mode: the button belongs to the seat.
+function eyeModeFor(mode) {
+  const btn = $('#eye-btn');
+  if (!btn) return;
+  state.eye ||= loadEye();
+  btn.hidden = mode !== 'seat';
+  btn.classList.toggle('is-locked', !showOpen());
+  if (mode !== 'seat') closeEye();
+  else applyEye();
+  if (!$('#eye-panel').hidden) paintEye();
+}
+
+// What the people in front are, said in words beside the number.
+const frontWord = cm => (cm <= EYE_REF_CM - 12 ? 'Shorter than most' : cm >= EYE_REF_CM + 12 ? 'Taller than most' : 'About average');
+
+function paintEye() {
+  const panel = $('#eye-panel'), o = state.eye;
+  if (!panel) return;
+  const head = `<div class="show-head set-head"><p class="eyebrow">${icon('i-eye')}Eye height</p><h2>See it at your height</h2><button class="sq sq-sm set-x" type="button" data-eye-close aria-label="Close eye height" title="Close">${icon('i-x')}</button></div>`;
+  if (!showOpen()) {
+    panel.innerHTML = `${head}<p class="show-lede">Set how tall you are and how tall the people in the rows in front of you are, and the view from your seat follows: the real view on the night, or a clearer one.</p>${plusOffer('Eye height')}`;
+    return;
+  }
+  const slider = (key, label, val, note) => `<div><dt>${label}</dt><dd>
+      <div class="eye-val"><b class="mono" data-eye-out="${key}">${val} cm</b>${note ? `<span data-eye-note="${key}">${esc(note)}</span>` : ''}</div>
+      <input class="eye-range" type="range" min="${EYE_MIN}" max="${EYE_MAX}" step="1" value="${val}" data-eye="${key}" aria-label="${label}, in centimetres">
+    </dd></div>`;
+  const changed = o.me !== EYE_REF_CM || o.front !== EYE_REF_CM || o.rows !== 3;
+  panel.innerHTML = `${head}
+    <dl class="show-rows">
+      ${slider('me', 'Your height', o.me, '')}
+      ${slider('front', 'People in front', o.front, frontWord(o.front))}
+      <div><dt>How many rows</dt><dd><div class="show-seg">${ROWS.map(([n, label]) => `<button type="button" data-eye-rows="${n}" aria-pressed="${n === o.rows}">${esc(label)}</button>`).join('')}</div></dd></div>
+    </dl>
+    <div class="eye-foot"><p class="show-set-note">The 3D view starts at ${EYE_REF_CM} cm.</p>${changed ? '<button class="link" type="button" data-eye-reset>Back to average</button>' : ''}</div>`;
+}
+
+export function bindEye() {
+  const btn = $('#eye-btn'), panel = $('#eye-panel');
+  if (!btn || !panel) return;
+  btn.addEventListener('click', () => {
+    if (!panel.hidden) { closeEye(); return; }
+    if (toUpgrade()) return;
+    // One panel at a time beside the buttons.
+    if (!$('#show-panel').hidden) $('#show-btn')?.click();
+    closeSetlist();
+    state.eye ||= loadEye();
+    panel.hidden = false;
+    btn.setAttribute('aria-expanded', 'true');
+    btn.classList.add('is-on');
+    $('#stage')?.classList.add('eye-open');
+    paintEye();
+  });
+  panel.addEventListener('click', e => {
+    if (e.target.closest('[data-eye-close]')) { closeEye(); btn.focus(); return; }
+    if (!showOpen()) return;
+    const r = e.target.closest('[data-eye-rows]');
+    if (r) { state.eye.rows = +r.dataset.eyeRows; saveEye(); applyEye(); paintEye(); return; }
+    if (e.target.closest('[data-eye-reset]')) { state.eye = { ...EYE_DEFAULT }; saveEye(); applyEye(); paintEye(); }
+  });
+  // Dragging moves the view as it goes; the panel repaints once let go.
+  panel.addEventListener('input', e => {
+    const key = e.target.dataset.eye;
+    if (!key || !showOpen()) return;
+    state.eye[key] = clampCm(e.target.value);
+    const out = panel.querySelector(`[data-eye-out="${key}"]`), note = panel.querySelector(`[data-eye-note="${key}"]`);
+    if (out) out.textContent = `${state.eye[key]} cm`;
+    if (note) note.textContent = frontWord(state.eye[key]);
+    applyEye();
+  });
+  panel.addEventListener('change', e => { if (e.target.dataset.eye) { saveEye(); paintEye(); } });
 }

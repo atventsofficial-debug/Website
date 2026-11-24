@@ -594,6 +594,8 @@ export class Crowd {
   focusOn(eye, look = null, radius = 24, max = 900, around = false) {
     if (!this.far) { this.pendingFocus = [eye, look, radius, max, around]; return; }
     this.pendingFocus = null;
+    // A new seat (or none): the people in front of the last one go back to their own height.
+    this._restoreAhead();
     if (!eye) { this.nearSlots = []; this.midSlots = null; this.skip = null; this._assign(); if (this.near) this.near.visible = false; return; }
     // One pass over everyone, keeping only those within the light figure's reach, then a
     // sort of just those: the whole crowd sorted made a hitch as the flight to a seat began.
@@ -632,6 +634,38 @@ export class Crowd {
     this.near.visible = this.visible !== false;
     this._fill(this.near, this.nearSlots, true);
     this._assign();
+  }
+
+  // 3D Pass Plus: the people in front of the seat at another height. `o`: { eye, look, f, depth }:
+  // everyone near whose spot is up to `depth` metres ahead of the eye (towards `look`), and
+  // not far to the side, is scaled by `f` where they are. Seated, the hips stay on the seat;
+  // standing, the feet stay on the floor. Null: everyone back to their own height.
+  setAhead(o) {
+    if (!this.far) return;
+    this._restoreAhead();
+    if (o) {
+      const M = this.data.matrix, L = this.data.look, { eye, look, f, depth } = o;
+      const fx = look ? look.x - eye.x : 0, fz = look ? look.z - eye.z : -1, fl = Math.hypot(fx, fz) || 1;
+      const ux = fx / fl, uz = fz / fl;
+      const saved = this._ahead = new Map();
+      for (const k of this.nearSlots) {
+        const o16 = k * 16, dx = M[o16 + 12] - eye.x, dz = M[o16 + 14] - eye.z, dy = M[o16 + 13] - eye.y;
+        const ahead = dx * ux + dz * uz, side = Math.abs(dx * uz - dz * ux);
+        if (ahead < 0.3 || ahead > depth || side > 0.9 + ahead * 0.45 || dy > 1.5) continue;
+        saved.set(k, M.slice(o16, o16 + 16));
+        const h = M[o16 + 5], standing = (Math.floor(L[k * 4]) & 16) !== 0;
+        for (const j of [0, 1, 2, 4, 5, 6, 8, 9, 10]) M[o16 + j] *= f;
+        M[o16 + 13] += standing ? STAND_LIFT_LOCAL * h * (f - 1) : 0.48 * h * (1 - f);
+      }
+    }
+    if (this.near) this._fill(this.near, this.nearSlots, true);
+    this._assign();
+  }
+
+  _restoreAhead() {
+    if (!this._ahead) return;
+    for (const [k, m] of this._ahead) this.data.matrix.set(m, k * 16);
+    this._ahead = null;
   }
 
   // Hides (or shows again) the person in one slot: the seat you sit in.

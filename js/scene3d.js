@@ -19,6 +19,15 @@ const SEATED_EYE = 1.2;
 const STANDING_EYE = 1.72;
 const STAND_LIFT = 0.42;   // a standing person's hips sit this much higher than a seated one's
 const SEAT_FOV = 50;
+// The eye heights above are a person of EYE_REF_CM. 3D Pass Plus lets the fan set their own
+// height and that of the people a few rows in front (seatplus.js, setEye). Seated, only the
+// body above the seat grows (the seat stays where it is); standing, the whole person does.
+export const EYE_REF_CM = 170;
+const HIP_SEATED = 0.48;
+const eyeLift = (seat, cm = EYE_REF_CM) => {
+  const f = (cm || EYE_REF_CM) / EYE_REF_CM;
+  return seat.standing ? (SEATED_EYE + STAND_LIFT) * f : HIP_SEATED + (SEATED_EYE - HIP_SEATED) * f;
+};
 const MAP_FOV = 42;
 
 // Seat-map palette: neutral seats, one accent for the visitor's own seat.
@@ -1111,7 +1120,8 @@ export class SeatScene {
     const chest = seatBase.clone().add(new THREE.Vector3(0, 0.7, 0));
     // The flight looks at the top of the seat, not into its back, so the last metres are not a close-up of upholstery.
     const over = seatBase.clone().add(new THREE.Vector3(0, 1.05, 0));
-    const eye = seatBase.clone().addScaledVector(fwd, -0.05).add(new THREE.Vector3(0, seat.standing ? SEATED_EYE + STAND_LIFT : SEATED_EYE, 0));
+    const eye = seatBase.clone().addScaledVector(fwd, -0.05).add(new THREE.Vector3(0, eyeLift(seat, this.eyeOpts?.me), 0));
+    this._eyeTo = null;
     // The people around the seat get their detailed figures before the camera gets there.
     this.people?.focusOn(eye, this.focus, this.level === 2 ? 24 : 14, this.level === 2 ? 900 : 320);
 
@@ -1184,6 +1194,7 @@ export class SeatScene {
         this._fovBack = null;
         this.look = { yaw: 0, pitch: 0, cy: 0, cp: 0, baseYaw: seatedAng.yaw, basePitch: seatedAng.pitch, fov: SEAT_FOV };
         this.eye = eye;
+        this._eyeTo = null;
         this.realColors = true;
         this.moodTarget = 1;
         this.cb.onMode?.('seat', seat);
@@ -1482,6 +1493,7 @@ export class SeatScene {
         this._lite(false);
         this.mode = 'seat';
         this.eye = eye;
+        this._eyeTo = null;
         this._fovBack = null;
         this.look = { yaw: 0, pitch: 0, cy: 0, cp: 0, baseYaw: seated.yaw, basePitch: seated.pitch, fov: this._fitFov() };
         this.seatSince = this.clock.elapsedTime;
@@ -1499,6 +1511,20 @@ export class SeatScene {
 
   zoomSeatView(delta) {
     this.look.fov = THREE.MathUtils.clamp(this.look.fov + delta, 16, 70);
+  }
+
+  // 3D Pass Plus: the fan's height and the height of the people `rows` rows in front, in cm
+  // ({ me, front, rows }). The camera eases to the new eye height; the people in front grow
+  // or shrink on their spots. Null: the model's own heights. Kept for the next seat too.
+  setEye(o) {
+    this.eyeOpts = o || null;
+    const seat = this.current >= 0 ? this.venue?.seats[this.current] : null;
+    if (!seat || this.mode !== 'seat' || !this.eye) { this._eyeTo = null; return; }
+    this._eyeTo = seat.y + eyeLift(seat, o?.me);
+    const f = (o?.front || EYE_REF_CM) / EYE_REF_CM, rows = o?.rows || 3;
+    // Rows in a stand are about 0.85 m deep; a standing floor packs people a little closer.
+    const depth = 0.35 + rows * (seat.standing ? 0.7 : 0.85);
+    this.people?.setAhead(Math.abs(f - 1) < 0.005 ? null : { eye: this.eye, look: this.focus, f, depth });
   }
 
   // The zoom buttons: in the seat they narrow the view; above the venue they move the camera
@@ -1630,6 +1656,10 @@ export class SeatScene {
       if (this.anim.t >= this.anim.dur) { const a = this.anim; this.anim = null; this._animAt = null; a.done(); }
     } else if (this.mode === 'seat') {
       const L = this.look;
+      if (this._eyeTo != null && this.eye) {
+        const d = this._eyeTo - this.eye.y;
+        if (Math.abs(d) < 0.001) { this.eye.y = this._eyeTo; this._eyeTo = null; } else this.eye.y += d * Math.min(1, dt * 6);
+      }
       L.cy += (L.yaw - L.cy) * Math.min(1, dt * 10);
       L.cp += (L.pitch - L.cp) * Math.min(1, dt * 10);
       // Breathing: a few millimetres of drift so the view feels like a person sitting. With
