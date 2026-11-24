@@ -1014,6 +1014,9 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
 .sb-label { padding-left: 10px; }
 .cat-pills { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; min-width: 0; flex: 1; }
 .cat-pills::-webkit-scrollbar { display: none; }
+/* the pills share the bar's width, so no empty space is left at its end; with many categories
+   each keeps its own width and the row scrolls */
+.cat-pills .cat-pill { flex: 1 0 0; min-width: max-content; }
 .cat-pill { flex: none; display: inline-flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 3px; height: 52px; padding: 0 20px; border-radius: 999px; border: 1.5px solid var(--line-2); background: transparent; color: var(--text); cursor: pointer; text-align: left; transition: background .2s, color .2s, border-color .2s; }
 .cat-pill:hover { border-color: rgba(255, 255, 255, 0.45); }
 .cat-pill b { font-size: 14px; font-weight: 700; }
@@ -1481,10 +1484,10 @@ input, select, textarea { border-radius: 0; }
 .app-side .row-btns:has(> :nth-child(2)) .btn.btn-coral:has(> svg:last-child:not(.lead)) { justify-content: space-between; padding-left: 14px; }
 .app-side .row-btns:has(> :nth-child(2)) .btn > svg { flex: none; }
 .app-side .row-btns .btn-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-/* A pair whose icons lead (the tour's My category and My seat): both icons in the same 24 px
-   circle at the start, 8 px from the left edge, filled in the coral button and tinted in the other,
-   the labels starting at the same place. */
-.app-side .row-btns:has(> :nth-child(2)) .btn:has(> svg.lead) { justify-content: flex-start; padding: 0 16px 0 6.5px; }
+/* A pair whose icons lead (the tour's My Category and My Seat): each pill as wide as its icon and
+   label, both icons in the same 24 px circle at the start, 8 px from the left edge, filled in the
+   coral button and tinted in the other. */
+.app-side .row-btns:has(> :nth-child(2)) .btn:has(> svg.lead) { flex: 0 1 auto; justify-content: flex-start; padding: 0 18px 0 6.5px; }
 .app-side .row-btns:has(> :nth-child(2)) .btn > svg.lead { box-sizing: content-box; width: 14px; height: 14px; padding: 5px; margin: 0; border-radius: 50%; }
 .app-side .row-btns:has(> :nth-child(2)) .btn-line > svg.lead { background: color-mix(in srgb, var(--coral) 14%, transparent); color: var(--coral); }
 /* the tour's head: back one step, where the fan is, and fold the panel away */
