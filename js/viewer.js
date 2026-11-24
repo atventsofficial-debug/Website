@@ -389,7 +389,8 @@ function setMode(mode, seat) {
   if (mode === 'overview') state.viewing = null;
   $('#seatcard').hidden = !!state.tour || !(mode === 'turning' || mode === 'seat' || (mode === 'overview' && state.peek));
   $('#pov-hint').hidden = mode !== 'seat';
-  $('#zoom').hidden = mode !== 'seat';
+  // Zoom above the venue too, not only in the seat: hidden only while the camera travels.
+  $('#zoom').hidden = mode !== 'seat' && mode !== 'overview';
   showModeFor(mode);
   paintAccess({ tourSeat });
 }
@@ -549,7 +550,7 @@ export function bindViewer() {
   $('#sc-close').addEventListener('click', closePeek);
   $('#zoom').addEventListener('click', e => {
     const d = e.target.closest('[data-zoom]')?.dataset.zoom;
-    if (d) state.scene?.zoomSeatView(+d);
+    if (d) state.scene?.zoomBy(+d);
   });
   $('#cats').addEventListener('click', e => {
     const b = e.target.closest('.cat-pill');
