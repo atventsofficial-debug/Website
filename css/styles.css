@@ -1052,7 +1052,7 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
      (in a seat, under the tall last step), they go on in a second column. */
   /* On a phone the rail keeps to the left edge, without Reset (the back button does that).
      In the tour, Directions, the setlist and show mode move to the row at the foot of the
-     panel (.dock), so the rail is only Crowd, Labels and zoom. */
+     panel in the seat (.dock), so the rail is only Crowd, Labels and zoom. */
   .tools { left: max(22px, env(safe-area-inset-left, 0px)); top: calc(max(16px, env(safe-area-inset-top, 0px)) + 62px + var(--card-h, 0px)); bottom: calc(max(156px, var(--side-h, 0px)) + 86px); gap: 20px 16px; }
   .tools-g { gap: 20px; }
   .tools #t-reset, .in-tour .tools :is(#t-access, #set-btn, #show-btn) { display: none; }
@@ -1369,9 +1369,6 @@ input, select, textarea { border-radius: 0; }
 .dock-b.is-capture .dock-ic { background: var(--coral); color: #fff; }
 .dock-b.is-locked .sq-lock { display: grid; }
 .dock-b.is-playing .dock-ic::after { content: ""; position: absolute; top: 0; right: 0; width: 10px; height: 10px; border-radius: 50%; background: var(--ok, #3ddc84); box-shadow: 0 0 0 2px rgba(22, 20, 20, 0.93); animation: setPulse 1s ease-in-out infinite; }
-/* Two buttons (before the seat): wide pills, an icon and its name side by side. */
-.dock[data-n="1"] .dock-b, .dock[data-n="2"] .dock-b { flex-direction: row; justify-content: flex-start; gap: 10px; padding: 7px 14px 7px 7px; border-radius: 999px; }
-.dock[data-n="1"] .dock-t, .dock[data-n="2"] .dock-t { font-size: 13px; }
 .cat-pill.is-off { opacity: 0.35; cursor: not-allowed; }
 .cat-pill.is-off:hover { border-color: var(--line-2); }
 .cat-pill.is-own:not([aria-pressed="true"]) { border-color: var(--coral); }
