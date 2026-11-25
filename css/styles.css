@@ -1154,8 +1154,9 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
      (in a seat, under the tall last step), they go on in a second column. */
   /* On a phone the rail keeps to the left edge, without Reset (the back button does that).
      In the tour, Directions, the setlist and show mode move to the row at the foot of the
-     panel in the seat (.dock), so the rail is only Crowd, Labels and zoom. */
-  .tools { left: max(22px, env(safe-area-inset-left, 0px)); top: calc(max(16px, env(safe-area-inset-top, 0px)) + 62px + var(--card-h, 0px)); bottom: calc(max(156px, var(--side-h, 0px)) + 86px); gap: 20px 16px; }
+     panel in the seat (.dock), so the rail is only Crowd, Labels and zoom. Its foot stays
+     clear of the category bar (.sections, 12px over the panel) by more than the zoom's own label. */
+  .tools { left: max(22px, env(safe-area-inset-left, 0px)); top: calc(max(16px, env(safe-area-inset-top, 0px)) + 62px + var(--card-h, 0px)); bottom: calc(max(156px, var(--side-h, 0px)) + 104px); gap: 20px 16px; }
   .tools-g { gap: 20px; }
   .tools #t-reset, .in-tour .tools :is(#t-access, #set-btn, #show-btn, #eye-btn) { display: none; }
   .in-tour .tour-end { display: none; }
@@ -2622,9 +2623,12 @@ body { font-family: var(--font); font-feature-settings: "cv11", "ss01"; }
    herophoto.js places the photo so its screens sit whole in that part. */
 .hs-photo.is-ready .hs-room { transition: transform 1s var(--hs-ease); }
 /* The hero's card is written in by script; until then its place is held, so the slide
-   controls do not jump up when it arrives (the card is 229 px tall from 961 px up, and at
-   least 300 px below that). */
-.hs-stack:empty { min-height: 300px; }
+   controls do not jump up when it arrives, nor the sections under the hero, which phones
+   see in the first screen (the card is 229 px tall from 961 px up, about 340 px below that,
+   and taller again on the narrowest phones, where its lines wrap). */
+.hs-stack:empty { min-height: 340px; }
+@media (max-width: 400px) { .hs-stack:empty { min-height: 355px; } }
+@media (max-width: 370px) { .hs-stack:empty { min-height: 400px; } }
 @media (min-width: 961px) {
   .hs-stack:empty { min-height: 229px; }
   .hs-card { padding: 18px 26px; }

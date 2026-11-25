@@ -23,6 +23,8 @@
 <link rel="stylesheet" href="css/mobile.css">
 <!-- The one font file, fetched with the stylesheet instead of after it: the text draws in Inter from the first paint. -->
 <link rel="preload" href="assets/fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
+<!-- The Worker's settings (js/app.js, boot): asked for with the page, not after the scripts have run. -->
+<link rel="preload" href="api/config" as="fetch" crossorigin>
 <style>
 /* Opening animation (#atv-intro, js/intro.js). Inline so it paints with the first frame; about 2.6s. */
 .atv-intro{position:fixed;inset:0;z-index:2147483000;display:grid;place-items:center;pointer-events:none}
