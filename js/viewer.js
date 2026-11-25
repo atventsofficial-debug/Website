@@ -223,6 +223,7 @@ export async function openViewer(id, { cat, seat, back, tour } = {}) {
     const go = seatOf(sitNext);
     sitNext = null;
     if (go && canView(venue)) state.scene.flyToSeat(go);
+    else if (go) peek(go);
     else showShared();
     paintCompare();
     return;
@@ -318,7 +319,7 @@ export function paintViewer() {
   $('#ev-venue').textContent = v.event.venue;
   $('#app-chip').innerHTML = e.demo ? `${icon('i-eye')}<span>Demo venue · sample prices</span>`
     : state.tour ? `${icon('i-eye')}<span>Your seat tour · ${esc(v.catById[tourPass()?.cat]?.name || '')}</span>`
-      : p?.status === 'confirmed' && p.plan === 'plus' ? `${icon('i-eye')}<span>3D Pass Plus · every seat open</span>`
+      : p?.status === 'confirmed' && p.plan === 'plus' ? `${icon('i-eye')}<span>3D Pass Plus</span>`
       : p ? `${icon(p.status === 'confirmed' ? 'i-eye' : 'i-lock')}<span>3D pass · ${STATUS[p.status].label}</span>`
         : `${icon('i-lock')}<span>View from above · seat views locked</span>`;
   $('#app-chip').className = `app-chip${open || state.tour ? ' is-open' : ''}`;
@@ -332,8 +333,8 @@ export function paintViewer() {
       <div class="row-btns"><a class="btn btn-coral btn-sm" href="#partner-contact">Book a demo</a><a class="btn btn-line btn-sm" href="#concerts">See concerts</a></div>`
     : p?.status === 'confirmed' && p.plan === 'plus' ? `
       <p class="eyebrow">Your 3D Pass Plus</p>
-      <h2>Every seat is open</h2>
-      <p>Click any seat of this concert to sit down and look round, then tap Compare on its card to set two seats side by side. The tour still takes you to your own seat.</p>
+      <h2>Your seat is ready</h2>
+      <p>Take the tour to the view from your seat, with show mode, the setlist, eye height and directions. Tap any other seat, then Compare on its card, to set it beside yours.</p>
       <div class="row-btns"><a class="btn btn-coral btn-sm" href="#tour-${esc(p.id)}">Open my seat view ${icon('i-arrow')}</a></div>
       ${matesBlock(p, { cats: v.catById })}`
     : p?.status === 'confirmed' ? `
@@ -363,7 +364,7 @@ export function paintViewer() {
       <h2>Look round, then sit down</h2>
       <p>Anyone can look round from above. The view from your own seat opens with a 3D pass: fill in your seat, your name and your email, and pay ${formatFee()}.</p>
       <div class="row-btns"><a class="btn btn-coral btn-sm" href="#unlock-${e.id}">Unlock · ${formatFee()} ${icon('i-arrow')}</a>${buyLink(e, `Tickets ${out}`, 'btn btn-line btn-sm')}</div>
-      ${plusOnSale() ? `<p class="plus-note">${icon('i-eye')}<span>Still choosing? <a class="u" href="#plus-${e.id}">3D Pass Plus</a> opens every seat of this concert for ${formatFee(PLUS_FEE)}.</span></p>` : ''}`;
+      ${plusOnSale() ? `<p class="plus-note">${icon('i-eye')}<span>Still choosing? <a class="u" href="#plus-${e.id}">3D Pass Plus</a> adds show mode, the setlist, eye height and directions for ${formatFee(PLUS_FEE)}.</span></p>` : ''}`;
   renderCats();
   state.scene?.setMine(markedIds());
   if (state.viewing) fillSeatCard(state.viewing);
@@ -418,11 +419,11 @@ function setMode(mode, seat) {
   }
 }
 
-// A paid seat pass of this concert, on its way to Plus: every seat, for the difference.
+// A paid seat pass of this concert, on its way to Plus, for the difference.
 function upgradeBlock(e) {
   const up = upgradable(e.id);
   return up && !isOver(e) ? `<div class="plus-up">
-      <p><b>Every seat, not just yours</b><span>Upgrade to 3D Pass Plus and sit in any seat of this concert to compare. You pay only the difference.</span></p>
+      <p><b>More from your seat</b><span>Upgrade to 3D Pass Plus for show mode, the setlist, eye height and directions. You pay only the difference.</span></p>
       <a class="btn btn-line btn-sm" href="#upgrade-${esc(up.id)}">Upgrade · ${formatFee(UPGRADE_FEE)} ${icon('i-arrow')}</a></div>` : '';
 }
 
@@ -473,11 +474,11 @@ function fillSeatCard(seat) {
       : `Have a ticket here? Unlock the view from your seat for ${formatFee()}.`;
     const up = !isOver(e) ? upgradable(e.id) : null;
     $('#sc-actions').innerHTML = p?.status === 'confirmed'
-      ? `<a class="btn btn-coral" href="#tour-${esc(p.id)}">Open my seat view ${icon('i-arrow')}</a>${up ? `<a class="btn btn-line" href="#upgrade-${esc(up.id)}">Open every seat · ${formatFee(UPGRADE_FEE)}</a>` : ''}`
+      ? `<a class="btn btn-coral" href="#tour-${esc(p.id)}">Open my seat view ${icon('i-arrow')}</a>${up ? `<a class="btn btn-line" href="#upgrade-${esc(up.id)}">Upgrade to Plus · ${formatFee(UPGRADE_FEE)}</a>` : ''}`
       : p?.status === 'checking' ? `<a class="btn btn-line" href="#passes">${icon('i-clock')}Waiting for payment</a>`
         : `<a class="btn btn-coral" href="#unlock-${e.id}">Unlock seat view · ${formatFee()} ${icon('i-arrow')}</a>${buyLink(e, `Tickets ${out}`, 'btn btn-line')}`;
     $('#sc-actions').insertAdjacentHTML('beforeend', `<button class="btn btn-line" type="button" data-act="compare">${icon('i-compare')}${compareIds().length === 1 && !compareIds().includes(seat.id) ? 'Compare with A' : 'Compare'}</button>`);
-    if (p?.status === 'confirmed') $('#sc-dist').textContent = up ? 'Your pass opens your own seat. Upgrade to 3D Pass Plus to sit here too.' : 'Your pass is open. The tour takes you to your seat.';
+    if (p?.status === 'confirmed') $('#sc-dist').textContent = 'Your pass opens your own seat. Tap Compare to set this one beside it.';
     return;
   }
   $('#sc-actions').innerHTML = `
@@ -656,9 +657,9 @@ function tourPick(seat) {
   if (!p || !mine) return;
   // Looking at a fan from the list: only the fan's own seat sits them back down.
   if (state.tour.fanBlock) { if (seat.id === mine.id) state.scene.flyToSeat(mine); return; }
-  // 3D Pass Plus opens every seat: a tap on any other seat leaves the tour for the open view
-  // and sits there, where its card has Compare.
-  if (p.plan === 'plus' && !state.tour.picking && seat.id !== mine.id) { everySeat(seat); return; }
+  // With 3D Pass Plus a tap on any other seat leaves the tour for the view from above, with the
+  // fan's own seat as A in Compare and the tapped seat's card open, its Compare making it B.
+  if (p.plan === 'plus' && !state.tour.picking && seat.id !== mine.id) { compareFromTour(seat, mine); return; }
   if (state.tour.step === 1) {
     if (seat.cat === p.cat) tourCat(p.cat);
     else toast(`That is ${v.catById[seat.cat].name}. Your ticket is ${v.catById[p.cat].name}.`);
@@ -681,15 +682,16 @@ function tourPick(seat) {
   toast('This is your seat. Drag to look round.');
 }
 
-// From the tour to the open view of the concert (Plus), sitting in `seat` if one is given.
+// From the tour to the view from above (Plus), with `mine` in Compare and `seat`'s card open.
 let sitNext = null;
-function everySeat(seat) {
-  sitNext = seat?.id || null;
+function compareFromTour(seat, mine) {
+  sitNext = seat.id;
+  setCompare([mine.id]);
   location.hash = `#seats-${state.venue.eventId}`;
 }
-const plusHint = p => (p?.plan === 'plus' ? '<p class="fine">With 3D Pass Plus, tap any other seat to sit there and compare.</p>' : '');
-// The way out of the tour to every seat, for a Plus pass: in the panel over the venue and in the seat.
-const everySeatBtn = p => (p?.plan === 'plus' ? `<a class="btn btn-line btn-sm" href="#seats-${esc(p.eventId)}">${icon('i-eye', 'lead')}<span class="btn-t">Compare seats</span></a>` : '');
+const plusHint = p => (p?.plan === 'plus' ? '<p class="fine">With 3D Pass Plus, tap any other seat to compare it with yours.</p>' : '');
+// The way out of the tour to Compare, for a Plus pass: in the panel over the venue and in the seat.
+const compareBtn = p => (p?.plan === 'plus' ? `<a class="btn btn-line btn-sm" href="#seats-${esc(p.eventId)}">${icon('i-eye', 'lead')}<span class="btn-t">Compare seats</span></a>` : '');
 
 // The venue numbers another way: the fan's seat moves to where their ticket's row and number
 // are counted the venue's way, and the view follows it. Setting a rule lets go of a seat the
@@ -951,7 +953,7 @@ function paintTour() {
   const body = step === 1 ? `
       <h2>${esc(v.place.name)}</h2>
       <p>This is the whole venue for ${esc(e.title)}. Your ticket is <b>${esc(cat.name)}</b>: tap it below, or tap one of its seats.</p>${plusHint(p)}
-      <div class="row-btns"><button class="btn btn-coral btn-sm" type="button" data-tour="cat"><i class="cat-dot" style="background:${esc(cat.color)}"></i>${esc(cat.name)} ${icon('i-arrow')}</button>${everySeatBtn(p)}</div>`
+      <div class="row-btns"><button class="btn btn-coral btn-sm" type="button" data-tour="cat"><i class="cat-dot" style="background:${esc(cat.color)}"></i>${esc(cat.name)} ${icon('i-arrow')}</button>${compareBtn(p)}</div>`
     : step === 2 && state.tour.picking ? `
       <h2>Tap your seat</h2>
       <p class="fine">Tap the seat you know is yours, in <b>${esc(s.secName)}</b>. Pinch or scroll to zoom in.</p>
@@ -964,7 +966,7 @@ function paintTour() {
       <div class="row-btns">${t.framed
         ? `<button class="btn btn-coral btn-sm" type="button" data-tour="seat"><span class="btn-t">Sit in my seat</span>${icon('i-seat')}</button>`
         : `<button class="btn btn-coral btn-sm" type="button" data-tour="framecat">${icon('i-tag', 'lead')}<span class="btn-t">My Category</span></button><button class="btn btn-line btn-sm" type="button" data-tour="seat">${icon('i-seat', 'lead')}<span class="btn-t">My Seat</span></button>`}</div>
-      ${p.plan === 'plus' ? `<div class="row-btns">${everySeatBtn(p)}</div>` : ''}`
+      ${p.plan === 'plus' ? `<div class="row-btns">${compareBtn(p)}</div>` : ''}`
       : t.fan ? `
       <p class="fine"><b>${esc(t.fan.name)}</b> sits in ${esc(seatText(seatOf(t.fan.seat) || s))}. They light up green in the crowd.</p>
       <div class="row-btns"><button class="btn btn-coral btn-sm" type="button" data-tour="fanclear">Back to my view ${icon('i-seat')}</button></div>`
@@ -973,7 +975,7 @@ function paintTour() {
       <p><b>${esc(seatText(s))}</b>, ${esc(cat.name)}. Drag to look round.</p>
       ${seatNote(p, s)}
       ${numberingControls(p, s)}
-      ${p.plan === 'plus' ? `<div class="row-btns">${everySeatBtn(p)}</div>` : ''}
+      ${p.plan === 'plus' ? `<div class="row-btns">${compareBtn(p)}</div>` : ''}
       <div class="tour-end">
         <button class="tour-act is-capture" type="button" data-tour="capture">${icon('i-camera')}<b>Capture this moment</b><span>Photo or video of your view</span></button>
         <button class="tour-act" type="button" data-tour="again">${icon('i-venue')}<b>See the whole venue</b><span>Take the tour again</span></button>

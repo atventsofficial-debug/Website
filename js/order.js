@@ -6,8 +6,8 @@
 export const ACCESS_FEE = 25000;
 export const formatFee = (n = ACCESS_FEE) => `Rp${n.toLocaleString('id-ID')}`;
 
-// The two passes. 'seat' is the view from one seat (ACCESS_FEE). 'plus' opens every seat of
-// the concert, with the show mode and the way to the venue, at PLUS_FEE; a fan who has a paid
+// The two passes. 'seat' is the view from one seat (ACCESS_FEE). 'plus' is the same one seat
+// with seat compare, show mode, the setlist, eye height and the way to the venue, at PLUS_FEE; a fan who has a paid
 // seat pass for the concert upgrades it for the difference (UPGRADE_FEE). A pass key made
 // before there were plans carries no plan: it is a 'seat' pass.
 export const PLUS_FEE = 50000;

@@ -11,7 +11,7 @@
 // Eye height: from a seat, how tall the fan is and how tall the people a few rows in front
 // are, so the view is the one they will have on the night (or a clearer one). Plus too.
 import { formatFee, PLUS_FEE, UPGRADE_FEE } from './rules.js';
-import { canView, plusOnSale, upgradable } from './passes.js';
+import { canView, plusOpen, plusOnSale, upgradable } from './passes.js';
 import { compareSeats, pairText } from './compare.js';
 import { accessOf, wayIn } from './access.js';
 import { $, esc, icon, state, share, toast } from './ui.js';
@@ -88,7 +88,7 @@ export function paintCompare() {
     <div class="cmp-seats">${seats.map(card).join('')}${seats.length < 2 ? empty : ''}</div>
     ${rows}
     ${sit}
-    ${r ? `<div class="cmp-foot">${open ? '' : `<div class="cmp-lock">${plusOffer('Sitting in both to look')}</div>`}
+    ${r ? `<div class="cmp-foot">
       <button class="btn btn-line btn-sm" type="button" data-cmp="share">${icon('i-share')}Share this pair</button></div>
     <p class="cmp-note mono">Measured from the 3D model. The real layout on the day may differ.</p>` : ''}`;
 }
@@ -177,7 +177,7 @@ async function openMap(opts) {
     if (!mapView) { city.close(); return; }
     mapReady = true; mapFailed = false;
     if (mapStop != null && !city.walks.some(w => w.id === mapStop)) mapStop = null;
-    if (mapStop != null && canView(state.venue)) city.pick(mapStop);
+    if (mapStop != null && plusOpen(state.venue)) city.pick(mapStop);
   } catch {
     mapFailed = true; mapView = false;
     $('#stage')?.classList.remove('map-open');
@@ -195,7 +195,7 @@ function pickStop(id, opts) {
   mapStop = id;
   const s = city?.walks.find(w => w.id === id);
   if (s) mapKind = s.kind;
-  if (canView(state.venue)) city?.pick(id);
+  if (plusOpen(state.venue)) city?.pick(id);
   paintAccess(opts);
 }
 
@@ -244,7 +244,7 @@ function mapHtml(open) {
 export function paintAccess(opts = {}) {
   const box = $('#access');
   if (!box || box.hidden || !state.venue) return;
-  const v = state.venue, info = accessOf(v), seat = accessSeat(opts), open = canView(v);
+  const v = state.venue, info = accessOf(v), seat = accessSeat(opts), open = plusOpen(v);
   const place = v.meta.place || {};
   const head = `<div class="cmp-head">
       <div><p class="eyebrow">${icon('i-pin')}Getting there</p><h2>${esc(place.name || v.event?.venue || '')}</h2><p class="acc-addr mono">${esc(place.address || '')}</p></div>
@@ -290,7 +290,7 @@ export function bindAccess(opts = {}) {
     btn.classList.add('is-on');
     $('#stage')?.classList.add('access-open');
     paintAccess(opts);
-    if (canView(state.venue) && mapArea() && !mapFailed) openMap(opts);
+    if (plusOpen(state.venue) && mapArea() && !mapFailed) openMap(opts);
   });
   box.addEventListener('click', e => {
     const b = e.target.closest('[data-acc]');
@@ -301,7 +301,7 @@ export function bindAccess(opts = {}) {
     if (act === 'kind') { mapKind = b.dataset.kind; const first = city?.walks.find(w => w.kind === mapKind); if (first) { pickStop(first.id, opts); return; } }
     if (act === 'stop') { pickStop(+b.dataset.stop, opts); return; }
     if (act === 'hide') { routeSeat = null; state.scene?.setRoute(null); }
-    if (act === 'route' && seat && canView(state.venue)) {
+    if (act === 'route' && seat && plusOpen(state.venue)) {
       closeMap();
       routeSeat = seat.id;
       state.scene?.setRoute(wayIn(state.venue, seat).points);
@@ -327,7 +327,7 @@ function loadShow() {
 }
 const saveShow = () => { try { localStorage.setItem(KEY, JSON.stringify(state.show)); } catch { /* private mode */ } };
 
-const showOpen = () => !!state.venue && canView(state.venue);
+const showOpen = () => !!state.venue && plusOpen(state.venue);
 // The performers walk the stage with Plus, unless the fan keeps them on their spots.
 const roamOn = () => showOpen() && state.show?.roam !== false;
 const hasBand = () => !!state.scene?.band;
