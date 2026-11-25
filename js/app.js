@@ -7,7 +7,7 @@ import { bindSoldOut } from './soldpop.js';
 import { formatFee, PAYMENT_ID, PLUS_FEE, UPGRADE_FEE } from './rules.js';
 import { watchIdle } from './account.js';
 import { stopEventHero, renderHome, renderConcerts, renderEvent, renderUnlock, renderPaid, renderFootage, renderPasses, renderFaq, bindPassButtons, navCount, bindNavSearch } from './pages.js';
-import { startHero, stopHero } from './hero.js';
+import { startHero, stopHero, warmHero } from './hero.js';
 import { renderPartners } from './partners.js';
 import { renderAdmin } from './admin.js';
 import { openViewer, closeViewer, bindViewer, paintViewer, loadScene3d } from './viewer.js';
@@ -44,6 +44,8 @@ const payTest = () => { try { return localStorage.getItem(PAYTEST) === '1'; } ca
 
 async function boot() {
   payTestSwitch();
+  // The home page's first poster starts now, while the settings below are on their way.
+  try { if (homeFirst()) warmHero(); } catch { /* the slide fetches it itself */ }
   try {
     const r = await fetch('api/config', { headers: { accept: 'application/json' } });
     if (r.ok && (r.headers.get('content-type') || '').includes('json')) {
@@ -99,6 +101,14 @@ async function boot() {
   // With live payments, every paid pass on this device is checked with the Worker before it
   // opens (passes.js): the wallet alone opens nothing.
   if (state.store.live) passes.all().filter(p => p.status === 'verifying').forEach(p => refresh(p));
+}
+
+// Will the first page drawn be the home page? (No address, or one of its anchors, and not a
+// returning partner, whom boot sends to their own side.)
+function homeFirst() {
+  const h = location.hash.slice(1);
+  if (h) return HOME_ANCHORS.has(h);
+  try { return localStorage.getItem(SIDE) !== 'partners'; } catch { return true; }
 }
 
 // On the staging copy, a badge in the corner, so it is never taken for the live site.

@@ -217,8 +217,13 @@ export async function openViewer(id, { cat, seat, back, tour } = {}) {
     if (state.tour) { startTour(); return; }
     state.filter = venue.catById[cat] ? cat : null;
     state.scene.setFilter(state.filter);
+    // Back from the tour, which emptied the stands: the crowd as the fan had it.
+    state.scene.setCrowd(state.crowd);
     paintViewer();
-    showShared();
+    const go = seatOf(sitNext);
+    sitNext = null;
+    if (go && canView(venue)) state.scene.flyToSeat(go);
+    else showShared();
     paintCompare();
     return;
   }
@@ -328,7 +333,7 @@ export function paintViewer() {
     : p?.status === 'confirmed' && p.plan === 'plus' ? `
       <p class="eyebrow">Your 3D Pass Plus</p>
       <h2>Every seat is open</h2>
-      <p>Click any seat of this concert to sit down and look round, then the next one to compare. The tour still takes you to your own seat.</p>
+      <p>Click any seat of this concert to sit down and look round, then tap Compare on its card to set two seats side by side. The tour still takes you to your own seat.</p>
       <div class="row-btns"><a class="btn btn-coral btn-sm" href="#tour-${esc(p.id)}">Open my seat view ${icon('i-arrow')}</a></div>
       ${matesBlock(p, { cats: v.catById })}`
     : p?.status === 'confirmed' ? `
@@ -651,6 +656,9 @@ function tourPick(seat) {
   if (!p || !mine) return;
   // Looking at a fan from the list: only the fan's own seat sits them back down.
   if (state.tour.fanBlock) { if (seat.id === mine.id) state.scene.flyToSeat(mine); return; }
+  // 3D Pass Plus opens every seat: a tap on any other seat leaves the tour for the open view
+  // and sits there, where its card has Compare.
+  if (p.plan === 'plus' && !state.tour.picking && seat.id !== mine.id) { everySeat(seat); return; }
   if (state.tour.step === 1) {
     if (seat.cat === p.cat) tourCat(p.cat);
     else toast(`That is ${v.catById[seat.cat].name}. Your ticket is ${v.catById[p.cat].name}.`);
@@ -672,6 +680,16 @@ function tourPick(seat) {
   }
   toast('This is your seat. Drag to look round.');
 }
+
+// From the tour to the open view of the concert (Plus), sitting in `seat` if one is given.
+let sitNext = null;
+function everySeat(seat) {
+  sitNext = seat?.id || null;
+  location.hash = `#seats-${state.venue.eventId}`;
+}
+const plusHint = p => (p?.plan === 'plus' ? '<p class="fine">With 3D Pass Plus, tap any other seat to sit there and compare.</p>' : '');
+// The way out of the tour to every seat, for a Plus pass: in the panel over the venue and in the seat.
+const everySeatBtn = p => (p?.plan === 'plus' ? `<a class="btn btn-line btn-sm" href="#seats-${esc(p.eventId)}">${icon('i-eye', 'lead')}<span class="btn-t">Compare seats</span></a>` : '');
 
 // The venue numbers another way: the fan's seat moves to where their ticket's row and number
 // are counted the venue's way, and the view follows it. Setting a rule lets go of a seat the
@@ -932,8 +950,8 @@ function paintTour() {
   $('#app-side').classList.remove('is-mini');
   const body = step === 1 ? `
       <h2>${esc(v.place.name)}</h2>
-      <p>This is the whole venue for ${esc(e.title)}. Your ticket is <b>${esc(cat.name)}</b>: tap it below, or tap one of its seats.</p>
-      <div class="row-btns"><button class="btn btn-coral btn-sm" type="button" data-tour="cat"><i class="cat-dot" style="background:${esc(cat.color)}"></i>${esc(cat.name)} ${icon('i-arrow')}</button></div>`
+      <p>This is the whole venue for ${esc(e.title)}. Your ticket is <b>${esc(cat.name)}</b>: tap it below, or tap one of its seats.</p>${plusHint(p)}
+      <div class="row-btns"><button class="btn btn-coral btn-sm" type="button" data-tour="cat"><i class="cat-dot" style="background:${esc(cat.color)}"></i>${esc(cat.name)} ${icon('i-arrow')}</button>${everySeatBtn(p)}</div>`
     : step === 2 && state.tour.picking ? `
       <h2>Tap your seat</h2>
       <p class="fine">Tap the seat you know is yours, in <b>${esc(s.secName)}</b>. Pinch or scroll to zoom in.</p>
@@ -942,10 +960,11 @@ function paintTour() {
       <p class="fine">${t.fan ? `<b>${esc(t.fan.name)}</b> sits in ${esc(seatText(seatOf(t.fan.seat) || s))}. They light up green in the crowd.` : `<b>${esc(state.venue.seats.find(x => x.sec === t.fanBlock)?.secName || '')}</b>: tap a name to see their seat.`}</p>
       <div class="row-btns"><button class="btn btn-coral btn-sm" type="button" data-tour="seat">Back to my seat ${icon('i-seat')}</button></div>`
     : step === 2 ? `
-      <p>Your seat is marked in coral: <b>${esc(seatText(s))}</b>. Tap it to sit down.</p>
+      <p>Your seat is marked in coral: <b>${esc(seatText(s))}</b>. Tap it to sit down.</p>${plusHint(p)}
       <div class="row-btns">${t.framed
         ? `<button class="btn btn-coral btn-sm" type="button" data-tour="seat"><span class="btn-t">Sit in my seat</span>${icon('i-seat')}</button>`
-        : `<button class="btn btn-coral btn-sm" type="button" data-tour="framecat">${icon('i-tag', 'lead')}<span class="btn-t">My Category</span></button><button class="btn btn-line btn-sm" type="button" data-tour="seat">${icon('i-seat', 'lead')}<span class="btn-t">My Seat</span></button>`}</div>`
+        : `<button class="btn btn-coral btn-sm" type="button" data-tour="framecat">${icon('i-tag', 'lead')}<span class="btn-t">My Category</span></button><button class="btn btn-line btn-sm" type="button" data-tour="seat">${icon('i-seat', 'lead')}<span class="btn-t">My Seat</span></button>`}</div>
+      ${p.plan === 'plus' ? `<div class="row-btns">${everySeatBtn(p)}</div>` : ''}`
       : t.fan ? `
       <p class="fine"><b>${esc(t.fan.name)}</b> sits in ${esc(seatText(seatOf(t.fan.seat) || s))}. They light up green in the crowd.</p>
       <div class="row-btns"><button class="btn btn-coral btn-sm" type="button" data-tour="fanclear">Back to my view ${icon('i-seat')}</button></div>`
@@ -954,6 +973,7 @@ function paintTour() {
       <p><b>${esc(seatText(s))}</b>, ${esc(cat.name)}. Drag to look round.</p>
       ${seatNote(p, s)}
       ${numberingControls(p, s)}
+      ${p.plan === 'plus' ? `<div class="row-btns">${everySeatBtn(p)}</div>` : ''}
       <div class="tour-end">
         <button class="tour-act is-capture" type="button" data-tour="capture">${icon('i-camera')}<b>Capture this moment</b><span>Photo or video of your view</span></button>
         <button class="tour-act" type="button" data-tour="again">${icon('i-venue')}<b>See the whole venue</b><span>Take the tour again</span></button>

@@ -66,6 +66,17 @@ try {
   const gtmName = `gtm-${crypto.createHash('sha256').update(gtm.code).digest('hex').slice(0, 10)}.js`;
   fs.writeFileSync(path.join(out, 'js', gtmName), gtm.code);
   swap('src="js/gtm.js"', `src="js/${gtmName}"`);
+  // The chunks the entry imports up front are named beside it, so the browser fetches them
+  // alongside the entry instead of only once it has read it (and their own imports after that).
+  // Next to the script, not in <head>: there they hold up the stylesheet and the first paint.
+  const eager = new Set(), walk = file => {
+    for (const i of js.metafile.outputs[file]?.imports || []) {
+      if (i.kind === 'import-statement' && !eager.has(i.path)) { eager.add(i.path); walk(i.path); }
+    }
+  };
+  walk(entry);
+  const preloads = [...eager].map(f => `<link rel="modulepreload" href="js/${path.basename(f)}">\n`).join('');
+  swap('<script type="module" src="js/app.js"></script>', `${preloads}<script type="module" src="js/app.js"></script>`);
   swap('src="js/app.js"', `src="js/${path.basename(entry)}"`);
   swap('href="css/styles.css"', `href="css/${cssName}"`);
   swap('<link rel="stylesheet" href="css/mobile.css">\n', '');

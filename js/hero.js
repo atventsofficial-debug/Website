@@ -318,6 +318,19 @@ async function showArena() {
 // A page left open: every few minutes the slides are worked out again, so a show that has
 // just ended drops off and the next one comes in, without a reload.
 let recheck = 0;
+// Boot calls this before it waits for the Worker's settings (app.js), so the first slide's
+// poster downloads alongside them instead of after: it is the largest thing the home page
+// paints first. Same file and size as build() asks for, so the slide reuses the download.
+export function warmHero() {
+  const e = shows()[0];
+  if (!e) return;
+  const c = cover(e.image || e.photo, e.venue), set = srcsetOf(c), img = new Image();
+  img.fetchPriority = 'high';
+  if (set) { img.sizes = 'min(600px, 76vw)'; img.srcset = set; }
+  img.src = c.src;
+  hero.warm = img;
+}
+
 export function startHero() {
   clearInterval(recheck);
   recheck = setInterval(() => { if (hero.run && !document.hidden) refreshShows(); }, 5 * 6e4);
