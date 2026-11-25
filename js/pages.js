@@ -741,7 +741,7 @@ function bindPickFilter(root, rows, first) {
 // The two passes, as the form's summary row and the concert list name them.
 const PLAN_TEXT = {
   seat: ['3D seat view', 'The view from your seat, the seat tour and your story video.'],
-  plus: ['3D Pass Plus', 'Everything in the seat view, and every seat of this concert to sit in and compare, show mode, the setlist, eye height and directions.'],
+  plus: ['3D Pass Plus', 'Everything in the seat view, with seat compare, show mode, the setlist, eye height and directions.'],
 };
 // The pass chosen on the price list, in one row: its name, what it holds, the price, and Change.
 function planRow(change) {
@@ -834,7 +834,7 @@ export function renderUnlock(eventId, { plan = '', upgrade = '', stage = '' } = 
       <button type="button" class="btn btn-line uf-more" hidden></button></div>
       <div class="s3d-m">
         <figure class="s3d-hero"><img src="assets/tour/seat-640.webp" srcset="assets/tour/seat-640.webp 640w, assets/tour/seat.webp 1200w" sizes="92vw" alt="The stage seen from a seat in 3D" decoding="async">
-          <figcaption><span class="s3d-chip">${icon('i-seat')}Seat view in 3D</span><b>See the stage from any seat, before you buy or before the night.</b><small>${unlock.plan === 'plus' ? `3D Pass Plus · ${formatFee(PLUS_FEE)} · every seat of one concert` : `3D seat view · ${formatFee()} · one seat, one concert`} · <a class="u" href="#unlock">Change</a></small></figcaption></figure>
+          <figcaption><span class="s3d-chip">${icon('i-seat')}Seat view in 3D</span><b>See the stage from any seat, before you buy or before the night.</b><small>${unlock.plan === 'plus' ? `3D Pass Plus · ${formatFee(PLUS_FEE)} · one seat, one concert, and the show around it` : `3D seat view · ${formatFee()} · one seat, one concert`} · <a class="u" href="#unlock">Change</a></small></figcaption></figure>
         <ol class="s3d-steps" aria-label="Three steps">
           <li class="is-done"><i>1</i><span>Pass</span></li><li class="is-on"><i>2</i><span>Concert</span></li><li><i>3</i><span>Seat &amp; pay</span></li>
         </ol>
@@ -893,7 +893,7 @@ function paintPlan(form) {
   $$('[data-plan-fee="plus"]').forEach(el => { el.textContent = formatFee(PLUS_FEE); });
   const box = $('#uf-upgrade'), s = up ? seatIn(up.eventId, up.seat) : null;
   box.hidden = !up;
-  box.innerHTML = up ? `${icon('i-eye')}<span><b>Upgrading to 3D Pass Plus</b><small>${s ? `Your seat stays: ${esc(seatText(s))}. ` : ''}Every seat of this concert opens, with show mode, the setlist, eye height and directions, and you pay only the difference: ${formatFee(UPGRADE_FEE)}.</small></span>` : '';
+  box.innerHTML = up ? `${icon('i-eye')}<span><b>Upgrading to 3D Pass Plus</b><small>${s ? `Your seat stays: ${esc(seatText(s))}. ` : ''}Show mode, the setlist, eye height, seat compare and directions open, and you pay only the difference: ${formatFee(UPGRADE_FEE)}.</small></span>` : '';
   if (up) {
     for (const k of ['cat', 'sec', 'row', 'num']) form[k].disabled = true;
     const change = $('#uf-event-change');
@@ -1679,7 +1679,7 @@ function passCard(p, { actions = true } = {}) {
     <div class="pass-stub">
       <span class="pass-k">${p.plan === 'plus' ? '3D Pass Plus' : '3D pass'}</span>
       <b class="pass-code"${len > 7 ? ' style="font-size:20px"' : len > 5 ? ' style="font-size:clamp(22px,2.2vw,30px)"' : ''}>${esc(code(c || { name: p.cat }))}</b>
-      <span class="pass-n">${p.plan === 'plus' ? 'Every seat' : '1 seat'}</span>
+      <span class="pass-n">${p.plan === 'plus' ? '1 seat · Plus' : '1 seat'}</span>
     </div>
     <div class="pass-body">
       <div class="pass-top"><span class="pass-pill is-${p.status}">${st.label}</span>${ended ? '<span class="pass-pill is-ended">Event ended</span>' : ''}<span class="mono">${esc(p.id)}</span>${actions ? `<button class="pass-del" type="button" data-remove-pass="${esc(p.id)}" aria-label="Remove this pass from this device" title="Remove from this device">${icon('i-trash')}</button>` : ''}</div>
@@ -1694,7 +1694,7 @@ function passCard(p, { actions = true } = {}) {
       </dl>
       ${actions ? `<div class="row-btns">
         ${p.status === 'rejected' ? `${ended ? '' : `<a class="btn btn-coral btn-sm" href="#unlock-${p.eventId}">Unlock again</a>`}<a class="btn btn-line btn-sm" href="#contact">Write to us</a>`
-          : p.status === 'confirmed' ? `<a class="btn btn-coral btn-sm" href="#tour-${esc(p.id)}">Open my seat view ${icon('i-arrow')}</a>${p.seat ? `<button class="btn btn-line btn-sm" type="button" data-story-pass="${esc(p.id)}">${icon('i-share')}Story</button>` : ''}${!ended && upgradable(p.eventId)?.id === p.id ? `<a class="btn btn-line btn-sm" href="#upgrade-${esc(p.id)}">${icon('i-eye')}Every seat · ${formatFee(UPGRADE_FEE)}</a>` : ''}${p.plan === 'plus' ? `<a class="btn btn-line btn-sm" href="#seats-${esc(p.eventId)}">${icon('i-eye')}Compare seats</a>` : ''}`
+          : p.status === 'confirmed' ? `<a class="btn btn-coral btn-sm" href="#tour-${esc(p.id)}">Open my seat view ${icon('i-arrow')}</a>${p.seat ? `<button class="btn btn-line btn-sm" type="button" data-story-pass="${esc(p.id)}">${icon('i-share')}Story</button>` : ''}${!ended && upgradable(p.eventId)?.id === p.id ? `<a class="btn btn-line btn-sm" href="#upgrade-${esc(p.id)}">${icon('i-eye')}Upgrade to Plus · ${formatFee(UPGRADE_FEE)}</a>` : ''}${p.plan === 'plus' ? `<a class="btn btn-line btn-sm" href="#seats-${esc(p.eventId)}">${icon('i-eye')}Compare seats</a>` : ''}`
             : `<a class="btn btn-line btn-sm" href="#seats-${p.eventId}">Look round the venue ${icon('i-arrow')}</a>`}
         ${p.token && p.status !== 'device' ? `<button class="btn btn-line btn-sm" type="button" data-copy-pass="${esc(p.id)}">${icon('i-link')}Copy pass link</button>` : ''}
       </div>${p.status === 'device' ? otpForm(p) : ''}${waButtons(p) ? `<div class="pass-wa">${waButtons(p)}</div>` : ''}
