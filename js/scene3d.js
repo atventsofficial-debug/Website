@@ -86,7 +86,10 @@ export class SeatScene {
   // maxLevel and fps keep a decorative scene (the home page hero) cheap: it never asks for
   // more than that quality level or frame rate, whatever the device could do. `drift`: how
   // far (radians) a seat view slowly looks round on its own, so a still shot feels alive.
-  constructor(container, { onHover, onSelect, onMode, onArrive, onFan, onPin, quality = 'auto', labels = true, interactive = true, maxLevel = 2, fps = 60, drift = 0 } = {}) {
+  // `grey`: the seat map starts all grey, and a category picked (setFilter) lights up in its
+  // own colour, a touch brighter; the 3D viewer asks for it, the event page's hero does not.
+  constructor(container, { onHover, onSelect, onMode, onArrive, onFan, onPin, quality = 'auto', labels = true, interactive = true, maxLevel = 2, fps = 60, drift = 0, grey = false } = {}) {
+    this.grey = grey;
     this.container = container;
     this.cb = { onHover, onSelect, onMode, onArrive, onFan, onPin };
     this.labelsOn = labels;
@@ -864,8 +867,19 @@ export class SeatScene {
     }
     if (i === this.hovered) return out.copy(MAP.hover);
     if (this.mine.has(s.id)) return out.copy(MAP.mine);
-    if (this.filterCat && this.filterCat !== s.cat) return out.copy(MAP.dim);
-    return out.copy(this.zones?.[s.cat] || MAP.free);
+    if (this.isOff(s.cat)) return out.copy(MAP.dim);
+    return out.copy(this.litOf(s.cat));
+  }
+
+  // A category drawn grey on the map: one not picked, or (in grey mode) all of them until one is.
+  isOff(cat) { return !this.realColors && (this.filterCat ? this.filterCat !== cat : this.grey); }
+  // A category's colour on the map; in grey mode the picked one a touch brighter and richer.
+  litOf(cat) {
+    const base = this.zones?.[cat] || MAP.free;
+    if (!this.grey) return base;
+    this.lit ||= new Map();
+    if (!this.lit.has(base)) this.lit.set(base, base.clone().offsetHSL(0, 0.1, 0.06));
+    return this.lit.get(base);
   }
 
   refreshColors() {
@@ -873,8 +887,9 @@ export class SeatScene {
     // map shows another category.
     this.zoneFloors?.forEach(m => {
       m.visible = !this.realColors;
-      const dim = this.filterCat && this.filterCat !== m.userData.cat;
-      m.material.opacity = m.userData.label ? (dim ? 0.2 : 0.95) : dim ? 0.1 : 0.5;
+      const dim = this.isOff(m.userData.cat);
+      // A floor's name and price stay readable while nothing is picked in grey mode.
+      m.material.opacity = m.userData.label ? (dim ? (this.filterCat ? 0.2 : 0.7) : 0.95) : dim ? (this.grey ? 0.05 : 0.1) : 0.5;
     });
     if (!this.seatMesh) return;
     const c = new THREE.Color();
@@ -884,8 +899,8 @@ export class SeatScene {
       const seats = this.venue.seats;
       this.stepSeat.forEach((i, k) => {
         const cat = seats[i].cat;
-        const out = this.filterCat && this.filterCat !== cat && !this.realColors;
-        this.steps.setColorAt(k, this.zones ? (this.realColors ? STEP.concrete : out ? STEP.dim : this.zones[cat]) : out ? STEP.shade : STEP.plain);
+        const out = this.isOff(cat);
+        this.steps.setColorAt(k, this.zones ? (this.realColors ? STEP.concrete : out ? STEP.dim : this.litOf(cat)) : out ? STEP.shade : STEP.plain);
       });
       this.steps.instanceColor.needsUpdate = true;
     }

@@ -243,6 +243,7 @@ export async function openViewer(id, { cat, seat, back, tour } = {}) {
     if (state.venue !== venue || state.view !== 'seats') return;
     state.scene ||= new SeatScene($('#app-canvas'), {
       quality: QUALITY,
+      grey: true,
       onHover: showTooltip,
       onSelect: pickSeat,
       onMode: setMode,
