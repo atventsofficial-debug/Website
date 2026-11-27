@@ -1390,12 +1390,12 @@ export function renderPaid(id) {
       $('#snap-box').innerHTML = '';
       embedSnap(snap, first.snap, 'snap-box', {
         onSuccess: () => { say('Paid. Opening your pass…'); co.every = 3000; check(); },
-        onPending: () => { say(`Waiting for your bank to confirm the card. Your pass opens here by itself${to}.`); co.every = 5000; check(); },
+        onPending: () => { say(`${first.method === 'card' ? 'Waiting for your bank to confirm the card.' : 'Waiting for your payment.'} Your pass opens here by itself${to}.`); co.every = 5000; check(); },
         onError: () => { say('That did not go through. Try again, or choose another way to pay.'); check(); },
       });
     }).catch(() => {
       if (!alive() || !inForm) return;
-      $('#snap-box').innerHTML = `<div class="co-fallback"><p>The card form could not load on this page.</p>${first.url ? `<a class="btn btn-coral" href="${esc(first.url)}">Pay on Midtrans’ page ${icon('i-arrow')}</a><p class="fine">It brings you back here when you are done.</p>` : '<p class="fine">Please reload the page and try again.</p>'}</div>`;
+      $('#snap-box').innerHTML = `<div class="co-fallback"><p>The payment form could not load on this page.</p>${first.url ? `<a class="btn btn-coral" href="${esc(first.url)}">Pay on Midtrans’ page ${icon('i-arrow')}</a><p class="fine">It brings you back here when you are done.</p>` : '<p class="fine">Please reload the page and try again.</p>'}</div>`;
     });
     co.poll = setTimeout(check, co.every);
   } else {
@@ -1466,16 +1466,16 @@ function payingSheet(p, id, way) {
 
 // The card: Midtrans' card form (white, as Midtrans draws it) inside the checkout.
 function cardSheet(p, id) {
-  const way = payMethod('card');
+  const way = payMethod(p.method) || payMethod('card'), card = way.id === 'card';
   return frame(`${head(p, id)}
-      <h2 class="pay-state">Pay by card</h2>`, `
+      <h2 class="pay-state">${card ? 'Pay by card' : `Pay with ${esc(way.name)}`}</h2>`, `
       <div class="co-pay is-card">
-        <div class="co-way">${logos(way)}<span><b>Credit or debit card</b><small>${esc(way.note)}</small></span></div>
-        <div class="co-bleed"><div class="co-form" id="snap-box"><p class="co-loading">Loading the card form…</p></div></div>
+        <div class="co-way">${logos(way)}<span><b>${card ? 'Credit or debit card' : esc(way.name)}</b>${way.note ? `<small>${esc(way.note)}</small>` : ''}</span></div>
+        <div class="co-bleed"><div class="co-form" id="snap-box"><p class="co-loading">Loading the payment form…</p></div></div>
       </div>
       ${waiting(p)}
       <div class="row-btns">${otherWayBtn(id)}</div>
-      <p class="fine co-safe">${icon('i-lock')}<span>Your card details go to Midtrans, never to us.${p.url ? ` Trouble with the form? <a class="u" href="${esc(p.url)}">Pay on Midtrans’ page</a>.` : ''}</span></p>`, p, way);
+      <p class="fine co-safe">${icon('i-lock')}<span>${card ? 'Your card details go to Midtrans, never to us.' : 'You pay through Midtrans, the payment provider.'}${p.url ? ` Trouble with the form? <a class="u" href="${esc(p.url)}">Pay on Midtrans’ page</a>.` : ''}</span></p>`, p, way);
 }
 
 function paidSheet(p, id) {

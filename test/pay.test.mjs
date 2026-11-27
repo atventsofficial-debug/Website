@@ -1097,3 +1097,25 @@ test('live chat: a ticket only for a paid pass, with a name; the socket only wit
   // Nothing of the order beyond the seat and the chosen name goes to the room.
   assert.equal(JSON.stringify(rooms).includes('rani@example.com'), false);
 });
+
+test('MIDTRANS_SNAP sends the listed ways through Snap, showing that way alone', async () => {
+  const via = async (method, list) => {
+    calls.length = 0;
+    const r = await post(order({ method }), { env: env({ MIDTRANS_SNAP: list }) });
+    assert.equal(r.status, 201);
+    const p = await r.json();
+    const snap = calls.find(c => c.url.endsWith('/snap/v1/transactions'));
+    return { p, body: snap && JSON.parse(snap.init.body), charged: calls.some(c => c.url.endsWith('/v2/charge')) };
+  };
+  let { p, body, charged } = await via('qris', 'all');
+  assert.deepEqual(body.enabled_payments, ['other_qris']);
+  assert.equal(p.snap, 'snap-token-1');
+  assert.equal(p.method, 'qris');
+  assert.ok(!charged && !p.pay);
+  ({ body } = await via('mandiri', 'gopay, mandiri'));
+  assert.deepEqual(body.enabled_payments, ['echannel']);
+  ({ body } = await via('bni', 'all'));
+  assert.deepEqual(body.enabled_payments, ['bni_va']);
+  ({ body, charged } = await via('bni', 'gopay'));
+  assert.ok(!body && charged, 'a way not listed still goes through the Core API');
+});

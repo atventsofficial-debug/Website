@@ -224,10 +224,12 @@ async function createPayment(request, env, url) {
   const notify = url.protocol === 'https:' ? `${url.origin}/api/midtrans/notify` : '';
   const mt = midtrans(pay);
   let paying;
-  if (way.kind === 'card') {
+  // The card always goes through Snap. MIDTRANS_SNAP lists other ways (or 'all') that go
+  // through Snap too, for an account whose channels are open in Snap but not in the Core API.
+  if (way.kind === 'card' || snapFor(env.MIDTRANS_SNAP, way.id)) {
     const page = await mt.createPayment({
       ...order,
-      enabled_payments: ['credit_card'],
+      enabled_payments: SNAP_PAYMENTS[way.id],
       credit_card: { secure: true },
       expiry: { start_time: jakartaTime(createdAt), unit: 'minute', duration: PAY_MINUTES },
       callbacks: { finish: `${url.origin}/pay/done` },
@@ -260,6 +262,17 @@ async function createPayment(request, env, url) {
     createdAt: new Date(createdAt).toISOString(), expiresAt: new Date(createdAt + PAY_WINDOW).toISOString(),
   });
 }
+
+// Each way to pay as Snap's enabled_payments names it.
+const SNAP_PAYMENTS = {
+  card: ['credit_card'], qris: ['other_qris'], gopay: ['gopay'], shopeepay: ['shopeepay'],
+  bca: ['bca_va'], bni: ['bni_va'], bri: ['bri_va'], cimb: ['cimb_va'], permata: ['permata_va'], mandiri: ['echannel'],
+  alfamart: ['alfamart'], indomaret: ['indomaret'],
+};
+const snapFor = (list, id) => {
+  const ids = String(list ?? '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
+  return Object.hasOwn(SNAP_PAYMENTS, id) && (ids.includes('all') || ids.includes(id));
+};
 
 // The seat pass an upgrade is bought on: its own key, the same concert, not Plus already,
 // and paid (the order book says so, or else Midtrans). Null otherwise.
