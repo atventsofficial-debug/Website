@@ -13,6 +13,7 @@ import { checkClaim, formatFee } from './rules.js';
 import { PLUS_FEE, UPGRADE_FEE, PAY_MINUTES, line, email as cleanEmail, isEmail, planOf, feeOf } from './order.js';
 import { signIn, PROVIDERS } from './sso.js';
 import { teamFromToken } from './team.js';
+import { TIERS, STAR } from './logomotion.js';
 import { bindPeek } from './peek.js';
 import { PAY_GROUPS, PAY_METHODS, payMethod, payDetails, wayName } from './paymethods.js';
 import { loadSnap, embedSnap, hideSnap } from './snap.js';
@@ -1695,7 +1696,7 @@ function passCard(p, { actions = true } = {}) {
       </dl>
       ${actions ? `<div class="row-btns">
         ${p.status === 'rejected' ? `${ended ? '' : `<a class="btn btn-coral btn-sm" href="#unlock-${p.eventId}">Unlock again</a>`}<a class="btn btn-line btn-sm" href="#contact">Write to us</a>`
-          : p.status === 'confirmed' ? `<a class="btn btn-coral btn-sm" href="#tour-${esc(p.id)}">Open my seat view ${icon('i-arrow')}</a>${p.seat ? `<button class="btn btn-line btn-sm" type="button" data-story-pass="${esc(p.id)}">${icon('i-share')}Story</button>` : ''}${!ended && upgradable(p.eventId)?.id === p.id ? `<a class="btn btn-line btn-sm" href="#upgrade-${esc(p.id)}">${icon('i-eye')}Upgrade to Plus · ${formatFee(UPGRADE_FEE)}</a>` : ''}${p.plan === 'plus' ? `<a class="btn btn-line btn-sm" href="#seats-${esc(p.eventId)}">${icon('i-eye')}Compare seats</a>` : ''}`
+          : p.status === 'confirmed' ? `<a class="btn btn-coral btn-sm" href="#tour-${esc(p.id)}">Open my seat view ${icon('i-arrow')}</a>${p.seat ? `<button class="btn btn-line btn-sm" type="button" data-story-pass="${esc(p.id)}">${icon('i-share')}Story</button>` : ''}${!ended && upgradable(p.eventId)?.id === p.id ? `<a class="btn btn-line btn-sm pass-up" href="#upgrade-${esc(p.id)}">${icon('i-eye')}<span class="pass-up-t">Upgrade to Plus</span><b class="pass-up-fee">${formatFee(UPGRADE_FEE)}</b></a>` : ''}${p.plan === 'plus' ? `<a class="btn btn-line btn-sm" href="#seats-${esc(p.eventId)}">${icon('i-eye')}Compare seats</a>` : ''}`
             : `<a class="btn btn-line btn-sm" href="#seats-${p.eventId}">Look round the venue ${icon('i-arrow')}</a>`}
         ${p.token && p.status !== 'device' ? `<button class="btn btn-line btn-sm" type="button" data-copy-pass="${esc(p.id)}">${icon('i-link')}Copy pass link</button>` : ''}
       </div>${p.status === 'device' ? otpForm(p) : ''}${waButtons(p) ? `<div class="pass-wa">${waButtons(p)}</div>` : ''}
@@ -1800,11 +1801,76 @@ function bindSignIn() {
   });
 }
 
-export function renderPasses({ check = false } = {}) {
+// Signing in, until the passes are in: "Please wait" with the arena mark filling, a ring and a
+// bar, and the percentage. The number follows the real steps (the sign-in checked, then each
+// pass as it comes) and creeps on between them, so it never stalls; at the end it runs to 100%
+// before the passes show. Drawn once and then only updated, however often the page renders.
+const wait = { el: null, shown: 0, real: -1, from: 0, raf: 0, end: null, check: false };
+function waitStep() {
+  const m = me();
+  if (wait.end) return { real: 100, cap: 100, text: 'Ready' };
+  if (!m) return { real: 6, cap: 34, text: 'Checking your sign-in…' };
+  const n = Math.max(meNews.total, 1), d = Math.min(meNews.done, n), each = 58 / n;
+  return { real: 36 + d * each, cap: Math.min(36 + (d + 1) * each - 2, 96), text: 'Opening your 3D passes…' };
+}
+function drawWait(m) {
+  const note = $('#passes-note');
+  note.textContent = 'Please wait a moment while we get your passes ready.';
+  if (m) note.insertAdjacentHTML('beforeend', ` <span class="me-line">Signed in as <b>${esc(m.email)}</b></span>`);
+  if (wait.el?.isConnected) return;
+  $('#passes-body').innerHTML = `<div class="me-wait panel-box" role="progressbar" aria-label="Opening your 3D passes" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+    <div class="me-wait-mark" aria-hidden="true">
+      <svg class="me-wait-ring" viewBox="0 0 120 120"><circle class="me-wait-track" cx="60" cy="60" r="54"/><circle class="me-wait-arc" cx="60" cy="60" r="54" pathLength="100"/></svg>
+      <svg class="me-wait-logo" viewBox="150 150 700 580"><defs><clipPath id="me-wait-clip"><rect class="me-wait-fill" x="150" y="150" width="700" height="580"/></clipPath></defs><path class="me-wait-tiers" d="${TIERS}"/><path class="me-wait-tiers is-lit" d="${TIERS}" clip-path="url(#me-wait-clip)"/><path class="me-wait-star" d="${STAR}"/></svg>
+    </div>
+    <p class="me-wait-pct" aria-hidden="true"><b>0</b><span>%</span></p>
+    <h2 class="me-wait-h">Please wait</h2>
+    <p class="me-wait-s">Checking your sign-in…</p>
+    <div class="me-wait-bar" aria-hidden="true"><i></i></div>
+  </div>`;
+  wait.el = $('#passes-body .me-wait');
+  wait.shown = 0; wait.real = -1; wait.end = null;
+  cancelAnimationFrame(wait.raf);
+  const still = matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  let last = -1, lastText = '';
+  const tick = now => {
+    const el = wait.el;
+    if (!el?.isConnected) { wait.el = null; return; }
+    const st = waitStep();
+    if (st.real !== wait.real) { wait.real = st.real; wait.from = now; }
+    // Between steps the number eases towards the next one without reaching it.
+    const goal = st.real + (st.cap - st.real) * (1 - Math.exp(-(now - wait.from) / 2200));
+    wait.shown = still ? Math.max(wait.shown, goal) : Math.max(wait.shown, wait.shown + (goal - wait.shown) * (wait.end ? 0.22 : 0.07));
+    if (wait.end && wait.shown > 99.4) wait.shown = 100;
+    const pct = Math.floor(wait.shown);
+    el.style.setProperty('--p', wait.shown.toFixed(2));
+    el.querySelector('.me-wait-fill').setAttribute('y', (720 - 5.5 * wait.shown).toFixed(1));
+    if (pct !== last) { last = pct; el.querySelector('.me-wait-pct b').textContent = pct; el.setAttribute('aria-valuenow', pct); }
+    if (st.text !== lastText) { lastText = st.text; el.querySelector('.me-wait-s').textContent = st.text; }
+    if (wait.end && wait.shown >= 100) {
+      const done = wait.end;
+      wait.end = null;
+      el.classList.add('is-done');
+      setTimeout(() => { if (wait.el === el) wait.el = null; done(); }, still ? 0 : 320);
+      return;
+    }
+    wait.raf = requestAnimationFrame(tick);
+  };
+  wait.raf = requestAnimationFrame(tick);
+}
+// The passes are in: the progress runs to 100%, then the page draws them.
+function finishWait(check) {
+  wait.check ||= check;
+  if (wait.end) return;
+  wait.end = () => { const c = wait.check; wait.check = false; renderPasses({ check: c, after: true }); };
+}
+
+export function renderPasses({ check = false, after = false } = {}) {
   const m = accountOn() ? me() : null;
   if (accountOn()) {
     bindSignIn();
-    if (!m) { renderSignIn(); return; }
+    if (!m && meNews.signing) { drawWait(null); return; }
+    if (!m) { wait.el = null; wait.end = null; renderSignIn(); return; }
     // A pass paid since signing in, on another device, comes along.
     if (check) refreshMe();
   }
@@ -1815,18 +1881,15 @@ export function renderPasses({ check = false } = {}) {
   const open = list.filter(p => p.status !== 'rejected').length;
   // Just signed in: the email's passes are still on their way from the Worker.
   const coming = m && meNews.loading > 0 ? (m.ids || []).filter(id => !passes.get(id)).length : 0;
-  if (coming && !list.length) {
-    $('#passes-note').textContent = 'Opening your 3D passes…';
-    $('#passes-note').insertAdjacentHTML('beforeend', ` <span class="me-line">Signed in as <b>${esc(m.email)}</b></span>`);
-    $('#passes-body').innerHTML = `<div class="pass-grid" aria-busy="true">${Array.from({ length: Math.min(coming, 3) }, () => '<div class="pass pass-coming" aria-hidden="true"></div>').join('')}</div>`;
-    return;
-  }
+  if ((coming && !list.length) || (m && meNews.loading > 0 && wait.el?.isConnected)) { drawWait(m); return; }
+  // The progress was showing: it runs to 100% first, then the passes come in.
+  if (!after && wait.el?.isConnected) { finishWait(check); return; }
   $('#passes-note').textContent = list.length
     ? `${plural(list.length, 'pass', 'passes')} on this device${open < list.length ? `, ${open} open` : ''}. Each opens the seat views of its concert.`
     : m ? 'No paid 3D pass for this email yet.' : 'Passes you unlock appear here, on the device you unlocked them on.';
   if (m) $('#passes-note').insertAdjacentHTML('beforeend', ` <span class="me-line">Signed in as <b>${esc(m.email)}</b> · <button class="link" type="button" id="me-out">Sign out</button></span>`);
   $('#passes-body').innerHTML = list.length
-    ? `<div class="pass-grid">${list.map(p => passCard(p)).join('')}</div>`
+    ? `<div class="pass-grid${after ? ' is-arriving' : ''}">${list.map(p => passCard(p)).join('')}</div>`
     : `<div class="empty-state"><h3>No 3D passes yet.</h3><p>Pick your concert and your seat, pay ${formatFee()}, and the view from your seat opens here.</p><div class="row-btns"><a class="btn btn-coral" href="#unlock">Unlock my seat view ${icon('i-arrow')}</a><a class="btn btn-line" href="#concerts">Find a concert</a></div></div>`;
   // Ask the server how each check is going, once per visit to the page.
   if (check) list.forEach(p => refresh(p));

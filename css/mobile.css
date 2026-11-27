@@ -69,7 +69,7 @@
 
   /* ---------- top bar ---------- */
   .nav { position: sticky; top: 0; height: var(--bar-h); gap: 10px; padding: 0 var(--gut); border-bottom: 1px solid transparent; transition: background-color .2s, border-color .2s; }
-  .nav.is-solid { background: rgba(18, 16, 16, 0.97); border-bottom-color: var(--line); }
+  .nav.is-solid { background: #121010; border-bottom-color: var(--line); }   /* solid: the page under it must not show through */
   .nav .logo { margin-right: auto; }
   .nav .logo-img { height: 24px; width: auto; }
   .nav-cta .nav-btn, .nav-cta .burger { display: none; }
@@ -291,8 +291,7 @@
   .pass-note { font-size: 13px; }
   .pass-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; }
   .pass-facts dd { margin-top: 4px; font-size: 14px; }
-  .pass .row-btns { gap: 8px; }
-  .pass .row-btns .btn { width: 100%; justify-content: center; }
+  .pass .row-btns .btn-coral { justify-content: center; }
 }
 
 /* ---------- concert page on a phone: the poster first, edge to edge, never cropped ---------- */
@@ -372,12 +371,18 @@
 /* Each layer keeps its own stacking: the backdrops always stay under the arena picture. */
 #hs-backs, #hero-canvas { isolation: isolate; }
 
-/* ---------- a pass's buttons, every size: the main one across, Story and Copy pass link side by side under it ---------- */
-.pass .row-btns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.pass .row-btns .btn-coral { grid-column: 1 / -1; }
-.pass .row-btns .btn-line { min-width: 0; justify-content: center; gap: 8px; padding: 0 12px; }
-/* A small button on its own (no Story, or no link) takes the whole row. */
-.pass .row-btns .btn-coral + .btn-line:last-child, .pass .row-btns .btn-line:only-child { grid-column: 1 / -1; }
+/* ---------- a pass's buttons, every size: the main one across, the small ones two to a row,
+   Upgrade to Plus across at the end. A small button left on its own grows to the whole row. ---------- */
+.pass .row-btns { display: flex; flex-flow: row wrap; align-items: stretch; gap: 8px; }
+.pass .row-btns > .btn { flex: 1 1 calc(50% - 4px); min-width: 0; width: auto; margin: 0; }
+.pass .row-btns > .btn-coral, .pass .row-btns > .pass-up { flex-basis: 100%; }
+.pass .row-btns > .pass-up { order: 1; }
+.pass .row-btns .btn-line { height: auto; min-height: 44px; padding: 8px 14px; gap: 8px; justify-content: center; white-space: normal; line-height: 1.15; text-align: center; }
+.pass .row-btns .btn-line svg { flex: none; }
+/* Upgrade to Plus: the words and the price side by side, the price in its own tag. */
+.pass .pass-up { gap: 10px; }
+.pass .pass-up-t { min-width: 0; }
+.pass .pass-up-fee { flex: none; display: inline-flex; align-items: center; height: 24px; padding: 0 9px; border-radius: 999px; background: rgba(236, 84, 70, 0.12); color: var(--coral-3, #c23a2c); font: 700 12.5px/1 var(--font); white-space: nowrap; }
 
 /* ---------- My seat 3D, before a concert is chosen (js/pages.js, renderUnlock) ----------
    Wider screens keep the list of events (.uf-desk). Phones get a page of their own (.s3d-m):
