@@ -117,6 +117,8 @@ fs.writeFileSync(path.join(out, '_headers'), [
   // drops the /assets/* rule's value first, as Cloudflare would otherwise join the two).
   block('/assets/fonts/*', { 'cache-control': 'public, max-age=604800' }, ['cache-control']),
   block('/assets/mail/*', { 'cross-origin-resource-policy': 'cross-origin' }, ['cross-origin-resource-policy']),
+  // The link preview's cover (index.html, og:image): shown by chat apps and social sites, from their own addresses.
+  block('/assets/share/*', { 'cross-origin-resource-policy': 'cross-origin' }, ['cross-origin-resource-policy']),
 ].join('\n'));
 writeWorkerCatalog(root);
 console.log(`site/ and worker/catalog.json ready${bundled ? ' (bundled)' : ''}`);
