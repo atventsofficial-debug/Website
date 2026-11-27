@@ -1197,6 +1197,10 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
      and My Seat. The Plus note and Compare wait for the next step. No zoom buttons on a phone
      (pinch zooms), so the rail in the tour is Crowd and Chat. */
   .app-side .tour-extra { display: none; }
+  /* On a phone My Category and My Seat share the panel's width half and half, with no room
+     left over on the right: the icon at the start, the label centred in the rest. */
+  .stage .app-side .row-btns:has(> :nth-child(2)) .btn:has(> svg.lead) { flex: 1 1 0; padding-right: 14px; }
+  .stage .app-side .row-btns:has(> :nth-child(2)) .btn:has(> svg.lead) .btn-t { flex: 1 1 auto; text-align: center; }
   .tools .zoom, .tools .zoom[hidden] { display: none; }
   .app-side .dock { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; width: 100%; margin-top: 2px; }
   /* A sheet from the bottom (show mode, the setlist) takes the panel's place while open. */
