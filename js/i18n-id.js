@@ -1030,6 +1030,7 @@ export const EXACT = {
 "Which fans": "Fans yang mana",
 "Your pass": "Pass-mu",
 "Upgrade later for the difference": "Bisa upgrade nanti, bayar selisihnya",
+"Upgrade to Plus": "Upgrade ke Plus",
 "The view from your seat, the seat tour and your story video.": "Tampilan dari kursimu, tur kursi, dan video story-mu.",
 "Everything in the seat view, with seat compare, show mode, the setlist, eye height and directions.": "Semua isi tampilan kursi, plus perbandingan kursi, mode show, setlist, tinggi pandang, dan rute.",
 "Upgrading to 3D Pass Plus": "Upgrade ke 3D Pass Plus",
