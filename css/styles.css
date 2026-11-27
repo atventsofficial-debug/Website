@@ -1154,12 +1154,17 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
      (in a seat, under the tall last step), they go on in a second column. */
   /* On a phone the rail keeps to the left edge, without Reset (the back button does that).
      In the tour, Directions, the setlist and show mode move to the row at the foot of the
-     panel in the seat (.dock), so the rail is only Crowd, Labels and zoom. Its foot stays
+     panel in the seat (.dock), so the rail is only Crowd and Chat. Its foot stays
      clear of the category bar (.sections, 12px over the panel) by more than the zoom's own label. */
   .tools { left: max(22px, env(safe-area-inset-left, 0px)); top: calc(max(16px, env(safe-area-inset-top, 0px)) + 62px + var(--card-h, 0px)); bottom: calc(max(156px, var(--side-h, 0px)) + 104px); gap: 20px 16px; }
   .tools-g { gap: 20px; }
   .tools #t-reset, .in-tour .tools :is(#t-access, #set-btn, #show-btn, #eye-btn) { display: none; }
   .in-tour .tour-end { display: none; }
+  /* The tour's first step on a phone is the two buttons alone, as on a computer: My Category
+     and My Seat. The Plus note and Compare wait for the next step. No zoom buttons on a phone
+     (pinch zooms), so the rail in the tour is Crowd and Chat. */
+  .app-side .tour-extra { display: none; }
+  .tools .zoom, .tools .zoom[hidden] { display: none; }
   .app-side .dock { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; width: 100%; margin-top: 2px; }
   /* A sheet from the bottom (show mode, the setlist) takes the panel's place while open. */
   .stage:is(.show-open, .set-open, .eye-open) .app-side, .in-tour .stage.is-seat:is(.show-open, .set-open, .eye-open) .app-side { opacity: 0; pointer-events: none; }

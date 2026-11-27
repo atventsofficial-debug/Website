@@ -888,7 +888,7 @@ function bindTabs() {
 
 // On a phone, in the seat, the tour's own tools sit in one row at the foot of the panel, the way
 // a phone's control centre groups them: the camera, the setlist, show mode, eye height and directions. The
-// rail on the left keeps Crowd, Labels and zoom. The row's buttons stand in for the rail's (which keep the
+// rail on the left keeps Crowd and Chat. The row's buttons stand in for the rail's (which keep the
 // state and open the panels) and copy how those look: on, locked, playing or hidden.
 const DOCK = { set: '#set-btn', show: '#show-btn', eye: '#eye-btn', access: '#t-access' };
 function dock() {
@@ -962,11 +962,11 @@ function paintTour() {
       <p class="fine">${t.fan ? `<b>${esc(t.fan.name)}</b> sits in ${esc(seatText(seatOf(t.fan.seat) || s))}. They light up green in the crowd.` : `<b>${esc(state.venue.seats.find(x => x.sec === t.fanBlock)?.secName || '')}</b>: tap a name to see their seat.`}</p>
       <div class="row-btns"><button class="btn btn-coral btn-sm" type="button" data-tour="seat">Back to my seat ${icon('i-seat')}</button></div>`
     : step === 2 ? `
-      <p>Your seat is marked in coral: <b>${esc(seatText(s))}</b>. Tap it to sit down.</p>${plusHint(p)}
+      <p>Your seat is marked in coral: <b>${esc(seatText(s))}</b>. Tap it to sit down.</p>${t.framed ? plusHint(p) : plusHint(p).replace('<p class="fine">', '<p class="fine tour-extra">')}
       <div class="row-btns">${t.framed
         ? `<button class="btn btn-coral btn-sm" type="button" data-tour="seat"><span class="btn-t">Sit in my seat</span>${icon('i-seat')}</button>`
         : `<button class="btn btn-coral btn-sm" type="button" data-tour="framecat">${icon('i-tag', 'lead')}<span class="btn-t">My Category</span></button><button class="btn btn-line btn-sm" type="button" data-tour="seat">${icon('i-seat', 'lead')}<span class="btn-t">My Seat</span></button>`}</div>
-      ${p.plan === 'plus' ? `<div class="row-btns">${compareBtn(p)}</div>` : ''}`
+      ${p.plan === 'plus' ? `<div class="row-btns${t.framed ? '' : ' tour-extra'}">${compareBtn(p)}</div>` : ''}`
       : t.fan ? `
       <p class="fine"><b>${esc(t.fan.name)}</b> sits in ${esc(seatText(seatOf(t.fan.seat) || s))}. They light up green in the crowd.</p>
       <div class="row-btns"><button class="btn btn-coral btn-sm" type="button" data-tour="fanclear">Back to my view ${icon('i-seat')}</button></div>`
