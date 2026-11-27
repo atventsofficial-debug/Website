@@ -726,6 +726,39 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
 .pass.pass-coming { display: block; min-height: 220px; border-radius: var(--r); background: var(--panel); border: 1px solid var(--line-2); filter: none; animation: pass-coming 1.2s ease-in-out infinite alternate; }
 @keyframes pass-coming { from { opacity: 0.45; } to { opacity: 0.9; } }
 @media (prefers-reduced-motion: reduce) { .pass.pass-coming { animation: none; } }
+.me-wait { --p: 0; position: relative; display: flex; flex-direction: column; align-items: center; gap: var(--s2); max-width: 460px; margin: var(--s5) auto 0; padding: var(--s7) var(--s6) var(--s6); text-align: center; overflow: hidden; animation: me-wait-in 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both; transition: opacity 0.3s ease, transform 0.3s ease; }
+.me-wait::before { content: ""; position: absolute; inset: -40% -20% auto; height: 80%; background: radial-gradient(closest-side, rgba(236, 84, 70, 0.16), transparent); pointer-events: none; }
+.me-wait.is-done { opacity: 0; transform: translateY(-6px) scale(0.98); }
+.me-wait-mark { position: relative; width: 132px; height: 132px; margin-bottom: var(--s3); }
+.me-wait-ring { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+.me-wait-ring circle { fill: none; stroke-width: 5; }
+.me-wait-track { stroke: var(--line-2); }
+.me-wait-arc { stroke: var(--coral); stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: calc(100 - var(--p)); filter: drop-shadow(0 0 6px rgba(236, 84, 70, 0.55)); }
+.me-wait-logo { position: absolute; inset: 26px; width: 80px; height: 80px; }
+.me-wait-tiers { fill: rgba(255, 255, 255, 0.14); }
+.me-wait-tiers.is-lit { fill: var(--coral); }
+.me-wait-star { fill: currentColor; transform-origin: 500px 470px; animation: me-wait-star 1.6s ease-in-out infinite; }
+.me-wait-pct { margin: 0; font: 800 44px/1 var(--display); font-stretch: 112%; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; color: inherit; }
+.me-wait-pct span { margin-left: 2px; font-size: 22px; color: var(--muted); }
+.me-wait-h { margin: var(--s1) 0 0; font: 700 20px/1.2 var(--display); }
+.me-wait-h::after { content: ""; display: inline-block; width: 1.2em; text-align: left; animation: me-wait-dots 1.4s steps(4, end) infinite; }
+.me-wait-s { margin: 0; color: var(--muted); font-size: 14px; min-height: 1.4em; }
+.me-wait-bar { width: 100%; height: 6px; margin-top: var(--s4); border-radius: 3px; background: var(--line-2); overflow: hidden; }
+.me-wait-bar i { display: block; height: 100%; width: calc(var(--p) * 1%); border-radius: inherit; background: linear-gradient(90deg, var(--coral), var(--coral-2), var(--coral)); background-size: 200% 100%; animation: me-wait-sheen 1.6s linear infinite; }
+@keyframes me-wait-in { from { opacity: 0; transform: translateY(8px); } }
+@keyframes me-wait-star { 50% { transform: scale(0.82); opacity: 0.75; } }
+@keyframes me-wait-dots { 0% { content: ""; } 25% { content: "."; } 50% { content: ".."; } 75%, 100% { content: "..."; } }
+@keyframes me-wait-sheen { to { background-position: -200% 0; } }
+.pass-grid.is-arriving > * { animation: me-wait-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.pass-grid.is-arriving > :nth-child(2) { animation-delay: 0.06s; }
+.pass-grid.is-arriving > :nth-child(n+3) { animation-delay: 0.12s; }
+@media (max-width: 640px) {
+  .me-wait { margin-top: var(--s3); padding: var(--s6) var(--s5) var(--s5); }
+  .me-wait-mark { width: 112px; height: 112px; }
+  .me-wait-logo { inset: 22px; width: 68px; height: 68px; }
+  .me-wait-pct { font-size: 38px; }
+}
+@media (prefers-reduced-motion: reduce) { .me-wait, .me-wait-star, .me-wait-bar i, .me-wait-h::after, .pass-grid.is-arriving > * { animation: none; } .me-wait-h::after { content: "…"; } }
 .pass { position: relative; display: grid; grid-template-columns: 150px minmax(0, 1fr); color: var(--ink); filter: drop-shadow(0 24px 40px rgba(0, 0, 0, 0.35)); }
 .pass-stub, .pass-body { position: relative; background: var(--paper); }
 .pass-stub { border-radius: 20px 0 0 20px; padding: var(--s5) var(--s4); display: flex; flex-direction: column; gap: 8px; background: var(--ink); color: #fff; box-shadow: inset 1.5px 1.5px 0 rgba(255, 255, 255, 0.28), inset 0 -1.5px 0 rgba(255, 255, 255, 0.28);
