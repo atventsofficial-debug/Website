@@ -37,7 +37,9 @@ export function signOut({ idle = false } = {}) {
 }
 // Why the last sign-out happened, for the page to say so once, and whether the passes of a
 // sign-in are still being checked (the page shows them as on their way).
-export const meNews = { idle: false, loading: 0 };
+// While the sign-in itself is with the Worker, `signing` is on; then `total` passes are on
+// their way and `done` of them have come, for the page's progress (js/pages.js).
+export const meNews = { idle: false, loading: 0, signing: false, total: 0, done: 0 };
 
 // The passes of the email come to this device. The ones not here yet are noted, so signing
 // out takes them away again. The sign-in is kept first, so the page turns to the passes at
@@ -51,9 +53,11 @@ async function take(r) {
   touch(true);
   write({ key: r.key ?? old?.key, email: r.email, expiresAt: r.expiresAt, ids: list.map(p => p.id), brought: [...brought] });
   meNews.loading = (meNews.loading || 0) + 1;
+  meNews.signing = false;
+  meNews.total = list.length; meNews.done = 0;
   emit('me');
   try {
-    await Promise.all(list.map(p => importPass(p.id, p.token).catch(() => { /* offline: next visit */ })));
+    await Promise.all(list.map(p => importPass(p.id, p.token).catch(() => { /* offline: next visit */ }).finally(() => { meNews.done += 1; })));
   } finally { meNews.loading -= 1; }
   // Signed out while they came: the ones brought go again.
   if (read()?.email !== r.email) for (const id of brought) if (!before.has(id)) passes.remove(id);
@@ -62,11 +66,21 @@ async function take(r) {
 }
 
 export const sendSignCode = email => state.store.meCode(email);
-export const signInWithCode = async (email, code) => take(await state.store.meSession({ email, code }));
+// The Worker checking the sign-in: the page shows its progress until the passes are in.
+async function session(body) {
+  meNews.signing = true;
+  emit('me');
+  try { return take(await state.store.meSession(body)); } catch (e) {
+    meNews.signing = false;
+    emit('me');
+    throw e;
+  }
+}
+export const signInWithCode = (email, code) => session({ email, code });
 // Google's window, then the Worker. Must be called from the click itself.
 export async function signInWithGoogle() {
   const who = await signIn('google', state.store.sso.google);
-  return take(await state.store.meSession({ idToken: who.token }));
+  return session({ idToken: who.token });
 }
 
 // Signed in: the list again, for a pass paid since. A key the Worker no longer takes signs out.
