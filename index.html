@@ -618,193 +618,84 @@ html:not(.atv-seen) #nav .logo-img{animation:ai-show 0s 2.57s both}
 
 <!-- ======================================================= ABOUT -->
 <main id="view-about" class="view" data-view-id="about" hidden>
-  <section class="sec page-top ab-hero">
-    <div class="hero-glow" aria-hidden="true"></div>
-    <header class="sec-head">
-      <div>
-        <p class="eyebrow">About <span data-brand>Atvents</span></p>
-        <h1 class="big big-xl"><span class="fade" data-id="Sudah punya tiket?">Got your ticket?</span> <span class="ol" data-id="Lihat kursimu.">See your seat.</span></h1>
+  <section class="hero ab-hero">
+    <div class="ab-hero-photo" aria-hidden="true">
+      <img src="assets/hero/arena-v2.webp" alt="" width="2400" height="2241" decoding="async" fetchpriority="high">
+      <img class="ab-hero-screen" src="assets/about/seat.webp" alt="" width="960" height="546" decoding="async">
+    </div>
+    <i class="ab-hero-shade" aria-hidden="true"></i>
+    <div class="ab-hero-in">
+      <p class="eyebrow" data-id="Tentang Atvents">About Atvents</p>
+      <h1 class="ab-title"><span data-id="Tiket sudah di tangan.">Your ticket’s in hand.</span> <span class="ab-title-dim" data-id="Sekarang lihat kursimu.">Now see your seat.</span></h1>
+      <p class="ab-sub">See the stage from the seat on your ticket, in 3D, before the night.</p>
+      <div class="row-btns">
+        <a class="btn btn-coral" href="#unlock">See my seat in 3D <svg><use href="#i-arrow"/></svg></a>
+        <a class="btn btn-line" href="#about-how" data-id="Cara kerjanya">How it works</a>
       </div>
-      <div class="sec-side">
-        <p>Atvents is for the time between buying a concert ticket and the night itself. You buy your ticket from the official seller; we show you the view from the seat printed on it, in 3D.</p>
-        <div class="row-btns">
-          <a class="btn btn-coral" href="#unlock">See my seat in 3D <svg><use href="#i-arrow"/></svg></a>
-          <a class="btn btn-line" href="#concerts">Concerts</a>
-        </div>
-      </div>
-    </header>
-
-    <div class="ab-show" aria-label="From your e-ticket to the view from your seat">
-      <div class="ab-eticket" aria-hidden="true">
-        <div class="ab-et-top">
-          <span class="ab-et-from" data-id="E-tiket">E-ticket</span>
-          <span class="ab-et-seller" data-id="dari penjual resmi">from the official seller</span>
-        </div>
-        <b class="ab-et-title" data-id="Konsermu">Your concert</b>
-        <dl class="ab-et-seat">
-          <div><dt>Category</dt><dd>CAT 1</dd></div>
-          <div><dt data-id="Section">Section</dt><dd>B</dd></div>
-          <div><dt>Row</dt><dd>C</dd></div>
-          <div><dt>Seat</dt><dd>12</dd></div>
-        </dl>
-        <i class="ab-et-code"></i>
-      </div>
-      <div class="ab-link" aria-hidden="true">
-        <span>Fill in the seat</span>
-        <i></i>
-        <b><svg><use href="#i-arrow"/></svg></b>
-      </div>
-      <figure class="ab-view">
-        <img src="assets/tour/seat.webp" alt="The stage seen in 3D from a seat in the stands" width="1200" height="900" decoding="async">
-        <figcaption><span class="ab-chip"><svg><use href="#i-seat"/></svg>My Seat</span><span class="ab-chip-seat" data-id="CAT 1 · Section B · Baris C · Kursi 12">CAT 1 · Section B · Row C · Seat 12</span></figcaption>
-      </figure>
     </div>
   </section>
 
-  <section class="sec" id="about-flow">
+  <section class="sec ab-say">
+    <p class="ab-say-t"><span class="ab-say-a" data-id="Kamu sudah pegang tiket CAT 1.">You’ve got a CAT 1 ticket.</span> <span class="ab-say-q" data-id="Tapi kursinya persis di mana? Seberapa jauh dari panggung? Layarnya kelihatan atau tidak?">But where exactly is the seat? How far from the stage? Can you see the screens?</span> <span class="ab-say-a" data-id="Atvents menjawabnya sebelum hari-H.">Atvents answers that before the night.</span></p>
+  </section>
+
+  <section class="sec" id="about-how">
     <header class="sec-head">
-      <h2 class="big"><span class="fade" data-id="Di mana">Where we</span> <span class="ol" data-id="posisi kami">fit in</span></h2>
-      <div class="sec-side"><p>The ticket comes first, and it never comes from us. Atvents starts once you know your seat.</p></div>
+      <h2 class="big"><span class="fade" data-id="Cara">How it</span> <span class="ol" data-id="kerjanya">works</span></h2>
+      <div class="sec-side"><p>Ticket first, from the official seller. The rest takes about a minute.</p></div>
     </header>
-    <ol class="ab-flow">
-      <li class="ab-flow-seller">
-        <span class="ab-zone">At the official seller</span>
-        <b class="ab-n">01</b>
-        <h3>Buy your ticket</h3>
-        <p>From the seller named on the concert page. They take the payment and send your e-ticket.</p>
-        <div class="ab-sellers">
-          <img src="assets/brand/tiket-com-logo.webp" alt="tiket.com" width="90" height="20" loading="lazy" decoding="async">
-          <img class="chip" src="assets/brand/loket-logo.webp" alt="Loket" width="74" height="20" loading="lazy" decoding="async">
-          <img class="chip" src="assets/brand/tiptip-logo.webp" alt="TipTip" width="67" height="20" loading="lazy" decoding="async">
-          <img src="assets/brand/traveloka-logo.webp" alt="Traveloka" width="89" height="20" loading="lazy" decoding="async">
-        </div>
-      </li>
-      <li>
-        <span class="ab-zone ab-zone-on" data-id="Di Atvents">On Atvents</span>
-        <b class="ab-n">02</b>
-        <h3>Fill in your seat</h3>
-        <p>Pick the concert, then copy the seat from your e-ticket: category, section, row and number. Add your name and email.</p>
-      </li>
-      <li>
-        <b class="ab-n">03</b>
-        <h3>Get the 3D Pass</h3>
-        <p><b data-fee>Rp25.000</b> per seat, per concert, by QRIS, e-wallet, bank transfer or card. It opens straight away.</p>
-      </li>
-      <li>
-        <b class="ab-n">04</b>
-        <h3>Take your seat tour</h3>
-        <p>Two steps: My Category, then My Seat. Sit down and look round from where you will be on the night.</p>
-      </li>
+    <div class="ab-before">
+      <span class="ab-before-t">Before: buy your ticket at</span>
+      <span class="ab-sellers">
+        <img src="assets/brand/tiket-com-logo.webp" alt="tiket.com" width="90" height="20" loading="lazy" decoding="async">
+        <img class="chip" src="assets/brand/loket-logo.webp" alt="Loket" width="74" height="20" loading="lazy" decoding="async">
+        <img class="chip" src="assets/brand/tiptip-logo.webp" alt="TipTip" width="67" height="20" loading="lazy" decoding="async">
+        <img src="assets/brand/traveloka-logo.webp" alt="Traveloka" width="89" height="20" loading="lazy" decoding="async">
+      </span>
+    </div>
+    <ol class="ab-steps">
+      <li><b>1</b><h3>Fill in your seat</h3><p>Pick the concert, then copy the category, section, row and seat from your e-ticket.</p></li>
+      <li><b>2</b><h3>Get the 3D Pass</h3><p>Rp25.000 per seat, per concert. QRIS, e-wallet, transfer or card.</p></li>
+      <li><b>3</b><h3>Take the tour</h3><p>It opens at once, in two steps: My Category, then My Seat.</p></li>
     </ol>
-    <p class="ab-free"><svg><use href="#i-eye"/></svg><span>Still choosing a ticket? Anyone can look round every venue from above, free, on its concert page.</span></p>
   </section>
 
   <section class="sec" id="about-tour">
     <header class="sec-head">
-      <h2 class="big"><span class="fade" data-id="Tur kursi,">The seat tour,</span> <span class="ol" data-id="dua langkah">in two steps</span></h2>
-      <div class="sec-side"><p>The tour opens on the whole venue from above, your category marked, and takes you down to your seat.</p></div>
+      <h2 class="big"><span class="fade" data-id="Dua langkah">Two steps</span> <span class="ol" data-id="ke kursimu">to your seat</span></h2>
+      <div class="sec-side"><p>The same guided tour opens for every pass, set to the seat you filled in.</p></div>
     </header>
-    <ol class="ab-tour">
-      <li>
-        <figure><img src="assets/tour/category-640.webp" srcset="assets/tour/category-640.webp 640w, assets/tour/category.webp 1200w" sizes="(max-width: 760px) 92vw, 660px" alt="One category lit up in the 3D venue, the fan’s seat marked" loading="lazy" width="1200" height="900"></figure>
-        <div>
-          <span class="ab-chip"><svg><use href="#i-tag"/></svg>My Category</span>
-          <h3>Your category, lit up</h3>
-          <p>Only the category on your ticket opens, its blocks in colour, with your seat marked among them. You see where it sits against the stage and the screens.</p>
-        </div>
-      </li>
-      <li>
-        <figure><img src="assets/tour/seat-640.webp" srcset="assets/tour/seat-640.webp 640w, assets/tour/seat.webp 1200w" sizes="(max-width: 760px) 92vw, 660px" alt="The stage seen from a seat" loading="lazy" width="1200" height="900"></figure>
-        <div>
-          <span class="ab-chip"><svg><use href="#i-seat"/></svg>My Seat</span>
-          <h3>The view from your seat</h3>
-          <p>Sit down in your own seat and look round: the stage, the screens and the crowd, at the height and angle you will see them.</p>
-        </div>
-      </li>
-    </ol>
-  </section>
-
-  <section class="sec" id="about-pass">
-    <header class="sec-head">
-      <h2 class="big"><span class="fade" data-id="Isi">What’s in</span> <span class="ol" data-id="pass-nya">the pass</span></h2>
-      <div class="sec-side"><p>One seat, one concert. Pay once and it is yours, on your phone and your laptop, before and after the show.</p></div>
-    </header>
-    <div class="ab-pass">
-      <ul class="ab-feats">
-        <li><svg><use href="#i-cube"/></svg><div><b>Your seat tour in 3D</b><span>From the whole venue down to your seat</span></div></li>
-        <li><svg><use href="#i-play"/></svg><div><b>Your story video</b><span>19 seconds, ready for Instagram and TikTok</span></div></li>
-        <li><svg><use href="#i-camera"/></svg><div><b>Photos and clips</b><span>Of your view, captioned with the show and your seat</span></div></li>
-        <li><svg><use href="#i-people"/></svg><div><b>Seat mates</b><span>Fans near you, and the fan WhatsApp group</span></div></li>
-        <li><svg><use href="#i-livechat"/></svg><div><b>Live chat</b><span>Talk with the fans at your concert</span></div></li>
-        <li><svg><use href="#i-seat"/></svg><div><b>Your real seat</b><span>When the venue numbers its seats its own way</span></div></li>
-        <li><svg><use href="#i-devices"/></svg><div><b>On your phone and laptop</b><span>Opens on two devices</span></div></li>
-        <li><svg><use href="#i-forever"/></svg><div><b>Yours for good</b><span>Still opens after the show</span></div></li>
-      </ul>
-      <aside class="ab-prices">
-        <div class="ab-price">
-          <small>3D Pass</small>
-          <b data-fee>Rp25.000</b>
-          <span>per seat, per concert</span>
-        </div>
-        <div class="ab-price ab-price-plus">
-          <small>3D Pass Plus</small>
-          <b>Rp50.000</b>
-          <span>Everything above, with seat compare, show mode, the setlist, eye height and the way to the venue.</span>
-        </div>
-        <a class="pill-link" href="#unlock">See my seat in 3D <svg><use href="#i-arrow"/></svg></a>
-      </aside>
+    <div class="ab-pair">
+      <figure class="ab-shot">
+        <img src="assets/about/category-720.webp" srcset="assets/about/category-720.webp 720w, assets/about/category.webp 1228w" sizes="(max-width: 860px) 92vw, 560px" alt="A venue in 3D from above, one category lit up" loading="lazy" width="1228" height="908">
+        <figcaption><span class="ab-tag"><svg><use href="#i-tag"/></svg>My Category</span><b>Your category lights up</b><span>The whole venue from above, only your category in colour.</span></figcaption>
+      </figure>
+      <figure class="ab-shot">
+        <img src="assets/about/seat-720.webp" srcset="assets/about/seat-720.webp 720w, assets/about/seat.webp 960w" sizes="(max-width: 860px) 92vw, 760px" alt="The stage seen in 3D from a seat in the crowd, light sticks up" loading="lazy" width="960" height="546">
+        <figcaption><span class="ab-tag"><svg><use href="#i-seat"/></svg>My Seat</span><b>Then you sit down</b><span>The stage, the screens and the crowd, from your own seat.</span></figcaption>
+      </figure>
     </div>
   </section>
 
-  <section class="sec" id="about-who">
+  <section class="sec" id="about-know">
     <header class="sec-head">
-      <h2 class="big"><span class="fade" data-id="Siapa">Who</span> <span class="ol" data-id="kami">we are</span></h2>
-      <div class="sec-side"><p>A small team in Jakarta that models concert venues seat by seat, with the stage and screens of each show.</p></div>
+      <h2 class="big"><span class="fade" data-id="Perlu">Good</span> <span class="ol" data-id="kamu tahu">to know</span></h2>
+      <div class="sec-side"><p>Straight answers about who we are and how we are paid.</p></div>
     </header>
-    <div class="ab-two">
-      <article class="ab-col">
-        <h3><span class="ab-dot ab-dot-ok"><svg><use href="#i-check"/></svg></span>What we do</h3>
-        <ul>
-          <li>Keep track of the big concerts in Jakarta: dates, categories, announced prices and the official seller.</li>
-          <li>Build each venue in 3D from the promoter’s seating plan, block by block and row by row.</li>
-          <li>Show fans who already have a ticket the view from their own seat.</li>
-          <li>Offer the same seat view to ticketing platforms, venues and promoters.</li>
-        </ul>
-      </article>
-      <article class="ab-col">
-        <h3 data-id="Yang bukan peran kami"><span class="ab-dot"><svg><use href="#i-x"/></svg></span>What we are not</h3>
-        <ul>
-          <li>We do not sell concert tickets. The seller takes the payment and sends the e-ticket.</li>
-          <li>We are not the promoter or the artist. Their names and posters show which concert a page is about.</li>
-          <li>Refunds, name changes and cancellations of a ticket go to its seller.</li>
-          <li>The 3D is an illustration built from the plan; what the promoter sets up on the day comes first.</li>
-        </ul>
-      </article>
-    </div>
-  </section>
-
-  <section class="sec" id="about-paid">
-    <header class="sec-head">
-      <h2 class="big"><span class="fade" data-id="Dari mana">How we</span> <span class="ol" data-id="kami dibayar">are paid</span></h2>
-      <div class="sec-side"><p>Openly, and never by adding to the price of your ticket.</p></div>
-    </header>
-    <ul class="ab-earn">
-      <li><span class="feat-ic"><svg><use href="#i-eye"/></svg></span><h3 data-id="3D Pass">The 3D Pass</h3><p><b data-fee>Rp25.000</b> per seat, per concert, or Rp50.000 for 3D Pass Plus. This is most of what we earn.</p></li>
-      <li><span class="feat-ic"><svg><use href="#i-link"/></svg></span><h3>Affiliate links</h3><p>Some links to tiket.com are affiliate links: tiket.com may pay us a commission on a sale, at no cost to you.</p></li>
-      <li><span class="feat-ic"><svg><use href="#i-code"/></svg></span><h3 data-id="Partner">Partners</h3><p>Ticketing platforms, venues and promoters license the seat view for their own sales. See <a class="u" href="#partners">for partners</a>.</p></li>
-    </ul>
+    <dl class="ab-know">
+      <div><dt>We don’t sell tickets.</dt><dd>Your ticket comes from the seller named on each concert page. Refunds and name changes go to them.</dd></div>
+      <div><dt>One price, one seat.</dt><dd>Rp25.000 per seat, per concert. 3D Pass Plus, with seat compare and show mode, is Rp50.000.</dd></div>
+      <div><dt>The 3D is a close guide.</dt><dd>Built from the promoter’s seating plan. What they set up on the day comes first.</dd></div>
+      <div><dt>How we earn.</dt><dd>The 3D Pass, a commission from tiket.com on some links at no cost to you, and licences for partners.</dd></div>
+    </dl>
   </section>
 
   <section class="sec">
     <div class="ab-end">
-      <div>
-        <p class="eyebrow">Talk to us</p>
-        <h2 class="big big-sm"><span class="fade" data-id="Ada pertanyaan?">Questions?</span></h2>
-        <p>About your 3D pass, the site or working together: <a class="u" href="#contact">contact us</a>, we answer within one working day. Questions about a concert ticket go to its seller.</p>
-      </div>
-      <div class="row-btns">
+      <h2 class="ab-end-t" data-id="Sudah pegang tiket?">Got your ticket?</h2>
+      <div class="ab-end-r">
         <a class="btn btn-coral" href="#unlock">See my seat in 3D <svg><use href="#i-arrow"/></svg></a>
-        <a class="btn btn-line" href="#faq" data-id="Pertanyaan umum">Good questions</a>
+        <p><span>Questions about your pass or working with us?</span> <a class="u" href="#contact">Contact us</a></p>
       </div>
     </div>
   </section>

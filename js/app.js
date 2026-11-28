@@ -133,6 +133,7 @@ function parse(hash) {
   if (!h || h === 'home' || h === 'top') return { view: 'home' };
   if (HOME_ANCHORS.has(h)) return { view: 'home', anchor: h };
   if (PARTNER_ANCHORS.has(h)) return { view: 'partners', anchor: h };
+  if (h === 'about-how') return { view: 'about', anchor: h };
   if (PAGES.has(h)) return { view: h };
   // #unlock: the price list. #unlock-<id>: the price list for that concert (the concert page's
   // Unlock button). Choose on it: #unlock-seat / #unlock-plus, the concerts for that pass, or
