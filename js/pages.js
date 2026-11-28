@@ -12,6 +12,7 @@ import { justBought, buyUrl, buyAttrs, buyLink, travelUrl, TRAVEL, passes, activ
 import { checkClaim, formatFee } from './rules.js';
 import { PLUS_FEE, UPGRADE_FEE, PAY_MINUTES, line, email as cleanEmail, isEmail, planOf, feeOf } from './order.js';
 import { signIn, PROVIDERS } from './sso.js';
+import { teamFromToken } from './team.js';
 import { TIERS, STAR } from './logomotion.js';
 import { bindPeek } from './peek.js';
 import { PAY_GROUPS, PAY_METHODS, payMethod, payDetails, wayName } from './paymethods.js';
@@ -1087,10 +1088,15 @@ function checkForm(form) {
   return { ...data, plan: up ? 'plus' : unlock.plan, ...(up ? { upgrade: up.id, upgradeToken: up.token || '' } : {}) };
 }
 
-function startPayment(form) {
+let starting = false;
+async function startPayment(form) {
   const data = checkForm(form);
-  if (!data) return;
+  if (!data || starting) return;
   unlock.data = data;
+  starting = true;
+  try {
+    if (!data.upgrade && await teamFor(data.email) && await teamOpen(form, data)) return;
+  } finally { starting = false; }
   showWays(form);
 }
 
@@ -1162,7 +1168,6 @@ function showWays(form) {
     </div>
     <div class="co-cols">
       <div class="co-main">
-        ${teamBlock()}
         <div class="pm-groups">${PAY_GROUPS.map(g => wayGroup(g, ways.filter(m => m.group === g.id))).join('')}</div>
         ${payNotes('co-main-notes')}
       </div>
@@ -1172,26 +1177,24 @@ function showWays(form) {
   requestAnimationFrame(() => sheet.scrollIntoView({ block: 'start' }));
 }
 
-// A member of the team (js/team.js), signed in on #admin: the pass opens without paying.
-const teamBlock = () => {
-  const t = state.store.teamKey;
-  return t ? `<div class="co-team"><p><b>Akses tim</b> · ${esc(t.email)}<small>Pass ini terbuka tanpa bayar dan tanpa Midtrans.</small></p>
-    <button class="btn btn-coral" type="button" id="pay-team">Buka gratis (tim) ${icon('i-arrow')}</button><p class="co-error" id="team-pay-error" role="alert" hidden></p></div>` : '';
-};
-async function teamOpen(form, btn) {
-  const data = unlock.data, err = $('#team-pay-error');
-  if (!data) return closePay(form);
-  btn.disabled = true;
-  err.hidden = true;
+// A member of the team (js/team.js): the pass opens without paying, with no step of its
+// own. The team key on this device, or the form's Google sign-in for an address on the
+// team, and the form's email the member's own. Anyone else goes on to the ways to pay.
+async function teamFor(email) {
+  if (!state.store.team) return null;
+  const mine = t => (t && t.email.toLowerCase() === String(email || '').trim().toLowerCase() ? t : null);
+  const held = mine(state.store.teamKey);
+  if (held) return held;
+  const who = unlock.who;
+  return who?.provider === 'google' && who.token ? mine(await teamFromToken(who.token)) : null;
+}
+async function teamOpen(form, data) {
   try {
     const p = await state.store.teamPass({ eventId: data.eventId, cat: data.cat, seat: data.seat, name: data.name });
     holdPass(p);
     location.hash = `#paid-${p.id}`;
-  } catch (e) {
-    err.textContent = e.status === 401 ? 'Sesi tim habis. Masuk lagi di halaman Admin.' : e.message || 'Tidak bisa membuka pass. Coba lagi.';
-    err.hidden = false;
-    btn.disabled = false;
-  }
+    return true;
+  } catch { return false; }
 }
 
 // A group of ways: open for the wallets and the banks, and for a way already chosen. Folded,
@@ -1596,8 +1599,6 @@ function bindUnlock(form) {
     if (t.closest('[data-back]')) { unlock.payment = null; closePay(form); return; }
     if (t.closest('#pay-ways')) { unlock.payment = null; showWays(form); return; }
     if (t.closest('#pay-demo')) { paid(form); return; }
-    const team = t.closest('#pay-team');
-    if (team) { if (!team.disabled) teamOpen(form, team); return; }
     const go = t.closest('#pay-go');
     if (go) { if (!go.disabled) goPay(form, go); return; }
     const copy = t.closest('[data-copy]');

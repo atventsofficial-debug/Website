@@ -30,6 +30,17 @@ export async function teamSignIn(clientId) {
   return t;
 }
 
+// A Google ID token from the unlock form's own sign-in: a team key if that address is on
+// the team, else null. The Worker checks the token and the list, as for #admin.
+export async function teamFromToken(idToken) {
+  if (!idToken) return null;
+  try {
+    const t = await post('api/team/session', { idToken });
+    try { localStorage.setItem(KEY, JSON.stringify(t)); } catch { /* this page view only */ }
+    return t;
+  } catch { return null; }
+}
+
 // Still on the team? A key the Worker no longer takes (taken off the list) is forgotten.
 export async function teamCheck() {
   const t = teamKey();
