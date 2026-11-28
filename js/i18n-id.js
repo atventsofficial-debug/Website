@@ -245,7 +245,6 @@ export const EXACT = {
 "Unlock a 3D view": "Buka Tampilan 3D",
 "My 3D passes": "Pass 3D Saya",
 "Questions": "Bantuan",
-"About us": "Tentang Kami",
 "Contact": "Hubungi Kami",
 "Home": "Beranda",
 "Search an artist, team or venue": "Cari artis, tim, atau venue",

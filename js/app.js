@@ -20,9 +20,10 @@ import { $, $$, state, on, toast, tickCountdowns, captureCampaign, fitGiants, bi
 const SIDE = 'atvents:side';
 const HOME_ANCHORS = new Set(['how', 'tour', 'venues', 'news', 'news-form']);
 const PARTNER_ANCHORS = new Set(['partner-why', 'partner-uses', 'partner-how', 'partner-demo', 'partner-pricing', 'partner-faq-sec', 'partner-contact']);
-const PAGES = new Set(['concerts', 'unlock', 'footage', 'passes', 'partners', 'faq', 'about', 'contact', 'privacy', 'terms', 'disclosure', 'admin']);
+const PAGES = new Set(['concerts', 'unlock', 'footage', 'passes', 'partners', 'faq', 'contact', 'privacy', 'terms', 'disclosure', 'admin']);
 // Links from the earlier site, which sold the tickets itself, land on their nearest page.
 const LEGACY = {
+  about: 'home',   // the About page was taken down (Nov 2026); old links land on the home page
   events: 'concerts', saved: 'concerts', checkout: 'concerts', tickets: 'passes', organisers: 'partners', host: 'partner-contact',
   pricing: 'partner-pricing', templates: 'partner-demo', 'org-how': 'partner-how', features: 'partner-why', dashboard: 'admin', report: 'admin', campaigns: 'admin',
 };
