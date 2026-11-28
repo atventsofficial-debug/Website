@@ -1099,15 +1099,10 @@ export const EXACT = {
 "The songs a recent show of this tour played, each with a short preview to play from your seat.": "Lagu-lagu dari konser terbaru tur ini, masing-masing dengan cuplikan singkat yang bisa diputar dari kursimu.",
 "Directions comes with 3D Pass Plus.": "Rute tersedia dengan 3D Pass Plus.",
 // About us (#about)
-"Buy your ticket from the official seller. Then see the view from your seat in 3D, before the night.": "Beli tiket di penjual resmi. Lalu lihat pemandangan dari kursimu dalam 3D, sebelum hari‑H.",
-"At tiket.com, Loket, TipTip or Traveloka.": "Di tiket.com, Loket, TipTip, atau Traveloka.",
-"Copy it from your e-ticket, then pay Rp25.000.": "Salin dari e-tiketmu, lalu bayar Rp25.000.",
-"See your seat": "Lihat kursimu",
-"My Category, then My Seat. It opens at once.": "Kategoriku, lalu Kursiku. Langsung terbuka.",
-"We don’t sell tickets, and the 3D is a guide built from the promoter’s plan. Questions?": "Kami tidak menjual tiket, dan 3D-nya panduan dari denah promotor. Ada pertanyaan?",
+"Atvents is for fans who already have a ticket.": "Atvents untuk kamu yang sudah punya tiket.",
+"Buy your ticket from the official seller. Then pick the concert here, fill in the seat on your e-ticket and pay Rp25.000. You see the view from that seat in 3D straight away.": "Beli tiket di penjual resmi. Lalu pilih konsernya di sini, isi kursi sesuai e-tiketmu, dan bayar Rp25.000. Kamu langsung bisa lihat pemandangan dari kursi itu dalam 3D.",
+"We don’t sell tickets. The 3D is a guide built from the promoter’s seating plan.": "Kami tidak menjual tiket. Tampilan 3D dibuat dari denah kursi promotor, sebagai gambaran.",
 "Contact us": "Hubungi kami",
-"Buy your ticket": "Beli tiketmu",
-"The stage seen in 3D from a seat in the crowd": "Panggung dilihat dalam 3D dari kursi di tengah penonton",
 };
 
 const tr = s => EXACT[s] ?? s;
