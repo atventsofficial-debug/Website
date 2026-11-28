@@ -987,6 +987,7 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
   .tools-g { display: contents; }
   .tools #t-access { order: 10; }
   .tools #t-crowd { order: 20; }
+  .tools #t-compare { order: 25; text-decoration: none; }
   .tools #set-btn { order: 55; }
   .tools #show-btn { order: 60; }
   .tools #eye-btn { order: 65; }
@@ -1043,11 +1044,11 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
   .stage.is-tight .tools .sq:not(.is-on.sq-drop):not(.zoom .sq) { padding: 0 11px; }
   .stage.is-tight .tools .sq-lock { left: 20px; }
   /* Only one side short of room: that side's buttons alone give up their words. */
-  .stage.is-tight-l .tools :is(#t-access, #chat-btn, #t-crowd):not(.is-on.sq-drop) .sq-t,
+  .stage.is-tight-l .tools :is(#t-access, #chat-btn, #t-crowd, #t-compare):not(.is-on.sq-drop) .sq-t,
   .stage.is-tight-r .tools :is(#set-btn, #show-btn, #eye-btn, #t-capture, #t-reset):not(.is-on.sq-drop) .sq-t { display: none; }
-  .stage.is-tight-l .tools :is(#t-access, #chat-btn, #t-crowd):not(.is-on.sq-drop),
+  .stage.is-tight-l .tools :is(#t-access, #chat-btn, #t-crowd, #t-compare):not(.is-on.sq-drop),
   .stage.is-tight-r .tools :is(#set-btn, #show-btn, #eye-btn, #t-capture, #t-reset):not(.is-on.sq-drop) { padding: 0 11px; }
-  .stage.is-tight-l .tools :is(#t-access, #chat-btn, #t-crowd) .sq-lock,
+  .stage.is-tight-l .tools :is(#t-access, #chat-btn, #t-crowd, #t-compare) .sq-lock,
   .stage.is-tight-r .tools :is(#set-btn, #show-btn, #eye-btn, #t-capture, #t-reset) .sq-lock { left: 20px; }
 }
 @media (max-width: 960px) {
@@ -1058,9 +1059,12 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
 .sb-label { padding-left: 10px; }
 .cat-pills { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; min-width: 0; flex: 1; }
 .cat-pills::-webkit-scrollbar { display: none; }
-/* the pills share the bar's width, so no empty space is left at its end; with many categories
-   each keeps its own width and the row scrolls */
-.cat-pills .cat-pill { flex: 1 0 0; min-width: max-content; }
+/* The bar is as wide as its pills, never wider, so it leaves no empty space at its end and a
+   single category is not stretched across the screen; with many categories it reaches the
+   panel beside it and the row scrolls. */
+.sections { width: fit-content; max-width: calc(100% - 404px - max(16px, env(safe-area-inset-left, 0px))); }
+.cat-pills { flex: 0 1 auto; }
+.cat-pills .cat-pill { flex: none; min-width: max-content; }
 .cat-pill { flex: none; display: inline-flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 3px; height: 52px; padding: 0 20px; border-radius: 999px; border: 1.5px solid var(--line-2); background: transparent; color: var(--text); cursor: pointer; text-align: left; transition: background .2s, color .2s, border-color .2s; }
 .cat-pill:hover { border-color: rgba(255, 255, 255, 0.45); }
 .cat-pill b { font-size: 14px; font-weight: 700; }
@@ -1118,7 +1122,7 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
   .plans-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .steps { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .feat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .sections { right: max(16px, env(safe-area-inset-right, 0px)); bottom: 290px; }
+  .sections { right: max(16px, env(safe-area-inset-right, 0px)); bottom: 290px; max-width: calc(100% - 32px); }
   .app-side { width: 340px; }
   .dash-2 { grid-template-columns: minmax(0, 1fr); }
   .ev3d { grid-template-columns: minmax(0, 1fr); }
@@ -1191,16 +1195,12 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
      clear of the category bar (.sections, 12px over the panel) by more than the zoom's own label. */
   .tools { left: max(22px, env(safe-area-inset-left, 0px)); top: calc(max(16px, env(safe-area-inset-top, 0px)) + 62px + var(--card-h, 0px)); bottom: calc(max(156px, var(--side-h, 0px)) + 104px); gap: 20px 16px; }
   .tools-g { gap: 20px; }
-  .tools #t-reset, .in-tour .tools :is(#t-access, #set-btn, #show-btn, #eye-btn) { display: none; }
+  .tools #t-reset, .in-tour .tools :is(#t-access, #set-btn, #show-btn, #eye-btn), .tools #t-compare { display: none; }
   .in-tour .tour-end { display: none; }
   /* The tour's first step on a phone is the two buttons alone, as on a computer: My Category
      and My Seat. The Plus note and Compare wait for the next step. No zoom buttons on a phone
      (pinch zooms), so the rail in the tour is Crowd and Chat. */
   .app-side .tour-extra { display: none; }
-  /* On a phone My Category and My Seat share the panel's width half and half, with no room
-     left over on the right: the icon at the start, the label centred in the rest. */
-  .stage .app-side .row-btns:has(> :nth-child(2)) .btn:has(> svg.lead) { flex: 1 1 0; padding-right: 14px; }
-  .stage .app-side .row-btns:has(> :nth-child(2)) .btn:has(> svg.lead) .btn-t { flex: 1 1 auto; text-align: center; }
   .tools .zoom, .tools .zoom[hidden] { display: none; }
   .app-side .dock { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; width: 100%; margin-top: 2px; }
   /* A sheet from the bottom (show mode, the setlist) takes the panel's place while open. */
@@ -1209,7 +1209,7 @@ body[data-mode="fans"] [data-for="partners"], body[data-mode="partners"] [data-f
   .tools .sq svg { width: 19px; height: 19px; }
   .stage.is-seat .tools { top: calc(max(16px, env(safe-area-inset-top, 0px)) + 62px); bottom: calc(max(12px, env(safe-area-inset-bottom, 0px)) + var(--seat-h, 0px) + 28px); }
   .in-tour .stage .tools, .in-tour .stage.is-seat .tools { bottom: calc(max(12px, env(safe-area-inset-bottom, 0px)) + var(--side-h, 0px) + 28px); }
-  .sections { left: max(12px, env(safe-area-inset-left, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); bottom: calc(max(156px, var(--side-h, 0px)) + 12px); padding: 6px; border-radius: 26px; }
+  .sections { left: max(12px, env(safe-area-inset-left, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); bottom: calc(max(156px, var(--side-h, 0px)) + 12px); padding: 6px; border-radius: 26px; max-width: calc(100% - 24px); }
   .sb-label { display: none; }
   .app-side { left: max(12px, env(safe-area-inset-left, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); bottom: max(12px, env(safe-area-inset-bottom, 0px)); width: auto; padding: var(--s4); gap: var(--s2); }
   .app-side h2 { font-size: 19px; }
@@ -1544,6 +1544,20 @@ input, select, textarea { border-radius: 0; }
 .app-side .row-btns:has(> :nth-child(2)) .btn:has(> svg.lead) { flex: 0 1 auto; justify-content: flex-start; padding: 0 18px 0 6.5px; }
 .app-side .row-btns:has(> :nth-child(2)) .btn > svg.lead { box-sizing: content-box; width: 14px; height: 14px; padding: 5px; margin: 0; border-radius: 50%; }
 .app-side .row-btns:has(> :nth-child(2)) .btn-line > svg.lead { background: color-mix(in srgb, var(--coral) 14%, transparent); color: var(--coral); }
+/* In the tour's panel every row of buttons fills the panel's width, on a phone and on a
+   computer, with no room left over on the right: a pair half and half (My Category and My
+   Seat), a button alone across the whole row (Compare seats, Sit in my seat). A leading icon
+   stays at the start with the label centred in the rest; a coral button's circle stays at
+   the end with the label at the start. */
+.in-tour .stage .app-side .row-btns { display: flex; flex-wrap: nowrap; width: 100%; }
+.in-tour .stage .app-side .row-btns > .btn,
+.in-tour .stage .app-side .row-btns:has(> :nth-child(2)) > .btn,
+.in-tour .stage .app-side .row-btns:has(> :nth-child(2)) > .btn:has(> svg.lead) { flex: 1 1 0; min-width: 0; height: 40px; }
+.in-tour .stage .app-side .row-btns > .btn:has(> svg.lead) { justify-content: flex-start; padding-right: 14px; }
+.in-tour .stage .app-side .row-btns > .btn:has(> svg.lead) .btn-t { flex: 1 1 auto; text-align: center; }
+.in-tour .stage .app-side .row-btns > .btn.btn-coral:has(> svg:last-child:not(.lead)) { justify-content: space-between; padding-left: 18px; }
+/* Compare seats sits in the bar along the top on a computer; only a phone has it in the panel. */
+@media (min-width: 961px) { .app-side .tour-phone { display: none; } }
 /* the tour's head: back one step, where the fan is, and fold the panel away */
 .tour-head { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 32px; }
 .th-step { flex: 1; min-width: 0; font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
