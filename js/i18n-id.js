@@ -1098,6 +1098,16 @@ export const EXACT = {
 "Trains, buses, parking, the gates and the way to your seat, on a map of the streets round the venue and in 3D.": "Kereta, bus, parkir, gerbang, dan jalan ke kursimu, di peta jalan sekitar venue dan dalam 3D.",
 "The songs a recent show of this tour played, each with a short preview to play from your seat.": "Lagu-lagu dari konser terbaru tur ini, masing-masing dengan cuplikan singkat yang bisa diputar dari kursimu.",
 "Directions comes with 3D Pass Plus.": "Rute tersedia dengan 3D Pass Plus.",
+// About us (#about)
+"Buy your ticket from the official seller. Then see the view from your seat in 3D, before the night.": "Beli tiket di penjual resmi. Lalu lihat pemandangan dari kursimu dalam 3D, sebelum hari‑H.",
+"At tiket.com, Loket, TipTip or Traveloka.": "Di tiket.com, Loket, TipTip, atau Traveloka.",
+"Copy it from your e-ticket, then pay Rp25.000.": "Salin dari e-tiketmu, lalu bayar Rp25.000.",
+"See your seat": "Lihat kursimu",
+"My Category, then My Seat. It opens at once.": "Kategoriku, lalu Kursiku. Langsung terbuka.",
+"We don’t sell tickets, and the 3D is a guide built from the promoter’s plan. Questions?": "Kami tidak menjual tiket, dan 3D-nya panduan dari denah promotor. Ada pertanyaan?",
+"Contact us": "Hubungi kami",
+"Buy your ticket": "Beli tiketmu",
+"The stage seen in 3D from a seat in the crowd": "Panggung dilihat dalam 3D dari kursi di tengah penonton",
 };
 
 const tr = s => EXACT[s] ?? s;
