@@ -620,9 +620,9 @@ export function bindViewer() {
 const STEPS = ['Your category', 'Your seat'];
 
 // The tour has two steps: the fan's category (step 2 here), then their seat (step 3). It opens
-// on the whole venue from above, the category marked; the first button then flies to the
-// category (`framed`), and only then becomes Sit in my seat. My Seat is beside it from
-// the start; the seat's numbering options wait for the seat itself.
+// on the whole venue from above, the category marked, with two buttons that stay the same until
+// the seat: My Category flies to the category (`framed`), My Seat sits the fan down. The
+// seat's numbering options wait for the seat itself.
 function startTour() {
   const sc = state.scene, p = tourPass();
   if (!sc || !p) return;
@@ -706,7 +706,7 @@ function setNumbering(key, value) {
   paintViewer();
 }
 
-// Fly to the fan's category; the first button becomes Sit in my seat.
+// Fly to the fan's category; My Category and My Seat stay, My Seat sits them down.
 function showCat() {
   const p = tourPass();
   if (!p || !state.scene || state.tour.step !== 2) return;
@@ -865,6 +865,10 @@ const queueTabs = () => { cancelAnimationFrame(tabsFrame); tabsFrame = requestAn
 function syncCapture() {
   const b = $('#t-capture'), t = state.tour;
   if (b) b.hidden = !(t && !t.fan && !t.fanBlock);
+  // Compare seats, for a Plus pass: a button in the bar along the top on a computer, on the
+  // left beside Crowd (a phone has it in the panel, in the seat).
+  const c = $('#t-compare'), p = tourPass();
+  if (c) { c.hidden = !(t && p?.plan === 'plus'); if (p) c.href = `#seats-${p.eventId}`; }
 }
 function sitFor(what) {
   const s = state.tour && tourSeat();
@@ -953,7 +957,7 @@ function paintTour() {
   const body = step === 1 ? `
       <h2>${esc(v.place.name)}</h2>
       <p>This is the whole venue for ${esc(e.title)}. Your ticket is <b>${esc(cat.name)}</b>: tap it below, or tap one of its seats.</p>${plusHint(p)}
-      <div class="row-btns"><button class="btn btn-coral btn-sm" type="button" data-tour="cat"><i class="cat-dot" style="background:${esc(cat.color)}"></i>${esc(cat.name)} ${icon('i-arrow')}</button>${compareBtn(p)}</div>`
+      <div class="row-btns"><button class="btn btn-coral btn-sm" type="button" data-tour="cat"><i class="cat-dot" style="background:${esc(cat.color)}"></i>${esc(cat.name)} ${icon('i-arrow')}</button></div>`
     : step === 2 && state.tour.picking ? `
       <h2>Tap your seat</h2>
       <p class="fine">Tap the seat you know is yours, in <b>${esc(s.secName)}</b>. Pinch or scroll to zoom in.</p>
@@ -962,11 +966,8 @@ function paintTour() {
       <p class="fine">${t.fan ? `<b>${esc(t.fan.name)}</b> sits in ${esc(seatText(seatOf(t.fan.seat) || s))}. They light up green in the crowd.` : `<b>${esc(state.venue.seats.find(x => x.sec === t.fanBlock)?.secName || '')}</b>: tap a name to see their seat.`}</p>
       <div class="row-btns"><button class="btn btn-coral btn-sm" type="button" data-tour="seat">Back to my seat ${icon('i-seat')}</button></div>`
     : step === 2 ? `
-      <p>Your seat is marked in coral: <b>${esc(seatText(s))}</b>. Tap it to sit down.</p>${t.framed ? plusHint(p) : plusHint(p).replace('<p class="fine">', '<p class="fine tour-extra">')}
-      <div class="row-btns">${t.framed
-        ? `<button class="btn btn-coral btn-sm" type="button" data-tour="seat"><span class="btn-t">Sit in my seat</span>${icon('i-seat')}</button>`
-        : `<button class="btn btn-coral btn-sm" type="button" data-tour="framecat">${icon('i-tag', 'lead')}<span class="btn-t">My Category</span></button><button class="btn btn-line btn-sm" type="button" data-tour="seat">${icon('i-seat', 'lead')}<span class="btn-t">My Seat</span></button>`}</div>
-      ${p.plan === 'plus' ? `<div class="row-btns${t.framed ? '' : ' tour-extra'}">${compareBtn(p)}</div>` : ''}`
+      <p>Your seat is marked in coral: <b>${esc(seatText(s))}</b>. Tap it to sit down.</p>${plusHint(p).replace('<p class="fine">', '<p class="fine tour-extra">')}
+      <div class="row-btns"><button class="btn btn-coral btn-sm" type="button" data-tour="framecat"${t.framed ? ' aria-pressed="true"' : ''}>${icon('i-tag', 'lead')}<span class="btn-t">My Category</span></button><button class="btn btn-line btn-sm" type="button" data-tour="seat">${icon('i-seat', 'lead')}<span class="btn-t">My Seat</span></button></div>`
       : t.fan ? `
       <p class="fine"><b>${esc(t.fan.name)}</b> sits in ${esc(seatText(seatOf(t.fan.seat) || s))}. They light up green in the crowd.</p>
       <div class="row-btns"><button class="btn btn-coral btn-sm" type="button" data-tour="fanclear">Back to my view ${icon('i-seat')}</button></div>`
@@ -975,7 +976,7 @@ function paintTour() {
       <p><b>${esc(seatText(s))}</b>, ${esc(cat.name)}. Drag to look round.</p>
       ${seatNote(p, s)}
       ${numberingControls(p, s)}
-      ${p.plan === 'plus' ? `<div class="row-btns">${compareBtn(p)}</div>` : ''}
+      ${p.plan === 'plus' ? `<div class="row-btns tour-phone">${compareBtn(p)}</div>` : ''}
       <div class="tour-end">
         <button class="tour-act is-capture" type="button" data-tour="capture">${icon('i-camera')}<b>Capture this moment</b><span>Photo or video of your view</span></button>
         <button class="tour-act" type="button" data-tour="again">${icon('i-venue')}<b>See the whole venue</b><span>Take the tour again</span></button>
